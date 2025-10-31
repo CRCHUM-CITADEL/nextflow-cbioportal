@@ -32,6 +32,8 @@ workflow CLINICAL_AGGREGATE {
             ch_formatted_input
         )
 
+        
+
         emit:
             csvs_with_date
 }

@@ -125,7 +125,8 @@ if(opt$mode=="patient") {
 				"PATIENT_ID	SEX	AGE	TUMOR_SITE	TUMOR_GRADE	TUMOR_HISTOLOGICAL_TYPE	OS_MONTHS	OS_STATUS	DFS_STATUS	DFS_MONTHS"), con = opt$output)
 	write.table(m[,c("patient","sex_at_birth","age_at_diagnosis_years","tumour_site","clinical_stage_group","tumour_histological_type","overall_survival_months","is_deceased","disease_free_survival_status","disease_free_months")], file = opt$output, sep = "\t", row.names = FALSE, col.names=F, quote = FALSE, append = TRUE)
 } else if(opt$mode=="sample") {
-	writeLines(c("#Identifier to uniquely specify a patient.	A unique sample identifier.	The type of sample (i.e., normal, primary, met, recurrence).	Cancer Type Details.	Cancer Type Code.",
+	writeLines(c("#Patient Identifier	Sample Identifier	Sample Type	Cancer Type",
+        "#Identifier to uniquely specify a patient.	A unique sample identifier.	The type of sample (i.e., normal, primary, met, recurrence).	Cancer Type Details.	Cancer Type Code.",
 				"#STRING	STRING	STRING	STRING	STRING",
 				"#1	1	1	1	1",
 	   			"PATIENT_ID	SAMPLE_ID	SAMPLE_TYPE	CANCER_TYPE_DETAILS	CANCER_TYPE_CODE"), con = opt$output)

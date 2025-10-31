@@ -20,7 +20,7 @@ From: rockylinux:8.9
     python3.12 -m pip install --no-cache-dir pre-commit
 
     # Nextflow & nf-test
-    export NXT_VER=25.04.7
+    export NXF_VER=25.04.7
     curl -s https://get.nextflow.io | bash
     mv nextflow /usr/local/bin/nextflow
     nextflow -v

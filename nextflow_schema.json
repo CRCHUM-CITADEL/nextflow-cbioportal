@@ -166,6 +166,12 @@
         },
         "vep_params": {
             "type": "string"
+        },
+        "vep_cache": {
+            "type": "string"
+        },
+        "pcgr_data": {
+            "type": "string"
         }
     }
 }

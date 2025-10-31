@@ -8,6 +8,7 @@ include { GENOMIC_CNV } from '../subworkflows/local/genomic_cnv'
 include { GENOMIC_SV } from '../subworkflows/local/genomic_sv'
 include { GENOMIC_EXPRESSION } from '../subworkflows/local/genomic_expression'
 include { GENOMIC_MUTATIONS } from '../subworkflows/local/genomic_mutations'
+include { GENERATE_META_FILE } from '../modules/local/generate_meta_file'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,7 +35,7 @@ workflow GENOMIC {
         // Create a channel where each record has: subject, filepath, germinal or somatic, pipeline label, and dna or rna
         ch_files_all = samplesheet_list
             .map { rec ->
-                def subject = rec[0].subject
+                def subject = "${rec[0].subject}" // need to wrap it because if it's just number it will become integer and we need strings
                 def file = "${params.input_dir}/${rec[0].file}"
                 def type = rec[0].type
                 def pipeline = rec[0].pipeline  // e.g. "cnv", "hard_filtered", etc.
@@ -125,6 +126,19 @@ workflow GENOMIC {
             pcgr_data,
             needs_vep,
             needs_pcgr
+        )
+
+        meta_text = """type_of_cancer: ADD_TEXT
+cancer_study_identifier: ADD_TEXT
+name: ADD_TEXT
+description: ADD_TEXT
+add_global_case_list: true
+reference_genome: hg38
+        """
+
+        GENERATE_META_FILE(
+            "study",
+            meta_text
         )
 
         //

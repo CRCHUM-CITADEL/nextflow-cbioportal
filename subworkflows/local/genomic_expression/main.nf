@@ -1,5 +1,7 @@
 include { GET_TPM } from '../../../modules/local/get_tpm'
 include { MERGE_EXPRESSION_FILES_TO_CBIOPORTAL } from '../../../modules/local/merge_expression_files_to_cbioportal'
+include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
+
 
 workflow GENOMIC_EXPRESSION {
     take:
@@ -32,8 +34,23 @@ workflow GENOMIC_EXPRESSION {
             tpm_file_list
             )
 
+        meta_text = """cancer_study_identifier: ADD_TEXT
+genetic_alteration_type: MRNA_EXPRESSION
+datatype: CONTINUOUS
+stable_id: rna_seq_mrna
+show_profile_in_analysis_tab: true
+profile_name: mRNA expression (RNA-Seq TPM)
+profile_description: Expression levels (RNA-Seq TPM values)
+data_filename: data_expression.txt
+        """
+
+        meta_file = GENERATE_META_FILE(
+            "expression",
+            meta_text
+        )
 
     emit:
+        meta_file
         cbioportal_genomic_expression
 
 }

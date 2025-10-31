@@ -20,7 +20,7 @@
                 "meta": "subject"
             },
             "sample_id": {
-                "type": "integer",
+                "type": "string",
                 "pattern": "^\\d+$",
                 "errorMessage": "sample_id must be provided cannot contain spaces",
                 "meta": "sample"

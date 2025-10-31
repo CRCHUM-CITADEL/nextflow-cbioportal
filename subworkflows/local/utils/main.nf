@@ -144,7 +144,6 @@ workflow PIPELINE_COMPLETION {
 // Check and validate pipeline parameters
 //
 def validateInputParameters() {
-    // genomeExistsError()
 
     // check modes and input
     if (!params.mode){
@@ -160,36 +159,29 @@ def validateInputParameters() {
         error("ERROR: Could not find genomic samplesheet. Not running any tests. Check input in nextflow.config")
     }
 
+    if (params.mode == "genomic") {
+        if (!params.genome_reference) {
+            error("ERROR: genome_reference parameter is required for genomic mode")
+        }
+        
+        def genome_file = file(params.genome_reference)
+        
+        if (!genome_file.exists()) {
+            error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
+        }
+        
+        if (genome_file.isLink() && !genome_file.toRealPath().exists()) {
+            error("ERROR: Genome reference is a broken symlink: ${params.genome_reference}")
+        }
+        
+        if (!genome_file.canRead()) {
+            error("ERROR: Genome reference file is not readable: ${params.genome_reference}")
+        }
+    }
+
     if (params.mode == "clinical" && !params.clinical_samplesheet){
         error("ERROR: Could not find clinical filesheet. Not running any tests. Check input in nextflow.config")
     }
 
 
-}
-
-
-//
-// Get attribute from genome config file e.g. fasta
-//
-def getGenomeAttribute(attribute) {
-    if (params.genomes && params.genome && params.genomes.containsKey(params.genome)) {
-        if (params.genomes[ params.genome ].containsKey(attribute)) {
-            return params.genomes[ params.genome ][ attribute ]
-        }
-    }
-    return null
-}
-
-//
-// Exit pipeline if incorrect --genome key provided
-//
-def genomeExistsError() {
-    if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
-        def error_string = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" +
-            "  Genome '${params.genome}' not found in any config files provided to the pipeline.\n" +
-            "  Currently, the available genome keys are:\n" +
-            "  ${params.genomes.keySet().join(", ")}\n" +
-            "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-        error(error_string)
-    }
 }

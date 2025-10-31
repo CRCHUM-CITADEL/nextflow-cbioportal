@@ -11,6 +11,8 @@ testing*
 *.pyc
 null/
 containers/*.sif
+containers/*.img*
+
 output/
 
 assets/test_data/vcf/*.final.*

@@ -4,6 +4,9 @@ include { PCGR } from '../../../modules/local/pcgr'
 include { CONVERT_CPSR_TO_MAF } from '../../../modules/local/convert_cpsr_to_maf'
 include { DOWNLOAD_VEP_TEST } from '../../../modules/local/download_vep_test'
 include { DOWNLOAD_PCGR } from '../../../modules/local/download_pcgr'
+include { BCFTOOLS_INDEX } from '../../../modules/nf-core/bcftools/index'
+include { GENERATE_CASE_LIST } from '../../../modules/local/generate_case_list'
+include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
 
 workflow GENOMIC_MUTATIONS {
     take:
@@ -21,10 +24,14 @@ workflow GENOMIC_MUTATIONS {
         ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_cache.first()
         ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR().data_dir.first() : pcgr_data.first()
 
-        ger_dna_vcf.view()
+
+        vcf_index = BCFTOOLS_INDEX(ger_dna_vcf)
+
+        // Join them
+        ger_dna_vcf_with_index = ger_dna_vcf.join(vcf_index.tbi)
 
         ger_dna_tsv = PCGR(
-            ger_dna_vcf,
+            ger_dna_vcf_with_index,
             ch_vep_data,
             ch_pcgr_data
         )
@@ -57,11 +64,32 @@ workflow GENOMIC_MUTATIONS {
             ger_dna_tsv
         )
 
+        sequenced_case_list = GENERATE_CASE_LIST(
+            Channel.of("sequenced"),
+            som_dna_rna_maf.map { it[0]}.collect().map{it.join('\t') } // item at index 0 is sample_id, join by tabs in order to send a list
+        )
+
         cbioportal_genomic_mutations_merged = cbioportal_genomic_mutation_files
             .collectFile( name : 'data_mutations_dna_rna_germline.txt', storeDir: "${params.outdir}", keepHeader : true, skip: 1, sort: 'deep')
+        
+        meta_text = """cancer_study_identifier: ADD_TEXT
+genetic_alteration_type: MUTATION_EXTENDED
+stable_id: mutations
+datatype: MAF
+show_profile_in_analysis_tab: true
+profile_description: ADD TEXT
+profile_name: Mutations
+data_filename: data_mutations_dna_rna_germline.txt
+"""
 
+        meta_file = GENERATE_META_FILE(
+            "mutations",
+            meta_text
+        )
 
     emit:
+        meta_file
+        sequenced_case_list
         cbioportal_genomic_mutations_merged
 
 }

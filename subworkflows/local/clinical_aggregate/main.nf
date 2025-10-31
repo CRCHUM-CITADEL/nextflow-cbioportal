@@ -1,5 +1,6 @@
 include { FORMAT_CLINICAL } from '../../../modules/local/format_clinical'
 include { ASSIGN_DATE } from '../../../modules/local/assign_date'
+include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
 
 workflow CLINICAL_AGGREGATE {
     take:
@@ -32,7 +33,23 @@ workflow CLINICAL_AGGREGATE {
             ch_formatted_input
         )
 
-        
+        meta_text = Channel.of("""cancer_study_identifier: ADD_TEXT
+genetic_alteration_type: CLINICAL
+datatype: SAMPLE_ATTRIBUTES
+data_filename: data_clinical_sample.txt
+        """,
+        """cancer_study_identifier: ADD_TEXT
+genetic_alteration_type: CLINICAL
+datatype: PATIENT_ATTRIBUTES
+data_filename: data_clinical_patient.txt
+        """)
+
+        file_names = Channel.of("clinical_sample", "clinical_patient")
+
+        GENERATE_META_FILE(
+            file_names,
+            meta_text
+        )
 
         emit:
             csvs_with_date

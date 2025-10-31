@@ -29,7 +29,6 @@ workflow CLINICAL {
                 return tuple([group: group, pipeline: pipeline, extraction_date: extraction_date], file)
             }
         
-        ch_file_list.view()
 
         CLINICAL_AGGREGATE(
             ch_file_list

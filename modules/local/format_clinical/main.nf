@@ -1,5 +1,5 @@
 process FORMAT_CLINICAL {
-    publishDir "${params.outdir}/${meta.group}", mode: 'copy'
+    publishDir "${params.outdir}/", mode: 'copy'
 
     container params.container_r
 

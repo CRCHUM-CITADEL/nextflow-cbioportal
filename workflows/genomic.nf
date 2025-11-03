@@ -141,6 +141,23 @@ reference_genome: hg38
             meta_text
         )
 
+        // Create a file linking subject id and tumor sample id which is needed for one of the clinical steps
+        ch_files_all = samplesheet_list
+            .filter { rec -> rec[0].type != "germinal"}
+            .map { rec ->
+                def subject = "${rec[0].subject}" 
+                def sample = "${rec[0].sample}" 
+                return "${subject}\t${sample}"
+            }
+            .unique()
+            .collectFile(
+                sort: true,
+                name: "util_linking_file.txt", 
+                newLine: true,
+                storeDir : "${params.outdir}",
+                seed: "subject_id\tsample_id"
+            )
+
         //
         // TASK: Aggregate software versions
         //

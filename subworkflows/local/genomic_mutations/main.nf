@@ -66,13 +66,13 @@ workflow GENOMIC_MUTATIONS {
 
         sequenced_case_list = GENERATE_CASE_LIST(
             Channel.of("sequenced"),
-            som_dna_rna_maf.map { it[0]}.collect().map{it.join('\t') } // item at index 0 is sample_id, join by tabs in order to send a list
+            som_dna_rna_maf.map { it[0]}.collect().map{it.sort(false).join('\t') } // item at index 0 is sample_id, join by tabs in order to send a list
         )
 
         cbioportal_genomic_mutations_merged = cbioportal_genomic_mutation_files
-            .collectFile( name : 'data_mutations_dna_rna_germline.txt', storeDir: "${params.outdir}", keepHeader : true, skip: 1, sort: 'deep')
+            .collectFile( name : 'data_mutations_dna_rna_germline.txt', storeDir: "${params.outdir}", keepHeader : true, skip: 2, sort: 'deep')
         
-        meta_text = """cancer_study_identifier: ADD_TEXT
+        meta_text = """cancer_study_identifier: add_text
 genetic_alteration_type: MUTATION_EXTENDED
 stable_id: mutations
 datatype: MAF

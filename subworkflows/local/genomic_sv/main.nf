@@ -15,7 +15,7 @@ workflow GENOMIC_SV {
         cbioportal_genomic_sv_merged = cbioportal_genomic_sv_files
             .collectFile( name : 'data_sv.txt', storeDir: "${params.outdir}", keepHeader : true, skip: 1, sort : 'deep')
 
-        meta_text = """cancer_study_identifier: ADD_TEXT
+        meta_text = """cancer_study_identifier: add_text
 genetic_alteration_type: STRUCTURAL_VARIANT
 datatype: SV
 stable_id: structural_variants

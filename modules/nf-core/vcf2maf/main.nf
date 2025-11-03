@@ -47,8 +47,13 @@ process VCF2MAF {
         INPUT_VCF="$vcf"
     fi
 
+    originalTumorName=`cat \$INPUT_VCF| grep CHROM | awk -F"\\t" '{print \$(NF)}'`
+    originalNormalName=`cat \$INPUT_VCF | grep CHROM | awk -F"\\t" '{print \$(NF-1)}'`
+
     vcf2maf.pl \\
         $args \\
+        --tumor-id \$originalTumorName \\
+        --normal-id \$originalNormalName \\
         \$VEP_CMD \\
         $vep_cache_cmd \\
         --ref-fasta $fasta \\

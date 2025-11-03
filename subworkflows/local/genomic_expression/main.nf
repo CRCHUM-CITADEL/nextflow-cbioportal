@@ -34,7 +34,7 @@ workflow GENOMIC_EXPRESSION {
             tpm_file_list
             )
 
-        meta_text = """cancer_study_identifier: ADD_TEXT
+        meta_text = """cancer_study_identifier: add_text
 genetic_alteration_type: MRNA_EXPRESSION
 datatype: CONTINUOUS
 stable_id: rna_seq_mrna

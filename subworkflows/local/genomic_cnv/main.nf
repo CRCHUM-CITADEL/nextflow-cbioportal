@@ -11,7 +11,7 @@ workflow GENOMIC_CNV {
 
         cna_case_list = GENERATE_CASE_LIST(
             "cnv",
-            cnv_vcf.map { it[0]}.collect().map{ it.join('\t') } // item at index 0 is samplename, join all by tabs in order to send a list
+            cnv_vcf.map { it[0]}.collect().map{ it.sort(false).join('\t') } // item at index 0 is samplename, join all by tabs in order to send a list
         )
 
         fold_change_per_gene_cnv = EXTRACT_GENE_CNV_FOLD_CHANGES(
@@ -27,7 +27,7 @@ workflow GENOMIC_CNV {
         cbioportal_genomic_cnv_merged = cbioportal_genomic_cnv_files
             .collectFile( name : 'data_cna_hg38.seg', storeDir: "${params.outdir}", keepHeader : true, skip: 1, sort: 'deep')
 
-        meta_text = """cancer_study_identifier: ADD_TEXT
+        meta_text = """cancer_study_identifier: add_text
 genetic_alteration_type: COPY_NUMBER_ALTERATION
 datatype: SEG
 reference_genome_id: hg38

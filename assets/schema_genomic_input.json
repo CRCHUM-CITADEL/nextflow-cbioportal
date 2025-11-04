@@ -21,7 +21,7 @@
             },
             "sample_id": {
                 "type": "string",
-                "pattern": "^\\d+$",
+                "pattern": "^(?:\\d+|\\S+)$",
                 "errorMessage": "sample_id must be provided cannot contain spaces",
                 "meta": "sample"
             },

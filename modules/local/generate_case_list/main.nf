@@ -14,7 +14,6 @@ process GENERATE_CASE_LIST {
     echo -e "stable_id: add_text_${label}" >> cases_${label}.txt
     echo -e "case_list_name: add_text" >> cases_${label}.txt
     echo -e "case_list_description: ADD TEXT" >> cases_${label}.txt
-    echo -e "case_list_category: ADD TEXT" >> cases_${label}.txt
     echo -e "case_list_ids: ${list_of_samples}" >> cases_${label}.txt
     """
 }

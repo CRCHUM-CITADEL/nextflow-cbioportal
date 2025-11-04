@@ -1,6 +1,6 @@
 // modified to allow vcf.gz and vcf (10/10/2025)
 process VCF2MAF {
-    tag "$meta.id"
+    tag "$meta.tumor_sample"
     label 'process_medium_memory'
     // WARN: Version information not provided by tool on CLI. Please update version string below when bumping container versions.
     conda "${moduleDir}/environment.yml"
@@ -23,7 +23,7 @@ process VCF2MAF {
 
     script:
     def args          = task.ext.args   ?: ''
-    def prefix        = task.ext.prefix ?: "${meta.id}"
+    def prefix        = task.ext.prefix ?: "${meta.tumor_sample}"
     def vep_cache_cmd = vep_cache       ? "--vep-data $vep_cache ${params.vep_params}" : ""     // If VEP is present, it will find it and add it to commands otherwise blank
     def VERSION       = '1.6.22' // WARN: Version information not provided by tool on CLI. Please update this string when bumping container versions.
     """
@@ -47,13 +47,10 @@ process VCF2MAF {
         INPUT_VCF="$vcf"
     fi
 
-    originalTumorName=`cat \$INPUT_VCF| grep CHROM | awk -F"\\t" '{print \$(NF)}'`
-    originalNormalName=`cat \$INPUT_VCF | grep CHROM | awk -F"\\t" '{print \$(NF-1)}'`
-
     vcf2maf.pl \\
         $args \\
-        --tumor-id \$originalTumorName \\
-        --normal-id \$originalNormalName \\
+        --tumor-id ${meta.tumor_sample} \\
+        --normal-id ${meta.normal_sample} \\
         \$VEP_CMD \\
         $vep_cache_cmd \\
         --ref-fasta $fasta \\
@@ -67,7 +64,7 @@ process VCF2MAF {
     """
 
     stub:
-    def prefix  = task.ext.prefix ?: "${meta.id}"
+    def prefix  = task.ext.prefix ?: "${meta.tumor_sample}"
     def VERSION = '1.6.22' // WARN: Version information not provided by tool on CLI. Please update this string when bumping container versions.
     """
     if [ "$vep_cache" ]; then

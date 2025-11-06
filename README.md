@@ -18,20 +18,23 @@ git clone https://github.com/CRCHUM-CITADEL/nextflow-sante-precision.git && cd
 
 You will need to change parameters in the nextflow config in order to point to certain files. These options are found in the `params` dict in nextflow.config. Parameters are mandatory unless specified otherwise.
 
-| Field               | Description                                                                                                                   |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| mode                | Pipeline run mode. Options : ['clinical', 'genomic']                                                                          |
-| input               | Input samplesheet. See section below.                                                                                         |
-| gencode_annotations | Gencode annotation .gtf file.                                                                                                 |
-| ensembl_annotations | Ensembl annotation .tsv file.                                                                                                 |
-| vep_cache           | Cache folder of downloaded ensembl vep release.                                                                               |
-| vep_params          | Parameters for VEP usage as described here: <br> https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optional) |
-| pcgr_data           | Folder of pcgr reference data (uncompressed)                                                                                  |
-| genome_reference    | Location of GRCh38 reference fasta file.                                                                                      |
-| container_pcgr      | Location of PCGR apptainer image (remote or local)                                                                            |
-| container_python    | Location of R apptainer image (remote or local)                                                                               |
-| container_r         | Location of R apptainer image (remote or local)                                                                               |
-| container_vcf2maf   | Location of nf-core vcf2maf module container <br> apptainer image (remote or local) (optional)                                |
+| Field                | Description                                                |
+| -------------------- | ---------------------------------------------------------- |
+| mode                 | Pipeline run mode. Options : ['clinical', 'genomic']       |
+| genomic_samplesheet  | Input samplesheet for genomic pipeline. See section below. |
+| gencode_annotations  | Gencode annotation .gtf file.                              |
+| ensembl_annotations  | Ensembl annotation .tsv file.                              |
+| vep_cache            | Cache folder of downloaded ensembl vep release.            |
+| vep_params           | Parameters for VEP usage as described here: <br> https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optional) |
+| pcgr_data            | Folder of pcgr reference data (uncompressed)               |
+| genome_reference     | Location of GRCh38 reference fasta file.                   | 
+| container_pcgr       | Location of PCGR apptainer image (remote or local)         | 
+| container_python     | Location of Python apptainer image (remote or local)       | 
+| container_r          | Location of R apptainer image (remote or local)            | 
+| container_vcf2maf    | Location of nf-core vcf2maf module container <br> apptainer image (remote or local) (optional)  | 
+| clinical_samplesheet | Input samplesheet for clinical pipeline. See section below.| 
+| id_linking_file      | ID linking file generated from genomic pipeline.           | 
+
 
 ## Samplesheet
 
@@ -43,18 +46,18 @@ The samplesheet format is heavily based on <a href="https://github.com/nf-core/o
 
 #### Genomic Input Schema
 
-The genomic input file must be a JSON array where each object contains the following fields:
+The genomic input file must be a CSV file where each object contains the following fields:
 
-| Column Name     | Type    | Required | Pattern                         | Options                                    | Description                                                             |
-| --------------- | ------- | -------- | ------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------- |
-| `group_id`      | string  | No       | `^\S+$` (no spaces)             | -                                          | Group identifier                                                        |
-| `subject_id`    | string  | **Yes**  | `^(?:\d+\|\S+)$` (no spaces)    | -                                          | Subject identifier                                                      |
-| `sample_id`     | integer | **Yes**  | `^\d+$` (numeric only)          | -                                          | Sample identifier                                                       |
-| `sample_type`   | string  | **Yes**  | -                               | `somatic`, `germinal`                      | Type of sample                                                          |
-| `sequence_data` | string  | **Yes**  | -                               | `dna`, `rna`                               | Type of sequence data                                                   |
-| `filetype`      | string  | **Yes**  | -                               | `cnv`, `sv`, `expression`, `hard_filtered` | File type category                                                      |
-| `info`          | string  | No       | -                               | -                                          | Additional information                                                  |
-| `filepath`      | string  | **Yes**  | `^\S+\.(?:vcf\.gz\|final\|sf)$` | -                                          | Path to genomic data file (must end with `.vcf.gz`, `.final`, or `.sf`) |
+| Column Name | Type | Required | Pattern | Options | Description |
+|-------------|------|----------|---------|---------|-------------|
+| `group_id`  | string | No | `^\S+$` (no spaces) | - | Group identifier |
+| `subject_id` | string | **Yes** | `^(?:\d+\|\S+)$` (no spaces) | - | Subject identifier |
+| `sample_id` | integer | **Yes** | `^\d+$` (numeric only) | - | Sample identifier |
+| `sample_type` | string | **Yes** | - | `somatic`, `germinal` | Type of sample |
+| `sequence_data` | string | **Yes** | - | `dna`, `rna` | Type of sequence data |
+| `filetype` | string | **Yes** | - | `cnv`, `sv`, `expression`, `hard_filtered` | File type category |
+| `info` | string | No | - | - | Additional information |
+| `filepath` | string | **Yes** | `^\S+\.(?:vcf\.gz\|final\|sf)$` | - | Path to genomic data file (must end with `.vcf.gz`, `.final`, or `.sf`) |
 
 > [!NOTE]
 > Fields marked as **Required** must be present in each object
@@ -63,9 +66,26 @@ The genomic input file must be a JSON array where each object contains the follo
 
 ### mode = 'clinical'
 
+#### Clinical Input Schema
+
+The clinical input file must be a CSV where each object contains the following fields:
+
+| Column Name | Type | Required | Pattern | Options | Description |
+|-------------|------|----------|---------|---------|-------------|
+| `group_id` | string | No | `^\S+$` (no spaces) | - | Group identifier |
+| `filetype` | string | **Yes** | - | `patient`, `diagnosis`, `treatment`, `surgeries` <br> `systemic_treatment`, `specimen`, `radio_therapy` | File type category |
+| `filepath` | string | **Yes** | `^\S+\.csv)$` | - | Path to clincial data file (must end with `.csv`) |
+| `extraction_date` | string | **Yes** | `^\S+$` | - | Date of which the data was extracted from the database |
+| `info` | string | No | - | - | Additional information |
+
+> [!NOTE]
+> Fields marked as **Required** must be present in each object
+> All string fields cannot contain spaces unless otherwise noted
+> The `filepath` must point to a valid file with one of the accepted extensions
+
 TBD
 
-## For non-HPC environments (i.e. without SLURM)
+## Running the pipeline for non-HPC environments (i.e. without SLURM)
 
 ### Pull nextflow container image
 
@@ -102,7 +122,7 @@ To run the pipeline test (using minimal data):
 apptainer exec containers/sdp-nextflow_v25.04.7.sif nextflow run main.nf -profile test,apptainer
 ```
 
-## In a HPC environment (i.e. with SLURM)
+## Running the pipeline in an HPC environment (i.e. with SLURM)
 
 ### Module load nextflow
 
@@ -186,20 +206,23 @@ git clone https://github.com/CRCHUM-CITADEL/nextflow-sante-precision.git && cd
 
 Vous devrez modifier les paramètres dans le fichier de configuration nextflow afin de pointer vers certains fichiers. Ces options se trouvent dans le dictionnaire `params` dans nextflow.config. Obligatoire sauf indication contraire.
 
-| Champ               | Description                                                                                                                                |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| mode                | Mode d'exécution du pipeline. Options : ['clinical', 'genomic']                                                                            |
-| input               | Feuille d'échantillons en entrée. Voir la section ci-dessous.                                                                              |
-| gencode_annotations | Fichier d'annotations Gencode .gtf.                                                                                                        |
-| ensembl_annotations | Fichier d'annotations Ensembl .tsv.                                                                                                        |
-| vep_cache           | Dossier du cache de la version ensembl vep téléchargée.                                                                                    |
-| vep_params          | Paramètres pour l'utilisation de VEP comme décrit ici : <br> https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optionnel) |
-| pcgr_data           | Dossier des données de référence pcgr (décompressées)                                                                                      |
-| genome_reference    | Emplacement du fichier fasta de référence GRCh38.                                                                                          |
-| container_pcgr      | Emplacement de l'image apptainer PCGR (distant ou local)                                                                                   |
-| container_python    | Emplacement de l'image apptainer Python (distant ou local)                                                                                 |
-| container_r         | Emplacement de l'image apptainer R (distant ou local)                                                                                      |
-| container_vcf2maf   | Emplacement de l'image apptainer du module <br> nf-core vcf2maf (distant ou local) (optionnel)                                             |
+| Champ                | Description                                                |
+| -------------------- | ---------------------------------------------------------- |
+| mode                 | Mode d'exécution du pipeline. Options : ['clinical', 'genomic'] |
+| genomic_samplesheet  | Feuille d'échantillons génomique en entrée. Voir la section ci-dessous. |
+| gencode_annotations  | Fichier d'annotations Gencode .gtf.                        |
+| ensembl_annotations  | Fichier d'annotations Ensembl .tsv.                        |
+| vep_cache            | Dossier du cache de la version ensembl vep téléchargée.    |
+| vep_params           | Paramètres pour l'utilisation de VEP comme décrit ici : <br> https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optionnel) |
+| pcgr_data            | Dossier des données de référence pcgr (décompressées)      |
+| genome_reference     | Emplacement du fichier fasta de référence GRCh38.          | 
+| container_pcgr       | Emplacement de l'image apptainer PCGR (distant ou local)   | 
+| container_python     | Emplacement de l'image apptainer Python (distant ou local) | 
+| container_r          | Emplacement de l'image apptainer R (distant ou local)      | 
+| container_vcf2maf    | Emplacement de l'image apptainer du module <br> nf-core vcf2maf (distant ou local) (optionnel) | 
+| clinical_samplesheet | Feuille d'échantillons clinique en entrée. Voir la section ci-dessous.| 
+| id_linking_file      | Fichier de linkage d'échantillion, créé par pipeline génomique | 
+
 
 ## Feuille d'échantillons
 
@@ -231,7 +254,22 @@ Le fichier d'entrée génomique doit être un tableau JSON où chaque objet cont
 
 ### mode = 'clinical'
 
-À déterminer
+#### Schéma d’entrée clinique
+
+Le fichier d’entrée clinique doit être un fichier CSV où chaque objet contient les champs suivants :
+
+| Nom de colonne | Type | Requis | Motif | Options | Description |
+|----------------|-------|---------|--------|-----------|--------------|
+| `group_id` | chaîne | Non | `^\S+$` (sans espaces) | - | Identifiant de groupe |
+| `filetype` | chaîne | **Oui** | - | `patient`, `diagnosis`, `treatment`, `surgeries` <br> `systemic_treatment`, `specimen`, `radio_therapy` | Catégorie du type de fichier |
+| `filepath` | chaîne | **Oui** | `^\S+\.csv)$` | - | Chemin vers le fichier de données cliniques (doit se terminer par `.csv`) |
+| `extraction_date` | chaîne | **Oui** | `^\S+$` | - | Date à laquelle les données ont été extraites de la base de données |
+| `info` | chaîne | Non | - | - | Informations supplémentaires |
+
+> [!NOTE]
+> Les champs marqués comme **Requis** doivent être présents dans chaque objet.  
+> Les champs de type chaîne ne peuvent pas contenir d’espaces sauf indication contraire.  
+> Le `filepath` doit pointer vers un fichier valide avec une des extensions acceptées.
 
 ## Pour les environnements non-HPC (c'est-à-dire sans SLURM)
 

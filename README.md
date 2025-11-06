@@ -205,7 +205,7 @@ Vous devrez modifier les paramètres dans le fichier de configuration nextflow a
 | Champ                | Description                                                |
 | -------------------- | ---------------------------------------------------------- |
 | mode                 | Mode d'exécution du pipeline. Options : ['clinical', 'genomic'] |
-| input                | Feuille d'échantillons en entrée. Voir la section ci-dessous. |
+| genomic_samplesheet  | Feuille d'échantillons génomique en entrée. Voir la section ci-dessous. |
 | gencode_annotations  | Fichier d'annotations Gencode .gtf.                        |
 | ensembl_annotations  | Fichier d'annotations Ensembl .tsv.                        |
 | vep_cache            | Dossier du cache de la version ensembl vep téléchargée.    |
@@ -216,6 +216,8 @@ Vous devrez modifier les paramètres dans le fichier de configuration nextflow a
 | container_python     | Emplacement de l'image apptainer Python (distant ou local) | 
 | container_r          | Emplacement de l'image apptainer R (distant ou local)      | 
 | container_vcf2maf    | Emplacement de l'image apptainer du module <br> nf-core vcf2maf (distant ou local) (optionnel) | 
+| clinical_samplesheet | Feuille d'échantillons clinique en entrée. Voir la section ci-dessous.| 
+| id_linking_file      | Fichier de linkage d'échantillion, créé par pipeline génomique | 
 
 
 ## Feuille d'échantillons

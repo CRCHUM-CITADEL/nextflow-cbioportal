@@ -19,6 +19,8 @@ assets/test_data/vcf/*.final.*
 assets/test_data/vep/*
 assets/vep/*
 
-
+nextflow_*.config
 *samplesheet.csv
 data/
+
+util_*.txt

@@ -1,5 +1,5 @@
 process FORMAT_CLINICAL {
-    publishDir "${params.outdir}/${meta.group}", mode: 'copy'
+    publishDir "${params.outdir}/", mode: 'copy'
 
     container params.container_r
 
@@ -7,6 +7,7 @@ process FORMAT_CLINICAL {
 
     input:
         tuple val(meta), val(sample_list)
+        path(linking_file)
 
     output:
         path "data_clinical_${meta.mode}.txt"
@@ -22,6 +23,7 @@ process FORMAT_CLINICAL {
         --systreat ${sample_list.systemic_treatment} \
         --specimen ${sample_list.specimen} \
         --radiotherapy ${sample_list.radio_therapy} \
+        --linking_file ${linking_file} \
         --output data_clinical_${meta.mode}.txt
     """
 }

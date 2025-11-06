@@ -172,6 +172,9 @@
         },
         "pcgr_data": {
             "type": "string"
+        },
+        "id_linking_file": {
+            "type": "string"
         }
     }
 }

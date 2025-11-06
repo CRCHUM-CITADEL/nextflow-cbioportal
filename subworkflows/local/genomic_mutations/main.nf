@@ -40,7 +40,7 @@ workflow GENOMIC_MUTATIONS {
             ch_pcgr_data
         )
 
-        // in order to get meta.tumor_sample and meta.normal_sample, 
+        // in order to get meta.tumor_sample and meta.normal_sample,
         // we need to join dna's on the same subject name.
         som_dna_vcf_input = som_dna_vcf
             .map { id, vcf -> tuple(id.subject, id, vcf) }
@@ -86,7 +86,7 @@ workflow GENOMIC_MUTATIONS {
             som_dna_vcf_input.map { it[0].tumor_sample }.collect().map{it.sort(false).join('\t') } // item at index 0 is sample_id, join by tabs in order to send a list
         )
 
-        
+
         meta_text = """cancer_study_identifier: add_text
 genetic_alteration_type: MUTATION_EXTENDED
 stable_id: mutations

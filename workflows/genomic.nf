@@ -145,14 +145,14 @@ reference_genome: hg38
         ch_files_all = samplesheet_list
             .filter { rec -> rec[0].type != "germinal" && rec[0].sequence == "dna"}
             .map { rec ->
-                def full_name = "${rec[0].group}-${rec[0].subject}" 
-                def sample = "${rec[0].sample}" 
+                def full_name = "${rec[0].group}-${rec[0].subject}"
+                def sample = "${rec[0].sample}"
                 return "${full_name}\t${sample}"
             }
             .unique()
             .collectFile(
                 sort: true,
-                name: "util_linking_file.txt", 
+                name: "util_linking_file.txt",
                 newLine: true,
                 storeDir : "${params.outdir}",
                 seed: "subject_id\tsample_id"

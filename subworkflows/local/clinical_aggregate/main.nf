@@ -5,6 +5,7 @@ include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
 workflow CLINICAL_AGGREGATE {
     take:
         filelist
+        id_linking_file
 
     main:
 
@@ -30,15 +31,16 @@ workflow CLINICAL_AGGREGATE {
 
 
         clinical_data = FORMAT_CLINICAL(
-            ch_formatted_input
+            ch_formatted_input,
+            id_linking_file
         )
 
-        meta_text = Channel.of("""cancer_study_identifier: ADD_TEXT
+        meta_text = Channel.of("""cancer_study_identifier: add_text
 genetic_alteration_type: CLINICAL
 datatype: SAMPLE_ATTRIBUTES
 data_filename: data_clinical_sample.txt
         """,
-        """cancer_study_identifier: ADD_TEXT
+        """cancer_study_identifier: add_text
 genetic_alteration_type: CLINICAL
 datatype: PATIENT_ATTRIBUTES
 data_filename: data_clinical_patient.txt

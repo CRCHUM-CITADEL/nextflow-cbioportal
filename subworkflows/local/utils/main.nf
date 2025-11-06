@@ -170,17 +170,23 @@ def validateInputParameters() {
             error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
         }
         
-        if (genome_file.isLink() && !genome_file.toRealPath().exists()) {
-            error("ERROR: Genome reference is a broken symlink: ${params.genome_reference}")
-        }
-        
-        if (!genome_file.canRead()) {
-            error("ERROR: Genome reference file is not readable: ${params.genome_reference}")
-        }
     }
 
     if (params.mode == "clinical" && !params.clinical_samplesheet){
         error("ERROR: Could not find clinical filesheet. Not running any tests. Check input in nextflow.config")
+    }
+
+    if (params.mode == "clinical") {
+        if (!params.id_linking_file) {
+            error("ERROR: id_linking_file parameter is required for genomic mode")
+        }
+        
+        def genome_file = file(params.id_linking_file)
+        
+        if (!genome_file.exists()) {
+            error("ERROR: Genome reference file does not exist: ${params.id_linking_file}")
+        }
+        
     }
 
 

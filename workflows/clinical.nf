@@ -16,6 +16,7 @@ workflow CLINICAL {
 
     take:
         file_list
+        id_linking_file
 
     main:
         ch_versions = Channel.empty()
@@ -31,7 +32,8 @@ workflow CLINICAL {
         
 
         CLINICAL_AGGREGATE(
-            ch_file_list
+            ch_file_list,
+            id_linking_file
         )
 
         //

@@ -17,6 +17,8 @@ option_list <- list(
               help="specimen CSV [REQUIRED]", metavar="FILE"),
   make_option(c("-r", "--radiotherapy"), type="character", default=NULL,
               help="radio therapy CSV [OPTIONAL]", metavar="FILE"),
+  make_option(c("-l", "--linking_file"), type="character", default=NULL,
+              help="file to link tumor subjects to respective sample id [OPTIONAL]", metavar="FILE"),
   make_option(c("-o", "--output"), type="character", default="data_clinical_sample.txt",
               help="Output file path [default= %default]", metavar="FILE"),
   make_option(c("-m", "--mode"), type="character", default="sample",
@@ -57,15 +59,19 @@ cat(sprintf("Surgeries:      %s\n", ifelse(is.null(opt$surgeries), "NULL", opt$s
 cat(sprintf("Systemic Treat: %s\n", ifelse(is.null(opt$systreat), "NULL", opt$systreat)))
 cat(sprintf("Specimen:       %s\n", ifelse(is.null(opt$specimen), "NULL", opt$specimen)))
 cat(sprintf("Radiotherapy:   %s\n", ifelse(is.null(opt$radiotherapy), "NULL", opt$radiotherapy)))
+cat(sprintf("Linking file:   %s\n", ifelse(is.null(opt$linking_file), "NULL", opt$linking_file)))
 cat(sprintf("Output:         %s\n", opt$output))
 cat(sprintf("Mode:           %s\n", opt$mode))
 cat("==================\n\n")
 
 # Read in files
 cat("Reading in files: \n")
+sampleList=read.csv(opt$linking_file, header=T, sep='\t')
 patient_data=read.csv(opt$patient, header=T, sep=",")
 diagnostic_data=read.csv(opt$diagnosis, header=T, sep=",")
 specimen_data=read.csv(opt$specimen, header=T, sep=",")
+
+colnames(sampleList)=c("patient", "sample")
 
 # Patient data formatting
 
@@ -87,8 +93,11 @@ colnames(specimen_data)[1]="patient"
 specimen_data=specimen_data[,c("patient","tumour_histological_type","submitter_primary_diagnosis_id")]
 
 #merge
-m=merge(patient_data,diagnostic_data, by='patient',all.x=TRUE)
+m=merge(sampleList, patient_data, by='patient', all.x=TRUE)
 
+print(head(m))
+
+m=merge(m,diagnostic_data, by='patient',all.x=TRUE)
 m=merge(m,specimen_data, by='patient',all.x=TRUE)
 m=m[(m$submitter_primary_diagnosis_id.x==m$submitter_primary_diagnosis_id.y) | is.na(m$submitter_primary_diagnosis_id.x), ]
 m=subset(m, select = -c(submitter_primary_diagnosis_id.x,submitter_primary_diagnosis_id.y))
@@ -125,11 +134,11 @@ if(opt$mode=="patient") {
 				"PATIENT_ID	SEX	AGE	TUMOR_SITE	TUMOR_GRADE	TUMOR_HISTOLOGICAL_TYPE	OS_MONTHS	OS_STATUS	DFS_STATUS	DFS_MONTHS"), con = opt$output)
 	write.table(m[,c("patient","sex_at_birth","age_at_diagnosis_years","tumour_site","clinical_stage_group","tumour_histological_type","overall_survival_months","is_deceased","disease_free_survival_status","disease_free_months")], file = opt$output, sep = "\t", row.names = FALSE, col.names=F, quote = FALSE, append = TRUE)
 } else if(opt$mode=="sample") {
-	writeLines(c("#Patient Identifier	Sample Identifier	Sample Type Cancer Type Cancer Code",
+	writeLines(c("#Patient Identifier	Sample Identifier	Sample Type	Cancer Type	Cancer Code",
         "#Identifier to uniquely specify a patient.	A unique sample identifier.	The type of sample (i.e., normal, primary, met, recurrence).	Cancer Type Details.	Cancer Type Code.",
 				"#STRING	STRING	STRING	STRING	STRING",
 				"#1	1	1	1	1",
 	   		"PATIENT_ID	SAMPLE_ID	SAMPLE_TYPE	CANCER_TYPE_DETAILS	CANCER_TYPE_CODE"), con = opt$output)
 	# here we asssume patient_id and sample_id are the same. might not be the case
-	write.table(m[,c("patient", "patient", "sample_type","cancer_type_details","cancer_type_code")], file = opt$output, sep = "\t", row.names = FALSE, col.names=F, quote = FALSE, append = TRUE)
+	write.table(m[,c("patient", "sample", "sample_type","cancer_type_details","cancer_type_code")], file = opt$output, sep = "\t", row.names = FALSE, col.names=F, quote = FALSE, append = TRUE)
 }

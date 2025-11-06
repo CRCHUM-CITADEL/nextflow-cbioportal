@@ -163,13 +163,13 @@ def validateInputParameters() {
         if (!params.genome_reference) {
             error("ERROR: genome_reference parameter is required for genomic mode")
         }
-        
+
         def genome_file = file(params.genome_reference)
-        
+
         if (!genome_file.exists()) {
             error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
         }
-        
+
     }
 
     if (params.mode == "clinical" && !params.clinical_samplesheet){
@@ -180,13 +180,13 @@ def validateInputParameters() {
         if (!params.id_linking_file) {
             error("ERROR: id_linking_file parameter is required for genomic mode")
         }
-        
+
         def genome_file = file(params.id_linking_file)
-        
+
         if (!genome_file.exists()) {
             error("ERROR: Genome reference file does not exist: ${params.id_linking_file}")
         }
-        
+
     }
 
 

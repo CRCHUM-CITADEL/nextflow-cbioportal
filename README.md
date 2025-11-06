@@ -1,4 +1,4 @@
-# CRCHUM-CITADEL/nextflow-sante-precision (English)
+# CRCHUM-CITADEL/nextflow-cbioportal (English)
 
 (Traduction en francais suit)
 
@@ -7,7 +7,7 @@
 To run this pipeline, you first need to git clone this repository and enter the directory:
 
 ```
-git clone https://github.com/CRCHUM-CITADEL/nextflow-sante-precision.git && cd
+git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git && cd
 ```
 
 > [!NOTE]
@@ -185,7 +185,7 @@ To run pre-commit (to check linting before pull request):
 apptainer exec containers/nextflow-citadel_v25.04.7.sif pre-commit run .
 ```
 
-# CRCHUM-CITADEL/nextflow-sante-precision (Francais)
+# CRCHUM-CITADEL/nextflow-cbioportal (Francais)
 
 Documentation de démarrage (Traduction en français)
 
@@ -194,7 +194,7 @@ Documentation de démarrage (Traduction en français)
 Pour exécuter ce pipeline, vous devez d'abord cloner ce dépôt git et entrer dans le répertoire :
 
 ```
-git clone https://github.com/CRCHUM-CITADEL/nextflow-sante-precision.git && cd
+git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git && cd
 ```
 
 > [!NOTE]

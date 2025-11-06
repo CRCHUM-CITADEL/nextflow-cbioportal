@@ -21,7 +21,7 @@ You will need to change parameters in the nextflow config in order to point to c
 | Field                | Description                                                |
 | -------------------- | ---------------------------------------------------------- |
 | mode                 | Pipeline run mode. Options : ['clinical', 'genomic']       |
-| input                | Input samplesheet. See section below.                      |
+| genomic_samplesheet  | Input samplesheet for genomic pipeline. See section below. |
 | gencode_annotations  | Gencode annotation .gtf file.                              |
 | ensembl_annotations  | Ensembl annotation .tsv file.                              |
 | vep_cache            | Cache folder of downloaded ensembl vep release.            |
@@ -29,9 +29,11 @@ You will need to change parameters in the nextflow config in order to point to c
 | pcgr_data            | Folder of pcgr reference data (uncompressed)               |
 | genome_reference     | Location of GRCh38 reference fasta file.                   | 
 | container_pcgr       | Location of PCGR apptainer image (remote or local)         | 
-| container_python     | Location of R apptainer image (remote or local)            | 
+| container_python     | Location of Python apptainer image (remote or local)       | 
 | container_r          | Location of R apptainer image (remote or local)            | 
 | container_vcf2maf    | Location of nf-core vcf2maf module container <br> apptainer image (remote or local) (optional)  | 
+| clinical_samplesheet | Input samplesheet for clinical pipeline. See section below.| 
+| id_linking_file      | ID linking file generated from genomic pipeline.           | 
 
 
 ## Samplesheet
@@ -44,11 +46,11 @@ The samplesheet format is heavily based on <a href="https://github.com/nf-core/o
 
 #### Genomic Input Schema
 
-The genomic input file must be a JSON array where each object contains the following fields:
+The genomic input file must be a CSV file where each object contains the following fields:
 
 | Column Name | Type | Required | Pattern | Options | Description |
 |-------------|------|----------|---------|---------|-------------|
-| `group_id` | string | No | `^\S+$` (no spaces) | - | Group identifier |
+| `group_id`  | string | No | `^\S+$` (no spaces) | - | Group identifier |
 | `subject_id` | string | **Yes** | `^(?:\d+\|\S+)$` (no spaces) | - | Subject identifier |
 | `sample_id` | integer | **Yes** | `^\d+$` (numeric only) | - | Sample identifier |
 | `sample_type` | string | **Yes** | - | `somatic`, `germinal` | Type of sample |
@@ -63,10 +65,26 @@ The genomic input file must be a JSON array where each object contains the follo
 > The `filepath` must point to a valid file with one of the accepted extensions
 
 ### mode = 'clinical'
-TBD
+
+#### Clinical Input Schema
+
+The clinical input file must be a CSV where each object contains the following fields:
+
+| Column Name | Type | Required | Pattern | Options | Description |
+|-------------|------|----------|---------|---------|-------------|
+| `group_id` | string | No | `^\S+$` (no spaces) | - | Group identifier |
+| `filetype` | string | **Yes** | - | `patient`, `diagnosis`, `treatment`, `surgeries` <br> `systemic_treatment`, `specimen`, `radio_therapy` | File type category |
+| `filepath` | string | **Yes** | `^\S+\.csv)$` | - | Path to clincial data file (must end with `.csv`) |
+| `extraction_date` | string | **Yes** | `^\S+$` | - | Date of which the data was extracted from the database |
+| `info` | string | No | - | - | Additional information |
+
+> [!NOTE]
+> Fields marked as **Required** must be present in each object
+> All string fields cannot contain spaces unless otherwise noted
+> The `filepath` must point to a valid file with one of the accepted extensions
 
 
-## For non-HPC environments (i.e. without SLURM)
+## Running the pipeline for non-HPC environments (i.e. without SLURM)
 
 ### Pull nextflow container image 
 
@@ -103,7 +121,7 @@ To run the pipeline test (using minimal data):
 apptainer exec containers/sdp-nextflow_v25.04.7.sif nextflow run main.nf -profile test,apptainer
 ```
 
-## In a HPC environment (i.e. with SLURM)
+## Running the pipeline in an HPC environment (i.e. with SLURM)
 
 ### Module load nextflow
 ```
@@ -229,7 +247,24 @@ Le fichier d'entrée génomique doit être un tableau JSON où chaque objet cont
 > Le `filepath` doit pointer vers un fichier valide avec l'une des extensions acceptées
 
 ### mode = 'clinical'
-À déterminer
+
+#### Schéma d’entrée clinique
+
+Le fichier d’entrée clinique doit être un fichier CSV où chaque objet contient les champs suivants :
+
+| Nom de colonne | Type | Requis | Motif | Options | Description |
+|----------------|-------|---------|--------|-----------|--------------|
+| `group_id` | chaîne | Non | `^\S+$` (sans espaces) | - | Identifiant de groupe |
+| `filetype` | chaîne | **Oui** | - | `patient`, `diagnosis`, `treatment`, `surgeries` <br> `systemic_treatment`, `specimen`, `radio_therapy` | Catégorie du type de fichier |
+| `filepath` | chaîne | **Oui** | `^\S+\.csv)$` | - | Chemin vers le fichier de données cliniques (doit se terminer par `.csv`) |
+| `extraction_date` | chaîne | **Oui** | `^\S+$` | - | Date à laquelle les données ont été extraites de la base de données |
+| `info` | chaîne | Non | - | - | Informations supplémentaires |
+
+> [!NOTE]
+> Les champs marqués comme **Requis** doivent être présents dans chaque objet.  
+> Les champs de type chaîne ne peuvent pas contenir d’espaces sauf indication contraire.  
+> Le `filepath` doit pointer vers un fichier valide avec une des extensions acceptées.
+
 
 
 ## Pour les environnements non-HPC (c'est-à-dire sans SLURM)

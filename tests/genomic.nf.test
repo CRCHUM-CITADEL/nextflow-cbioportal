@@ -4,10 +4,11 @@ nextflow_pipeline {
     script "../main.nf"
     tag "pipeline"
 
-    test("-profile test") {
+    test("genomic") {
 
         when {
             params {
+                mode = 'genomic'
                 outdir = "$outputDir"
             }
         }

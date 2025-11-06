@@ -2,8 +2,8 @@
 .nf-test
 .nf-test.log
 
-work/
-data/
+work
+data
 results/
 .DS_Store
 testing/
@@ -11,11 +11,16 @@ testing*
 *.pyc
 null/
 containers/*.sif
+containers/*.img*
+
 output/
 
 assets/test_data/vcf/*.final.*
 assets/test_data/vep/*
 assets/vep/*
 
-samplesheet.csv
+nextflow_*.config
+*samplesheet.csv
 data/
+
+util_*.txt

@@ -2,11 +2,46 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-sante-precision/assets/schema_clinical_input.json",
     "title": "CRCHUM-CITADEL/nextflow-sante-precision clinical pipeline parameters",
-    "description": "Pipeline Nextflow pour besoins des projets santé de précision, pipeline clinique",
+    "description": "Pipeline Nextflow pour besoins des projets santé de précision, pipeline de donnees clinique",
     "type": "array",
     "items": {
         "type": "object",
-        "properties": {},
-        "required": []
+        "properties": {
+            "group_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "errorMessage": "Group id cannot contain spaces",
+                "meta": "group"
+            },
+            "filetype": {
+                "type": "string",
+                "errorMessage": "filetype must be provided and be one of 'patient', 'diagnosis', 'treatment', 'surgeries', 'systemic_treatment', 'specimen', 'radio_therapy'",
+                "enum": [
+                    "patient",
+                    "diagnosis",
+                    "treatment",
+                    "surgeries",
+                    "systemic_treatment",
+                    "specimen",
+                    "radio_therapy"
+                ],
+                "meta": "pipeline"
+            },
+            "filepath": {
+                "type": "string",
+                "pattern": "^\\S+\\.csv$",
+                "errorMessage": "Filepath to clinical data must be provided and be in CSV format. (file extension .csv)",
+                "meta": "file"
+            },
+            "info": {
+                "type": "string",
+                "meta": "information"
+            },
+            "extraction_date": {
+                "type": "string",
+                "meta": "date"
+            }
+        },
+        "required": ["group_id", "filetype", "filepath", "extraction_date"]
     }
 }

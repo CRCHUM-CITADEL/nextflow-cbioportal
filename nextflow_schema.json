@@ -10,9 +10,9 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": ["input", "outdir", "mode"],
+            "required": ["outdir", "mode"],
             "properties": {
-                "input": {
+                "genomic_samplesheet": {
                     "type": "string",
                     "format": "file-path",
                     "exists": true,
@@ -20,9 +20,19 @@
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
                     "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row.",
-                    "fa_icon": "fas fa-file-csv",
-                    "default": "assets/test_data/samplesheet/test_dna_vcf.csv"
+                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with X columns, and a header row.",
+                    "fa_icon": "fas fa-file-csv"
+                },
+                "clinical_samplesheet": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "schema": "assets/schema_clinical_input.json",
+                    "mimetype": "text/csv",
+                    "pattern": "^\\S+\\.csv$",
+                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
+                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 4 columns, and a header row.",
+                    "fa_icon": "fas fa-file-csv"
                 },
                 "outdir": {
                     "type": "string",
@@ -133,6 +143,38 @@
             "type": "string",
             "format": "file-path",
             "pattern": "^\\S+\\.gtf"
+        },
+        "container_pcgr": {
+            "type": "string"
+        },
+        "container_python": {
+            "type": "string"
+        },
+        "container_r": {
+            "type": "string"
+        },
+        "container_vcf2maf": {
+            "type": "string"
+        },
+        "input_dir": {
+            "type": "string"
+        },
+        "genome_reference": {
+            "type": "string",
+            "format": "file-path",
+            "pattern": "^\\S+\\.(fa|fasta)$"
+        },
+        "vep_params": {
+            "type": "string"
+        },
+        "vep_cache": {
+            "type": "string"
+        },
+        "pcgr_data": {
+            "type": "string"
+        },
+        "id_linking_file": {
+            "type": "string"
         }
     }
 }

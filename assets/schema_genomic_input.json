@@ -20,8 +20,8 @@
                 "meta": "subject"
             },
             "sample_id": {
-                "type": "integer",
-                "pattern": "^\\d+$",
+                "type": "string",
+                "pattern": "^(?:\\d+|\\S+)$",
                 "errorMessage": "sample_id must be provided cannot contain spaces",
                 "meta": "sample"
             },
@@ -39,7 +39,7 @@
             },
             "filetype": {
                 "type": "string",
-                "errorMessage": "filetype must be provided and be one of 'vcf.gz'",
+                "errorMessage": "filetype must be provided and be one of 'cnv', 'sv', 'expression', 'hard_filtered'",
                 "enum": ["cnv", "sv", "expression", "hard_filtered"],
                 "meta": "pipeline"
             },
@@ -50,7 +50,7 @@
             "filepath": {
                 "type": "string",
                 "pattern": "^\\S+\\.(?:vcf\\.gz|final|sf)$",
-                "errorMessage": "Filepath to genomic data must be provided and must have extension '.vcf.gz'",
+                "errorMessage": "Filepath to genomic data must be provided and must have extension '.vcf.gz', '.final' or '.sf'",
                 "meta": "file"
             }
         },

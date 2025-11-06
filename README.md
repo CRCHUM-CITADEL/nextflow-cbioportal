@@ -14,27 +14,26 @@ git clone https://github.com/CRCHUM-CITADEL/nextflow-sante-precision.git && cd
 > For all containers we are using Apptainer because of it's compatibility with HPC environments.
 > If you're not working from an HPC environment, find out how to install it here: https://apptainer.org/docs/admin/main/installation.html
 
-## Change nextflow.config file 
+## Change nextflow.config file
 
 You will need to change parameters in the nextflow config in order to point to certain files. These options are found in the `params` dict in nextflow.config. Parameters are mandatory unless specified otherwise.
 
-| Field                | Description                                                |
-| -------------------- | ---------------------------------------------------------- |
-| mode                 | Pipeline run mode. Options : ['clinical', 'genomic']       |
-| genomic_samplesheet  | Input samplesheet for genomic pipeline. See section below. |
-| gencode_annotations  | Gencode annotation .gtf file.                              |
-| ensembl_annotations  | Ensembl annotation .tsv file.                              |
-| vep_cache            | Cache folder of downloaded ensembl vep release.            |
+| Field                | Description                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| mode                 | Pipeline run mode. Options : ['clinical', 'genomic']                                                                          |
+| genomic_samplesheet  | Input samplesheet for genomic pipeline. See section below.                                                                    |
+| gencode_annotations  | Gencode annotation .gtf file.                                                                                                 |
+| ensembl_annotations  | Ensembl annotation .tsv file.                                                                                                 |
+| vep_cache            | Cache folder of downloaded ensembl vep release.                                                                               |
 | vep_params           | Parameters for VEP usage as described here: <br> https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optional) |
-| pcgr_data            | Folder of pcgr reference data (uncompressed)               |
-| genome_reference     | Location of GRCh38 reference fasta file.                   | 
-| container_pcgr       | Location of PCGR apptainer image (remote or local)         | 
-| container_python     | Location of Python apptainer image (remote or local)       | 
-| container_r          | Location of R apptainer image (remote or local)            | 
-| container_vcf2maf    | Location of nf-core vcf2maf module container <br> apptainer image (remote or local) (optional)  | 
-| clinical_samplesheet | Input samplesheet for clinical pipeline. See section below.| 
-| id_linking_file      | ID linking file generated from genomic pipeline.           | 
-
+| pcgr_data            | Folder of pcgr reference data (uncompressed)                                                                                  |
+| genome_reference     | Location of GRCh38 reference fasta file.                                                                                      |
+| container_pcgr       | Location of PCGR apptainer image (remote or local)                                                                            |
+| container_python     | Location of Python apptainer image (remote or local)                                                                          |
+| container_r          | Location of R apptainer image (remote or local)                                                                               |
+| container_vcf2maf    | Location of nf-core vcf2maf module container <br> apptainer image (remote or local) (optional)                                |
+| clinical_samplesheet | Input samplesheet for clinical pipeline. See section below.                                                                   |
+| id_linking_file      | ID linking file generated from genomic pipeline.                                                                              |
 
 ## Samplesheet
 
@@ -48,16 +47,16 @@ The samplesheet format is heavily based on <a href="https://github.com/nf-core/o
 
 The genomic input file must be a CSV file where each object contains the following fields:
 
-| Column Name | Type | Required | Pattern | Options | Description |
-|-------------|------|----------|---------|---------|-------------|
-| `group_id`  | string | No | `^\S+$` (no spaces) | - | Group identifier |
-| `subject_id` | string | **Yes** | `^(?:\d+\|\S+)$` (no spaces) | - | Subject identifier |
-| `sample_id` | integer | **Yes** | `^\d+$` (numeric only) | - | Sample identifier |
-| `sample_type` | string | **Yes** | - | `somatic`, `germinal` | Type of sample |
-| `sequence_data` | string | **Yes** | - | `dna`, `rna` | Type of sequence data |
-| `filetype` | string | **Yes** | - | `cnv`, `sv`, `expression`, `hard_filtered` | File type category |
-| `info` | string | No | - | - | Additional information |
-| `filepath` | string | **Yes** | `^\S+\.(?:vcf\.gz\|final\|sf)$` | - | Path to genomic data file (must end with `.vcf.gz`, `.final`, or `.sf`) |
+| Column Name     | Type    | Required | Pattern                         | Options                                    | Description                                                             |
+| --------------- | ------- | -------- | ------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------- |
+| `group_id`      | string  | No       | `^\S+$` (no spaces)             | -                                          | Group identifier                                                        |
+| `subject_id`    | string  | **Yes**  | `^(?:\d+\|\S+)$` (no spaces)    | -                                          | Subject identifier                                                      |
+| `sample_id`     | integer | **Yes**  | `^\d+$` (numeric only)          | -                                          | Sample identifier                                                       |
+| `sample_type`   | string  | **Yes**  | -                               | `somatic`, `germinal`                      | Type of sample                                                          |
+| `sequence_data` | string  | **Yes**  | -                               | `dna`, `rna`                               | Type of sequence data                                                   |
+| `filetype`      | string  | **Yes**  | -                               | `cnv`, `sv`, `expression`, `hard_filtered` | File type category                                                      |
+| `info`          | string  | No       | -                               | -                                          | Additional information                                                  |
+| `filepath`      | string  | **Yes**  | `^\S+\.(?:vcf\.gz\|final\|sf)$` | -                                          | Path to genomic data file (must end with `.vcf.gz`, `.final`, or `.sf`) |
 
 > [!NOTE]
 > Fields marked as **Required** must be present in each object
@@ -70,23 +69,24 @@ The genomic input file must be a CSV file where each object contains the followi
 
 The clinical input file must be a CSV where each object contains the following fields:
 
-| Column Name | Type | Required | Pattern | Options | Description |
-|-------------|------|----------|---------|---------|-------------|
-| `group_id` | string | No | `^\S+$` (no spaces) | - | Group identifier |
-| `filetype` | string | **Yes** | - | `patient`, `diagnosis`, `treatment`, `surgeries` <br> `systemic_treatment`, `specimen`, `radio_therapy` | File type category |
-| `filepath` | string | **Yes** | `^\S+\.csv)$` | - | Path to clincial data file (must end with `.csv`) |
-| `extraction_date` | string | **Yes** | `^\S+$` | - | Date of which the data was extracted from the database |
-| `info` | string | No | - | - | Additional information |
+| Column Name       | Type   | Required | Pattern             | Options                                                                                                 | Description                                            |
+| ----------------- | ------ | -------- | ------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `group_id`        | string | No       | `^\S+$` (no spaces) | -                                                                                                       | Group identifier                                       |
+| `filetype`        | string | **Yes**  | -                   | `patient`, `diagnosis`, `treatment`, `surgeries` <br> `systemic_treatment`, `specimen`, `radio_therapy` | File type category                                     |
+| `filepath`        | string | **Yes**  | `^\S+\.csv)$`       | -                                                                                                       | Path to clincial data file (must end with `.csv`)      |
+| `extraction_date` | string | **Yes**  | `^\S+$`             | -                                                                                                       | Date of which the data was extracted from the database |
+| `info`            | string | No       | -                   | -                                                                                                       | Additional information                                 |
 
 > [!NOTE]
 > Fields marked as **Required** must be present in each object
 > All string fields cannot contain spaces unless otherwise noted
 > The `filepath` must point to a valid file with one of the accepted extensions
 
+TBD
 
 ## Running the pipeline for non-HPC environments (i.e. without SLURM)
 
-### Pull nextflow container image 
+### Pull nextflow container image
 
 In order to run nextflow with the exact software used to build the pipeline, pull the container image hosted on CITADEL's organisational Github (or if not in a member in crchum-citadel GitHub, ask for the location of the locally-stored .sif file.)
 
@@ -124,11 +124,13 @@ apptainer exec containers/sdp-nextflow_v25.04.7.sif nextflow run main.nf -profil
 ## Running the pipeline in an HPC environment (i.e. with SLURM)
 
 ### Module load nextflow
+
 ```
 module load nextflow/25.04.6 apptainer
 ```
 
 ### Run nextflow
+
 ```
 nextflow run main.nf -profile apptainer,slurm
 ```
@@ -190,6 +192,7 @@ Documentation de démarrage (Traduction en français)
 ## Cloner
 
 Pour exécuter ce pipeline, vous devez d'abord cloner ce dépôt git et entrer dans le répertoire :
+
 ```
 git clone https://github.com/CRCHUM-CITADEL/nextflow-sante-precision.git && cd
 ```
@@ -202,23 +205,22 @@ git clone https://github.com/CRCHUM-CITADEL/nextflow-sante-precision.git && cd
 
 Vous devrez modifier les paramètres dans le fichier de configuration nextflow afin de pointer vers certains fichiers. Ces options se trouvent dans le dictionnaire `params` dans nextflow.config. Obligatoire sauf indication contraire.
 
-| Champ                | Description                                                |
-| -------------------- | ---------------------------------------------------------- |
-| mode                 | Mode d'exécution du pipeline. Options : ['clinical', 'genomic'] |
-| genomic_samplesheet  | Feuille d'échantillons génomique en entrée. Voir la section ci-dessous. |
-| gencode_annotations  | Fichier d'annotations Gencode .gtf.                        |
-| ensembl_annotations  | Fichier d'annotations Ensembl .tsv.                        |
-| vep_cache            | Dossier du cache de la version ensembl vep téléchargée.    |
+| Champ                | Description                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| mode                 | Mode d'exécution du pipeline. Options : ['clinical', 'genomic']                                                                            |
+| genomic_samplesheet  | Feuille d'échantillons génomique en entrée. Voir la section ci-dessous.                                                                    |
+| gencode_annotations  | Fichier d'annotations Gencode .gtf.                                                                                                        |
+| ensembl_annotations  | Fichier d'annotations Ensembl .tsv.                                                                                                        |
+| vep_cache            | Dossier du cache de la version ensembl vep téléchargée.                                                                                    |
 | vep_params           | Paramètres pour l'utilisation de VEP comme décrit ici : <br> https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optionnel) |
-| pcgr_data            | Dossier des données de référence pcgr (décompressées)      |
-| genome_reference     | Emplacement du fichier fasta de référence GRCh38.          | 
-| container_pcgr       | Emplacement de l'image apptainer PCGR (distant ou local)   | 
-| container_python     | Emplacement de l'image apptainer Python (distant ou local) | 
-| container_r          | Emplacement de l'image apptainer R (distant ou local)      | 
-| container_vcf2maf    | Emplacement de l'image apptainer du module <br> nf-core vcf2maf (distant ou local) (optionnel) | 
-| clinical_samplesheet | Feuille d'échantillons clinique en entrée. Voir la section ci-dessous.| 
-| id_linking_file      | Fichier de linkage d'échantillion, créé par pipeline génomique | 
-
+| pcgr_data            | Dossier des données de référence pcgr (décompressées)                                                                                      |
+| genome_reference     | Emplacement du fichier fasta de référence GRCh38.                                                                                          |
+| container_pcgr       | Emplacement de l'image apptainer PCGR (distant ou local)                                                                                   |
+| container_python     | Emplacement de l'image apptainer Python (distant ou local)                                                                                 |
+| container_r          | Emplacement de l'image apptainer R (distant ou local)                                                                                      |
+| container_vcf2maf    | Emplacement de l'image apptainer du module <br> nf-core vcf2maf (distant ou local) (optionnel)                                             |
+| clinical_samplesheet | Feuille d'échantillons clinique en entrée. Voir la section ci-dessous.                                                                     |
+| id_linking_file      | Fichier de linkage d'échantillion, créé par pipeline génomique                                                                             |
 
 ## Feuille d'échantillons
 
@@ -232,16 +234,16 @@ Le format de la feuille d'échantillons est fortement basé sur <a href="https:/
 
 Le fichier d'entrée génomique doit être un tableau JSON où chaque objet contient les champs suivants :
 
-| Nom de colonne | Type | Requis | Motif | Options | Description |
-|----------------|------|--------|-------|---------|-------------|
-| `group_id` | chaîne | Non | `^\S+$` (pas d'espaces) | - | Identifiant de groupe |
-| `subject_id` | chaîne | **Oui** | `^(?:\d+\|\S+)$` (pas d'espaces) | - | Identifiant du sujet |
-| `sample_id` | entier | **Oui** | `^\d+$` (numérique uniquement) | - | Identifiant d'échantillon |
-| `sample_type` | chaîne | **Oui** | - | `somatic`, `germinal` | Type d'échantillon |
-| `sequence_data` | chaîne | **Oui** | - | `dna`, `rna` | Type de données de séquençage |
-| `filetype` | chaîne | **Oui** | - | `cnv`, `sv`, `expression`, `hard_filtered` | Catégorie de type de fichier |
-| `info` | chaîne | Non | - | - | Informations supplémentaires |
-| `filepath` | chaîne | **Oui** | `^\S+\.(?:vcf\.gz\|final\|sf)$` | - | Chemin vers le fichier de données génomiques (doit se terminer par `.vcf.gz`, `.final` ou `.sf`) |
+| Nom de colonne  | Type   | Requis  | Motif                            | Options                                    | Description                                                                                      |
+| --------------- | ------ | ------- | -------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `group_id`      | chaîne | Non     | `^\S+$` (pas d'espaces)          | -                                          | Identifiant de groupe                                                                            |
+| `subject_id`    | chaîne | **Oui** | `^(?:\d+\|\S+)$` (pas d'espaces) | -                                          | Identifiant du sujet                                                                             |
+| `sample_id`     | entier | **Oui** | `^\d+$` (numérique uniquement)   | -                                          | Identifiant d'échantillon                                                                        |
+| `sample_type`   | chaîne | **Oui** | -                                | `somatic`, `germinal`                      | Type d'échantillon                                                                               |
+| `sequence_data` | chaîne | **Oui** | -                                | `dna`, `rna`                               | Type de données de séquençage                                                                    |
+| `filetype`      | chaîne | **Oui** | -                                | `cnv`, `sv`, `expression`, `hard_filtered` | Catégorie de type de fichier                                                                     |
+| `info`          | chaîne | Non     | -                                | -                                          | Informations supplémentaires                                                                     |
+| `filepath`      | chaîne | **Oui** | `^\S+\.(?:vcf\.gz\|final\|sf)$`  | -                                          | Chemin vers le fichier de données génomiques (doit se terminer par `.vcf.gz`, `.final` ou `.sf`) |
 
 > [!NOTE]
 > Les champs marqués comme **Requis** doivent être présents dans chaque objet
@@ -254,26 +256,25 @@ Le fichier d'entrée génomique doit être un tableau JSON où chaque objet cont
 
 Le fichier d’entrée clinique doit être un fichier CSV où chaque objet contient les champs suivants :
 
-| Nom de colonne | Type | Requis | Motif | Options | Description |
-|----------------|-------|---------|--------|-----------|--------------|
-| `group_id` | chaîne | Non | `^\S+$` (sans espaces) | - | Identifiant de groupe |
-| `filetype` | chaîne | **Oui** | - | `patient`, `diagnosis`, `treatment`, `surgeries` <br> `systemic_treatment`, `specimen`, `radio_therapy` | Catégorie du type de fichier |
-| `filepath` | chaîne | **Oui** | `^\S+\.csv)$` | - | Chemin vers le fichier de données cliniques (doit se terminer par `.csv`) |
-| `extraction_date` | chaîne | **Oui** | `^\S+$` | - | Date à laquelle les données ont été extraites de la base de données |
-| `info` | chaîne | Non | - | - | Informations supplémentaires |
+| Nom de colonne    | Type   | Requis  | Motif                  | Options                                                                                                 | Description                                                               |
+| ----------------- | ------ | ------- | ---------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `group_id`        | chaîne | Non     | `^\S+$` (sans espaces) | -                                                                                                       | Identifiant de groupe                                                     |
+| `filetype`        | chaîne | **Oui** | -                      | `patient`, `diagnosis`, `treatment`, `surgeries` <br> `systemic_treatment`, `specimen`, `radio_therapy` | Catégorie du type de fichier                                              |
+| `filepath`        | chaîne | **Oui** | `^\S+\.csv)$`          | -                                                                                                       | Chemin vers le fichier de données cliniques (doit se terminer par `.csv`) |
+| `extraction_date` | chaîne | **Oui** | `^\S+$`                | -                                                                                                       | Date à laquelle les données ont été extraites de la base de données       |
+| `info`            | chaîne | Non     | -                      | -                                                                                                       | Informations supplémentaires                                              |
 
 > [!NOTE]
 > Les champs marqués comme **Requis** doivent être présents dans chaque objet.  
 > Les champs de type chaîne ne peuvent pas contenir d’espaces sauf indication contraire.  
 > Le `filepath` doit pointer vers un fichier valide avec une des extensions acceptées.
 
-
-
 ## Pour les environnements non-HPC (c'est-à-dire sans SLURM)
 
 ### Télécharger l'image conteneur nextflow
 
 Afin d'exécuter nextflow avec le logiciel exact utilisé pour construire le pipeline, téléchargez l'image conteneur hébergée sur le GitHub organisationnel de CITADEL (ou si vous n'êtes pas membre de crchum-citadel GitHub, demandez l'emplacement du fichier .sif stocké localement.)
+
 ```
 apptainer pull --dir containers/ oras://ghcr.io/crchum-citadel/sdp-nextflow:25.04.7
 ```
@@ -288,16 +289,19 @@ apptainer pull --dir containers/ oras://ghcr.io/crchum-citadel/sdp-nextflow:25.0
 ### Exécuter nextflow via apptainer
 
 Structurez votre commande comme suit :
+
 ```
 apptainer exec containers/sdp-nextflow_<version>.sif nextflow <commande>
 ```
 
 Pour obtenir la version :
+
 ```
 apptainer exec containers/sdp-nextflow_v25.04.7.sif nextflow -v
 ```
 
 Pour exécuter le test du pipeline (en utilisant des données minimales) :
+
 ```
 apptainer exec containers/sdp-nextflow_v25.04.7.sif nextflow run main.nf -profile test,apptainer
 ```
@@ -305,11 +309,13 @@ apptainer exec containers/sdp-nextflow_v25.04.7.sif nextflow run main.nf -profil
 ## Dans un environnement HPC (c'est-à-dire avec SLURM)
 
 ### Charger le module nextflow
+
 ```
 module load nextflow/25.04.6 apptainer
 ```
 
 ### Exécuter nextflow
+
 ```
 nextflow run main.nf -profile apptainer,slurm
 ```
@@ -322,6 +328,7 @@ nextflow run main.nf -profile apptainer,slurm
 Ce pipeline a été construit à partir d'un modèle nf-core. Vous voudrez peut-être utiliser certaines fonctionnalités CLI de nf-core.
 
 Selon la documentation, vous pouvez exécuter directement depuis le conteneur :
+
 ```
 apptainer exec \
     --bind $(pwd):$(pwd) \
@@ -352,11 +359,13 @@ apptainer exec \
 ### Autres fonctionnalités :
 
 Pour exécuter nf-test :
+
 ```
 apptainer exec containers/nextflow-citadel_v25.04.7.sif nf-test test --profile apptainer
 ```
 
 Pour exécuter pre-commit (pour vérifier le linting avant la demande de tirage) :
+
 ```
 apptainer exec containers/nextflow-citadel_v25.04.7.sif pre-commit run .
 ```

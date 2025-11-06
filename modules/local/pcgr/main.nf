@@ -5,7 +5,7 @@ process PCGR {
     container params.container_pcgr
 
     input:
-        tuple val(sample_id), path(ger_dna_vcf)
+        tuple val(sample_id), path(ger_dna_vcf), path(ger_dna_vcf_tbi)
         path vep_cache
         path ref_data
 
@@ -14,9 +14,6 @@ process PCGR {
 
     script:
     """
-    # tabix vcf
-    tabix -p vcf $ger_dna_vcf
-
     cpsr \
     --input_vcf $ger_dna_vcf \
     --vep_dir $vep_cache \

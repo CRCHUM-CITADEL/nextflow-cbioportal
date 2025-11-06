@@ -30,7 +30,8 @@ workflow PIPELINE_INITIALISATION {
     nextflow_cli_args // array: List of positional nextflow CLI args
     mode              // string: pipeline mode [clinical, genomic]
     outdir            // string: The output directory where the results will be saved
-    input             // string: Path to input samplesheet
+    genomic_input     // string: Path to input samplesheet
+    clinical_input    // string: Path to input samplesheet
 
     main:
 
@@ -64,9 +65,8 @@ workflow PIPELINE_INITIALISATION {
     // Create channel from input file provided through params.input
     //
     if (mode == 'clinical'){
-        error("ERROR: Processing of clinical samplesheet not yet implemented")
 
-        samplesheet_list = Channel.fromList(samplesheetToList(input, "assets/schema_clinical_input.json"))
+        samplesheet_list = Channel.fromList(samplesheetToList(clinical_input, "assets/schema_clinical_input.json"))
 
     } else if (mode == 'genomic'){
         if (!params.gencode_annotations){
@@ -77,7 +77,7 @@ workflow PIPELINE_INITIALISATION {
             error("ERROR: Missing gencode_annotations file (tsv format) Check input in nextflow.config")
         }
 
-        samplesheet_list = Channel.fromList(samplesheetToList(input, "assets/schema_genomic_input.json"))
+        samplesheet_list = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))
     } else {
         error("ERROR: This should not be possible, the mode check should have caught this. Killing pipeline.")
     }
@@ -144,7 +144,6 @@ workflow PIPELINE_COMPLETION {
 // Check and validate pipeline parameters
 //
 def validateInputParameters() {
-    // genomeExistsError()
 
     // check modes and input
     if (!params.mode){
@@ -156,36 +155,39 @@ def validateInputParameters() {
     }
 
     // make sure there's input
-    if (!params.input){
-        error("ERROR: Could not find samplesheet file. Not running any tests. Check input in nextflow.config")
+    if (params.mode == "genomic" && !params.genomic_samplesheet){
+        error("ERROR: Could not find genomic samplesheet. Not running any tests. Check input in nextflow.config")
     }
 
-
-}
-
-
-//
-// Get attribute from genome config file e.g. fasta
-//
-def getGenomeAttribute(attribute) {
-    if (params.genomes && params.genome && params.genomes.containsKey(params.genome)) {
-        if (params.genomes[ params.genome ].containsKey(attribute)) {
-            return params.genomes[ params.genome ][ attribute ]
+    if (params.mode == "genomic") {
+        if (!params.genome_reference) {
+            error("ERROR: genome_reference parameter is required for genomic mode")
         }
-    }
-    return null
-}
 
-//
-// Exit pipeline if incorrect --genome key provided
-//
-def genomeExistsError() {
-    if (params.genomes && params.genome && !params.genomes.containsKey(params.genome)) {
-        def error_string = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" +
-            "  Genome '${params.genome}' not found in any config files provided to the pipeline.\n" +
-            "  Currently, the available genome keys are:\n" +
-            "  ${params.genomes.keySet().join(", ")}\n" +
-            "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-        error(error_string)
+        def genome_file = file(params.genome_reference)
+
+        if (!genome_file.exists()) {
+            error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
+        }
+
     }
+
+    if (params.mode == "clinical" && !params.clinical_samplesheet){
+        error("ERROR: Could not find clinical filesheet. Not running any tests. Check input in nextflow.config")
+    }
+
+    if (params.mode == "clinical") {
+        if (!params.id_linking_file) {
+            error("ERROR: id_linking_file parameter is required for genomic mode")
+        }
+
+        def genome_file = file(params.id_linking_file)
+
+        if (!genome_file.exists()) {
+            error("ERROR: Genome reference file does not exist: ${params.id_linking_file}")
+        }
+
+    }
+
+
 }

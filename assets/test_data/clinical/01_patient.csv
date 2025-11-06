@@ -1,0 +1,3 @@
+submitter_donor_id,sex_at_birth,cause_of_death,date_of_birth,date_of_death,primary_site,gender,is_deceased,program_id,lost_to_followup_after_clinical_event_identifier,lost_to_followup_reason,date_alive_after_lost_to_followup
+A1,Female,,1949-04-11,,C1,Not available,NO,TEST,,,
+A2,Male,Stroke,1945-05-12,2015-07-01,C1,Not available,YES,TEST,,,

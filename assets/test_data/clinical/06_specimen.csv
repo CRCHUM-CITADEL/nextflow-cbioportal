@@ -1,0 +1,3 @@
+submitter_donor_id,submitter_specimen_id,submitter_primary_diagnosis_id,pathological_tumour_staging_system,pathological_t_category,pathological_n_category,pathological_m_category,pathological_stage_group,tumour_histological_type,tumour_grading_system,tumour_grade,program_id,specimen_collection_date,specimen_storage,specimen_anatomic_location,reference_pathology_confirmed_diagnosis,reference_pathology_confirmed_tumour_pres#ence,percent_tumour_cells_range,percent_tumour_cells_measurement_method
+A1,S1,D1,Staging system,T1,N1,M1,I,TH1,Three-tier grading system,,TEST,,,,,,,
+A2,S2,D2,Staging system,T2,N2,M2,II,TH2,Three-tier grading system,,TEST,,,,,,,

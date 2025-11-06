@@ -1,0 +1,2 @@
+program_id,submitter_donor_id,submitter_treatment_id,submitter_treatment_extend_id,start_date,end_date,drug_name,drug_reference_identifier,drug_reference_database,systemic_therapy_type,drug_dose_units,days_per_cycle,number_of_cycles,prescribed_cumulative_drug_dose,actual_cumulative_drug_dose
+TEST,A1,Tr1,Tr1-1,2022-04-04,2024-05-04,caelyx,1.0,PubChem,Chemotherapy,,,,,

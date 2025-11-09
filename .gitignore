@@ -21,6 +21,7 @@ assets/vep/*
 
 nextflow_*.config
 *samplesheet.csv
+samplesheet_*.csv
 data/
 
 util_*.txt

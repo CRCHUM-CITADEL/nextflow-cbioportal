@@ -47,28 +47,17 @@ def parse_rna(input_dir : str) -> pd.DataFrame:
         all_rna_files = rna_dir.glob(f"{folder}/{folder}.RNASeq_somatic/*")
 
 
-        sv_file_path = expression_file_path = hard_filtered_file_path = None
         for f in all_rna_files:
-            if sv_file_path is None and re.search(sv_file_pattern, str(f)):
-                sv_file_path = f
+            if re.search(sv_file_pattern, str(f)):
                 DATAFRAME['filetype'].append('sv')
-            if expression_file_path is None and re.search(expression_file_pattern,str(f)):
-                expression_file_path = f
+            elif re.search(expression_file_pattern,str(f)):
                 DATAFRAME['filetype'].append('expression')
-            if hard_filtered_file_path is None and re.search(hard_filtered_pattern,str(f)):
-                hard_filtered_file_path = f
+            elif re.search(hard_filtered_pattern,str(f)):
                 DATAFRAME['filetype'].append('hard_filtered')
-            if sv_file_path and expression_file_path and hard_filtered_file_path:
+            else:
                 break
 
-        list_of_files = [sv_file_path, expression_file_path, hard_filtered_file_path]
-
-        for file in list_of_files: 
-
-            if file == None:
-                break
-
-            DATAFRAME['filepath'].append(str(file))
+            DATAFRAME['filepath'].append(str(f))
 
             group_pattern = r"^((?:[^-]*-){2}[^-]*)"
             
@@ -80,7 +69,7 @@ def parse_rna(input_dir : str) -> pd.DataFrame:
 
             subject_id = re.search(subject_id_pattern, str(folder)).group(1)
 
-            DATAFRAME['subject_id'].append(subject_id)
+            DATAFRAME['subject_id'].append(f"{group}-{subject_id}")
 
             sequencing_type_pattern = r"-(?:\d+)?([A-Za-z]+)$"
 
@@ -93,7 +82,7 @@ def parse_rna(input_dir : str) -> pd.DataFrame:
 
             run_number = re.search(run_number_pattern, str(folder)).group(1)
 
-            DATAFRAME['sample_id'].append(f"{subject_id}.{run_number}{sequencing_type}")
+            DATAFRAME['sample_id'].append(f"{group}-{subject_id}.{run_number}{sequencing_type}")
 
             DATAFRAME['sample_type'].append("somatic")
 
@@ -122,32 +111,16 @@ def parse_dna(input_dir : str) -> pd.DataFrame:
         germinal_hard_filtered_pattern = r".*WGS_germinal.hard-filtered.vcf.gz$"
         all_dna_files = dna_dir.glob(f"{folder}/{folder}.WGS_*/*")
 
-        cna_file_path = tumor_hard_filtered_file_path = germinal_hard_filtered_file_path = None
 
         for f in all_dna_files:
-            if cna_file_path is None and re.search(cna_file_pattern, str(f)):
-                cna_file_path = f
-                DATAFRAME['filetype'].append('cna')
-            if tumor_hard_filtered_file_path is None and re.search(tumor_hard_filtered_pattern,str(f)):
-                tumor_hard_filtered_file_path = f
+            if re.search(cna_file_pattern, str(f)):
+                DATAFRAME['filetype'].append('cnv')
+            if re.search(tumor_hard_filtered_pattern,str(f)):
                 DATAFRAME['filetype'].append('hard_filtered')
-            if germinal_hard_filtered_file_path is None and re.search(germinal_hard_filtered_pattern,str(f)):
-                germinal_hard_filtered_file_path = f
-                print(f"{f=}")
+            if re.search(germinal_hard_filtered_pattern,str(f)):
                 DATAFRAME['filetype'].append('hard_filtered')
-            if cna_file_path and tumor_hard_filtered_file_path and germinal_hard_filtered_file_path:
-                break
 
-        print(f"{germinal_hard_filtered_file_path=}")
-
-        list_of_files = [cna_file_path, tumor_hard_filtered_file_path, germinal_hard_filtered_file_path]
-
-        for file in list_of_files: 
-            print(f"{file=}")
-            if file == None:
-               continue 
-
-            DATAFRAME['filepath'].append(str(file))
+            DATAFRAME['filepath'].append(str(f))
 
             group_pattern = r"((?:[^-]*-){2}[^-]*)"
 
@@ -158,7 +131,7 @@ def parse_dna(input_dir : str) -> pd.DataFrame:
 
             subject_id = re.search(subject_id_pattern, str(folder)).group(1)
 
-            DATAFRAME['subject_id'].append(subject_id)
+            DATAFRAME['subject_id'].append(f"{group}-{subject_id}")
        
             sequencing_type_pattern = r"-(?:\d+)?([A-Za-z]+)$"
 
@@ -167,7 +140,7 @@ def parse_dna(input_dir : str) -> pd.DataFrame:
 
             run_number = re.search(run_number_pattern, str(folder)).group(1)
 
-            DATAFRAME['sample_id'].append(f"{subject_id}.{run_number}{sequencing_type}")
+            DATAFRAME['sample_id'].append(f"{group}-{subject_id}.{run_number}{sequencing_type}")
 
             if sequencing_type == "DN":
                 DATAFRAME['sample_type'].append("germinal")

@@ -6,6 +6,7 @@ nextflow_pipeline {
 
     test("genomic") {
 
+        config "tests/nextflow_genomic.config"
         when {
             params {
                 mode = 'genomic'

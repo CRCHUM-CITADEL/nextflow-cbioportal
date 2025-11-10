@@ -1,5 +1,5 @@
 process DOWNLOAD_PCGR {
-    storeDir "${projectDir}/assets/test_data/"
+    storeDir "${projectDir}/assets/"
 
     output:
         path "pcgr", emit: data_dir, type: 'dir'

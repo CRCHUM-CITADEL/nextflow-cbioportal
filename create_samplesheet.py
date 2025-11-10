@@ -60,7 +60,7 @@ def parse_rna(input_dir : str) -> pd.DataFrame:
             DATAFRAME['filepath'].append(str(f))
 
             group_pattern = r"^((?:[^-]*-){2}[^-]*)"
-            
+
             group = re.search(group_pattern, str(folder)).group(1)
 
             DATAFRAME['group_id'].append(group)
@@ -132,7 +132,7 @@ def parse_dna(input_dir : str) -> pd.DataFrame:
             subject_id = re.search(subject_id_pattern, str(folder)).group(1)
 
             DATAFRAME['subject_id'].append(f"{group}-{subject_id}")
-       
+
             sequencing_type_pattern = r"-(?:\d+)?([A-Za-z]+)$"
 
             sequencing_type = re.search(sequencing_type_pattern, str(folder)).group(1)
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     parse_rna(args.input_dir)
-    
+
     parse_dna(args.input_dir)
 
     print(DATAFRAME)

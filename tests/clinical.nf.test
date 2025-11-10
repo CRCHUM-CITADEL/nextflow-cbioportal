@@ -6,6 +6,7 @@ nextflow_pipeline {
 
     test("clinical") {
 
+        config "tests/nextflow_clinical.config"
         when {
             params {
                 mode = 'clinical'

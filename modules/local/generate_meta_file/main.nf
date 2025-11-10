@@ -1,7 +1,8 @@
 process GENERATE_META_FILE {
-    publishDir "${params.outdir}/", mode: 'copy'
+    publishDir "${params.outdir}/${group}", mode: 'copy'
 
     input:
+    val group
     val label
     val text
 
@@ -10,6 +11,7 @@ process GENERATE_META_FILE {
 
     script:
     """
-    echo -e "${text}" > meta_${label}.txt
+    sed s/add_text/${group}/g ${text} > identified_text.txt
+    echo -e identified_text.txt > meta_${label}.txt
     """
 }

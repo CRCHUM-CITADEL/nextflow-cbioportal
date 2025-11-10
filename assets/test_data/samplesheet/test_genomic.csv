@@ -1,9 +1,9 @@
 group_id,subject_id,sample_id,sample_type,sequence_data,filetype,info,filepath
-HG,HG04239,1,somatic,dna,cnv,,assets/test_data/vcf/HG04239.chr21.cnv.vcf.gz
-HG,HG04239,2,germinal,dna,cnv,,assets/test_data/vcf/NA21144.chr21.cnv.vcf.gz
-HG,HG04239,1,somatic,rna,sv,,assets/test_data/rna_fusion/HG04239.fusion_candidates.final
-HG,HG04239,1,somatic,rna,expression,,assets/test_data/expression/HG04239.quant.genes.sf
-HG,HG04239_2,1,somatic,rna,expression,,assets/test_data/expression/HG04239_2.quant.genes.sf
-HG,HG04239,2,germinal,dna,hard_filtered,,assets/test_data/variants/HG04239.WGS_germinal.hard-filtered.chr21.vcf.gz
-HG,HG04239,1,somatic,dna,hard_filtered,,assets/test_data/variants/HG04239.final.hard-filtered.chr21.vcf.gz
-HG,HG04239,1,somatic,rna,hard_filtered,,assets/test_data/variants/HG04239.RNAseq_somatic.hard-filtered.chr21.vcf.gz
+HG,HG04239,1.DT,somatic,dna,cnv,,assets/test_data/vcf/HG04239.chr21.cnv.vcf.gz
+HG,HG04239,1.DN,germinal,dna,cnv,,assets/test_data/vcf/NA21144.chr21.cnv.vcf.gz
+HG,HG04239,1.DT,somatic,rna,sv,,assets/test_data/rna_fusion/HG04239.fusion_candidates.final
+HG,HG04239,1.DT,somatic,rna,expression,,assets/test_data/expression/HG04239.quant.genes.sf
+HG,HG04239_2,2.DT,somatic,rna,expression,,assets/test_data/expression/HG04239_2.quant.genes.sf
+HG,HG04239,1.DN,germinal,dna,hard_filtered,,assets/test_data/variants/HG04239.WGS_germinal.hard-filtered.chr21.vcf.gz
+HG,HG04239,1.DT,somatic,dna,hard_filtered,,assets/test_data/variants/HG04239.final.hard-filtered.chr21.vcf.gz
+HG,HG04239,1.DT,somatic,rna,hard_filtered,,assets/test_data/variants/HG04239.RNAseq_somatic.hard-filtered.chr21.vcf.gz

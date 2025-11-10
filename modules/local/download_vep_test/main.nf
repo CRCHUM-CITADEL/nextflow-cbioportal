@@ -1,5 +1,5 @@
 process DOWNLOAD_VEP_TEST {
-    storeDir "${projectDir}/assets/test_data/"
+    storeDir "${projectDir}/assets"
 
     output:
         path "vep", emit: cache_dir, type: 'dir'

@@ -11,7 +11,8 @@ process GENE_CNV_FOLD_CHANGES_TO_CBIOPORTAL {
     path fold_changes_per_gene_cnv
 
     output:
-    tuple val(meta), path("${meta.sample}_data_cna_hg38.seg")
+    tuple val(meta), path("${meta.sample}_data_cna_hg38.seg"), emit : seg
+    tuple val(meta), path("${meta.sample}_data_cna_long.txt"), emit : long
 
     script:
     """

@@ -35,7 +35,7 @@ workflow GENOMIC {
         // Create a channel where each record has: sample, filepath, germinal or somatic, pipeline label, and dna or rna
         ch_files_all = samplesheet_list
             .map { rec ->
-                def group = "${rec[0].group}"
+                def group = rec[0].group
                 def subject = "${rec[0].subject}"
                 def sample = "${rec[0].sample}" // need to wrap it because if it's just number it will become integer and we need strings
                 def file = "${params.input_dir}/${rec[0].file}"
@@ -61,11 +61,11 @@ workflow GENOMIC {
 
         // Filter out only the ones for the “sv” pipeline
         ch_vcf_sv = ch_files_all
-            .filter { meta, file ->  
+            .filter { meta, file ->
                 meta.pipeline == 'sv'
             }
-            .map { meta, file ->  
-                tuple(meta.sample, file)
+            .map { meta, file ->
+                tuple(meta, file)
             }
 
         GENOMIC_SV(
@@ -77,28 +77,28 @@ workflow GENOMIC {
             .filter {meta, file ->
                 meta.pipeline == 'expression'
             }
-            .map {meta, file -> 
-                tuple(meta.sample, file)
+            .map {meta, file ->
+                tuple(meta, file)
             }
 
         GENOMIC_EXPRESSION(
-            ch_vcf_expression,
-            gencode_annotations
+           ch_vcf_expression,
+           gencode_annotations
         )
 
         ch_vcf_gen_ger_dna = ch_files_all
-            .filter {meta, file ->  
-                meta.pipeline == 'hard_filtered' && 
+            .filter {meta, file ->
+                meta.pipeline == 'hard_filtered' &&
                 meta.type == "germinal" &&
                 meta.sequence == "dna"
             }
-            .map { meta, file -> 
+            .map { meta, file ->
                 tuple(meta, file)
             }
 
         // Filter out only the ones for the “expression” pipeline
         ch_vcf_gen_som_dna = ch_files_all
-            .filter {meta, file ->  
+            .filter {meta, file ->
                 meta.pipeline == 'hard_filtered' &&
                 meta.type == 'somatic' &&
                 meta.sequence == "dna"
@@ -108,11 +108,11 @@ workflow GENOMIC {
             }
 
         ch_vcf_gen_som_rna = ch_files_all
-            .filter {meta, file ->  
+            .filter {meta, file ->
                 meta.pipeline == 'hard_filtered' &&
                 meta.sequence == "rna"
             }
-            .map { meta, file -> 
+            .map { meta, file ->
                 tuple(meta, file)
             }
 
@@ -127,6 +127,8 @@ workflow GENOMIC {
             needs_pcgr
         )
 
+        all_groups = ch_files_all.map {meta, sample -> meta.group}.unique()
+
         meta_text = """type_of_cancer: add_text
 cancer_study_identifier: add_text
 name: add_text
@@ -136,27 +138,28 @@ reference_genome: hg38
         """
 
         GENERATE_META_FILE(
+            all_groups,
             "study",
             meta_text
-        )
+         )
 
-        // Create a file linking subject id and tumor sample id which is needed for one of the clinical steps
-        ch_files_all = samplesheet_list
-            .filter { rec -> rec[0].type != "germinal" && rec[0].sequence == "dna"}
-            .map { rec ->
-                def full_name = "${rec[0].group}-${rec[0].subject}"
-                def sample = "${rec[0].sample}"
-                return "${full_name}\t${sample}"
-            }
-            .unique()
-            .collectFile(
-                sort: true,
-                name: "util_linking_file.txt",
-                newLine: true,
-                storeDir : "${params.outdir}",
-                seed: "subject_id\tsample_id"
-            )
-
+    ch_files_all = samplesheet_list
+        .filter { rec -> rec[0].type != "germinal" && rec[0].sequence == "dna"}
+        .map { rec ->
+            def full_name = "${rec[0].subject}"
+            def sample = "${rec[0].sample}"
+            def group = rec[0].group
+            return tuple(group, "${full_name}\t${sample}")
+        }
+        .unique()
+        .groupTuple()
+        .map { group, lines ->
+            def file_content = "subject_id\tsample_id\n" + lines.join("\n")
+            def output_file = file("${params.outdir}/${group}/util_linking_file.txt")
+            output_file.parent.mkdirs()
+            output_file.text = file_content
+            return tuple(group, output_file)
+        }
         //
         // TASK: Aggregate software versions
         //

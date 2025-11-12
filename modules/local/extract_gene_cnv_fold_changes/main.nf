@@ -1,6 +1,7 @@
 // modules/local/gene_cnv_fold_changes/main.nf
 
 process EXTRACT_GENE_CNV_FOLD_CHANGES {
+    publishDir "${params.outdir}/${meta.group}/${meta.sample}", mode: 'copy'
     tag { meta.sample }   // helps logging/tracing per sample
 
     container params.container_r

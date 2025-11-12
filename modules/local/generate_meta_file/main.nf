@@ -11,7 +11,9 @@ process GENERATE_META_FILE {
 
     script:
     """
-    sed s/add_text/${group}/g ${text} > identified_text.txt
-    echo -e identified_text.txt > meta_${label}.txt
+sed "s/add_text/${group}/g" << EOF > identified_text.txt
+${text}
+EOF
+    cat identified_text.txt > meta_${label}.txt
     """
 }

@@ -17,13 +17,13 @@ workflow GENOMIC_SV {
         cbioportal_genomic_sv_merged = cbioportal_genomic_sv_files
             .map {meta, file -> [meta.group, file]}
             .groupTuple()
-            .flatMap { group, files -> 
+            .flatMap { group, files ->
                 files.collect { file -> [group, file]}
             }
             .collectFile(storeDir: "${params.outdir}",
                         keepHeader : true,
                         skip: 1,
-                        sort : 'deep') { group, file -> 
+                        sort : 'deep') { group, file ->
                             ["${group}/data_sv.txt", file.text]
                         }
 

@@ -21,7 +21,7 @@ workflow GENOMIC_MUTATIONS {
 
     main:
 
-        
+
         ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_cache.first()
         ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR().data_dir.first() : pcgr_data.first()
 
@@ -78,7 +78,7 @@ workflow GENOMIC_MUTATIONS {
         cbioportal_genomic_mutations_merged = cbioportal_genomic_mutation_files
             .map {meta, file -> [meta.group, file]}
            .groupTuple()
-            .flatMap { group, files -> 
+            .flatMap { group, files ->
                 files.collect { file -> [group, file]}
             }
             .collectFile(storeDir: "${params.outdir}",

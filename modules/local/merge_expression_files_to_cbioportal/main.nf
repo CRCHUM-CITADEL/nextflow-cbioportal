@@ -1,13 +1,13 @@
 process MERGE_EXPRESSION_FILES_TO_CBIOPORTAL {
-    publishDir "${params.outdir}", mode: 'copy'
+    publishDir "${params.outdir}/${meta.group}", mode: 'copy'
 
     container params.container_r
 
     input:
-        path(tpm_file_list)
+        tuple val(meta), path(tpm_file_list)
 
     output:
-        path "data_expression.txt"
+        tuple val(meta), path("data_expression.txt")
 
     script:
     """

@@ -20,12 +20,14 @@ workflow CLINICAL_AGGREGATE {
                 tuple(group, data_list.collectEntries())
             }
 
+        all_groups = csvs_with_date.map {group, csv_map -> group}.unique()
+
         mode_ch = channel.of("sample", "patient")
 
         mode_ch
             .combine(csvs_with_date)
             .map { mode, group, csv_map ->
-                tuple([group: group, mode: mode], csv_map)
+                return tuple([group: group, mode: mode], csv_map)
             }
             .set { ch_formatted_input }
 
@@ -49,6 +51,7 @@ data_filename: data_clinical_patient.txt
         file_names = Channel.of("clinical_sample", "clinical_patient")
 
         GENERATE_META_FILE(
+            all_groups,
             file_names,
             meta_text
         )

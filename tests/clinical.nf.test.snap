@@ -4,24 +4,30 @@
             20,
             null,
             [
-                "data_clinical_patient.txt",
-                "data_clinical_sample.txt",
-                "meta_clinical_patient.txt",
-                "meta_clinical_sample.txt",
+                "hg",
+                "hg/data_clinical_patient.txt",
+                "hg/data_clinical_sample.txt",
+                "hg/meta_clinical_sample.txt",
+                "hg2",
+                "hg2/data_clinical_patient.txt",
+                "hg2/data_clinical_sample.txt",
+                "hg2/meta_clinical_patient.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
             [
                 "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
                 "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8",
-                "meta_clinical_patient.txt:md5,02c7f9044cb59d1982e99cd51d6bfa81",
-                "meta_clinical_sample.txt:md5,8a23dd2c0131a18e7c9dde749931ae13"
+                "meta_clinical_sample.txt:md5,535645d8b15bf8f8b567652fb7303f67",
+                "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
+                "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8",
+                "meta_clinical_patient.txt:md5,22894c826cd90281f692cf26145250cc"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.04.7"
         },
-        "timestamp": "2025-11-10T10:15:41.135613667"
+        "timestamp": "2025-11-12T16:38:13.037939263"
     }
 }

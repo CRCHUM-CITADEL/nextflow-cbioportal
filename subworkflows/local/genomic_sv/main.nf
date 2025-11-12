@@ -7,13 +7,25 @@ workflow GENOMIC_SV {
         sv_vcf
 
     main:
+
+        all_groups = sv_vcf.map {meta, sample -> meta.group}.unique()
+
         cbioportal_genomic_sv_files = DRAGEN_FUSION_SV_TO_CBIOPORTAL(
             sv_vcf
         )
 
-        // toSortedList() is necessary for determinisitic output
         cbioportal_genomic_sv_merged = cbioportal_genomic_sv_files
-            .collectFile( name : 'data_sv.txt', storeDir: "${params.outdir}", keepHeader : true, skip: 1, sort : 'deep')
+            .map {meta, file -> [meta.group, file]}
+            .groupTuple()
+            .flatMap { group, files ->
+                files.collect { file -> [group, file]}
+            }
+            .collectFile(storeDir: "${params.outdir}",
+                        keepHeader : true,
+                        skip: 1,
+                        sort : 'deep') { group, file ->
+                            ["${group}/data_sv.txt", file.text]
+                        }
 
         meta_text = """cancer_study_identifier: add_text
 genetic_alteration_type: STRUCTURAL_VARIANT
@@ -26,6 +38,7 @@ data_filename: data_sv.txt
         """
 
         meta_file = GENERATE_META_FILE(
+            all_groups,
             "sv",
             meta_text
         )

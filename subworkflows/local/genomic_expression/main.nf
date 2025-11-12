@@ -10,23 +10,28 @@ workflow GENOMIC_EXPRESSION {
 
     main:
 
+        all_groups = somatic_expression.map {meta, sample -> meta.group}.unique()
+
         tpm_file_ch = GET_TPM(
             somatic_expression,
             gencode_annotations
             )
 
         tpm_file_list = tpm_file_ch
-            .toSortedList { a, b ->
-                def na = a.toString().split(/[\/\\]/).last()
-                def nb = b.toString().split(/[\/\\]/).last()
-                na <=> nb
-            }
-            .map { files ->
-                if (files.size() < 2) {
-                    log.warn "GENOMIC_EXPRESSION: Found ${files.size()} TPM file(s). Need at least 2 files to merge. Skipping merge step."
+            .map { meta, file -> tuple(meta.group, meta, file) }
+            .groupTuple()
+            .map { group, metas, files ->
+                def meta = metas[0]  // Take first meta since they share the same group
+                def sortedFiles = files.sort { a, b ->
+                    def na = a.toString().split(/[\/\\]/).last()
+                    def nb = b.toString().split(/[\/\\]/).last()
+                    na <=> nb
+                }
+                if (sortedFiles.size() < 2) {
+                    log.warn "GENOMIC_EXPRESSION: Found ${sortedFiles.size()} TPM file(s) for group ${group}. Need at least 2 files to merge. Skipping merge step."
                     return null
                 }
-                return files
+                return tuple(meta, sortedFiles)
             }
             .filter { it != null }
 
@@ -45,6 +50,7 @@ data_filename: data_expression.txt
         """
 
         meta_file = GENERATE_META_FILE(
+            all_groups,
             "expression",
             meta_text
         )

@@ -83,7 +83,7 @@ workflow GENOMIC_MUTATIONS {
             }
             .collectFile(storeDir: "${params.outdir}",
                        keepHeader : true,
-                       skip: 1,
+                       skip: 2,
                         sort: 'deep') { group, file ->
                             ["${group}/data_mutations_dna_rna_germline.txt", file.text]
                         }

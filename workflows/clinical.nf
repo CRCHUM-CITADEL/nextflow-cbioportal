@@ -24,7 +24,7 @@ workflow CLINICAL {
         ch_file_list = file_list
             .map { row ->
                 def group = row[0].group
-                def file = "${params.input_dir}/${row[0].file}"
+                def file = "${row[0].file}"
                 def pipeline = row[0].pipeline
                 def extraction_date = row[0].date
                 return tuple([group: group, pipeline: pipeline, extraction_date: extraction_date], file)

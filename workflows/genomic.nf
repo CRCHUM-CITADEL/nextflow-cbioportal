@@ -38,7 +38,7 @@ workflow GENOMIC {
                 def group = rec[0].group
                 def subject = "${rec[0].subject}"
                 def sample = "${rec[0].sample}" // need to wrap it because if it's just number it will become integer and we need strings
-                def file = "${params.input_dir}/${rec[0].file}"
+                def file = "${rec[0].file}"
                 def type = rec[0].type
                 def pipeline = rec[0].pipeline  // e.g. "cnv", "hard_filtered", etc.
                 def sequence = rec[0].sequence  // e.g. "dna", "rna"
@@ -80,6 +80,8 @@ workflow GENOMIC {
             .map {meta, file ->
                 tuple(meta, file)
             }
+	
+	ch_vcf_expression.view()
 
         GENOMIC_EXPRESSION(
            ch_vcf_expression,

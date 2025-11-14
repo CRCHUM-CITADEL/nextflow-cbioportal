@@ -22,9 +22,10 @@ workflow GENOMIC_CNV {
             ensembl_annotations
             )
 
+        cnv_vcf_with_fold_changes = cnv_vcf.join(fold_change_per_gene_cnv)
+
         cbioportal_genomic_cnv_files = GENE_CNV_FOLD_CHANGES_TO_CBIOPORTAL(
-            cnv_vcf,
-            fold_change_per_gene_cnv
+            cnv_vcf_with_fold_changes
             )
 
         cbioportal_genomic_cnv_seg_merged = cbioportal_genomic_cnv_files.seg

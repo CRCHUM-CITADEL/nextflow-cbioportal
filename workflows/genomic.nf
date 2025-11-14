@@ -82,7 +82,6 @@ workflow GENOMIC {
                 tuple(meta, file)
             }
 	
-	ch_vcf_expression.view()
 
         GENOMIC_EXPRESSION(
            ch_vcf_expression,

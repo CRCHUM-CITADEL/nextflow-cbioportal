@@ -6,9 +6,7 @@ process CONVERT_CPSR_TO_MAF {
     container params.container_r
 
     input:
-        tuple val(meta), path(som_dna_rna_maf)
-        path ger_dna_tsv_gz
-
+        tuple val(meta), path(som_dna_rna_maf), path(ger_dna_tsv_gz)
 
     output:
         tuple val(meta), path("${meta.subject}.somatic_rna_germline.maf")

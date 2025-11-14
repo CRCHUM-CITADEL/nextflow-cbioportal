@@ -10,7 +10,7 @@ process PCGR {
         path ref_data
 
     output:
-    path "${meta.sample}.cpsr.grch38.classification.tsv.gz"
+        tuple val(meta), path("${meta.sample}.cpsr.grch38.classification.tsv.gz")
 
     script:
     """

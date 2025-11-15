@@ -4,7 +4,7 @@ process INTEGRATE_RNA_VARIANTS {
     container params.container_r
 
     input:
-        tuple val(subject_id),val(rna_meta), path(som_rna_vcf), val(dna_meta), path(som_dna_maf)
+        tuple val(subject_id), val(rna_meta), path(som_rna_vcf), val(dna_meta), path(som_dna_maf)
 
     output:
         tuple val(rna_meta), path("${subject_id}.somatic_rna.maf")

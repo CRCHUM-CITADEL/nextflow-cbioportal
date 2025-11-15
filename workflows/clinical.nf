@@ -25,7 +25,8 @@ workflow CLINICAL {
             .map { row ->
                 def group = row[0].group
                 def sub_file = row[0].file
-                def file = sub_file.startsWith("${projectDir}") ? sub_file : "${projectDir}/${sub_file}"
+		// TODO: fix this too...
+                def file = sub_file.startsWith("/") ? sub_file : "${projectDir}/${sub_file}"
                 def pipeline = row[0].pipeline
                 def extraction_date = row[0].date
                 return tuple([group: group, pipeline: pipeline, extraction_date: extraction_date], file)

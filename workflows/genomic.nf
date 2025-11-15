@@ -38,8 +38,9 @@ workflow GENOMIC {
                 def group = rec[0].group
                 def subject = "${rec[0].subject}"
                 def sample = "${rec[0].sample}" // need to wrap it because if it's just number it will become integer and we need strings
+		// TODO: fix this... 
                 def sub_file = "${rec[0].file}"
-                def file = sub_file.startsWith("${projectDir}") ? sub_file : "${projectDir}/${sub_file}"
+                def file = sub_file.startsWith("/") ? sub_file : "${projectDir}/${sub_file}"
                 def type = rec[0].type
                 def pipeline = rec[0].pipeline  // e.g. "cnv", "hard_filtered", etc.
                 def sequence = rec[0].sequence  // e.g. "dna", "rna"

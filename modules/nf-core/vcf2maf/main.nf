@@ -26,6 +26,7 @@ process VCF2MAF {
     def prefix        = task.ext.prefix ?: "${meta.sample}"
     def vep_cache_cmd = vep_cache       ? "--vep-data $vep_cache ${params.vep_params}" : ""     // If VEP is present, it will find it and add it to commands otherwise blank
     def VERSION       = '1.6.22' // WARN: Version information not provided by tool on CLI. Please update this string when bumping container versions.
+    def normal_id     = meta.germinal_sample ? meta.germinal_sample : 'NA'
     """
     if [ "$vep_cache" ]; then
         VEP_CMD="--vep-path \$(dirname \$(type -p vep))"
@@ -50,7 +51,7 @@ process VCF2MAF {
     vcf2maf.pl \\
         $args \\
         --tumor-id ${meta.sample} \\
-        --normal-id ${meta.germinal_sample} \\
+        --normal-id ${normal_id} \\
         \$VEP_CMD \\
         $vep_cache_cmd \\
         --ref-fasta $fasta \\

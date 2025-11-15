@@ -10,9 +10,10 @@ process GENERATE_CASE_LIST {
     path "cases_${label}.txt"
 
     script:
+    def group_lower = group.toLowerCase()
     """
-    echo -e "cancer_study_identifier: ${group}" > cases_${label}.txt
-    echo -e "stable_id: add_text_${label}" >> cases_${label}.txt
+    echo -e "cancer_study_identifier: ${group_lower}" > cases_${label}.txt
+    echo -e "stable_id: ${group_lower}_${label}" >> cases_${label}.txt
     echo -e "case_list_name: add_text" >> cases_${label}.txt
     echo -e "case_list_description: ADD TEXT" >> cases_${label}.txt
     echo -e "case_list_ids: ${list_of_samples}" >> cases_${label}.txt

@@ -70,7 +70,11 @@ workflow GENOMIC_MUTATIONS {
             som_rna_dna_tuple
         )
 
-        som_dna_maf_tsv = som_dna_rna_maf.join(ger_dna_tsv) 
+        som_dna_maf_tsv = som_dna_rna_maf
+		.map {meta, file -> return tuple(meta.subject, meta, file)}
+		.join(
+			ger_dna_tsv.map {meta, file -> return tuple(meta.subject, meta, file)}
+		) 
 
         cbioportal_genomic_mutation_files = CONVERT_CPSR_TO_MAF(
             som_dna_maf_tsv

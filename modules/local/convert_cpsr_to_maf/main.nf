@@ -1,15 +1,15 @@
 process CONVERT_CPSR_TO_MAF {
-    publishDir "${params.outdir}/${meta.group}/${meta.sample}", mode: 'copy'
+    publishDir "${params.outdir}/${maf_meta.group}/${maf_meta.sample}", mode: 'copy'
 
-    tag { meta.subject}
+    tag { subject_id }
 
     container params.container_r
 
     input:
-        tuple val(meta), path(som_dna_rna_maf), path(ger_dna_tsv_gz)
+        tuple val(subject_id), val(maf_meta), path(som_dna_rna_maf), val(ger_meta), path(ger_dna_tsv_gz)
 
     output:
-        tuple val(meta), path("${meta.subject}.somatic_rna_germline.maf")
+        tuple val(maf_meta), path("${subject_id}.somatic_rna_germline.maf")
 
 
     script:
@@ -23,7 +23,7 @@ process CONVERT_CPSR_TO_MAF {
     gen_convert_cpsr_to_maf.R \
         tmp.germline.cpsr.tsv \
         $som_dna_rna_maf \
-        ${meta.subject}.somatic_rna_germline.maf
+        ${subject_id}.somatic_rna_germline.maf
     """
 
 }

@@ -50,8 +50,10 @@ data_filename: data_clinical_patient.txt
 
         file_names = Channel.of("clinical_sample", "clinical_patient")
 
+        all_groups_times_two = all_groups.combine(file_names).map {all_groups, file_names -> return all_groups}
+
         GENERATE_META_FILE(
-            all_groups,
+            all_groups_times_two,
             file_names,
             meta_text
         )

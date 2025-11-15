@@ -66,13 +66,14 @@ workflow GENOMIC_MUTATIONS {
                 som_dna_maf.map { meta, file -> tuple(meta.subject, meta, file) }
             )
 
-         som_dna_rna_maf = INTEGRATE_RNA_VARIANTS(
-             som_rna_dna_tuple
-         )
+        som_dna_rna_maf = INTEGRATE_RNA_VARIANTS(
+            som_rna_dna_tuple
+        )
+
+        som_dna_maf_tsv = som_dna_rna_maf.join(ger_dna_tsv) 
 
         cbioportal_genomic_mutation_files = CONVERT_CPSR_TO_MAF(
-            som_dna_rna_maf,
-            ger_dna_tsv
+            som_dna_maf_tsv
         )
 
         cbioportal_genomic_mutations_merged = cbioportal_genomic_mutation_files
@@ -83,7 +84,7 @@ workflow GENOMIC_MUTATIONS {
             }
             .collectFile(storeDir: "${params.outdir}",
                        keepHeader : true,
-                       skip: 1,
+                       skip: 2,
                         sort: 'deep') { group, file ->
                             ["${group}/data_mutations_dna_rna_germline.txt", file.text]
                         }

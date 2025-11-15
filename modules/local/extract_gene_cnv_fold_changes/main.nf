@@ -11,7 +11,7 @@ process EXTRACT_GENE_CNV_FOLD_CHANGES {
       path gene_annotations                             // one gene annotations file
 
     output:
-      path "${meta.sample}.genes.cnv.tsv"
+      tuple val(meta), path("${meta.sample}.genes.cnv.tsv")
 
 
     script:

@@ -1,7 +1,7 @@
 {
     "genomic": {
         "content": [
-            20,
+            16,
             null,
             [
                 "HG",
@@ -10,18 +10,15 @@
                 "HG/1.DT/1.DT.genes.cnv.tsv",
                 "HG/1.DT/1.DT_data_cna_hg38.seg",
                 "HG/1.DT/1.DT_data_cna_long.txt",
-                "HG/1.DT/HG04239.somatic_rna_germline.maf",
                 "HG/case_lists",
                 "HG/case_lists/cases_cnv.txt",
-                "HG/case_lists/cases_sequenced.txt",
                 "HG/data_cna_hg38.seg",
                 "HG/data_cna_long.txt",
                 "HG/data_expression.txt",
-                "HG/data_mutations_dna_rna_germline.txt",
                 "HG/data_sv.txt",
                 "HG/meta_cna_hg38.txt",
+                "HG/meta_cna_long.txt",
                 "HG/meta_expression.txt",
-                "HG/meta_mutations.txt",
                 "HG/meta_study.txt",
                 "HG/meta_sv.txt",
                 "HG/util_linking_file.txt",
@@ -33,17 +30,14 @@
                 "1.DT.genes.cnv.tsv:md5,da8121d1ff601b7045466c9be4ad573c",
                 "1.DT_data_cna_hg38.seg:md5,7aae409a7286244b678d7b06b0ab49d5",
                 "1.DT_data_cna_long.txt:md5,7240ceb4c248f7d41b7febacf06ab83f",
-                "HG04239.somatic_rna_germline.maf:md5,21f764111da9a5f280a20beae5631c57",
                 "cases_cnv.txt:md5,dd6305d2463216cf9e864d9db0dde577",
-                "cases_sequenced.txt:md5,c428b06c1f48e02fba44067e5678b4e7",
                 "data_cna_hg38.seg:md5,7aae409a7286244b678d7b06b0ab49d5",
                 "data_cna_long.txt:md5,7240ceb4c248f7d41b7febacf06ab83f",
                 "data_expression.txt:md5,0a5c6bf0ad9a2c789120cc1987715897",
-                "data_mutations_dna_rna_germline.txt:md5,21f764111da9a5f280a20beae5631c57",
                 "data_sv.txt:md5,9766d760c1728a207a0321806241c7aa",
                 "meta_cna_hg38.txt:md5,9c3f8084aed8daad3368df2a8d226db9",
+                "meta_cna_long.txt:md5,597a3950c2088c3f9ae549faca589e63",
                 "meta_expression.txt:md5,20a07e39b6fce7deacafc764a706e3f1",
-                "meta_mutations.txt:md5,5150315f733c3915b442436415c01386",
                 "meta_study.txt:md5,14e4d4c75b121f977a21e3e6aaa4821f",
                 "meta_sv.txt:md5,488249aa151314d608b6b0bed91b98d7",
                 "util_linking_file.txt:md5,7b27201f0c3b95ddbf38c08fc890ff07"
@@ -53,6 +47,6 @@
             "nf-test": "0.9.3",
             "nextflow": "25.04.7"
         },
-        "timestamp": "2025-11-12T16:42:25.54019765"
+        "timestamp": "2025-11-14T14:16:29.484780568"
     }
 }

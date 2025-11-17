@@ -14,7 +14,7 @@ workflow GENOMIC_MUTATIONS {
         som_dna_vcf // tuple (meta, filepath)
         som_rna_vcf // tuple (meta, filepath)
         fasta
-        vep_cache
+        vep_data
         pcgr_data
         needs_vep
         needs_pcgr
@@ -22,7 +22,7 @@ workflow GENOMIC_MUTATIONS {
     main:
 
 
-        ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_cache.first()
+        ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_data.first()
         ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR().data_dir.first() : pcgr_data.first()
 
         ger_dna_index = BCFTOOLS_INDEX(ger_dna_vcf).tbi

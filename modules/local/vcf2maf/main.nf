@@ -7,17 +7,15 @@ process VCF2MAF {
     input:
         tuple val(meta), path(vcf) // Now accepts both compressed (.vcf.gz) and uncompressed (.vcf) files
         path fasta                 // Required
-        path vep_cache             // Required for VEP running. A default of /.vep is supplied.
+        path vep_data // Required for VEP running. A default of /.vep is supplied.
 
     output:
         tuple val(meta), path("${meta.sample}.maf"), emit: maf
 
     script:
-    def VEP_CMD       = "--vep-path ${params.vep_path} --vep-data ${params.vep_path}/cache ${params.vep_params}"
+    def VEP_CMD       = "--vep-path ${vep_data} --vep-data ${vep_data}/cache ${params.vep_params}"
     def VERSION       = '1.6.22' 
     """
-    if [ "$vep_cache" ]; then
-        VEP_CMD="--vep-path ${params.vep_path}" 
 
     # Handle compressed VCF files
     if [[ $vcf == *.gz ]]; then
@@ -43,6 +41,6 @@ process VCF2MAF {
         --output-maf tmp.${meta.sample}.maf
 
     head -2 tmp.${meta.sample}.maf > ${meta.sample}.maf
-    tail -n +3 tmp.${meta.sample}.maf | awk -v col16="${meta.sample}" -v col17="${meta.germinal_sample}" 'BEGIN {FS=OFS="\\t"} NR==0 {print; next} {\$16=col16; \$17=col17; print}' >> ${prefix}.maf
+    tail -n +3 tmp.${meta.sample}.maf | awk -v col16="${meta.sample}" -v col17="${meta.germinal_sample}" 'BEGIN {FS=OFS="\\t"} NR==0 {print; next} {\$16=col16; \$17=col17; print}' >> ${meta.sample}.maf
     """
 }

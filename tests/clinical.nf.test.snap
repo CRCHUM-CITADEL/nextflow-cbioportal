@@ -1,20 +1,33 @@
 {
     "clinical": {
         "content": [
-            0,
+            20,
             null,
             [
+                "hg",
+                "hg/data_clinical_patient.txt",
+                "hg/data_clinical_sample.txt",
+                "hg2",
+                "hg2/data_clinical_patient.txt",
+                "hg2/data_clinical_sample.txt",
+                "hg2/meta_clinical_patient.txt",
+                "hg2/meta_clinical_sample.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
             [
-                
+                "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
+                "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8",
+                "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
+                "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8",
+                "meta_clinical_patient.txt:md5,22894c826cd90281f692cf26145250cc",
+                "meta_clinical_sample.txt:md5,22d1f8857f62f70b7259ccfaab12f6fc"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.04.7"
         },
-        "timestamp": "2025-11-14T11:15:17.233511735"
+        "timestamp": "2025-11-14T14:13:52.405035565"
     }
 }

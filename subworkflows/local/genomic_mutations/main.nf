@@ -1,4 +1,4 @@
-include { VCF2MAF } from '../../../modules/nf-core/vcf2maf'
+include { VCF2MAF } from '../../../modules/local/vcf2maf'
 include { INTEGRATE_RNA_VARIANTS } from '../../../modules/local/integrate_rna_variants'
 include { PCGR } from '../../../modules/local/pcgr'
 include { CONVERT_CPSR_TO_MAF } from '../../../modules/local/convert_cpsr_to_maf'

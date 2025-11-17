@@ -46,16 +46,23 @@ process VCF2MAF {
     else
         INPUT_VCF="$vcf"
     fi
+    
+    // TODO: is DN always first?
+    TMP_NORMAL_ID=\$(grep "^#CHROM" \$INPUT_VCF | awk '{print \$10}')
+    TMP_TUMOR_ID=\$(grep "^#CHROM" \$INPUT_VCF | awk '{print \$11}')
 
     vcf2maf.pl \\
         $args \\
-        --tumor-id ${meta.sample} \\
-        --normal-id ${meta.germinal_sample} \\
+        --tumor-id \$TMP_TUMOR_ID \\
+        --normal-id \$TMP_NORMAL_ID \\
         \$VEP_CMD \\
         $vep_cache_cmd \\
         --ref-fasta $fasta \\
         --input-vcf \$INPUT_VCF \\
-        --output-maf ${prefix}.maf
+        --output-maf tmp.${prefix}.maf
+
+    head -2 tmp.${prefix}.maf > ${prefix}.maf
+    tail -n +3 tmp.${prefix}.maf | awk -v col16="${meta.sample}" -v col17="${meta.germinal_sample}" 'BEGIN {FS=OFS="\\t"} NR==0 {print; next} {\$16=col16; \$17=col17; print}' >> ${prefix}.maf
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

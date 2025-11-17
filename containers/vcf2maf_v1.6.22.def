@@ -1,0 +1,46 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+%post
+    # Update package list and install dependencies
+    apt-get update
+    apt-get install -y \
+        perl \
+        perl-base \
+        perl-modules \
+        perl-doc \
+        git \
+        curl \
+        wget \
+        build-essential \
+        cpanminus \
+        jq \
+    && apt-get clean
+
+    # Install required Perl modules
+    cpanm Archive::Zip
+    cpanm List::Util
+    cpanm Scalar::Util
+    cpanm Time::HiRes
+
+    # Download and extract vcf2maf release
+    curl -L -o vcf2maf.tar.gz https://github.com/mskcc/vcf2maf/archive/refs/tags/v1.6.22.tar.gz
+    tar -zxf vcf2maf.tar.gz
+    cd vcf2maf-1.6.22
+
+    # Install executable scripts into /usr/local/bin
+    chmod +x vcf2maf.pl maf2vcf.pl
+    cp vcf2maf.pl maf2vcf.pl /usr/local/bin/
+
+    # Optional: keep full package in /opt
+    mkdir -p /opt/vcf2maf
+    cp -r * /opt/vcf2maf/
+
+%environment
+    export PATH=/usr/local/bin:$PATH
+
+%labels
+    Version "1.6.22 of vcf2maf with perl-doc installed"
+
+%runscript
+    exec vcf2maf.pl "$@"

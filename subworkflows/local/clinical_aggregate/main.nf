@@ -1,6 +1,7 @@
 include { FORMAT_CLINICAL } from '../../../modules/local/format_clinical'
 include { ASSIGN_DATE } from '../../../modules/local/assign_date'
 include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
+include { GENERATE_CANCER_TYPE_FILE } from '../../../modules/local/generate_cancer_type_file'
 
 workflow CLINICAL_AGGREGATE {
     take:
@@ -46,16 +47,24 @@ data_filename: data_clinical_sample.txt
 genetic_alteration_type: CLINICAL
 datatype: PATIENT_ATTRIBUTES
 data_filename: data_clinical_patient.txt
+        """,
+        """genetic_alteration_type: CANCER_TYPE
+datatype: CANCER_TYPE
+date_filename: cancer_type.txt
         """)
 
-        file_names = Channel.of("clinical_sample", "clinical_patient")
+        file_names = Channel.of("clinical_sample", "clinical_patient", "cancer_type")
 
-        all_groups_times_two = all_groups.combine(file_names).map {all_groups, file_names -> return all_groups}
+        all_groups_times_three = all_groups.combine(file_names).map {all_groups, file_names -> return all_groups}
 
         GENERATE_META_FILE(
-            all_groups_times_two,
+            all_groups_times_three,
             file_names,
             meta_text
+        )
+
+        GENERATE_CANCER_TYPE_FILE(
+            all_groups
         )
 
         emit:

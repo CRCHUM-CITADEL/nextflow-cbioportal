@@ -23,6 +23,7 @@ From: ubuntu:24.04
         perl-doc \
         cpanminus \
         jq \
+        libmodule-build-tiny-perl \
     && apt-get clean
 
     # Install needed Perl modules for vcf2maf

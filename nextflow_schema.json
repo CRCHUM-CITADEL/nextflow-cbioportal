@@ -167,7 +167,7 @@
         "vep_params": {
             "type": "string"
         },
-        "vep_path": {
+        "vep_data": {
             "type": "string"
         },
         "pcgr_data": {

@@ -14,8 +14,10 @@ process PCGR {
 
     script:
     """
+    mv ${ger_dna_vcf} ${meta.sample}.vcf.gz 
+
     cpsr \
-    --input_vcf $ger_dna_vcf \
+    --input_vcf ${meta.sample}.vcf.gz \
     --vep_dir ${vep_data}/cache \
     --refdata_dir $ref_data \
     --output_dir . \

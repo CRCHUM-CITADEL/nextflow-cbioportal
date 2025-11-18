@@ -42,7 +42,7 @@ workflow GENOMIC_EXPRESSION {
         meta_text = """cancer_study_identifier: add_text
 genetic_alteration_type: MRNA_EXPRESSION
 datatype: CONTINUOUS
-stable_id: rna_seq_mrna
+stable_id: rna_seq_v2_mrna
 show_profile_in_analysis_tab: true
 profile_name: mRNA expression (RNA-Seq TPM)
 profile_description: Expression levels (RNA-Seq TPM values)

@@ -75,13 +75,12 @@ From: ubuntu:24.04
     cd vcf2maf-1.6.22
 
     chmod +x vcf2maf.pl maf2vcf.pl
-    cp vcf2maf.pl maf2vcf.pl /usr/local/bin/
-
     mkdir -p /opt/vcf2maf
     cp -r * /opt/vcf2maf/
 
 %environment
     export PATH=/usr/local/bin:$PATH
+    export PATH=/opt/vcf2maf:$PATH
 
 %labels
     Version "vcf2maf-1.6.22 + samtools-1.22.1 + htslib(tabix)-1.22.1"

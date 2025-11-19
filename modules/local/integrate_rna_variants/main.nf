@@ -11,9 +11,11 @@ process INTEGRATE_RNA_VARIANTS {
 
     script:
     """
+    zcat $som_rna_vcf | grep "#" > tmp.${subject_id}.vcf
+    zcat $som_rna_vcf | grep PASS >> tmp.${subject_id}.vcf
     gen_integrate_rna_variants.R \
         -d $som_dna_maf \
-        -r $som_rna_vcf \
+        -r tmp.${subject_id}.vcf \
         -o ${subject_id}.somatic_rna.maf \
         --min_depth=3 --min_vaf=0.05
     """

@@ -9,7 +9,6 @@ include { GENOMIC_SV } from '../subworkflows/local/genomic_sv'
 include { GENOMIC_EXPRESSION } from '../subworkflows/local/genomic_expression'
 include { GENOMIC_MUTATIONS } from '../subworkflows/local/genomic_mutations'
 include { GENERATE_META_FILE } from '../modules/local/generate_meta_file'
-include { CHECK_IF_SAMPLE_IN_OUTPUT } from '../modules/local/check_if_sample_in_output'
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -40,27 +39,27 @@ workflow GENOMIC {
                 def sample = "${rec[0].sample}" // need to wrap it because if it's just number it will become integer and we need strings
 		// TODO: fix this... 
                 def sub_file = "${rec[0].file}"
-                def file = sub_file.startsWith("/") ? sub_file : "${projectDir}/${sub_file}"
+                def filepath = sub_file.startsWith("/") ? sub_file : "${projectDir}/${sub_file}"
                 def type = rec[0].type
                 def pipeline = rec[0].pipeline  // e.g. "cnv", "hard_filtered", etc.
                 def sequence = rec[0].sequence  // e.g. "dna", "rna"
-                return tuple([group: group, subject : subject, sample: sample, type: type, pipeline : pipeline, sequence: sequence],file)
+                return tuple([group: group, subject : subject, sample: sample, type: type, pipeline : pipeline, sequence: sequence],filepath)
             }
 
-	list_of_group_samples = ch_files_all.map{meta, file -> [group: meta.group, sample: meta.sample}.unique()	
+        def existing_samples = ch_files_all.filter { meta,filepath -> 
+            def sample_dir = file("${params.outdir}/${meta.group}/${meta.sample}")
+            sample_dir.exists() && sample_dir.isDirectory()
+        }
 
-	// currently just check if it exists. if it does, will not run any analyses for that sample.
-	CHECK_IF_SAMPLE_IN_OUTPUT(
-		list_of_group_samples	
-	)
+        existing_samples.view { "Already exists : ${it[0].sample}" }
 
         // Filter out only the ones for the “cnv” pipeline
         ch_vcf_cnv = ch_files_all
-            .filter {meta, file ->
+            .filter {meta, filepath ->
                 meta.pipeline == 'cnv' && meta.type == 'somatic' && meta.sequence == 'dna'
             }
-            .map { meta, file ->
-                tuple(meta, file)
+            .map { meta, filepath ->
+                tuple(meta, filepath)
             }
 
         GENOMIC_CNV(
@@ -70,11 +69,11 @@ workflow GENOMIC {
 
         // Filter out only the ones for the “sv” pipeline
         ch_vcf_sv = ch_files_all
-            .filter { meta, file ->
+            .filter { meta, filepath ->
                 meta.pipeline == 'sv'
             }
-            .map { meta, file ->
-                tuple(meta, file)
+            .map { meta, filepath ->
+                tuple(meta, filepath)
             }
 
         GENOMIC_SV(
@@ -83,11 +82,11 @@ workflow GENOMIC {
 
         // Filter out only the ones for the “expression” pipeline
         ch_vcf_expression = ch_files_all
-            .filter {meta, file ->
+            .filter {meta, filepath ->
                 meta.pipeline == 'expression'
             }
-            .map {meta, file ->
-                tuple(meta, file)
+            .map {meta, filepath ->
+                tuple(meta, filepath)
             }
 	
 
@@ -97,33 +96,33 @@ workflow GENOMIC {
         )
 
         ch_vcf_gen_ger_dna = ch_files_all
-            .filter {meta, file ->
+            .filter {meta, filepath ->
                 meta.pipeline == 'hard_filtered' &&
                 meta.type == "germinal" &&
                 meta.sequence == "dna"
             }
-            .map { meta, file ->
-                tuple(meta, file)
+            .map { meta, filepath ->
+                tuple(meta, filepath)
             }
 
         // Filter out only the ones for the “expression” pipeline
         ch_vcf_gen_som_dna = ch_files_all
-            .filter {meta, file ->
+            .filter {meta, filepath ->
                 meta.pipeline == 'hard_filtered' &&
                 meta.type == 'somatic' &&
                 meta.sequence == "dna"
             }
-            .map { meta, file ->
-                tuple(meta, file)
+            .map { meta, filepath ->
+                tuple(meta, filepath)
             }
 
         ch_vcf_gen_som_rna = ch_files_all
-            .filter {meta, file ->
+            .filter {meta, filepath ->
                 meta.pipeline == 'hard_filtered' &&
                 meta.sequence == "rna"
             }
-            .map { meta, file ->
-                tuple(meta, file)
+            .map { meta, filepath ->
+                tuple(meta, filepath)
             }
 
         GENOMIC_MUTATIONS(
@@ -137,7 +136,7 @@ workflow GENOMIC {
             needs_pcgr
         )
 
-        all_groups = ch_files_all.map {meta, sample -> meta.group}.unique()
+        all_groups = ch_files_all.map {meta, filepath -> meta.group}.unique()
 
         meta_text = """type_of_cancer: add_text
 cancer_study_identifier: add_text
@@ -170,6 +169,7 @@ reference_genome: hg38
             output_file.text = file_content
             return tuple(group, output_file)
         }
+
         //
         // TASK: Aggregate software versions
         //

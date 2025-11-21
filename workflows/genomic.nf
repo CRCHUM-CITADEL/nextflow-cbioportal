@@ -9,7 +9,7 @@ include { GENOMIC_SV } from '../subworkflows/local/genomic_sv'
 include { GENOMIC_EXPRESSION } from '../subworkflows/local/genomic_expression'
 include { GENOMIC_MUTATIONS } from '../subworkflows/local/genomic_mutations'
 include { GENERATE_META_FILE } from '../modules/local/generate_meta_file'
-
+include { CHECK_IF_SAMPLE_IN_OUTPUT } from '../modules/local/check_if_sample_in_output'
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -46,6 +46,13 @@ workflow GENOMIC {
                 def sequence = rec[0].sequence  // e.g. "dna", "rna"
                 return tuple([group: group, subject : subject, sample: sample, type: type, pipeline : pipeline, sequence: sequence],file)
             }
+
+	list_of_group_samples = ch_files_all.map{meta, file -> [group: meta.group, sample: meta.sample}.unique()	
+
+	// currently just check if it exists. if it does, will not run any analyses for that sample.
+	CHECK_IF_SAMPLE_IN_OUTPUT(
+		list_of_group_samples	
+	)
 
         // Filter out only the ones for the “cnv” pipeline
         ch_vcf_cnv = ch_files_all

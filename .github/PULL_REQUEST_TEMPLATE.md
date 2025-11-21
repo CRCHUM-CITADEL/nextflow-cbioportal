@@ -1,5 +1,5 @@
 <!--
-# CRCHUM-CITADEL/nextflow-sante-precision pull request
+# CRCHUM-CITADEL/nextflow-cbioportal pull request
 
 
 Please fill in the appropriate checklist below (delete whatever is not relevant).

@@ -1,9 +1,9 @@
-# `CRCHUM-CITADEL/nextflow-sante-precision`: Contributing Guidelines
+# `CRCHUM-CITADEL/nextflow-cbioportal`: Contributing Guidelines
 
 Hi there!
-Many thanks for taking an interest in improving CRCHUM-CITADEL/nextflow-sante-precision.
+Many thanks for taking an interest in improving CRCHUM-CITADEL/nextflow-cbioportal.
 
-We try to manage the required tasks for CRCHUM-CITADEL/nextflow-sante-precision using GitHub issues, you probably came to this page when creating one.
+We try to manage the required tasks for CRCHUM-CITADEL/nextflow-cbioportal using GitHub issues, you probably came to this page when creating one.
 Please use the pre-filled template to save time.
 
 However, don't be put off by this template - other more general issues and suggestions are welcome!
@@ -11,10 +11,10 @@ Contributions to the code are even more welcome ;)
 
 ## Contribution workflow
 
-If you'd like to write some code for CRCHUM-CITADEL/nextflow-sante-precision, the standard workflow is as follows:
+If you'd like to write some code for CRCHUM-CITADEL/nextflow-cbioportal, the standard workflow is as follows:
 
-1. Check that there isn't already an issue about your idea in the [CRCHUM-CITADEL/nextflow-sante-precision issues](https://github.com/CRCHUM-CITADEL/nextflow-sante-precision/issues) to avoid duplicating work. If there isn't one already, please create one so that others know you're working on this
-2. [Fork](https://help.github.com/en/github/getting-started-with-github/fork-a-repo) the [CRCHUM-CITADEL/nextflow-sante-precision repository](https://github.com/CRCHUM-CITADEL/nextflow-sante-precision) to your GitHub account
+1. Check that there isn't already an issue about your idea in the [CRCHUM-CITADEL/nextflow-cbioportal issues](https://github.com/CRCHUM-CITADEL/nextflow-cbioportal/issues) to avoid duplicating work. If there isn't one already, please create one so that others know you're working on this
+2. [Fork](https://help.github.com/en/github/getting-started-with-github/fork-a-repo) the [CRCHUM-CITADEL/nextflow-cbioportal repository](https://github.com/CRCHUM-CITADEL/nextflow-cbioportal) to your GitHub account
 3. Make the necessary changes / additions within your forked repository following [Pipeline conventions](#pipeline-contribution-conventions)
 4. Use `nf-core pipelines schema build` and add any new parameters to the pipeline JSON schema (requires [nf-core tools](https://github.com/nf-core/tools) >= 1.10).
 5. Submit a Pull Request against the `dev` branch and wait for the code to be reviewed and merged
@@ -58,7 +58,7 @@ These tests are run both with the latest available version of `Nextflow` and als
 
 ## Pipeline contribution conventions
 
-To make the `CRCHUM-CITADEL/nextflow-sante-precision` code and processing logic more understandable for new contributors and to ensure quality, we semi-standardise the way the code and other contributions are written.
+To make the `CRCHUM-CITADEL/nextflow-cbioportal` code and processing logic more understandable for new contributors and to ensure quality, we semi-standardise the way the code and other contributions are written.
 
 ### Adding a new step
 
@@ -108,7 +108,7 @@ This repo includes a devcontainer configuration which will create a GitHub Codes
 
 To get started:
 
-- Open the repo in [Codespaces](https://github.com/CRCHUM-CITADEL/nextflow-sante-precision/codespaces)
+- Open the repo in [Codespaces](https://github.com/CRCHUM-CITADEL/nextflow-cbioportal/codespaces)
 - Tools installed
   - nf-core
   - Nextflow

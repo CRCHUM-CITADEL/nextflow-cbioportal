@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea for the CRCHUM-CITADEL/nextflow-sante-precision pipeline
+description: Suggest an idea for the CRCHUM-CITADEL/nextflow-cbioportal pipeline
 labels: enhancement
 body:
   - type: textarea

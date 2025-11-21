@@ -15,7 +15,7 @@ process VCF2MAF {
         path vep_cache             // Required for VEP running. A default of /.vep is supplied.
 
     output:
-        tuple val(meta), path("*.maf"), emit: maf
+        tuple val(meta), path("${meta.sample}.maf"), emit: maf
         path "versions.yml"           , emit: versions
 
     when:
@@ -28,7 +28,7 @@ process VCF2MAF {
     def VERSION       = '1.6.22' // WARN: Version information not provided by tool on CLI. Please update this string when bumping container versions.
     """
     if [ "$vep_cache" ]; then
-        VEP_CMD="--vep-path \$(dirname \$(type -p vep))"
+        VEP_CMD="--vep-path ${params.vep_path}" 
         VEP_VERSION=\$(echo -e "\\n    ensemblvep: \$( echo \$(vep --help 2>&1) | sed 's/^.*Versions:.*ensembl-vep : //;s/ .*\$//')")
     else
         VEP_CMD=""
@@ -46,16 +46,33 @@ process VCF2MAF {
     else
         INPUT_VCF="$vcf"
     fi
+    
+    cat \$INPUT_VCF | grep "#" > tmp.${prefix}.somatic.vcf
+    cat \$INPUT_VCF | grep PASS >> tmp.${prefix}.somatic.vcf
 
+    ## TODO: is DN always first?
+    TMP_NORMAL_ID=\$(grep "^#CHROM" \$INPUT_VCF | awk '{print \$10}')
+    TMP_TUMOR_ID=\$(grep "^#CHROM" \$INPUT_VCF | awk '{print \$11}')
+    
+    echo "normal then tumor ids:"
+    echo \$TMP_NORMAL_ID
+    echo \$TMP_TUMOR_ID
+
+    echo "where is vep?"
+    echo \$VEP_CMD
+    
     vcf2maf.pl \\
         $args \\
-        --tumor-id ${meta.sample} \\
-        --normal-id ${meta.germinal_sample} \\
+        --tumor-id \$TMP_TUMOR_ID \\
+        --normal-id \$TMP_NORMAL_ID \\
         \$VEP_CMD \\
         $vep_cache_cmd \\
         --ref-fasta $fasta \\
-        --input-vcf \$INPUT_VCF \\
-        --output-maf ${prefix}.maf
+        --input-vcf tmp.${prefix}.somatic.vcf \\
+        --output-maf tmp.${prefix}.maf
+
+    head -2 tmp.${prefix}.maf > ${prefix}.maf
+    tail -n +3 tmp.${prefix}.maf | awk -v col16="${meta.sample}" -v col17="${meta.germinal_sample}" 'BEGIN {FS=OFS="\\t"} NR==0 {print; next} {\$16=col16; \$17=col17; print}' >> ${prefix}.maf
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

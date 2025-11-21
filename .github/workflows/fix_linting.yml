@@ -20,7 +20,7 @@ jobs:
     if: >
       contains(github.event.comment.html_url, '/pull/') &&
       contains(github.event.comment.body, '@nf-core-bot fix linting') &&
-      github.repository == 'CRCHUM-CITADEL/nextflow-sante-precision'
+      github.repository == 'CRCHUM-CITADEL/nextflow-cbioportal'
 
     steps:
       - name: Checkout repository (with bot token)
@@ -78,7 +78,7 @@ jobs:
             git add -A
             git commit -m "[automated] Fix code linting" || echo "Nothing to commit"
             # push will fail if token doesn't have push rights (e.g. PR from fork without PAT)
-            git push https://x-access-token:${{ env.BOT_TOKEN }}@github.com/CRCHUM-CITADEL/nextflow-sante-precision.git HEAD:dev
+            git push https://x-access-token:${{ env.BOT_TOKEN }}@github.com/CRCHUM-CITADEL/nextflow-cbioportal.git HEAD:dev
           else
             echo "No changes to commit"
           fi

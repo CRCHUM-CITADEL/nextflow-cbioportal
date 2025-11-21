@@ -50,17 +50,17 @@ workflow {
     if (params.mode == 'genomic'){
 
         // Check params and create channels + flags at the top
-        ch_vep_cache = params.vep_cache ? Channel.fromPath(params.vep_cache) : Channel.empty()
+        ch_vep_data = params.vep_data ? Channel.fromPath(params.vep_data) : Channel.empty()
         ch_pcgr_data = params.pcgr_data ? Channel.fromPath(params.pcgr_data) : Channel.empty()
 
-        needs_vep_download = !params.vep_cache
+        needs_vep_download = !params.vep_data
         needs_pcgr_download = !params.pcgr_data
 
         GENOMIC (
             PIPELINE_INITIALISATION.out.samplesheet,
             params.ensembl_annotations,
-            params.gencode_annotations,
-            ch_vep_cache,
+            params.ensembl_annotations_expr,
+            ch_vep_data,
             ch_pcgr_data,
             needs_vep_download,
             needs_pcgr_download,

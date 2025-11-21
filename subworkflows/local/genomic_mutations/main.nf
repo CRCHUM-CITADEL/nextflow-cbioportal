@@ -1,10 +1,11 @@
-include { VCF2MAF } from '../../../modules/nf-core/vcf2maf'
+include { VCF2MAF } from '../../../modules/local/vcf2maf'
 include { INTEGRATE_RNA_VARIANTS } from '../../../modules/local/integrate_rna_variants'
 include { PCGR } from '../../../modules/local/pcgr'
 include { CONVERT_CPSR_TO_MAF } from '../../../modules/local/convert_cpsr_to_maf'
 include { DOWNLOAD_VEP_TEST } from '../../../modules/local/download_vep_test'
 include { DOWNLOAD_PCGR } from '../../../modules/local/download_pcgr'
 include { BCFTOOLS_INDEX } from '../../../modules/nf-core/bcftools/index'
+include { FILTER_GER_DNA } from '../../../modules/local/filter_ger_dna'
 include { GENERATE_CASE_LIST } from '../../../modules/local/generate_case_list'
 include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
 
@@ -14,7 +15,7 @@ workflow GENOMIC_MUTATIONS {
         som_dna_vcf // tuple (meta, filepath)
         som_rna_vcf // tuple (meta, filepath)
         fasta
-        vep_cache
+        vep_data
         pcgr_data
         needs_vep
         needs_pcgr
@@ -22,10 +23,12 @@ workflow GENOMIC_MUTATIONS {
     main:
 
 
-        ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_cache.first()
+        ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_data.first()
         ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR().data_dir.first() : pcgr_data.first()
 
-        ger_dna_index = BCFTOOLS_INDEX(ger_dna_vcf).tbi
+	ger_dna_filtered = FILTER_GER_DNA(ger_dna_vcf)
+
+        ger_dna_index = BCFTOOLS_INDEX(ger_dna_filtered).tbi
 
         ger_dna_vcf_with_index = ger_dna_vcf
             .join(ger_dna_index)
@@ -66,13 +69,18 @@ workflow GENOMIC_MUTATIONS {
                 som_dna_maf.map { meta, file -> tuple(meta.subject, meta, file) }
             )
 
-         som_dna_rna_maf = INTEGRATE_RNA_VARIANTS(
-             som_rna_dna_tuple
-         )
+        som_dna_rna_maf = INTEGRATE_RNA_VARIANTS(
+            som_rna_dna_tuple
+        )
+
+        som_dna_maf_tsv = som_dna_rna_maf
+		.map {meta, file -> return tuple(meta.subject, meta, file)}
+		.join(
+			ger_dna_tsv.map {meta, file -> return tuple(meta.subject, meta, file)}
+		) 
 
         cbioportal_genomic_mutation_files = CONVERT_CPSR_TO_MAF(
-            som_dna_rna_maf,
-            ger_dna_tsv
+            som_dna_maf_tsv
         )
 
         cbioportal_genomic_mutations_merged = cbioportal_genomic_mutation_files
@@ -83,7 +91,7 @@ workflow GENOMIC_MUTATIONS {
             }
             .collectFile(storeDir: "${params.outdir}",
                        keepHeader : true,
-                       skip: 1,
+                       skip: 2,
                         sort: 'deep') { group, file ->
                             ["${group}/data_mutations_dna_rna_germline.txt", file.text]
                         }

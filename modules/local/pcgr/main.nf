@@ -6,17 +6,19 @@ process PCGR {
 
     input:
         tuple val(meta), path(ger_dna_vcf), path(ger_dna_vcf_tbi)
-        path vep_cache
+        path vep_data
         path ref_data
 
     output:
-    path "${meta.sample}.cpsr.grch38.classification.tsv.gz"
+        tuple val(meta), path("${meta.sample}.cpsr.grch38.classification.tsv.gz")
 
     script:
     """
+    mv ${ger_dna_vcf} ${meta.sample}.vcf.gz 
+
     cpsr \
-    --input_vcf $ger_dna_vcf \
-    --vep_dir $vep_cache \
+    --input_vcf ${meta.sample}.vcf.gz \
+    --vep_dir ${vep_data}/cache \
     --refdata_dir $ref_data \
     --output_dir . \
     --genome_assembly grch38 \

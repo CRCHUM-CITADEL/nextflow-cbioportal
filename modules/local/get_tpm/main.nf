@@ -5,21 +5,15 @@ process GET_TPM {
 
     input:
         tuple val(meta), path(somatic_expression_file)      // one sample id + corresponding .quant.genes.sf  file
-        path gene_annotations                                    // one gene annotations file (gtf)
+        path ensembl_annotations                            // one gene annotations file (biomart ensembl)
 
     output:
         tuple val(meta), path("${meta.sample}.tpm.tsv")
 
     script:
     """
-    grep -v "^#" $gene_annotations | \
-        grep -v "pseudogene" | \
-        grep -v "processed_transcript" | \
-        awk '{for(i=1;i<=NF;i++) {if(\$i=="gene_id") gene_id=\$(i+1); if(\$i=="gene_name") gene_name=\$(i+1)}} gene_id!="" && gene_name!="" {gsub(/\\.[0-9]+/, "", gene_id); print gene_id, gene_name}' | \
-        sed 's/"//g' | sed 's/;//g' | \
-        sort -u | \
-        awk '{print \$1"\\t"\$2}' \
-        > gene_id_to_name.tsv
+    awk -F'\\t' 'NR>1{print \$1"\\t"\$9"\\t"\$2}' $ensembl_annotations \
+    	> gene_id_to_name.tsv
 
     gen_get_tpm.R \
         --input $somatic_expression_file \

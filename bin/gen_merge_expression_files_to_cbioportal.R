@@ -146,14 +146,14 @@ read_expr_file <- function(file_path, sample_id) {
   if (opt$sample_column) {
     # Keep only Hugo_Symbol and the sample column (the second column)
     df <- df %>%
-      select(Hugo_Symbol, 2)
+      select(Hugo_Symbol, Entrez_Gene_Id, 3)
 
     # Rename the second column to the sample ID from filename
-    colnames(df)[2] <- sample_id
+    colnames(df)[3] <- sample_id
   } else {
     # Assume standard format with Hugo_Symbol and sample ID as column names
     # Rename the second column to the sample ID from filename
-    colnames(df)[2] <- sample_id
+    colnames(df)[3] <- sample_id
   }
 
   return(df)
@@ -230,7 +230,7 @@ merged_expression <- expression_list[[1]]
 
 for (i in 2:length(expression_list)) {
   merged_expression <- merged_expression %>%
-    full_join(expression_list[[i]], by = "Hugo_Symbol")
+    full_join(expression_list[[i]], by = c("Hugo_Symbol","Entrez_Gene_Id"))
 
   cat("  - Merged", i, "of", length(expression_list), "files\n")
 }
@@ -238,13 +238,13 @@ for (i in 2:length(expression_list)) {
 # After the merge loop, reorder columns to ensure deterministic behaviour
 sample_ids_sorted <- sort(sample_ids)
 merged_expression <- merged_expression %>%
-  select(Hugo_Symbol, all_of(sample_ids_sorted))
+  select(Hugo_Symbol, Entrez_Gene_Id, all_of(sample_ids_sorted))
 
 # Step 4: Replace missing values
 if (opt$fill_missing == "0") {
   cat("Replacing missing values with 0 in numeric columns...\n")
-  # Replace NA values only in numeric columns (all except first column)
-  for (col in 2:ncol(merged_expression)) {
+  # Replace NA values only in numeric columns (all except first and second column)
+  for (col in 3:ncol(merged_expression)) {
     col_name <- names(merged_expression)[col]
     merged_expression[[col_name]][is.na(merged_expression[[col_name]])] <- 0
   }
@@ -266,3 +266,4 @@ cat("\nComplete!\n")
 cat("- Merged expression matrix file:", opt$output_file, "\n")
 cat("- Total genes:", total_genes, "\n")
 cat("- Total samples:", total_samples, "\n")
+

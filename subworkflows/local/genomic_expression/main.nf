@@ -6,7 +6,7 @@ include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
 workflow GENOMIC_EXPRESSION {
     take:
         somatic_expression // tuple (sample_id, filepath)
-        gencode_annotations // gene annotation file
+        ensembl_annotations_expr // gene annotation file
 
     main:
 
@@ -14,7 +14,7 @@ workflow GENOMIC_EXPRESSION {
 
         tpm_file_ch = GET_TPM(
             somatic_expression,
-            gencode_annotations
+            ensembl_annotations_expr
             )
 
         tpm_file_list = tpm_file_ch
@@ -42,7 +42,7 @@ workflow GENOMIC_EXPRESSION {
         meta_text = """cancer_study_identifier: add_text
 genetic_alteration_type: MRNA_EXPRESSION
 datatype: CONTINUOUS
-stable_id: rna_seq_mrna
+stable_id: rna_seq_v2_mrna
 show_profile_in_analysis_tab: true
 profile_name: mRNA expression (RNA-Seq TPM)
 profile_description: Expression levels (RNA-Seq TPM values)

@@ -7,8 +7,7 @@ process GENE_CNV_FOLD_CHANGES_TO_CBIOPORTAL {
     container params.container_r
 
     input:
-    tuple val(meta), path(somatic_cnv_vcf)
-    path fold_changes_per_gene_cnv
+    tuple val(meta), path(somatic_cnv_vcf), path(fold_changes_per_gene_cnv)
 
     output:
     tuple val(meta), path("${meta.sample}_data_cna_hg38.seg"), emit : seg
@@ -16,6 +15,7 @@ process GENE_CNV_FOLD_CHANGES_TO_CBIOPORTAL {
 
     script:
     """
+    echo ${meta.sample}
     gen_cbioportal_converter.R \
       --vcf $somatic_cnv_vcf \
       --tsv $fold_changes_per_gene_cnv \

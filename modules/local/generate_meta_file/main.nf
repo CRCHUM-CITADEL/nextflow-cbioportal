@@ -10,8 +10,9 @@ process GENERATE_META_FILE {
     path "meta_${label}.txt"
 
     script:
+    def group_lower = group.toLowerCase()
     """
-sed "s/add_text/${group}/g" << EOF > identified_text.txt
+sed "s/add_text/${group_lower}/g" << EOF > identified_text.txt
 ${text}
 EOF
     cat identified_text.txt > meta_${label}.txt

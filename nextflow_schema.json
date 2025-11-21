@@ -139,10 +139,10 @@
             "format": "file-path",
             "pattern": "^\\S+\\.tsv"
         },
-        "gencode_annotations": {
+        "ensembl_annotations_expr": {
             "type": "string",
             "format": "file-path",
-            "pattern": "^\\S+\\.gtf"
+            "pattern": "^\\S+\\.tsv"
         },
         "container_pcgr": {
             "type": "string"
@@ -167,7 +167,7 @@
         "vep_params": {
             "type": "string"
         },
-        "vep_cache": {
+        "vep_data": {
             "type": "string"
         },
         "pcgr_data": {

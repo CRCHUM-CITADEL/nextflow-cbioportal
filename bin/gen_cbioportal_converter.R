@@ -252,91 +252,38 @@ log2_cna[[sample_id]] <- gene_data$log2_ratio
 cat("Creating DISCRETE_LONG format...\n")
 discrete_long <- data.table(
   Hugo_Symbol = gene_data$gene_symbol,
+  Entrez_Gene_Id = gene_data$entrez_ncbi_id,
   Sample_Id = opt$sample_id,
   Value = gene_data$discrete_cna
 )
+
+# If there's a duplicate Entrez_Gene_Id, take the first one.
+discrete_long <- discrete_long[!duplicated(discrete_long, by = c("Sample_Id", "Entrez_Gene_Id"))]
 
 # Write segment file
 seg_file <- file.path(opt$output_dir, paste0(opt$sample_id,"_data_cna_hg38.seg"))
 cat("Writing segment file:", seg_file, "\n")
 write.table(vcf_data, seg_file, sep = "\t", quote = FALSE, row.names = FALSE)
 
-# Create meta files
-#meta_seg_file <- file.path(opt$output_dir, "meta_cna_hg38_seg.txt")
-#cat("Writing segment meta file:", meta_seg_file, "\n")
-#cat(paste0(
-#  "cancer_study_identifier: ", opt$study_id, "\n",
-#  "genetic_alteration_type: COPY_NUMBER_ALTERATION\n",
-#  "datatype: SEG\n",
-#  "reference_genome_id: hg38\n",
-#  "description: Somatic CNA data (copy number segment file)\n",
-#  "data_filename: data_cna_hg38.seg\n"
-#), file = meta_seg_file)
 
 # Write discrete CNA file
 discrete_file <- file.path(opt$output_dir, paste0(opt$sample_id,"_data_cna.txt"))
 cat("Writing discrete CNA file:", discrete_file, "\n")
 write.table(discrete_cna, discrete_file, sep = "\t", quote = FALSE, row.names = FALSE)
 
-# Create discrete CNA meta file
-#meta_discrete_file <- file.path(opt$output_dir, "meta_cna.txt")
-#cat("Writing discrete CNA meta file:", meta_discrete_file, "\n")
-#cat(paste0(
-#  "cancer_study_identifier: ", opt$study_id, "\n",
-#  "genetic_alteration_type: COPY_NUMBER_ALTERATION\n",
-#  "datatype: DISCRETE\n",
-#  "stable_id: cna\n",
-#  "show_profile_in_analysis_tab: TRUE\n",
-#  "profile_name: Putative copy-number alterations from GISTIC\n",
-#  "profile_description: Putative copy-number calls: -2 = homozygous deletion; -1 = hemizygous deletion; 0 = neutral / no change; 1 = gain; 2 = high level amplification.\n",
-#  "data_filename: data_cna.txt\n"
-#), file = meta_discrete_file)
 
 # Write DISCRETE_LONG format CNA file
 discrete_long_file <- file.path(opt$output_dir, paste0(opt$sample_id,"_data_cna_long.txt"))
 cat("Writing DISCRETE_LONG CNA file:", discrete_long_file, "\n")
 write.table(discrete_long, discrete_long_file, sep = "\t", quote = FALSE, row.names = FALSE)
 
-# Create DISCRETE_LONG meta file
-#meta_discrete_long_file <- file.path(opt$output_dir, "meta_cna_long.txt")
-#cat("Writing DISCRETE_LONG meta file:", meta_discrete_long_file, "\n")
-#cat(paste0(
-#  "cancer_study_identifier: ", opt$study_id, "\n",
-#  "genetic_alteration_type: COPY_NUMBER_ALTERATION\n",
-#  "datatype: DISCRETE_LONG\n",
-#  "stable_id: cna\n",
-#  "show_profile_in_analysis_tab: TRUE\n",
-#  "profile_name: Putative copy-number alterations (long format)\n",
-#  "profile_description: Putative copy-number calls in long format: -2 = homozygous deletion; -1 = hemizygous deletion; 0 = neutral / no change; 1 = gain; 2 = high level amplification.\n",
-#  "data_filename: data_cna_long.txt\n"
-#), file = meta_discrete_long_file)
-
-# Write log2 CNA file
 log2_file <- file.path(opt$output_dir, paste0(opt$sample_id,"_data_log2CNA.txt"))
 cat("Writing log2 CNA file:", log2_file, "\n")
 write.table(log2_cna, log2_file, sep = "\t", quote = FALSE, row.names = FALSE)
 
-# Create log2 CNA meta file
-#meta_log2_file <- file.path(opt$output_dir, "meta_log2CNA.txt")
-#cat("Writing log2 CNA meta file:", meta_log2_file, "\n")
-#cat(paste0(
-#  "cancer_study_identifier: ", opt$study_id, "\n",
-#  "genetic_alteration_type: COPY_NUMBER_ALTERATION\n",
-#  "datatype: LOG2-VALUE\n",
-#  "stable_id: log2CNA\n",
-#  "show_profile_in_analysis_tab: TRUE\n",
-#  "profile_name: Log2 copy-number values\n",
-#  "profile_description: Log2 copy-number values for each gene.\n",
-#  "data_filename: data_log2CNA.txt\n"
-#), file = meta_log2_file)
-
 cat("\nConversion complete!\n")
 cat("Output files:\n")
 cat("- ", seg_file, "\n")
-#cat("- ", meta_seg_file, "\n")
 cat("- ", discrete_file, "\n")
-#cat("- ", meta_discrete_file, "\n")
 cat("- ", discrete_long_file, "\n")
-#cat("- ", meta_discrete_long_file, "\n")
 cat("- ", log2_file, "\n")
-#cat("- ", meta_log2_file, "\n")

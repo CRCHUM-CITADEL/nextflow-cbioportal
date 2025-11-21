@@ -16,7 +16,5 @@ process MERGE_EXPRESSION_FILES_TO_CBIOPORTAL {
     --output_file data_expression.txt \
     --fill_missing 0 \
     --strict
-
-    echo -e "${tpm_file_list.join(',')}"
     """
 }

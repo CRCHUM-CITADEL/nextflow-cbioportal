@@ -9,7 +9,7 @@ include { GENOMIC_SV } from '../subworkflows/local/genomic_sv'
 include { GENOMIC_EXPRESSION } from '../subworkflows/local/genomic_expression'
 include { GENOMIC_MUTATIONS } from '../subworkflows/local/genomic_mutations'
 include { GENERATE_META_FILE } from '../modules/local/generate_meta_file'
-
+include { CHECK_IF_SAMPLE_IN_OUTPUT } from '../modules/local/check_if_sample_in_output'
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -21,8 +21,8 @@ workflow GENOMIC {
     take:
         samplesheet_list
         ensembl_annotations
-        gencode_annotations
-        vep_cache
+        ensembl_annotations_expr
+        vep_data
         pcgr_data
         needs_vep
         needs_pcgr
@@ -38,12 +38,21 @@ workflow GENOMIC {
                 def group = rec[0].group
                 def subject = "${rec[0].subject}"
                 def sample = "${rec[0].sample}" // need to wrap it because if it's just number it will become integer and we need strings
-                def file = "${params.input_dir}/${rec[0].file}"
+		// TODO: fix this... 
+                def sub_file = "${rec[0].file}"
+                def file = sub_file.startsWith("/") ? sub_file : "${projectDir}/${sub_file}"
                 def type = rec[0].type
                 def pipeline = rec[0].pipeline  // e.g. "cnv", "hard_filtered", etc.
                 def sequence = rec[0].sequence  // e.g. "dna", "rna"
                 return tuple([group: group, subject : subject, sample: sample, type: type, pipeline : pipeline, sequence: sequence],file)
             }
+
+	list_of_group_samples = ch_files_all.map{meta, file -> [group: meta.group, sample: meta.sample}.unique()	
+
+	// currently just check if it exists. if it does, will not run any analyses for that sample.
+	CHECK_IF_SAMPLE_IN_OUTPUT(
+		list_of_group_samples	
+	)
 
         // Filter out only the ones for the “cnv” pipeline
         ch_vcf_cnv = ch_files_all
@@ -80,10 +89,11 @@ workflow GENOMIC {
             .map {meta, file ->
                 tuple(meta, file)
             }
+	
 
         GENOMIC_EXPRESSION(
            ch_vcf_expression,
-           gencode_annotations
+           ensembl_annotations_expr
         )
 
         ch_vcf_gen_ger_dna = ch_files_all
@@ -121,7 +131,7 @@ workflow GENOMIC {
             ch_vcf_gen_som_dna,
             ch_vcf_gen_som_rna,
             fasta,
-            vep_cache,
+            vep_data,
             pcgr_data,
             needs_vep,
             needs_pcgr

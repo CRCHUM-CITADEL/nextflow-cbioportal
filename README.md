@@ -22,8 +22,8 @@ You will need to change parameters in the nextflow config in order to point to c
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | mode                 | Pipeline run mode. Options : ['clinical', 'genomic']                                                                          |
 | genomic_samplesheet  | Input samplesheet for genomic pipeline. See section below.                                                                    |
-| gencode_annotations  | Gencode annotation .gtf file.                                                                                                 |
-| ensembl_annotations  | Ensembl annotation .tsv file.                                                                                                 |
+| ensembl_annotations_expr  | Ensembl annotation .tsv file for expression subworkflow (tested with ensembl 110 with biomart)                                                                                                 |
+| ensembl_annotations  | Ensembl annotation .tsv file. (tested with 113 with biomart)                                                                                                 |
 | vep_cache            | Cache folder of downloaded ensembl vep release.                                                                               |
 | vep_params           | Parameters for VEP usage as described here: <br> https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optional) |
 | pcgr_data            | Folder of pcgr reference data (uncompressed)                                                                                  |

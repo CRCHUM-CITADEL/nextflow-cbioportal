@@ -15,6 +15,7 @@ process GENE_CNV_FOLD_CHANGES_TO_CBIOPORTAL {
 
     script:
     """
+    echo ${meta.sample}
     gen_cbioportal_converter.R \
       --vcf $somatic_cnv_vcf \
       --tsv $fold_changes_per_gene_cnv \

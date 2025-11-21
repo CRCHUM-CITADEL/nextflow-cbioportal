@@ -69,12 +69,12 @@ workflow PIPELINE_INITIALISATION {
         samplesheet_list = Channel.fromList(samplesheetToList(clinical_input, "assets/schema_clinical_input.json"))
 
     } else if (mode == 'genomic'){
-        if (!params.gencode_annotations){
-            error("ERROR: Missing gencode_annotations file (tsv format) Check input in nextflow.config")
+        if (!params.ensembl_annotations_expr){
+            error("ERROR: Missing ensembl_annotations_expr file (tsv format) Check input in nextflow.config")
         }
 
         if (!params.ensembl_annotations){
-            error("ERROR: Missing gencode_annotations file (tsv format) Check input in nextflow.config")
+            error("ERROR: Missing ensembl_annotations file (tsv format) Check input in nextflow.config")
         }
 
         samplesheet_list = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))

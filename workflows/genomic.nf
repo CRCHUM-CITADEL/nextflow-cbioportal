@@ -21,7 +21,7 @@ workflow GENOMIC {
     take:
         samplesheet_list
         ensembl_annotations
-        gencode_annotations
+        ensembl_annotations_expr
         vep_data
         pcgr_data
         needs_vep
@@ -86,7 +86,7 @@ workflow GENOMIC {
 
         GENOMIC_EXPRESSION(
            ch_vcf_expression,
-           gencode_annotations
+           ensembl_annotations_expr
         )
 
         ch_vcf_gen_ger_dna = ch_files_all

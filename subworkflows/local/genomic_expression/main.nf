@@ -6,7 +6,7 @@ include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
 workflow GENOMIC_EXPRESSION {
     take:
         somatic_expression // tuple (sample_id, filepath)
-        gencode_annotations // gene annotation file
+        ensembl_annotations_expr // gene annotation file
 
     main:
 
@@ -14,7 +14,7 @@ workflow GENOMIC_EXPRESSION {
 
         tpm_file_ch = GET_TPM(
             somatic_expression,
-            gencode_annotations
+            ensembl_annotations_expr
             )
 
         tpm_file_list = tpm_file_ch

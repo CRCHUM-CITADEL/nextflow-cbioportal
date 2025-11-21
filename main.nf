@@ -59,7 +59,7 @@ workflow {
         GENOMIC (
             PIPELINE_INITIALISATION.out.samplesheet,
             params.ensembl_annotations,
-            params.gencode_annotations,
+            params.ensembl_annotations_expr,
             ch_vep_data,
             ch_pcgr_data,
             needs_vep_download,

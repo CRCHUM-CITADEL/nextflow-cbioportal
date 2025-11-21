@@ -61,7 +61,7 @@ expr_data <- read_tsv(opt$input, show_col_types = FALSE)
 cat("Reading gene ID to name mapping...\n")
 # Read the gene_id_to_name.tsv file without headers
 gene_map <- read_tsv(opt$gene_map,
-                     col_names = c("ensembl_id", "gene_symbol"),
+                     col_names = c("ensembl_id","entrez_id","gene_symbol"),
                      show_col_types = FALSE)
 
 # Step 2: Trim Ensembl IDs if necessary
@@ -83,8 +83,10 @@ cat("- Successfully mapped", nrow(expression_with_symbols[!is.na(expression_with
 # Step 4: Format output
 cat("Formatting output...\n")
 formatted_output <- expression_with_symbols %>%
-  select(gene_symbol, TPM) %>%
-  rename(Hugo_Symbol = gene_symbol, !!opt$sample_id := TPM)
+  select(gene_symbol, entrez_id, TPM) %>%
+  rename(Hugo_Symbol = gene_symbol,
+	 Entrez_Gene_Id = entrez_id, 
+  	 !!opt$sample_id := TPM)
 
 # Step 5: Handle duplicate Hugo symbols (keeping highest expression)
 cat("Resolving duplicate Hugo symbols...\n")

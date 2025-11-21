@@ -34,7 +34,7 @@ annotations <- fread(opt$annotation, header = TRUE, sep = "\t", stringsAsFactors
 # Clean up the chromosome format in annotations and ensure numeric columns are numeric
 annotations$chr <- gsub("^chr", "", annotations$chr)
 annotations$start <- as.numeric(annotations$start)
-annotations$stop <- as.numeric(annotations$stop)
+annotations$stop <- as.numeric(annotations$end)
 
 # Define canonical chromosomes
 canonical_chr <- c(as.character(1:22), "X", "Y", "MT", "M")
@@ -50,6 +50,7 @@ annotations$chr_factor <- factor(annotations$chr, levels = chr_order, ordered = 
 cat("\nAnnotation Statistics:\n")
 cat(sprintf("Total annotations: %d\n", nrow(annotations)))
 cat(sprintf("Unique Ensembl IDs: %d\n", length(unique(annotations$ensembl_id))))
+cat(sprintf("Unique Entrez IDs: %d\n", length(unique(annotations$entrez_ncbi_id))))
 cat(sprintf("Unique gene symbols: %d\n", length(unique(annotations$gene_symbol))))
 
 # Read the VCF file
@@ -117,6 +118,14 @@ vcf_data$fold_change <- sapply(1:nrow(vcf_data), function(i) {
 # Map each CNV to overlapping genes
 cat("Mapping CNVs to genes...\n")
 result <- data.table()
+print(str(annotations))
+print("Sample CNV:")
+print(head(vcf_data, 1))
+print("Sample annotation:")
+print(head(annotations, 1))
+result <- data.table()
+print(str(annotations))
+
 
 for (i in 1:nrow(vcf_data)) {
   cnv <- vcf_data[i, ]
@@ -125,6 +134,15 @@ for (i in 1:nrow(vcf_data)) {
   # Print progress every 10 CNVs
   if (i %% 10 == 0) {
     cat(sprintf("Processing CNV %d of %d...\n", i, nrow(vcf_data)))
+  }
+  
+  # Debug: print first CNV details
+  if (i == 1) {
+    cat("First CNV details:\n")
+    cat("  chr:", cnv$chr, "\n")
+    cat("  start:", cnv$start, "\n")
+    cat("  end:", cnv$end, "\n")
+    cat("Matching genes on same chr:", nrow(annotations[annotations$chr == cnv$chr,]), "\n")
   }
 
   # Find genes overlapping with this CNV
@@ -146,6 +164,7 @@ for (i in 1:nrow(vcf_data)) {
         svtype = cnv$svtype,
         fold_change = cnv$fold_change,
         ensembl_id = gene$ensembl_id,
+	entrez_ncbi_id = gene$entrez_ncbi_id,
         gene_symbol = gene$gene_symbol,
         gene_chr = gene$chr,
         gene_start = gene$start,
@@ -222,7 +241,7 @@ for (symbol in gene_symbols) {
 # Ensure all required columns exist and are in correct order
 output_columns <- c("chr", "start", "end", "svtype", "fold_change",
                    "ensembl_id", "gene_symbol", "gene_chr", "gene_start", "gene_stop",
-                   "gene_strand", "gene_description")
+                   "gene_strand", "gene_description", "entrez_ncbi_id")
 
 # Add missing columns
 for (col in output_columns) {

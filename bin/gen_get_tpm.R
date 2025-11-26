@@ -85,7 +85,7 @@ cat("Formatting output...\n")
 formatted_output <- expression_with_symbols %>%
   select(gene_symbol, entrez_id, TPM) %>%
   rename(Hugo_Symbol = gene_symbol,
-	 Entrez_Gene_Id = entrez_id, 
+	 Entrez_Gene_Id = entrez_id,
   	 !!opt$sample_id := TPM)
 
 # Step 5: Handle duplicate Hugo symbols (keeping highest expression)

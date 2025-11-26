@@ -1,5 +1,5 @@
 process CONVERT_CPSR_TO_MAF {
-    publishDir "${params.outdir}/${maf_meta.group}/${maf_meta.sample}", mode: 'copy'
+    publishDir "${params.outdir}/${maf_meta.group}/${maf_meta.subject}", mode: 'copy'
 
     tag { subject_id }
 

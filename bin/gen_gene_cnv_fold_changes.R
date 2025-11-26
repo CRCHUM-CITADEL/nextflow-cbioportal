@@ -135,7 +135,7 @@ for (i in 1:nrow(vcf_data)) {
   if (i %% 10 == 0) {
     cat(sprintf("Processing CNV %d of %d...\n", i, nrow(vcf_data)))
   }
-  
+
   # Debug: print first CNV details
   if (i == 1) {
     cat("First CNV details:\n")

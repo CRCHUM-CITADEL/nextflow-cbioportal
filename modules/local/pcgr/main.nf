@@ -1,6 +1,6 @@
 process PCGR {
     tag { meta.sample }
-    label 'process_medium_memory'
+    label 'process_medium'
 
     container params.container_pcgr
 
@@ -14,7 +14,9 @@ process PCGR {
 
     script:
     """
-    mv ${ger_dna_vcf} ${meta.sample}.vcf.gz 
+    # mv needed to match with index file
+    mv ${ger_dna_vcf} ${meta.sample}.vcf.gz
+
 
     cpsr \
     --input_vcf ${meta.sample}.vcf.gz \
@@ -23,6 +25,8 @@ process PCGR {
     --output_dir . \
     --genome_assembly grch38 \
     --panel_id 0 \
+    --vep_n_forks 8 \
+    --vcfanno_n_proc 15 \
     --sample ${meta.sample}
     """
 }

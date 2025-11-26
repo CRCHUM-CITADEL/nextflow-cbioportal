@@ -18,22 +18,22 @@ git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git && cd
 
 You will need to change parameters in the nextflow config in order to point to certain files. These options are found in the `params` dict in nextflow.config. Parameters are mandatory unless specified otherwise.
 
-| Field                | Description                                                                                                                   |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| mode                 | Pipeline run mode. Options : ['clinical', 'genomic']                                                                          |
-| genomic_samplesheet  | Input samplesheet for genomic pipeline. See section below.                                                                    |
-| ensembl_annotations_expr  | Ensembl annotation .tsv file for expression subworkflow (tested with ensembl 110 with biomart)                                                                                                 |
-| ensembl_annotations  | Ensembl annotation .tsv file. (tested with 113 with biomart)                                                                                                 |
-| vep_cache            | Cache folder of downloaded ensembl vep release.                                                                               |
-| vep_params           | Parameters for VEP usage as described here: <br> https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optional) |
-| pcgr_data            | Folder of pcgr reference data (uncompressed)                                                                                  |
-| genome_reference     | Location of GRCh38 reference fasta file.                                                                                      |
-| container_pcgr       | Location of PCGR apptainer image (remote or local)                                                                            |
-| container_python     | Location of Python apptainer image (remote or local)                                                                          |
-| container_r          | Location of R apptainer image (remote or local)                                                                               |
-| container_vcf2maf    | Location of nf-core vcf2maf module container <br> apptainer image (remote or local) (optional)                                |
-| clinical_samplesheet | Input samplesheet for clinical pipeline. See section below.                                                                   |
-| id_linking_file      | ID linking file generated from genomic pipeline.                                                                              |
+| Field                    | Description                                                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| mode                     | Pipeline run mode. Options : ['clinical', 'genomic']                                                                          |
+| genomic_samplesheet      | Input samplesheet for genomic pipeline. See section below.                                                                    |
+| ensembl_annotations_expr | Ensembl annotation .tsv file for expression subworkflow (tested with ensembl 110 with biomart)                                |
+| ensembl_annotations      | Ensembl annotation .tsv file. (tested with 113 with biomart)                                                                  |
+| vep_cache                | Cache folder of downloaded ensembl vep release.                                                                               |
+| vep_params               | Parameters for VEP usage as described here: <br> https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optional) |
+| pcgr_data                | Folder of pcgr reference data (uncompressed)                                                                                  |
+| genome_reference         | Location of GRCh38 reference fasta file.                                                                                      |
+| container_pcgr           | Location of PCGR apptainer image (remote or local)                                                                            |
+| container_python         | Location of Python apptainer image (remote or local)                                                                          |
+| container_r              | Location of R apptainer image (remote or local)                                                                               |
+| container_vcf2maf        | Location of nf-core vcf2maf module container <br> apptainer image (remote or local) (optional)                                |
+| clinical_samplesheet     | Input samplesheet for clinical pipeline. See section below.                                                                   |
+| id_linking_file          | ID linking file generated from genomic pipeline.                                                                              |
 
 ## Samplesheet
 

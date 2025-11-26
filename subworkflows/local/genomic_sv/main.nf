@@ -14,36 +14,6 @@ workflow GENOMIC_SV {
             sv_vcf
         )
 
-        cbioportal_genomic_sv_merged = cbioportal_genomic_sv_files
-            .map {meta, file -> [meta.group, file]}
-            .groupTuple()
-            .flatMap { group, files ->
-                files.collect { file -> [group, file]}
-            }
-            .collectFile(storeDir: "${params.outdir}",
-                        keepHeader : true,
-                        skip: 1,
-                        sort : 'deep') { group, file ->
-                            ["${group}/data_sv.txt", file.text]
-                        }
-
-        meta_text = """cancer_study_identifier: add_text
-genetic_alteration_type: STRUCTURAL_VARIANT
-datatype: SV
-stable_id: structural_variants
-show_profile_in_analysis_tab: true
-profile_name: Structural variants from DNA
-profile_description: Structural Variant Data DNA
-data_filename: data_sv.txt
-        """
-
-        meta_file = GENERATE_META_FILE(
-            all_groups,
-            "sv",
-            meta_text
-        )
-
     emit:
-        meta_file
-        cbioportal_genomic_sv_merged
+        sv_out = cbioportal_genomic_sv_files
 }

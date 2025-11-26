@@ -1,4 +1,5 @@
 process GET_TPM {
+    publishDir "${params.outdir}/${meta.group}/${meta.subject}", mode : 'copy'
     tag { meta.sample }   // helps logging/tracing per sample
 
     container params.container_r

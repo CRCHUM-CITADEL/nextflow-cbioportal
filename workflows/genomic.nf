@@ -8,6 +8,7 @@ include { GENOMIC_CNV } from '../subworkflows/local/genomic_cnv'
 include { GENOMIC_SV } from '../subworkflows/local/genomic_sv'
 include { GENOMIC_EXPRESSION } from '../subworkflows/local/genomic_expression'
 include { GENOMIC_MUTATIONS } from '../subworkflows/local/genomic_mutations'
+include { GENOMIC_AGGREGATE_OUTPUT } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE } from '../modules/local/generate_meta_file'
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -29,7 +30,7 @@ workflow GENOMIC {
 
     main:
 
-        ch_versions = Channel.empty()
+        ch_versions = channel.empty()
 
         // Create a channel where each record has: sample, filepath, germinal or somatic, pipeline label, and dna or rna
         ch_files_all = samplesheet_list
@@ -46,89 +47,109 @@ workflow GENOMIC {
                 return tuple([group: group, subject : subject, sample: sample, type: type, pipeline : pipeline, sequence: sequence],filepath)
             }
 
-        def existing_samples = ch_files_all.filter { meta,filepath -> 
-            def sample_dir = file("${params.outdir}/${meta.group}/${meta.sample}")
-            sample_dir.exists() && sample_dir.isDirectory()
-        }
-
-        existing_samples.view { "Already exists : ${it[0].sample}" }
-
-        // Filter out only the ones for the “cnv” pipeline
-        ch_vcf_cnv = ch_files_all
-            .filter {meta, filepath ->
-                meta.pipeline == 'cnv' && meta.type == 'somatic' && meta.sequence == 'dna'
+       // create a channel using meta of files already ran (Channel : [meta, file]
+       ch_files_ran = ch_files_all
+            .filter {meta, filepath -> 
+                def sample_dir = file("${params.outdir}/${meta.group}/${meta.subject}")
+                sample_dir.exists() && sample_dir.isDirectory()
             }
-            .map { meta, filepath ->
-                tuple(meta, filepath)
-            }
+            .map { meta, filepath -> 
+                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
 
+                if (meta.pipeline == 'cnv' ) {
+                    def seg = file("${baseDir}/${meta.sample}_data_cna_hg38.seg")
+                    def longfile = file("${baseDir}/${meta.sample}_data_cna_long.txt")
+                    return [meta, [seg : seg, longfile: longfile]]
+                }
+
+                if (meta.pipeline == 'sv' ) {
+                    def sv = file("${baseDir}/${meta.sample}.data_sv.txt")
+                    return tuple(meta, sv)
+                }
+
+                if (meta.pipeline == 'expression') {
+                    def tpm = file("${baseDir}/${meta.sample}.tpm.tsv")
+                    return tuple(meta, tpm)
+                }
+
+                if (meta.pipeline == 'hard_filtered') {
+                    def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf")
+                    return tuple(meta, maf)
+                }
+           }
+        
+        // get subject names of that have not yet been run
+        existing_subject_names = ch_files_ran 
+            .map { meta, filepath -> meta.subject }
+            .collect()
+            .map { it.toSet() }
+            .ifEmpty([] as Set)
+
+        ch_files_not_ran = ch_files_all
+            .combine(existing_subject_names)
+            .filter { meta, filepath, sample_set -> meta.subject !in sample_set }
+            .map { meta, filepath, sample_set -> tuple(meta, filepath) }
+ 
+        
+        ch_files_not_ran
+            .collect()
+            .filter { list -> 
+                if (list.isEmpty()) {
+                    error "According to current output directory, not samples are left to run."
+                }
+                return true
+            }
+        ch_file_to_run = ch_files_not_ran
+            .branch { meta, filepath -> 
+                cnv             : meta.pipeline == 'cnv' && meta.type == 'somatic' && meta.sequence == 'dna'
+                sv              : meta.pipeline == 'sv'
+                expression      : meta.pipeline == 'expression'
+                germinal_dna    : meta.pipeline == 'hard_filtered' && meta.type == 'germinal' && meta.sequence == 'dna'
+                somatic_dna     : meta.pipeline == 'hard_filtered' && meta.type == 'somatic' && meta.sequence == 'dna'
+                somatic_rna     : meta.pipeline == 'hard_filtered' && meta.type == 'somatic' && meta.sequence == 'rna'
+            }
+            
         GENOMIC_CNV(
-            ch_vcf_cnv,
+            ch_file_to_run.cnv,
             ensembl_annotations
         )
 
-        // Filter out only the ones for the “sv” pipeline
-        ch_vcf_sv = ch_files_all
-            .filter { meta, filepath ->
-                meta.pipeline == 'sv'
-            }
-            .map { meta, filepath ->
-                tuple(meta, filepath)
-            }
+        // merge new CNV results with those already ra
+        all_cnv_seg_results = GENOMIC_CNV.out.segfile
+            .mix(ch_files_ran
+                    .filter{meta, filepath -> meta.pipeline == 'cnv'}
+                    .map{meta, filepath -> [meta, filepath.seg] }
+                )
+
+        all_cnv_long_results = GENOMIC_CNV.out.longfile
+            .mix(ch_files_ran
+                    .filter{meta, filepath -> meta.pipeline == 'cnv'}
+                    .map{meta, filepath -> [meta, filepath.longfile]}
+                )
 
         GENOMIC_SV(
-            ch_vcf_sv
+            ch_file_to_run.sv
         )
 
-        // Filter out only the ones for the “expression” pipeline
-        ch_vcf_expression = ch_files_all
-            .filter {meta, filepath ->
-                meta.pipeline == 'expression'
-            }
-            .map {meta, filepath ->
-                tuple(meta, filepath)
-            }
-	
+        all_sv_results = GENOMIC_SV.out
+            .mix(ch_files_ran
+                    .filter{meta, filepath -> meta.pipeline == 'sv'}
+                )
 
         GENOMIC_EXPRESSION(
-           ch_vcf_expression,
+           ch_file_to_run.expression,
            ensembl_annotations_expr
         )
 
-        ch_vcf_gen_ger_dna = ch_files_all
-            .filter {meta, filepath ->
-                meta.pipeline == 'hard_filtered' &&
-                meta.type == "germinal" &&
-                meta.sequence == "dna"
-            }
-            .map { meta, filepath ->
-                tuple(meta, filepath)
-            }
-
-        // Filter out only the ones for the “expression” pipeline
-        ch_vcf_gen_som_dna = ch_files_all
-            .filter {meta, filepath ->
-                meta.pipeline == 'hard_filtered' &&
-                meta.type == 'somatic' &&
-                meta.sequence == "dna"
-            }
-            .map { meta, filepath ->
-                tuple(meta, filepath)
-            }
-
-        ch_vcf_gen_som_rna = ch_files_all
-            .filter {meta, filepath ->
-                meta.pipeline == 'hard_filtered' &&
-                meta.sequence == "rna"
-            }
-            .map { meta, filepath ->
-                tuple(meta, filepath)
-            }
+        all_expression_results = GENOMIC_EXPRESSION.out
+            .mix(ch_files_ran
+                    .filter{meta, filepath -> meta.pipeline == 'expression'}
+                )
 
         GENOMIC_MUTATIONS(
-            ch_vcf_gen_ger_dna,
-            ch_vcf_gen_som_dna,
-            ch_vcf_gen_som_rna,
+            ch_file_to_run.germinal_dna,
+            ch_file_to_run.somatic_dna,
+            ch_file_to_run.somatic_rna,
             fasta,
             vep_data,
             pcgr_data,
@@ -136,6 +157,21 @@ workflow GENOMIC {
             needs_pcgr
         )
 
+        all_mutations_results = GENOMIC_MUTATIONS.out
+            .mix(ch_files_ran
+                    .filter{meta, filepath -> meta.pipeline == 'hard_filtered'}
+                )
+        
+        // if results already existed, try to merge ----------- 
+        GENOMIC_AGGREGATE_OUTPUT(
+            all_cnv_seg_results,
+            all_cnv_long_results,
+            all_sv_results,
+            all_expression_results,
+            all_mutations_results
+        )
+
+        // generate meta files and linking file -------------
         all_groups = ch_files_all.map {meta, filepath -> meta.group}.unique()
 
         meta_text = """type_of_cancer: add_text

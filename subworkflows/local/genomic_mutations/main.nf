@@ -32,7 +32,7 @@ workflow GENOMIC_MUTATIONS {
 
         ger_dna_vcf_with_index = ger_dna_vcf
             .join(ger_dna_index)
-            .map {meta, file, index -> tuple(meta, file, index)}
+            .map {meta, filepath, index -> tuple(meta, filepath, index)}
 
         ger_dna_tsv = PCGR(
             ger_dna_vcf_with_index,
@@ -83,46 +83,6 @@ workflow GENOMIC_MUTATIONS {
             som_dna_maf_tsv
         )
 
-        cbioportal_genomic_mutations_merged = cbioportal_genomic_mutation_files
-            .map {meta, file -> [meta.group, file]}
-           .groupTuple()
-            .flatMap { group, files ->
-                files.collect { file -> [group, file]}
-            }
-            .collectFile(storeDir: "${params.outdir}",
-                       keepHeader : true,
-                       skip: 2,
-                        sort: 'deep') { group, file ->
-                            ["${group}/data_mutations_dna_rna_germline.txt", file.text]
-                        }
-
-        all_groups = cbioportal_genomic_mutation_files.map {meta, sample -> meta.group}.unique()
-
-        sequenced_case_list = GENERATE_CASE_LIST(
-            all_groups,
-            "sequenced",
-            som_dna_vcf.map { meta, file -> meta.sample}.collect().map{ it.sort(false).join('\t') } // item at index 1 is sample_id, join by tabs in order to send a list
-        )
-
-        meta_text = """cancer_study_identifier: add_text
-genetic_alteration_type: MUTATION_EXTENDED
-stable_id: mutations
-datatype: MAF
-show_profile_in_analysis_tab: true
-profile_description: ADD TEXT
-profile_name: Mutations
-data_filename: data_mutations_dna_rna_germline.txt
-"""
-
-        meta_file = GENERATE_META_FILE(
-            all_groups,
-            "mutations",
-            meta_text
-        )
-
     emit:
-        meta_file
-        sequenced_case_list
-        cbioportal_genomic_mutations_merged
-
+        out = cbioportal_genomic_mutation_files
 }

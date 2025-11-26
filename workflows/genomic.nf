@@ -38,7 +38,7 @@ workflow GENOMIC {
                 def group = rec[0].group
                 def subject = "${rec[0].subject}"
                 def sample = "${rec[0].sample}" // need to wrap it because if it's just number it will become integer and we need strings
-		// TODO: fix this... 
+		// TODO: fix this...
                 def sub_file = "${rec[0].file}"
                 def filepath = sub_file.startsWith("/") ? sub_file : "${projectDir}/${sub_file}"
                 def type = rec[0].type
@@ -49,11 +49,11 @@ workflow GENOMIC {
 
        // create a channel using meta of files already ran (Channel : [meta, file]
        ch_files_ran = ch_files_all
-            .filter {meta, filepath -> 
+            .filter {meta, filepath ->
                 def sample_dir = file("${params.outdir}/${meta.group}/${meta.subject}")
                 sample_dir.exists() && sample_dir.isDirectory()
             }
-            .map { meta, filepath -> 
+            .map { meta, filepath ->
                 def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
 
                 if (meta.pipeline == 'cnv' ) {
@@ -77,9 +77,9 @@ workflow GENOMIC {
                     return tuple(meta, maf)
                 }
            }
-        
+
         // get subject names of that have not yet been run
-        existing_subject_names = ch_files_ran 
+        existing_subject_names = ch_files_ran
             .map { meta, filepath -> meta.subject }
             .collect()
             .map { it.toSet() }
@@ -89,18 +89,18 @@ workflow GENOMIC {
             .combine(existing_subject_names)
             .filter { meta, filepath, sample_set -> meta.subject !in sample_set }
             .map { meta, filepath, sample_set -> tuple(meta, filepath) }
- 
-        
+
+
         ch_files_not_ran
             .collect()
-            .filter { list -> 
+            .filter { list ->
                 if (list.isEmpty()) {
                     error "According to current output directory, not samples are left to run."
                 }
                 return true
             }
         ch_file_to_run = ch_files_not_ran
-            .branch { meta, filepath -> 
+            .branch { meta, filepath ->
                 cnv             : meta.pipeline == 'cnv' && meta.type == 'somatic' && meta.sequence == 'dna'
                 sv              : meta.pipeline == 'sv'
                 expression      : meta.pipeline == 'expression'
@@ -108,7 +108,7 @@ workflow GENOMIC {
                 somatic_dna     : meta.pipeline == 'hard_filtered' && meta.type == 'somatic' && meta.sequence == 'dna'
                 somatic_rna     : meta.pipeline == 'hard_filtered' && meta.type == 'somatic' && meta.sequence == 'rna'
             }
-            
+
         GENOMIC_CNV(
             ch_file_to_run.cnv,
             ensembl_annotations
@@ -161,8 +161,8 @@ workflow GENOMIC {
             .mix(ch_files_ran
                     .filter{meta, filepath -> meta.pipeline == 'hard_filtered'}
                 )
-        
-        // if results already existed, try to merge ----------- 
+
+        // if results already existed, try to merge -----------
         GENOMIC_AGGREGATE_OUTPUT(
             all_cnv_seg_results,
             all_cnv_long_results,

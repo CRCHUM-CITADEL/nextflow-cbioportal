@@ -3,8 +3,8 @@ include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
 include { MERGE_EXPRESSION_FILES_TO_CBIOPORTAL } from '../../../modules/local/merge_expression_files_to_cbioportal'
 
 workflow GENOMIC_AGGREGATE_OUTPUT {
-    
-    take: 
+
+    take:
         cnv_results_seg // channel [long: [meta, seg_file], seg [meta, seg_file]]
         cnv_results_long
         sv_results
@@ -12,7 +12,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         mutation_results
 
     main:
-        
+
         ch_versions = channel.empty()
 
         // to get all groups, just take .seg files (we assume seg and long are the same)
@@ -31,7 +31,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                          sort: 'deep') { group, filepath ->
                              ["${group}/data_cna_hg38.seg", filepath.text]
                          }
-   
+
          cnv_results_long
              .map {meta, filepath -> [meta.group, filepath]}
              .groupTuple()
@@ -44,7 +44,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                           sort: 'deep') { group, filepath ->
                              ["${group}/data_cna_long.txt", filepath.text]
                           }
-        
+
         // merge sv -------------------------------------------------------------
 
         sv_results
@@ -64,12 +64,12 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         tpm_file_list = expression_results
             .map { meta, filepath -> tuple(meta.group, meta, filepath) }
             .groupTuple()
-            .map { group, metas, files -> 
+            .map { group, metas, files ->
                 def meta = metas[0]  // Take first meta since they share the same group
-                def sortedFiles = files.sort { a, b -> 
+                def sortedFiles = files.sort { a, b ->
                     def na = a.toString().split(/[\/\\]/).last()
                     def nb = b.toString().split(/[\/\\]/).last()
-                    na <=> nb 
+                    na <=> nb
                 }
                 if (sortedFiles.size() < 2) {
                     log.warn "GENOMIC_EXPRESSION: Found ${sortedFiles.size()} TPM file(s) for group ${group}. Need at least 2 files to merge. Skipping merge step."
@@ -80,11 +80,11 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             .filter { it != null }
 
         MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
-            tpm_file_list 
+            tpm_file_list
         )
 
         // merge mutations
-        mutation_results 
+        mutation_results
             .map {meta, filepath -> [meta.group, filepath]}
             .groupTuple()
             .flatMap { group, files ->
@@ -100,9 +100,9 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         // create meta files and case lists ---------------------------------------------------------
 
         case_name_all = channel.of("cnv","sequenced")
-        
+
         cnv_sample_list = mutation_results
-            .map {meta, filepath -> meta.sample} 
+            .map {meta, filepath -> meta.sample}
             .collect()
             .map { it.sort(false).join('\t') }
 
@@ -149,7 +149,7 @@ profile_name: Structural variants from DNA
 profile_description: Structural Variant Data DNA
 data_filename: data_sv.txt
         """
-        
+
         meta_text_expression = """cancer_study_identifier: add_text
 genetic_alteration_type: MRA_EXPRESSION
 datatype: CONTINUOUS

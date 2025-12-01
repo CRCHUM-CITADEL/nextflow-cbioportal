@@ -87,5 +87,3 @@ From: ubuntu:24.04
 
 %runscript
     exec vcf2maf.pl "$@"
-
-

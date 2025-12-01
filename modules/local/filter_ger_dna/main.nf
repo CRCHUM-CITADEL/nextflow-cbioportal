@@ -1,5 +1,5 @@
 process FILTER_GER_DNA {
-	tag "$meta.sample"	
+	tag "$meta.sample"
 	label 'process_low'
 
 	input:

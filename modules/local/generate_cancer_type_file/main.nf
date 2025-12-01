@@ -1,4 +1,4 @@
-process GENERATE_CANCER_TYPE_FILE { 
+process GENERATE_CANCER_TYPE_FILE {
     publishDir "${params.outdir}/${group}", mode: 'copy'
 
     input:

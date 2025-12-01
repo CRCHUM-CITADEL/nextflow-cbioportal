@@ -14,26 +14,26 @@ process VCF2MAF {
 
     script:
     def VEP_CMD       = "--vep-path ${vep_data} --vep-data ${vep_data}/cache ${params.vep_params}"
-    def VERSION       = '1.6.22' 
+    def VERSION       = '1.6.22'
     """
 
     # Handle compressed VCF files
     if [[ $vcf == *.gz ]]; then
         tmp=\$(mktemp --suffix=.vcf)
-        rm -f "\$tmp" 
+        rm -f "\$tmp"
         gunzip -c "$vcf" > "\$tmp"
         INPUT_VCF="\$tmp"
     else
         INPUT_VCF="$vcf"
     fi
-    
+
     cat \$INPUT_VCF | grep "#" > tmp.${meta.sample}.somatic.vcf
     cat \$INPUT_VCF | grep PASS >> tmp.${meta.sample}.somatic.vcf
 
     ## TODO: is DN always first?
     TMP_NORMAL_ID=\$(grep "^#CHROM" \$INPUT_VCF | awk '{print \$10}')
     TMP_TUMOR_ID=\$(grep "^#CHROM" \$INPUT_VCF | awk '{print \$11}')
-    
+
     vcf2maf.pl \\
         --tumor-id \$TMP_TUMOR_ID \\
         --normal-id \$TMP_NORMAL_ID \\

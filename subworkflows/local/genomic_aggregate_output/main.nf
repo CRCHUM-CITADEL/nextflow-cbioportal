@@ -101,7 +101,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
 
         case_name_all = channel.of("cnv","sequenced")
         
-        cnv_sample_list = mutation_results
+        cnv_sample_list = cnv_results
             .map {meta, filepath -> meta.sample} 
             .collect()
             .map { it.sort(false).join('\t') }
@@ -151,7 +151,7 @@ data_filename: data_sv.txt
         """
         
         meta_text_expression = """cancer_study_identifier: add_text
-genetic_alteration_type: MRA_EXPRESSION
+genetic_alteration_type: MRNA_EXPRESSION
 datatype: CONTINUOUS
 stable_id: rna_seq_v2_mrna
 show_profile_in_analysis_tab: true

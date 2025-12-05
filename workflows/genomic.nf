@@ -33,80 +33,130 @@ workflow GENOMIC {
         ch_versions = channel.empty()
 
         // Create a channel where each record has: sample, filepath, germinal or somatic, pipeline label, and dna or rna
-        ch_files_all = samplesheet_list
+        ch_meta_all = samplesheet_list
             .map { rec ->
-                def group = rec[0].group
+                def group = "${rec[0].group}"
                 def subject = "${rec[0].subject}"
-                def sample = "${rec[0].sample}" // need to wrap it because if it's just number it will become integer and we need strings
-		// TODO: fix this...
-                def sub_file = "${rec[0].file}"
-                def filepath = sub_file.startsWith("/") ? sub_file : "${projectDir}/${sub_file}"
-                def type = rec[0].type
-                def pipeline = rec[0].pipeline  // e.g. "cnv", "hard_filtered", etc.
-                def sequence = rec[0].sequence  // e.g. "dna", "rna"
-                return tuple([group: group, subject : subject, sample: sample, type: type, pipeline : pipeline, sequence: sequence],filepath)
+                def sample = "${rec[0].sample}" 
+                def sub_folder = "${rec[0].folder}"
+                def input_path = sub_folder.startsWith("/") ? sub_folder : "${projectDir}/${sub_folder}"
+                def type = "${rec[0].type}" // e.g. germinal, somatic
+                def sequence = "${rec[0].sequence}"  // e.g. "dna", "rna"
+                return tuple([group: group, subject : subject, sample: sample, sequence: sequence, input_path: input_path])
             }
 
-       // create a channel using meta of files already ran (Channel : [meta, file]
-       ch_files_ran = ch_files_all
-            .filter {meta, filepath ->
+        // finds a file given a pattern and sends a warning to console if it's not found
+        // returns tuple(meta, filepath)
+        def findFile(meta, pattern, pipeline) {
+            def file_path = file("${pattern}")
+            
+            if (!file_path.exists() || file_path.isEmpty()) {
+                log.warn "File not found for ${meta.sample} (${pipeline}): ${meta.file_path}/${pattern}"
+                return null
+            }
+            
+            def meta_with_subworkflow = [*:meta, pipeline: pipeline]
+            return tuple(meta_with_subworkflow, file_path)
+        }
+
+        // create a channel using meta of files already ran (Channel : [meta, file])
+        ch_files_ran = ch_files_all
+            .filter {meta ->
                 def sample_dir = file("${params.outdir}/${meta.group}/${meta.subject}")
                 sample_dir.exists() && sample_dir.isDirectory()
             }
-            .map { meta, filepath ->
+            .flatMap { meta ->
                 def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
 
-                if (meta.pipeline == 'cnv' ) {
-                    def seg = file("${baseDir}/${meta.sample}_data_cna_hg38.seg")
-                    def longfile = file("${baseDir}/${meta.sample}_data_cna_long.txt")
-                    return [meta, [seg : seg, longfile: longfile]]
-                }
-
-                if (meta.pipeline == 'sv' ) {
-                    def sv = file("${baseDir}/${meta.sample}.data_sv.txt")
-                    return tuple(meta, sv)
-                }
-
-                if (meta.pipeline == 'expression') {
-                    def tpm = file("${baseDir}/${meta.sample}.tpm.tsv")
-                    return tuple(meta, tpm)
-                }
-
-                if (meta.pipeline == 'hard_filtered') {
-                    def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf")
-                    return tuple(meta, maf)
-                }
+                def files = []
+                
+                    def cnv_seg = findFile(meta, "${baseDir}/${meta.sample}_data_cna_hg38.seg", "cnv")                
+                    def cnv_long = findFile(meta, "${baseDir}/${meta.sample}_data_cna_long.txt", "cnv")
+                    
+                    // merge 
+                    if (cnv_seg && cnv_long) {
+                        cnv = cnv_seg
+                            .join(cnv_long)
+                            .map {  meta, cnv_seg, cnv_long -> 
+                                return tuplke(meat, [seg : cnv_seg, longfile: cnv_long])
+                            }
+                        files.add(cnv)
+                    }
+                
+                    def expression = findFile(meta, "${baseDir}/${meta.sample}.tpm.tsv", "expression")
+                    if (expression) files.add(expression)
+                    
+                    def sv = findFile(meta, "${baseDir}/${meta.sample}.data_sv.txt", "sv")
+                    if (sv) files.add(sv)
+                    
+                    def mutation = findFile(meta, "${baseDir}/${meta.subject}.somatic_rna_germline.maf", "mutation")
+                    if (mutation) files.add(mutation)
+                
+                return files
+            
            }
 
         // get subject names of that have not yet been run
         existing_subject_names = ch_files_ran
-            .map { meta, filepath -> meta.subject }
+            .map { meta -> meta.subject }
             .collect()
             .map { it.toSet() }
             .ifEmpty([] as Set)
 
         ch_files_not_ran = ch_files_all
             .combine(existing_subject_names)
-            .filter { meta, filepath, sample_set -> meta.subject !in sample_set }
-            .map { meta, filepath, sample_set -> tuple(meta, filepath) }
+            .filter { meta, sample_set -> meta.subject !in sample_set }
+            .map { meta, sample_set -> meta }
 
-
+        // error if there are no files to run
         ch_files_not_ran
             .collect()
             .filter { list ->
                 if (list.isEmpty()) {
-                    error "According to current output directory, not samples are left to run."
+                    error "According to current output directory, no samples are left to run."
                 }
                 return true
             }
+
+        ch_file_to_run = ch_files_not_ran
+            .flatMap { meta ->
+                def files = []
+                
+                if (meta.type == 'germinal') {
+                    def result = findFile(meta, "${meta.file_path}/*WGS_germinal.hard-filtered.vcf.gz", "mutation")
+                    if (result) files.add(result)
+                }
+                
+                if (meta.type == 'somatic' && meta.sequence == 'dna') {
+                    def cnv = findFile(meta, "${meta.file_path}/*.WGS_somatic-tumor_normal.cnv.vcf.gz", "cnv")
+                    if (cnv) files.add(cnv)
+                    
+                    def mutation = findFile(meta, "${meta.file_path}/*.WGS_germinal.hard-filtered.vcf.gz", "mutation")
+                    if (mutation) files.add(mutation)
+                }
+                
+                if (meta.type == 'somatic' && meta.sequence == 'rna') {
+                    def expression = findFile(meta, "${meta.file_path}/*.quant.genes.sf", "expression")
+                    if (expression) files.add(expression)
+                    
+                    def sv = findFile(meta, "${meta.file_path}/*.fusion_candidates.final", "sv")
+                    if (sv) files.add(sv)
+                    
+                    def mutation = findFile(meta, "${meta.file_path}/*.WGS_germinal.hard-filtered.vcf.gz", "mutation")
+                    if (mutation) files.add(mutation)
+                }
+                
+                return files
+            }
+            
         ch_file_to_run = ch_files_not_ran
             .branch { meta, filepath ->
                 cnv             : meta.pipeline == 'cnv' && meta.type == 'somatic' && meta.sequence == 'dna'
                 sv              : meta.pipeline == 'sv'
                 expression      : meta.pipeline == 'expression'
-                germinal_dna    : meta.pipeline == 'hard_filtered' && meta.type == 'germinal' && meta.sequence == 'dna'
-                somatic_dna     : meta.pipeline == 'hard_filtered' && meta.type == 'somatic' && meta.sequence == 'dna'
-                somatic_rna     : meta.pipeline == 'hard_filtered' && meta.type == 'somatic' && meta.sequence == 'rna'
+                germinal_dna    : meta.pipeline == 'mutation' && meta.type == 'germinal' && meta.sequence == 'dna'
+                somatic_dna     : meta.pipeline == 'mutation' && meta.type == 'somatic' && meta.sequence == 'dna'
+                somatic_rna     : meta.pipeline == 'mutation' && meta.type == 'somatic' && meta.sequence == 'rna'
             }
 
         GENOMIC_CNV(
@@ -159,7 +209,7 @@ workflow GENOMIC {
 
         all_mutations_results = GENOMIC_MUTATIONS.out
             .mix(ch_files_ran
-                    .filter{meta, filepath -> meta.pipeline == 'hard_filtered'}
+                    .filter{meta, filepath -> meta.pipeline == 'mutation'}
                 )
 
         // if results already existed, try to merge -----------

@@ -37,12 +37,6 @@
                 "enum": ["dna", "rna"],
                 "meta": "sequence"
             },
-            "filetype": {
-                "type": "string",
-                "errorMessage": "filetype must be provided and be one of 'cnv', 'sv', 'expression', 'hard_filtered'",
-                "enum": ["cnv", "sv", "expression", "hard_filtered"],
-                "meta": "pipeline"
-            },
             "info": {
                 "type": "string",
                 "meta": "information"
@@ -50,10 +44,10 @@
             "filepath": {
                 "type": "string",
                 "pattern": "^\\S+\\.(?:vcf\\.gz|final|sf)$",
-                "errorMessage": "Filepath to genomic data must be provided and must have extension '.vcf.gz', '.final' or '.sf'",
-                "meta": "file"
+                "errorMessage": "Folder which contains genomic DN/DT/RT data",
+                "meta": "folder"
             }
         },
-        "required": ["subject_id", "sample_id", "sample_type", "sequence_data", "filetype", "filepath"]
+        "required": ["subject_id", "sample_id", "sample_type", "sequence_data", "filepath"]
     }
 }

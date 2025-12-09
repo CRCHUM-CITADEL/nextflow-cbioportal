@@ -5,7 +5,7 @@ From: rockylinux:8.9
     # update and install base packages
     dnf -y update
     dnf -y install curl wget java-17-openjdk python3.12 procps-ng epel-release git make gcc zlib-devel bzip2 bzip2-devel xz-devel ncurses-devel
-    
+
     dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
     dnf -y install htslib-tools
 

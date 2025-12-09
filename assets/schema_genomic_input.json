@@ -43,7 +43,6 @@
             },
             "filepath": {
                 "type": "string",
-                "pattern": "^\\S+\\.(?:vcf\\.gz|final|sf)$",
                 "errorMessage": "Folder which contains genomic DN/DT/RT data",
                 "meta": "folder"
             }

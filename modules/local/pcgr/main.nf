@@ -20,7 +20,7 @@ process PCGR {
 
     cpsr \
     --input_vcf ${meta.sample}.vcf.gz \
-    --vep_dir ${vep_data}/cache \
+    --vep_dir ${vep_data} \
     --refdata_dir $ref_data \
     --output_dir . \
     --genome_assembly grch38 \

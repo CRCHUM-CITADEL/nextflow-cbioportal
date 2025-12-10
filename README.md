@@ -245,6 +245,7 @@ Le fichier d'entrée génomique doit être un tableau JSON où chaque objet cont
 > [!NOTE]
 > Les champs marqués comme **Requis** doivent être présents dans chaque objet
 > Tous les champs de type chaîne ne peuvent pas contenir d'espaces sauf indication contraire
+> Le `filepath` doit pointer vers un fichier valide avec l'une des extensions acceptées
 
 ### mode = 'clinical'
 

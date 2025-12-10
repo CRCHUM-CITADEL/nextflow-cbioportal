@@ -66,7 +66,7 @@ workflow GENOMIC {
             .map { rec ->
                 def group = "${rec[0].group}"
                 def subject = "${rec[0].subject}"
-                def sample = "${rec[0].sample}" 
+                def sample = "${rec[0].sample}"
                 def sub_folder = "${rec[0].folder}"
                 def input_path = sub_folder.startsWith("/") ? sub_folder : "${projectDir}/${sub_folder}"
                 def type = "${rec[0].type}" // e.g. germinal, somatic
@@ -85,11 +85,11 @@ workflow GENOMIC {
                 def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
 
                 def files = []
-                
-                    def cnv_seg = findFile(meta, "${baseDir}/${meta.sample}_data_cna_hg38.seg", "cnv", true)                
+
+                    def cnv_seg = findFile(meta, "${baseDir}/${meta.sample}_data_cna_hg38.seg", "cnv", true)
                     def cnv_long = findFile(meta, "${baseDir}/${meta.sample}_data_cna_long.txt", "cnv", true)
-                    
-                    // merge 
+
+                    // merge
                     if (cnv_seg && cnv_long) {
                         def meta_cnv = cnv_seg[0]  // Extract meta from the first tuple
                         def seg_file = cnv_seg[1]   // Extract seg filepath
@@ -100,15 +100,15 @@ workflow GENOMIC {
 
                     def expression = findFile(meta, "${baseDir}/${meta.sample}.tpm.tsv", "expression", true)
                     if (expression) files.add(expression)
-                    
+
                     def sv = findFile(meta, "${baseDir}/${meta.sample}.data_sv.txt", "sv", true)
                     if (sv) files.add(sv)
-                    
+
                     def mutation = findFile(meta, "${baseDir}/${meta.subject}.somatic_rna_germline.maf", "mutation", true)
                     if (mutation) files.add(mutation)
-                
+
                 return files
-            
+
            }
 
         // get subject names of that have not yet been run
@@ -137,34 +137,34 @@ workflow GENOMIC {
             .flatMap { meta ->
 
                 def files = []
-                
+
                 if (meta.type == 'germinal') {
                     def result = findFile(meta, "${meta.input_path}/*WGS_germinal.hard-filtered.vcf.gz", "mutation")
                     if (result) files.add(result)
                 }
-                
+
                 if (meta.type == 'somatic' && meta.sequence == 'dna') {
                     def cnv = findFile(meta, "${meta.input_path}/*.WGS_somatic-tumor_normal.cnv.vcf.gz", "cnv")
                     if (cnv) files.add(cnv)
-                    
+
                     def mutation = findFile(meta, "${meta.input_path}/*.WGS_somatic-tumor_normal.hard-filtered.vcf.gz", "mutation")
                     if (mutation) files.add(mutation)
                 }
-                
+
                 if (meta.type == 'somatic' && meta.sequence == 'rna') {
                     def expression = findFile(meta, "${meta.input_path}/*.quant.genes.sf", "expression")
                     if (expression) files.add(expression)
-                    
+
                     def sv = findFile(meta, "${meta.input_path}/*.fusion_candidates.final", "sv")
                     if (sv) files.add(sv)
-                    
+
                     def mutation = findFile(meta, "${meta.input_path}/*.RNAseq_somatic.hard-filtered.vcf.gz", "mutation")
                     if (mutation) files.add(mutation)
                 }
-                
+
                 return files
             }
-            
+
         ch_file_to_run = ch_meta_file_to_run
             .branch { meta, filepath ->
                 cnv             : meta.pipeline == 'cnv' && meta.type == 'somatic' && meta.sequence == 'dna'

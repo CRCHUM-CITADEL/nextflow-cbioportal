@@ -158,7 +158,7 @@ workflow GENOMIC {
                     def sv = findFile(meta, "${meta.input_path}/*.fusion_candidates.final", "sv")
                     if (sv) files.add(sv)
 
-                    def mutation = findFile(meta, "${meta.input_path}/*.RNAseq_somatic.hard-filtered.vcf.gz", "mutation")
+                    def mutation = findFile(meta, "${meta.input_path}/*.RNASeq_somatic.hard-filtered.vcf.gz", "mutation")
                     if (mutation) files.add(mutation)
                 }
 
@@ -168,8 +168,8 @@ workflow GENOMIC {
         ch_file_to_run = ch_meta_file_to_run
             .branch { meta, filepath ->
                 cnv             : meta.pipeline == 'cnv' && meta.type == 'somatic' && meta.sequence == 'dna'
-                sv              : meta.pipeline == 'sv'
-                expression      : meta.pipeline == 'expression'
+                sv              : meta.pipeline == 'sv' && meta.type == 'somatic' && meta.sequence == 'rna'
+                expression      : meta.pipeline == 'expression' && meta.type == 'somatic' && meta.sequence == 'rna'
                 germinal_dna    : meta.pipeline == 'mutation' && meta.type == 'germinal' && meta.sequence == 'dna'
                 somatic_dna     : meta.pipeline == 'mutation' && meta.type == 'somatic' && meta.sequence == 'dna'
                 somatic_rna     : meta.pipeline == 'mutation' && meta.type == 'somatic' && meta.sequence == 'rna'
@@ -206,7 +206,7 @@ workflow GENOMIC {
            ch_file_to_run.expression,
            ensembl_annotations_expr
         )
-
+        
         all_expression_results = GENOMIC_EXPRESSION.out
             .mix(ch_files_ran
                     .filter{meta, filepath -> meta.pipeline == 'expression'}

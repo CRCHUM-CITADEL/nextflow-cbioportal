@@ -8,8 +8,6 @@ workflow GENOMIC_SV {
 
     main:
 
-        all_groups = sv_vcf.map {meta, sample -> meta.group}.unique()
-
         cbioportal_genomic_sv_files = DRAGEN_FUSION_SV_TO_CBIOPORTAL(
             sv_vcf
         )

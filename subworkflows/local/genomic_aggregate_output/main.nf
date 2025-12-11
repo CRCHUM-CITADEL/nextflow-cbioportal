@@ -100,9 +100,9 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         // create meta files and case lists ---------------------------------------------------------
 
         case_name_all = channel.of("cnv","sequenced")
-
-        cnv_sample_list = mutation_results
-            .map {meta, filepath -> meta.sample}
+        
+        cnv_sample_list = cnv_results_seg
+            .map {meta, filepath -> meta.sample} 
             .collect()
             .map { it.sort(false).join('\t') }
 
@@ -111,13 +111,13 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             .collect()
             .map { it.sort(false).join('\t') }
 
-        case_simple_lists = cnv_sample_list.concat(mutation_sample_list)
+        case_sample_lists = cnv_sample_list.concat(mutation_sample_list)
         all_groups_cases = all_groups.combine(case_name_all).map{all_groups, case_name_all -> all_groups }
 
         GENERATE_CASE_LIST(
             all_groups_cases,
             case_name_all,
-            case_simple_lists
+            case_sample_lists
         )
 
         // to get all groups, just take .seg files (we assume seg and long are the same)
@@ -151,7 +151,7 @@ data_filename: data_sv.txt
         """
 
         meta_text_expression = """cancer_study_identifier: add_text
-genetic_alteration_type: MRA_EXPRESSION
+genetic_alteration_type: MRNA_EXPRESSION
 datatype: CONTINUOUS
 stable_id: rna_seq_v2_mrna
 show_profile_in_analysis_tab: true

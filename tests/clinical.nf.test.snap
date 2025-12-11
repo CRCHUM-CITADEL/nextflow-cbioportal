@@ -8,13 +8,13 @@
                 "hg/cancer_type.txt",
                 "hg/data_clinical_patient.txt",
                 "hg/data_clinical_sample.txt",
+                "hg/meta_cancer_type.txt",
+                "hg/meta_clinical_patient.txt",
+                "hg/meta_clinical_sample.txt",
                 "hg2",
                 "hg2/cancer_type.txt",
                 "hg2/data_clinical_patient.txt",
                 "hg2/data_clinical_sample.txt",
-                "hg2/meta_cancer_type.txt",
-                "hg2/meta_clinical_patient.txt",
-                "hg2/meta_clinical_sample.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
@@ -22,18 +22,18 @@
                 "cancer_type.txt:md5,8f7959152f709123f72a0f8332cdbc46",
                 "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
                 "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8",
+                "meta_cancer_type.txt:md5,f1cde77a4c6353d6e9a6b9824df2f4eb",
+                "meta_clinical_patient.txt:md5,c955bbf283912b2f5c07f2c275e5c07d",
+                "meta_clinical_sample.txt:md5,535645d8b15bf8f8b567652fb7303f67",
                 "cancer_type.txt:md5,9d15bbfc389e4f688faea40243bffc22",
                 "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
-                "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8",
-                "meta_cancer_type.txt:md5,f1cde77a4c6353d6e9a6b9824df2f4eb",
-                "meta_clinical_patient.txt:md5,22894c826cd90281f692cf26145250cc",
-                "meta_clinical_sample.txt:md5,22d1f8857f62f70b7259ccfaab12f6fc"
+                "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8"
             ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.04.6"
         },
-        "timestamp": "2025-12-09T08:44:53.418771344"
+        "timestamp": "2025-12-11T10:06:14.516288983"
     }
 }

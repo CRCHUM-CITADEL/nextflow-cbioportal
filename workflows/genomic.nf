@@ -86,8 +86,8 @@ workflow GENOMIC {
 
                 def files = []
 
-                    def cnv_seg = findFile(meta, "${baseDir}/${meta.subject}_data_cna_hg38.seg", "cnv", true)
-                    def cnv_long = findFile(meta, "${baseDir}/${meta.subject}_data_cna_long.txt", "cnv", true)
+                    def cnv_seg = findFile(meta, "${baseDir}/${meta.sample}_data_cna_hg38.seg", "cnv", true)
+                    def cnv_long = findFile(meta, "${baseDir}/${meta.sample}_data_cna_long.txt", "cnv", true)
 
                     // merge
                     if (cnv_seg && cnv_long) {
@@ -98,10 +98,10 @@ workflow GENOMIC {
                         files.add(cnv)
                     }
 
-                    def expression = findFile(meta, "${baseDir}/${meta.subject}.tpm.tsv", "expression", true)
+                    def expression = findFile(meta, "${baseDir}/${meta.sample}.tpm.tsv", "expression", true)
                     if (expression) files.add(expression)
 
-                    def sv = findFile(meta, "${baseDir}/${meta.subject}.data_sv.txt", "sv", true)
+                    def sv = findFile(meta, "${baseDir}/${meta.sample}.data_sv.txt", "sv", true)
                     if (sv) files.add(sv)
 
                     def mutation = findFile(meta, "${baseDir}/${meta.subject}.somatic_rna_germline.maf", "mutation", true)
@@ -258,7 +258,7 @@ reference_genome: hg38
         .filter { rec -> rec[0].type != "germinal" && rec[0].sequence == "dna"}
         .map { rec ->
             def full_name = "${rec[0].subject}"
-            def sample = "${rec[0].subject}"
+            def sample = "${rec[0].sample}"
             def group = rec[0].group
             return tuple(group, "${full_name}\t${sample}")
         }

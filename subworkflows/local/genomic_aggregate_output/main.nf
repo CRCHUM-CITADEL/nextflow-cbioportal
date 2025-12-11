@@ -16,7 +16,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         ch_versions = channel.empty()
 
         // to get all groups, just take .seg files (we assume seg and long are the same)
-        all_groups = cnv_results_seg.map {meta, filepath -> meta.group}.unique()
+        all_groups = cnv_results_seg.map {meta, sample -> meta.group}.unique()
 
         // merge cnv ----------------------------------------
         cnv_results_seg
@@ -101,23 +101,23 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
 
         case_name_all = channel.of("cnv","sequenced")
         
-        cnv_subject_list = cnv_results_seg
-            .map {meta, filepath -> meta.subject} 
+        cnv_sample_list = cnv_results_seg
+            .map {meta, filepath -> meta.sample} 
             .collect()
             .map { it.sort(false).join('\t') }
 
-        mutation_subject_list = mutation_results
-            .map {meta, filepath -> meta.subject}
+        mutation_sample_list = mutation_results
+            .map {meta, filepath -> meta.sample}
             .collect()
             .map { it.sort(false).join('\t') }
 
-        case_subject_lists = cnv_subject_list.concat(mutation_subject_list)
+        case_sample_lists = cnv_sample_list.concat(mutation_sample_list)
         all_groups_cases = all_groups.combine(case_name_all).map{all_groups, case_name_all -> all_groups }
 
         GENERATE_CASE_LIST(
             all_groups_cases,
             case_name_all,
-            case_subject_lists
+            case_sample_lists
         )
 
         // to get all groups, just take .seg files (we assume seg and long are the same)

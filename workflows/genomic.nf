@@ -258,7 +258,7 @@ reference_genome: hg38
         .filter { rec -> rec[0].type != "germinal" && rec[0].sequence == "dna"}
         .map { rec ->
             def full_name = "${rec[0].subject}"
-            def sample = "${rec[0].subject}"
+            def sample = "${rec[0].sample}"
             def group = rec[0].group
             return tuple(group, "${full_name}\t${sample}")
         }

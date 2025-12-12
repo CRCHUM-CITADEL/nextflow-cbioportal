@@ -13,7 +13,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-  NXF_VER: "25.04.7"
+  NXF_VER: "25.10.2"
   NFT_VER: "0.9.3"
   NFT_WORKDIR: "~"
   NXF_ANSI_LOG: false
@@ -64,7 +64,7 @@ jobs:
         isMain:
           - ${{ github.base_ref == 'master' || github.base_ref == 'main' }}
         NXF_VER:
-          - "25.04.7"
+          - "25.10.2"
 
     env:
       NXF_ANSI_LOG: false

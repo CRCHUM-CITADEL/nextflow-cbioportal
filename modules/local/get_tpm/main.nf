@@ -5,11 +5,11 @@ process GET_TPM {
     container params.container_r
 
     input:
-        tuple val(meta), path(somatic_expression_file)      // one sample id + corresponding .quant.genes.sf  file
+        tuple val(meta), path(somatic_expression_file)      // meta + corresponding .quant.genes.sf  file
         path ensembl_annotations                            // one gene annotations file (biomart ensembl)
 
     output:
-        tuple val(meta), path("${meta.sample}.tpm.tsv")
+        tuple val(meta), path("${meta.subject}.tpm.tsv")
 
     script:
     """
@@ -19,7 +19,7 @@ process GET_TPM {
     gen_get_tpm.R \
         --input $somatic_expression_file \
         --gene_map gene_id_to_name.tsv \
-        --sample ${meta.sample} \
-        --output ${meta.sample}.tpm.tsv
+        --sample ${meta.subject} \
+        --output ${meta.subject}.tpm.tsv
     """
 }

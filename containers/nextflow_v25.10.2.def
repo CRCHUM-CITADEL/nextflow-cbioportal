@@ -4,7 +4,11 @@ From: rockylinux:8.9
 %post
     # update and install base packages
     dnf -y update
-    dnf -y install curl wget java-17-openjdk python3.12 procps-ng epel-release git
+    dnf -y install curl wget java-17-openjdk python3.12 procps-ng epel-release git make gcc zlib-devel bzip2 bzip2-devel xz-devel ncurses-devel
+
+    dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+    dnf -y install htslib-tools
+
     dnf clean all
     rm -rf /var/cache/dnf
 
@@ -20,7 +24,7 @@ From: rockylinux:8.9
     python3.12 -m pip install --no-cache-dir pre-commit
 
     # Nextflow & nf-test
-    export NXF_VER=25.04.7
+    export NXF_VER=25.04.6
     curl -s https://get.nextflow.io | bash
     mv nextflow /usr/local/bin/nextflow
     nextflow -v
@@ -40,14 +44,14 @@ From: rockylinux:8.9
 
 
 %environment
-    export NXT_VER=25.04.7
+    export NXT_VER=25.10.2
     export PATH=/usr/local/bin:$PATH
     # Set JAVA_HOME (adjust if paths differ)
     export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-$(uname -m)
 
 
 %labels
-    Version 25.04.7
+    Version 25.10.2
     Description Nextflow + nf-test + pre-commit on RockyLinux 8.10
 
 %runscript

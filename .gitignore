@@ -27,3 +27,4 @@ assets/vep/*
 data/
 
 util_*.txt
+.venv

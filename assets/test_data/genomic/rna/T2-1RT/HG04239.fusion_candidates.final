@@ -1,0 +1,5 @@
+#FusionGene	Score	LeftBreakpoint	RightBreakpoint	Gene1Location	Gene2Location	GeneSense	Gene2Sense	Gene1Id	Gene2Id	NumSplitReads	NumSoftClippedReads	NumPairedReads	ReadNames
+ERG--TMPRSS2	0.957	chr21:39874412:+	chr21:41523455:-	IntactExon	IntactExon	True	True	ENSG00000157554	ENSG00000184012	2	1	1	read001,read002
+RUNX1--ERG	0.834	chr21:36162345:+	chr21:39874412:+	IntactExon	BrokenExon	True	True	ENSG00000159216	ENSG00000157554	3	2	3	read010,read011,read012
+ETS2--RUNX1	0.998	chr21:39315421:-	chr21:36162345:+	IntactExon	IntactExon	True	True	ENSG00000157557	ENSG00000159216	1	1	2	read020,read021
+SON--ERG	0.5266	chr21:34680112:+	chr21:39874412:-	IntactExon	IntactExon	True	True	ENSG00000159176	ENSG00000157554	1	2	4	read030,read031,read032

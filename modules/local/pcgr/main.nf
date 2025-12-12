@@ -1,6 +1,6 @@
 process PCGR {
     tag { meta.sample }
-    label 'process_medium'
+    label 'process_medium_memory'
 
     container params.container_pcgr
 
@@ -20,13 +20,11 @@ process PCGR {
 
     cpsr \
     --input_vcf ${meta.sample}.vcf.gz \
-    --vep_dir ${vep_data}/cache \
+    --vep_dir ${vep_data} \
     --refdata_dir $ref_data \
     --output_dir . \
     --genome_assembly grch38 \
     --panel_id 0 \
-    --vep_n_forks 8 \
-    --vcfanno_n_proc 15 \
     --sample ${meta.sample}
     """
 }

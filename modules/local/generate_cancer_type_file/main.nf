@@ -9,6 +9,6 @@ process GENERATE_CANCER_TYPE_FILE {
 
     script:
     """
-    echo -e "${group.toLowerCase()}\tPlaceholder cancer type\tOrangeRed\ttissue" > cancer_type.txt
+    echo -e "${group}\tPlaceholder cancer type\tOrangeRed\ttissue" > cancer_type.txt
     """
 }

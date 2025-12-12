@@ -18,22 +18,22 @@ git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git && cd
 
 You will need to change parameters in the nextflow config in order to point to certain files. These options are found in the `params` dict in nextflow.config. Parameters are mandatory unless specified otherwise.
 
-| Field                    | Description                                                                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| mode                     | Pipeline run mode. Options : ['clinical', 'genomic']                                                                             |
-| genomic_samplesheet      | Input samplesheet for genomic pipeline. See section below.                                                                       |
-| ensembl_annotations_expr | Ensembl annotation .tsv file for expression subworkflow (tested with ensembl 110 with biomart)                                   |
-| ensembl_annotations      | Ensembl annotation .tsv file. (tested with 113 with biomart)                                                                     |
-| vep_cache                | Cache folder of downloaded ensembl vep release.                                                                                  |
+| Field                    | Description                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| mode                     | Pipeline run mode. Options : ['clinical', 'genomic']                                                                           |
+| genomic_samplesheet      | Input samplesheet for genomic pipeline. See section below.                                                                     |
+| ensembl_annotations_expr | Ensembl annotation .tsv file for expression subworkflow (tested with ensembl 110 with biomart)                                 |
+| ensembl_annotations      | Ensembl annotation .tsv file. (tested with 113 with biomart)                                                                   |
+| vep_cache                | Cache folder of downloaded ensembl vep release.                                                                                |
 | vep_params               | Parameters for VEP usage as described here:`<br>` https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optional) |
-| pcgr_data                | Folder of pcgr reference data (uncompressed)                                                                                     |
-| genome_reference         | Location of GRCh38 reference fasta file.                                                                                         |
-| container_pcgr           | Location of PCGR apptainer image (remote or local)                                                                               |
-| container_python         | Location of Python apptainer image (remote or local)                                                                             |
-| container_r              | Location of R apptainer image (remote or local)                                                                                  |
+| pcgr_data                | Folder of pcgr reference data (uncompressed)                                                                                   |
+| genome_reference         | Location of GRCh38 reference fasta file.                                                                                       |
+| container_pcgr           | Location of PCGR apptainer image (remote or local)                                                                             |
+| container_python         | Location of Python apptainer image (remote or local)                                                                           |
+| container_r              | Location of R apptainer image (remote or local)                                                                                |
 | container_vcf2maf        | Location of nf-core vcf2maf module container`<br>` apptainer image (remote or local) (optional)                                |
-| clinical_samplesheet     | Input samplesheet for clinical pipeline. See section below.                                                                      |
-| id_linking_file          | ID linking file generated from genomic pipeline.                                                                                 |
+| clinical_samplesheet     | Input samplesheet for clinical pipeline. See section below.                                                                    |
+| id_linking_file          | ID linking file generated from genomic pipeline.                                                                               |
 
 ## Samplesheet
 
@@ -47,15 +47,15 @@ The samplesheet format is heavily based on `<a href="https://github.com/nf-core/
 
 The genomic input file must be a CSV file where each object contains the following fields:
 
-| Column Name       | Type    | Required      | Pattern                         | Options                   | Description                                                                   |
-| ----------------- | ------- | ------------- | ------------------------------- | ------------------------- | ----------------------------------------------------------------------------- |
-| `group_id`      | string  | No            | `^\S+$` (no spaces)           | -                         | Group identifier                                                              |
-| `subject_id`    | string  | **Yes** | `^(?:\d+\|\S+)$` (no spaces)   | -                         | Subject identifier                                                            |
-| `sample_id`     | integer | **Yes** | `^\d+$` (numeric only)        | -                         | Sample identifier                                                             |
-| `sample_type`   | string  | **Yes** | -                               | `somatic`, `germinal` | Type of sample                                                                |
-| `sequence_data` | string  | **Yes** | -                               | `dna`, `rna`          | Type of sequence data                                                         |
-| `info`          | string  | No            | -                               | -                         | Additional information                                                        |
-| `filepath`      | string  | **Yes** | - | -                         | Path to DRAGEN output folder containing sample germinal or tumoral data (DN/DT/RT) |
+| Column Name     | Type    | Required | Pattern                      | Options               | Description                                                                        |
+| --------------- | ------- | -------- | ---------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
+| `group_id`      | string  | No       | `^\S+$` (no spaces)          | -                     | Group identifier                                                                   |
+| `subject_id`    | string  | **Yes**  | `^(?:\d+\|\S+)$` (no spaces) | -                     | Subject identifier                                                                 |
+| `sample_id`     | integer | **Yes**  | `^\d+$` (numeric only)       | -                     | Sample identifier                                                                  |
+| `sample_type`   | string  | **Yes**  | -                            | `somatic`, `germinal` | Type of sample                                                                     |
+| `sequence_data` | string  | **Yes**  | -                            | `dna`, `rna`          | Type of sequence data                                                              |
+| `info`          | string  | No       | -                            | -                     | Additional information                                                             |
+| `filepath`      | string  | **Yes**  | -                            | -                     | Path to DRAGEN output folder containing sample germinal or tumoral data (DN/DT/RT) |
 
 > [!NOTE]
 > Fields marked as **Required** must be present in each object
@@ -67,13 +67,13 @@ The genomic input file must be a CSV file where each object contains the followi
 
 The clinical input file must be a CSV where each object contains the following fields:
 
-| Column Name         | Type   | Required      | Pattern               | Options                                                                                                                   | Description                                            |
-| ------------------- | ------ | ------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `group_id`        | string | No            | `^\S+$` (no spaces) | -                                                                                                                         | Group identifier                                       |
-| `filetype`        | string | **Yes** | -                     | `patient`, `diagnosis`, `treatment`, `surgeries` `<br>` `systemic_treatment`, `specimen`, `radio_therapy` | File type category                                     |
-| `filepath`        | string | **Yes** | `^\S+\.csv)$`       | -                                                                                                                         | Path to clincial data file (must end with `.csv`)    |
-| `extraction_date` | string | **Yes** | `^\S+$`             | -                                                                                                                         | Date of which the data was extracted from the database |
-| `info`            | string | No            | -                     | -                                                                                                                         | Additional information                                 |
+| Column Name       | Type   | Required | Pattern             | Options                                                                                                   | Description                                            |
+| ----------------- | ------ | -------- | ------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `group_id`        | string | No       | `^\S+$` (no spaces) | -                                                                                                         | Group identifier                                       |
+| `filetype`        | string | **Yes**  | -                   | `patient`, `diagnosis`, `treatment`, `surgeries` `<br>` `systemic_treatment`, `specimen`, `radio_therapy` | File type category                                     |
+| `filepath`        | string | **Yes**  | `^\S+\.csv)$`       | -                                                                                                         | Path to clincial data file (must end with `.csv`)      |
+| `extraction_date` | string | **Yes**  | `^\S+$`             | -                                                                                                         | Date of which the data was extracted from the database |
+| `info`            | string | No       | -                   | -                                                                                                         | Additional information                                 |
 
 > [!NOTE]
 > Fields marked as **Required** must be present in each object
@@ -203,22 +203,22 @@ git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git && cd
 
 Vous devrez modifier les paramètres dans le fichier de configuration nextflow afin de pointer vers certains fichiers. Ces options se trouvent dans le dictionnaire `params` dans nextflow.config. Obligatoire sauf indication contraire.
 
-| Champ                | Description                                                                                                                                     |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| mode                 | Mode d'exécution du pipeline. Options : ['clinical', 'genomic']                                                                                |
-| genomic_samplesheet  | Feuille d'échantillons génomique en entrée. Voir la section ci-dessous.                                                                      |
-| ensembl_annotations_expr  | Fichier d'annotations Ensembl .tsv.  pour resultats d'expression (peut etre pareil)                                                                                                             |
-| ensembl_annotations  | Fichier d'annotations Ensembl .tsv.                                                                                                             |
-| vep_cache            | Dossier du cache de la version ensembl vep téléchargée.                                                                                      |
-| vep_params           | Paramètres pour l'utilisation de VEP comme décrit ici :`<br>` https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optionnel) |
-| pcgr_data            | Dossier des données de référence pcgr (décompressées)                                                                                      |
-| genome_reference     | Emplacement du fichier fasta de référence GRCh38.                                                                                             |
-| container_pcgr       | Emplacement de l'image apptainer PCGR (distant ou local)                                                                                        |
-| container_python     | Emplacement de l'image apptainer Python (distant ou local)                                                                                      |
-| container_r          | Emplacement de l'image apptainer R (distant ou local)                                                                                           |
-| container_vcf2maf    | Emplacement de l'image apptainer du module`<br>` nf-core vcf2maf (distant ou local) (optionnel)                                               |
-| clinical_samplesheet | Feuille d'échantillons clinique en entrée. Voir la section ci-dessous.                                                                        |
-| id_linking_file      | Fichier de linkage d'échantillion, créé par pipeline génomique                                                                              |
+| Champ                    | Description                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| mode                     | Mode d'exécution du pipeline. Options : ['clinical', 'genomic']                                                                             |
+| genomic_samplesheet      | Feuille d'échantillons génomique en entrée. Voir la section ci-dessous.                                                                     |
+| ensembl_annotations_expr | Fichier d'annotations Ensembl .tsv. pour resultats d'expression (peut etre pareil)                                                          |
+| ensembl_annotations      | Fichier d'annotations Ensembl .tsv.                                                                                                         |
+| vep_cache                | Dossier du cache de la version ensembl vep téléchargée.                                                                                     |
+| vep_params               | Paramètres pour l'utilisation de VEP comme décrit ici :`<br>` https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optionnel) |
+| pcgr_data                | Dossier des données de référence pcgr (décompressées)                                                                                       |
+| genome_reference         | Emplacement du fichier fasta de référence GRCh38.                                                                                           |
+| container_pcgr           | Emplacement de l'image apptainer PCGR (distant ou local)                                                                                    |
+| container_python         | Emplacement de l'image apptainer Python (distant ou local)                                                                                  |
+| container_r              | Emplacement de l'image apptainer R (distant ou local)                                                                                       |
+| container_vcf2maf        | Emplacement de l'image apptainer du module`<br>` nf-core vcf2maf (distant ou local) (optionnel)                                             |
+| clinical_samplesheet     | Feuille d'échantillons clinique en entrée. Voir la section ci-dessous.                                                                      |
+| id_linking_file          | Fichier de linkage d'échantillion, créé par pipeline génomique                                                                              |
 
 ## Feuille d'échantillons
 
@@ -232,15 +232,15 @@ Le format de la feuille d'échantillons est fortement basé sur `<a href="https:
 
 Le fichier d'entrée génomique doit être un tableau JSON où chaque objet contient les champs suivants :
 
-| Nom de colonne    | Type    | Requis        | Motif                             | Options                                            | Description                                                                                              |
-| ----------------- | ------- | ------------- | --------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `group_id`      | chaîne | Non           | `^\S+$` (pas d'espaces)         | -                                                  | Identifiant de groupe                                                                                    |
-| `subject_id`    | chaîne | **Oui** | `^(?:\d+\|\S+)$` (pas d'espaces) | -                                                  | Identifiant du sujet                                                                                     |
-| `sample_id`     | entier  | **Oui** | `^\d+$` (numérique uniquement) | -                                                  | Identifiant d'échantillon                                                                               |
-| `sample_type`   | chaîne | **Oui** | -                                 | `somatic`, `germinal`                          | Type d'échantillon                                                                                      |
-| `sequence_data` | chaîne | **Oui** | -                                 | `dna`, `rna`                                   | Type de données de séquençage                                                                         |
-| `info`          | chaîne | Non           | -                                 | -                                                  | Informations supplémentaires                                                                            |
-| `filepath`      | chaîne | **Oui** | -  | -                                                  | Chemin vers le dossier de resultats DRAGEN (DN, DT ou RT) |
+| Nom de colonne  | Type   | Requis  | Motif                            | Options               | Description                                               |
+| --------------- | ------ | ------- | -------------------------------- | --------------------- | --------------------------------------------------------- |
+| `group_id`      | chaîne | Non     | `^\S+$` (pas d'espaces)          | -                     | Identifiant de groupe                                     |
+| `subject_id`    | chaîne | **Oui** | `^(?:\d+\|\S+)$` (pas d'espaces) | -                     | Identifiant du sujet                                      |
+| `sample_id`     | entier | **Oui** | `^\d+$` (numérique uniquement)   | -                     | Identifiant d'échantillon                                 |
+| `sample_type`   | chaîne | **Oui** | -                                | `somatic`, `germinal` | Type d'échantillon                                        |
+| `sequence_data` | chaîne | **Oui** | -                                | `dna`, `rna`          | Type de données de séquençage                             |
+| `info`          | chaîne | Non     | -                                | -                     | Informations supplémentaires                              |
+| `filepath`      | chaîne | **Oui** | -                                | -                     | Chemin vers le dossier de resultats DRAGEN (DN, DT ou RT) |
 
 > [!NOTE]
 > Les champs marqués comme **Requis** doivent être présents dans chaque objet
@@ -253,13 +253,13 @@ Le fichier d'entrée génomique doit être un tableau JSON où chaque objet cont
 
 Le fichier d’entrée clinique doit être un fichier CSV où chaque objet contient les champs suivants :
 
-| Nom de colonne      | Type    | Requis        | Motif                    | Options                                                                                                                   | Description                                                                  |
-| ------------------- | ------- | ------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `group_id`        | chaîne | Non           | `^\S+$` (sans espaces) | -                                                                                                                         | Identifiant de groupe                                                        |
-| `filetype`        | chaîne | **Oui** | -                        | `patient`, `diagnosis`, `treatment`, `surgeries` `<br>` `systemic_treatment`, `specimen`, `radio_therapy` | Catégorie du type de fichier                                                |
-| `filepath`        | chaîne | **Oui** | `^\S+\.csv)$`          | -                                                                                                                         | Chemin vers le fichier de données cliniques (doit se terminer par `.csv`) |
-| `extraction_date` | chaîne | **Oui** | `^\S+$`                | -                                                                                                                         | Date à laquelle les données ont été extraites de la base de données     |
-| `info`            | chaîne | Non           | -                        | -                                                                                                                         | Informations supplémentaires                                                |
+| Nom de colonne    | Type   | Requis  | Motif                  | Options                                                                                                   | Description                                                               |
+| ----------------- | ------ | ------- | ---------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `group_id`        | chaîne | Non     | `^\S+$` (sans espaces) | -                                                                                                         | Identifiant de groupe                                                     |
+| `filetype`        | chaîne | **Oui** | -                      | `patient`, `diagnosis`, `treatment`, `surgeries` `<br>` `systemic_treatment`, `specimen`, `radio_therapy` | Catégorie du type de fichier                                              |
+| `filepath`        | chaîne | **Oui** | `^\S+\.csv)$`          | -                                                                                                         | Chemin vers le fichier de données cliniques (doit se terminer par `.csv`) |
+| `extraction_date` | chaîne | **Oui** | `^\S+$`                | -                                                                                                         | Date à laquelle les données ont été extraites de la base de données       |
+| `info`            | chaîne | Non     | -                      | -                                                                                                         | Informations supplémentaires                                              |
 
 > [!NOTE]
 > Les champs marqués comme **Requis** doivent être présents dans chaque objet.

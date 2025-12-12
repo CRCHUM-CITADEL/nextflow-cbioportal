@@ -206,7 +206,7 @@ workflow GENOMIC {
            ch_file_to_run.expression,
            ensembl_annotations_expr
         )
-        
+
         all_expression_results = GENOMIC_EXPRESSION.out
             .mix(ch_files_ran
                     .filter{meta, filepath -> meta.pipeline == 'expression'}

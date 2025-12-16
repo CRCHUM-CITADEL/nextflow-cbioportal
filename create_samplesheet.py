@@ -21,7 +21,7 @@ GROUP_PATTERN = r"((?:[^-]*-){2}[^-]*)"
 SUBJECT_ID_PATTERN = r"(?:[^-]*-){3}([^-]*)"
 SEQUENCING_TYPE_PATTERN = r"-(?:\d+)([A-Za-z]+)"
 RUN_NUMBER_PATTERN = r"-(\d+)([A-Za-z]+)"
- 
+
 def capture_folders_by_regex(root : PurePosixPath, pattern: str) -> List[Any]:
 
     root = Path(root)
@@ -66,7 +66,7 @@ def parse_rna(folder: str, root_path : str) -> bool:
 
     sequencing_type = re.search(SEQUENCING_TYPE_PATTERN, folder).group(1)
 
-    # special function that will get the somatic tumor run number for the equivalent subject 
+    # special function that will get the somatic tumor run number for the equivalent subject
     run_number = get_somatic_tumor_dna_run_number(Path(f"{root_path}/dna/"), f"{group}-{subject_id}")
     sequencing_type = "DT"
 
@@ -75,7 +75,7 @@ def parse_rna(folder: str, root_path : str) -> bool:
     sample_id = f"{group}-{subject_id}.{run_number}{sequencing_type}"
 
     DATAFRAME['sample_id'].append(sample_id)
-    
+
     DATAFRAME['filepath'].append(root_path + "/rna/" + folder + "/" + folder + ".RNASeq_somatic")
 
     DATAFRAME['sample_type'].append("somatic")
@@ -96,7 +96,7 @@ def parse_dna(folder : str, root_path : str) -> bool:
 
     sequencing_type = re.search(SEQUENCING_TYPE_PATTERN, folder).group(1)
     run_number = re.search(RUN_NUMBER_PATTERN, folder).group(1)
-    
+
     sample_id = f"{group}-{subject_id}.{run_number}{sequencing_type}"
     DATAFRAME['sample_id'].append(sample_id)
 
@@ -120,9 +120,9 @@ def get_somatic_tumor_dna_run_number(base_path : Path,  subject_id : str) -> str
 
     # take the first one
     for dna_file in dna_files:
-    
+
         run_number = re.search(RUN_NUMBER_PATTERN, str(dna_file)).group(1)
-        
+
         return run_number
 
 ## tests
@@ -132,7 +132,7 @@ def are_dicts_equal(d1, d2):
 
     for key in d1:
         v1, v2 = d1[key], d2[key]
-        
+
         if isinstance(v1, Mapping) and isinstance(v2, Mapping):  # Recursively check dictionaries
             if not are_dicts_equal(v1, v2):
                 return False
@@ -156,7 +156,7 @@ def run_tests():
             Path(f"{current_directory}/path/to/dna/MoHQ-CM-3-264-620280-1DN/MoHQ-CM-3-264-620280-1DN.WGS_germinal"),
             Path(f"{current_directory}/path/to/dna/MoHQ-CM-3-261-620167-1DN/MoHQ-CM-3-261-620167-1DN.WGS_germinal")
         ]
-    
+
     # create tmp files
     for path in return_value:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -250,6 +250,3 @@ if __name__ == "__main__":
 
     print(pd.DataFrame(DATAFRAME).head())
     pd.DataFrame(DATAFRAME).to_csv("samplesheet.csv", index = False)
-
-
-

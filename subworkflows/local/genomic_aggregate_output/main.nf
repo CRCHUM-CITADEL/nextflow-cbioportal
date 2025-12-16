@@ -100,9 +100,9 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         // create meta files and case lists ---------------------------------------------------------
 
         case_name_all = channel.of("cnv","sequenced")
-        
+
         cnv_sample_list = cnv_results_seg
-            .map {meta, filepath -> meta.sample} 
+            .map {meta, filepath -> meta.sample}
             .collect()
             .map { it.sort(false).join('\t') }
 

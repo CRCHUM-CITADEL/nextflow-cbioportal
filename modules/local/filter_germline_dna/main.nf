@@ -1,4 +1,4 @@
-process FILTER_GER_DNA {
+process FILTER_GERMLINE_DNA {
 	tag "$meta.sample"
 	label 'process_low'
 

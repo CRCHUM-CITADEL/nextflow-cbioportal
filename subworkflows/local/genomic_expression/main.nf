@@ -5,7 +5,7 @@ include { GENERATE_META_FILE                   } from '../../../modules/local/ge
 
 workflow GENOMIC_EXPRESSION {
     take:
-        somatic_expression // tuple (meta, filepath)
+        somatic_expression // tuple (sample_id, filepath)
         ensembl_annotations_expr // gene annotation file
 
     main:

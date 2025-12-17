@@ -24,7 +24,7 @@ cat("Processing MAF file:", input_file, "\n\n")
 # --- Amino acid conversion ---
 convert_aa_code <- function(aa_change) {
   if (is.na(aa_change)) return(NA_character_)
-  
+
   aa_map <- c(
     "Ala"="A","Arg"="R","Asn"="N","Asp"="D",
     "Cys"="C","Gln"="Q","Glu"="E","Gly"="G",
@@ -33,7 +33,7 @@ convert_aa_code <- function(aa_change) {
     "Thr"="T","Trp"="W","Tyr"="Y","Val"="V",
     "Ter"="*","Xxx"="X"
   )
-  
+
   result <- aa_change
   for (three in names(aa_map)) {
     result <- gsub(three, aa_map[[three]], result, ignore.case = TRUE)
@@ -64,11 +64,11 @@ transformed <- maf %>%
          callers, dna_vaf, Mutation_Status)
 
 # Split into somatic and germline
-somatic <- transformed %>% 
+somatic <- transformed %>%
   filter(Mutation_Status != "Germline") %>%
   select(-Mutation_Status)
 
-germline <- transformed %>% 
+germline <- transformed %>%
   filter(Mutation_Status == "Germline") %>%
   select(-Mutation_Status)
 

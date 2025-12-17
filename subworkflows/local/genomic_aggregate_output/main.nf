@@ -180,7 +180,7 @@ data_filename: data_mutations_dna_rna_germline.txt
             meta_text_all
         )
 
-    emit: 
+    emit:
         cnv         = cnv_long_output
         expression  = expression_output.map { it[1] } // get second element on tuple which is the file path.
         mutation    = mutation_output

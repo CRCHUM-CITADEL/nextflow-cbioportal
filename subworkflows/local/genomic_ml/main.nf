@@ -3,7 +3,7 @@ include { FORMAT_ML_EXPRESSION } from '../../../modules/local/format_ml_expressi
 include { FORMAT_ML_MUTATION } from '../../../modules/local/format_ml_mutation'
 
 workflow GENOMIC_ML {
-    take: 
+    take:
         groups
         cnv_result_long
         expression_result

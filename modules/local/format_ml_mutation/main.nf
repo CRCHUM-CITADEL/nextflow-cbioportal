@@ -1,6 +1,6 @@
 process FORMAT_ML_MUTATION {
     publishDir "${params.outdir}/${group}/ml/", mode: 'copy'
-    
+
     container params.container_r
 
     input:

@@ -8,9 +8,9 @@ include { GENOMIC_CNV } from '../subworkflows/local/genomic_cnv'
 include { GENOMIC_SV } from '../subworkflows/local/genomic_sv'
 include { GENOMIC_EXPRESSION } from '../subworkflows/local/genomic_expression'
 include { GENOMIC_MUTATIONS } from '../subworkflows/local/genomic_mutations'
+include { GENOMIC_ML } from '../subworkflows/local/genomic_ml'
 include { GENOMIC_AGGREGATE_OUTPUT } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE } from '../modules/local/generate_meta_file'
-
 
 
 // finds a file given a pattern and sends a warning to console if it's not found
@@ -237,8 +237,18 @@ workflow GENOMIC {
             all_mutations_results
         )
 
-        // generate meta files and linking file -------------
         all_groups = ch_meta_all.map {meta -> meta.group}.unique()
+
+        // get output ML ready ---------------
+        GENOMIC_ML(
+            all_groups,
+            GENOMIC_AGGREGATE_OUTPUT.out.cnv,
+            GENOMIC_AGGREGATE_OUTPUT.out.expression,
+            GENOMIC_AGGREGATE_OUTPUT.out.mutation
+        )
+
+
+        // generate meta files and linking file -------------
 
         meta_text = """type_of_cancer: add_text
 cancer_study_identifier: add_text

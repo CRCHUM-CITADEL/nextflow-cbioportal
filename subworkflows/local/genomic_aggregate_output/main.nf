@@ -32,7 +32,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                              ["${group}/data_cna_hg38.seg", filepath.text]
                          }
 
-         cnv_results_long
+         cnv_long_output = cnv_results_long
              .map {meta, filepath -> [meta.group, filepath]}
              .groupTuple()
              .flatMap {group, files ->
@@ -79,12 +79,12 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             }
             .filter { it != null }
 
-        MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
+        expression_output = MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
             tpm_file_list
         )
 
         // merge mutations
-        mutation_results
+        mutation_output = mutation_results
             .map {meta, filepath -> [meta.group, filepath]}
             .groupTuple()
             .flatMap { group, files ->
@@ -180,5 +180,9 @@ data_filename: data_mutations_dna_rna_germline.txt
             meta_text_all
         )
 
+    emit:
+        cnv         = cnv_long_output
+        expression  = expression_output.map { it[1] } // get second element on tuple which is the file path.
+        mutation    = mutation_output
 
 }

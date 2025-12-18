@@ -25,6 +25,6 @@ process PCGR {
     --output_dir . \
     --genome_assembly grch38 \
     --panel_id 0 \
-    --sample ${meta.sample}
+    --sample_id ${meta.sample}
     """
 }

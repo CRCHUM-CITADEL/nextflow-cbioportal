@@ -7,10 +7,10 @@ process INDEX_FASTA {
 
     input:
     path(fasta)
-    
+
     output:
     path("${fasta}.fai")
-    
+
     script:
     """
     samtools faidx ${fasta}

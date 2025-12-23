@@ -4,10 +4,10 @@ process GENERATE_INTERVALS {
     input:
         path(fai)
         val(chunk_size)
-    
+
     output:
         path("intervals/*.bed")
-    
+
     script:
     """
     mkdir intervals

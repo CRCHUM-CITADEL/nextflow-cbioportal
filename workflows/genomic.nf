@@ -85,25 +85,30 @@ workflow GENOMIC {
                 def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
 
                 def files = []
+                    
+                    if (meta.sequence == "dna") {
+                        def cnv_seg = findFile(meta, "${baseDir}/${meta.sample}_data_cna_hg38.seg", "cnv", true)
+                        def cnv_long = findFile(meta, "${baseDir}/${meta.sample}_data_cna_long.txt", "cnv", true)
 
-                    def cnv_seg = findFile(meta, "${baseDir}/${meta.sample}_data_cna_hg38.seg", "cnv", true)
-                    def cnv_long = findFile(meta, "${baseDir}/${meta.sample}_data_cna_long.txt", "cnv", true)
-
-                    // merge
-                    if (cnv_seg && cnv_long) {
-                        def meta_cnv = cnv_seg[0]  // Extract meta from the first tuple
-                        def seg_file = cnv_seg[1]   // Extract seg filepath
-                        def long_file = cnv_long[1] // Extract long filepath
-                        def cnv = tuple(meta_cnv, [seg: seg_file, longfile: long_file])
-                        files.add(cnv)
+                        // merge
+                        if (cnv_seg && cnv_long) {
+                            def meta_cnv = cnv_seg[0]  // Extract meta from the first tuple
+                            def seg_file = cnv_seg[1]   // Extract seg filepath
+                            def long_file = cnv_long[1] // Extract long filepath
+                            def cnv = tuple(meta_cnv, [seg: seg_file, longfile: long_file])
+                            files.add(cnv)
+                        }
                     }
 
-                    def expression = findFile(meta, "${baseDir}/${meta.sample}.tpm.tsv", "expression", true)
-                    if (expression) files.add(expression)
+                    if (meta.sequence == "rna") {
+                        def expression = findFile(meta, "${baseDir}/${meta.sample}.tpm.tsv", "expression", true) 
+                        if (expression) files.add(expression)
 
-                    def sv = findFile(meta, "${baseDir}/${meta.sample}.data_sv.txt", "sv", true)
-                    if (sv) files.add(sv)
+                        def sv = findFile(meta, "${baseDir}/${meta.sample}.data_sv.txt", "sv", true)
+                        if (sv) files.add(sv)
 
+                    }
+                   
                     def mutation = findFile(meta, "${baseDir}/${meta.subject}.somatic_rna_germline.maf", "mutation", true)
                     if (mutation) files.add(mutation)
 

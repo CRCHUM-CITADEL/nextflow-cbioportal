@@ -8,9 +8,6 @@ include { BCFTOOLS_INDEX } from '../../../modules/nf-core/bcftools/index'
 include { FILTER_GERMLINE_DNA } from '../../../modules/local/filter_germline_dna'
 include { GENERATE_CASE_LIST } from '../../../modules/local/generate_case_list'
 include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
-include { INDEX_FASTA } from '../../../modules/local/index_fasta'
-include { SPLIT_VCF_BY_INTERVAL } from '../../../modules/local/split_vcf_by_interval'
-include { GENERATE_INTERVALS } from '../../../modules/local/generate_intervals'
 
 workflow GENOMIC_MUTATIONS {
     take:
@@ -25,13 +22,11 @@ workflow GENOMIC_MUTATIONS {
 
     main:
 
+
         ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_data.first()
         ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR().data_dir.first() : pcgr_data.first()
 
-        // index fasta
-        fasta_fai = INDEX_FASTA(fasta)
-
-	    ger_dna_filtered = FILTER_GERMLINE_DNA(ger_dna_vcf)
+	ger_dna_filtered = FILTER_GERMLINE_DNA(ger_dna_vcf)
 
         ger_dna_index = BCFTOOLS_INDEX(ger_dna_filtered).tbi
 
@@ -39,29 +34,8 @@ workflow GENOMIC_MUTATIONS {
             .join(ger_dna_index)
             .map {meta, filepath, index -> tuple(meta, filepath, index)}
 
-        // Generate intervals from reference index
-        def chunk_size = 1000000  // 50000000 = 50 Mb
-
-        intervals_ch = GENERATE_INTERVALS(fasta_fai, chunk_size)
-            .flatten()
-            .map { bed -> [[id: bed.baseName], bed] }
-        
-        // Combine VCF with each interval
-        vcf_chunked = ger_dna_vcf_with_index.combine(intervals_ch)
-
-        vcf_chunked.view()
-        
-        // Split VCF by intervals
-        split_vcf_with_index = SPLIT_VCF_BY_INTERVAL(vcf_chunked)
-
-        split_vcf_pcgr = split_vcf_with_index
-            .map { meta, interval_id, vcf, vcf_index -> 
-                def meta_interval = meta + [interval_id : interval_id ]
-                return [meta_interval, vcf, vcf_index]
-            }     
-
         ger_dna_tsv = PCGR(
-            split_vcf_pcgr,
+            ger_dna_vcf_with_index,
             ch_vep_data,
             ch_pcgr_data
         )

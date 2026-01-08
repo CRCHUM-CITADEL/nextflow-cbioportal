@@ -121,7 +121,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         )
 
         // to get all groups, just take .seg files (we assume seg and long are the same)
-
+        // add_text is the key word to replac with the group.
         meta_text_seg = """cancer_study_identifier: add_text
 genetic_alteration_type: COPY_NUMBER_ALTERATION
 datatype: SEG

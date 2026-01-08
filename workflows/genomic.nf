@@ -56,6 +56,8 @@ workflow GENOMIC {
         needs_vep
         needs_pcgr
         fasta
+        project_name
+        project_description
 
     main:
 
@@ -239,7 +241,7 @@ workflow GENOMIC {
             all_cnv_long_results,
             all_sv_results,
             all_expression_results,
-            all_mutations_results
+            all_mutations_results,
         )
 
         all_groups = ch_meta_all.map {meta -> meta.group}.unique()
@@ -257,8 +259,8 @@ workflow GENOMIC {
 
         meta_text = """type_of_cancer: add_text
 cancer_study_identifier: add_text
-name: add_text
-description: add_text
+name: ${project_name}
+description: ${project_description}
 add_global_case_list: true
 reference_genome: hg38
         """

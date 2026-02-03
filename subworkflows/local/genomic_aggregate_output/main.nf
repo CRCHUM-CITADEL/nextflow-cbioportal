@@ -46,8 +46,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                           }
 
         // merge sv -------------------------------------------------------------
-
-        sv_results
+        sv_output = sv_results
             .map {meta, filepath -> [meta.group, filepath]}
             .groupTuple()
             .flatMap { group, files ->
@@ -79,7 +78,12 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             }
             .filter { it != null }
 
+<<<<<<< Updated upstream
         MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
+=======
+        // TODO: add meta (or group, in the very least)
+        expression_output = MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
+>>>>>>> Stashed changes
             tpm_file_list
         )
 
@@ -180,5 +184,13 @@ data_filename: data_mutations_dna_rna_germline.txt
             meta_text_all
         )
 
+<<<<<<< Updated upstream
 
+=======
+    emit:
+        cnv         = cnv_long_output
+        expression  = expression_output
+        mutation    = mutation_output
+        sv          = sv_output
+>>>>>>> Stashed changes
 }

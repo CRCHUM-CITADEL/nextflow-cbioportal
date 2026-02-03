@@ -27,6 +27,7 @@ workflow GENOMIC {
         needs_vep
         needs_pcgr
         fasta
+        cosmic_data
 
     main:
 
@@ -171,8 +172,24 @@ workflow GENOMIC {
             all_mutations_results
         )
 
+<<<<<<< Updated upstream
         // generate meta files and linking file -------------
         all_groups = ch_files_all.map {meta, filepath -> meta.group}.unique()
+=======
+        
+        // get output ML ready ---------------
+        GENOMIC_ML(
+            GENOMIC_AGGREGATE_OUTPUT.out.ml_cnv,
+            GENOMIC_AGGREGATE_OUTPUT.out.ml_expression,
+            GENOMIC_AGGREGATE_OUTPUT.out.ml_mutation,
+            GENOMIC_AGGRAGATE_OUTPUT.out.ml_sv,
+            cosmic_data,
+        )
+
+
+        // generate meta files and linking file -------------
+        all_groups = ch_meta_all.map {meta -> meta.group}.unique()
+>>>>>>> Stashed changes
 
         meta_text = """type_of_cancer: add_text
 cancer_study_identifier: add_text

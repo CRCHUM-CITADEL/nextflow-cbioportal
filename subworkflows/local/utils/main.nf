@@ -170,6 +170,12 @@ def validateInputParameters() {
             error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
         }
 
+        def cosmic_data = file(params.cosmic_data)
+
+        if (!cosmic_file.exists()) {
+            error("ERROR: Cosmic data file does not exist: ${params.cosmic_data}")
+        }
+
     }
 
     if (params.mode == "clinical" && !params.clinical_samplesheet){

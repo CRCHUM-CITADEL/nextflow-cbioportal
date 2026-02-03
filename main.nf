@@ -64,7 +64,8 @@ workflow {
             ch_pcgr_data,
             needs_vep_download,
             needs_pcgr_download,
-            params.genome_reference
+            params.genome_reference,
+            params.cosmic_data,
         )
     }
     else if (params.mode == 'clinical'){

@@ -7,7 +7,7 @@ process MERGE_EXPRESSION_FILES_TO_CBIOPORTAL {
         tuple val(meta), path(tpm_file_list)
 
     output:
-        tuple val(meta), path("data_expression.txt")
+        tuple val(meta.group), path("data_expression.txt")
 
     script:
     """

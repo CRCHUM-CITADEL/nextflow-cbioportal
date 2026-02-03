@@ -1,6 +1,7 @@
 include { FORMAT_ML_CNV } from '../../../modules/local/format_ml_cnv'
 include { FORMAT_ML_EXPRESSION } from '../../../modules/local/format_ml_expression'
 include { FORMAT_ML_MUTATION } from '../../../modules/local/format_ml_mutation'
+<<<<<<< HEAD
 include { FORMAT_PROCESS_ML_SV } from '../../../modules/local/format_process_ml_sv'
 include { PROCESS_ML_CNV } from '../../../modules/local/process_ml_cnv'
 include { PROCESS_ML_EXPRESSION } from '../../../modules/local/process_ml_expression'
@@ -56,4 +57,31 @@ workflow GENOMIC_ML {
     //    ml_mutation     = PROCESS_ML_MUTATION.out
     //    ml_expression   = PROCESS_ML_EXPRESSION.out
         ml_cnv          = PROCESS_ML_CNV.out
+=======
+
+workflow GENOMIC_ML {
+    take:
+        groups
+        cnv_result_long
+        expression_result
+        mutation_result
+        //TODO : sv results
+
+    main:
+
+        FORMAT_ML_CNV(
+            groups,
+            cnv_result_long
+        )
+
+        FORMAT_ML_EXPRESSION(
+            groups,
+            expression_result
+        )
+
+        FORMAT_ML_MUTATION(
+            groups,
+            mutation_result
+        )
+>>>>>>> 555063098b4c3191c53c1bb5f99da149294529b1
 }

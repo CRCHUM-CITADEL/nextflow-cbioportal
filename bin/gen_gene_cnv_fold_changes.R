@@ -164,13 +164,13 @@ for (i in 1:nrow(vcf_data)) {
         svtype = cnv$svtype,
         fold_change = cnv$fold_change,
         ensembl_id = gene$ensembl_id,
-	entrez_ncbi_id = gene$entrez_ncbi_id,
         gene_symbol = gene$gene_symbol,
         gene_chr = gene$chr,
         gene_start = gene$start,
         gene_stop = gene$stop,
         gene_strand = gene$strand,
-        gene_description = gene$description
+        gene_description = gene$description,
+        entrez_ncbi_id = gene$entrez_ncbi_id
       )
 
       # Add gene_biotype if present in annotations

@@ -1,4 +1,5 @@
 process INTEGRATE_RNA_VARIANTS {
+    publishDir "${params.outdir}/${dna_meta.group}/${dna_meta.subject}", mode: 'copy'
     tag { subject_id }
 
     container params.container_r
@@ -7,7 +8,7 @@ process INTEGRATE_RNA_VARIANTS {
         tuple val(subject_id), val(rna_meta), path(som_rna_vcf), val(dna_meta), path(som_dna_maf)
 
     output:
-        tuple val(rna_meta), path("${subject_id}.somatic_rna.maf")
+        tuple val(dna_meta), path("${subject_id}.somatic_rna.maf")
 
     script:
     """

@@ -1,0 +1,7 @@
+group_id,subject_id,sample_id,sample_type,sequence_data,info,filepath
+TEST,T1,T1-1DN,germinal,dna,,assets/test_data/genomic/dna/T1-1DN
+TEST,T1,T1.1DT,somatic,dna,,assets/test_data/genomic/dna/T1-1DT
+TEST,T1,T1-1RT,somatic,rna,,assets/test_data/genomic/rna/T1-1RT
+TEST,T2,T2-1DN,germinal,dna,,assets/test_data/genomic/dna/T2-1DN
+TEST,T2,T2.1DT,somatic,dna,,assets/test_data/genomic/dna/T2-1DT
+TEST,T2,T2-1RT,somatic,rna,,assets/test_data/genomic/rna/T2-1RT

@@ -1,4 +1,4 @@
-ensembl_id	gene_symbol	biotype	chr	start	stop	strand	description
+ensembl_id	gene_symbol	biotype	chr	start	end	strand	description
 ENSG00000141956	PRDM15	protein_coding	21	41798225	41879482	-1	PR/SET domain 15 [Source:HGNC Symbol;Acc:HGNC:13999]
 ENSG00000141959	PFKL	protein_coding	21	44300051	44327376	1	phosphofructokinase, liver type [Source:HGNC Symbol;Acc:HGNC:8876]
 ENSG00000142149	HUNK	protein_coding	21	31873020	32044633	1	hormonally up-regulated Neu-associated kinase [Source:HGNC Symbol;Acc:HGNC:13326]

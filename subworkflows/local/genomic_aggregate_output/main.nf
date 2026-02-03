@@ -32,7 +32,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                              ["${group}/data_cna_hg38.seg", filepath.text]
                          }
 
-         cnv_results_long
+         cnv_long_output = cnv_results_long
              .map {meta, filepath -> [meta.group, filepath]}
              .groupTuple()
              .flatMap {group, files ->
@@ -78,17 +78,21 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             }
             .filter { it != null }
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
         MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
 =======
         // TODO: add meta (or group, in the very least)
         expression_output = MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
 >>>>>>> Stashed changes
+=======
+        expression_output = MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
+>>>>>>> 555063098b4c3191c53c1bb5f99da149294529b1
             tpm_file_list
         )
 
         // merge mutations
-        mutation_results
+        mutation_output = mutation_results
             .map {meta, filepath -> [meta.group, filepath]}
             .groupTuple()
             .flatMap { group, files ->
@@ -104,9 +108,9 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         // create meta files and case lists ---------------------------------------------------------
 
         case_name_all = channel.of("cnv","sequenced")
-        
-        cnv_sample_list = cnv_results
-            .map {meta, filepath -> meta.sample} 
+
+        cnv_sample_list = cnv_results_seg
+            .map {meta, filepath -> meta.sample}
             .collect()
             .map { it.sort(false).join('\t') }
 
@@ -115,17 +119,17 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             .collect()
             .map { it.sort(false).join('\t') }
 
-        case_simple_lists = cnv_sample_list.concat(mutation_sample_list)
+        case_sample_lists = cnv_sample_list.concat(mutation_sample_list)
         all_groups_cases = all_groups.combine(case_name_all).map{all_groups, case_name_all -> all_groups }
 
         GENERATE_CASE_LIST(
             all_groups_cases,
             case_name_all,
-            case_simple_lists
+            case_sample_lists
         )
 
         // to get all groups, just take .seg files (we assume seg and long are the same)
-
+        // add_text is the key word to replac with the group.
         meta_text_seg = """cancer_study_identifier: add_text
 genetic_alteration_type: COPY_NUMBER_ALTERATION
 datatype: SEG
@@ -184,7 +188,14 @@ data_filename: data_mutations_dna_rna_germline.txt
             meta_text_all
         )
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+    emit:
+        cnv         = cnv_long_output
+        expression  = expression_output.map { it[1] } // get second element on tuple which is the file path.
+        mutation    = mutation_output
+>>>>>>> 555063098b4c3191c53c1bb5f99da149294529b1
 
 =======
     emit:

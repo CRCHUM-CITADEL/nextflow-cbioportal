@@ -255,6 +255,7 @@ cat("Creating discrete CNA data...\n")
 
 # Calculate discrete values based on fold change
 #gene_data$discrete_cna <- sapply(gene_data$fold_change, fold_change_to_discrete)
+print(head(gene_data))
 gene_data$discrete_cna <- sapply(gene_data$copy_number, copyn_to_cbion)
 gene_data$log2_ratio <- sapply(gene_data$fold_change, fold_change_to_log2)
 
@@ -277,6 +278,12 @@ discrete_long <- data.table(
   Sample_Id = opt$sample_id,
   Value = gene_data$discrete_cna
 )
+
+# Split into NA and non-NA, deduplicate non-NA only, then combine
+na_rows <- discrete_long[is.na(Entrez_Gene_Id)]
+non_na_rows <- discrete_long[!is.na(Entrez_Gene_Id)]
+non_na_rows <- non_na_rows[!duplicated(non_na_rows, by = c("Sample_Id", "Entrez_Gene_Id"))]
+discrete_long <- rbind(na_rows, non_na_rows)
 
 # Write segment file
 seg_file <- file.path(opt$output_dir, paste0(opt$sample_id,"_data_cna_hg38.seg"))

@@ -50,6 +50,7 @@ annotations$chr_factor <- factor(annotations$chr, levels = chr_order, ordered = 
 cat("\nAnnotation Statistics:\n")
 cat(sprintf("Total annotations: %d\n", nrow(annotations)))
 cat(sprintf("Unique Ensembl IDs: %d\n", length(unique(annotations$ensembl_id))))
+cat(sprintf("Unique Entrez IDs: %d\n", length(unique(annotations$entrez_ncbi_id))))
 cat(sprintf("Unique gene symbols: %d\n", length(unique(annotations$gene_symbol))))
 
 # Read the VCF file
@@ -151,7 +152,8 @@ for (i in 1:nrow(vcf_data)) {
         gene_start = gene$start,
         gene_end = gene$end,
         gene_strand = gene$strand,
-        gene_description = gene$description
+        gene_description = gene$description,
+	entrez_ncbi_id = gene$entrez_ncbi_id
       )
       
       # Add gene_biotype if present in annotations
@@ -226,7 +228,7 @@ print(head(result))
 # Ensure all required columns exist and are in correct order
 output_columns <- c("chr", "start", "end", "svtype", "copy_number", "fold_change", 
                    "ensembl_id", "gene_symbol", "gene_chr", "gene_start", "gene_end", 
-                   "gene_strand", "gene_description")
+                   "gene_strand", "gene_description", "entrez_ncbi_id")
 
 # Add missing columns
 for (col in output_columns) {

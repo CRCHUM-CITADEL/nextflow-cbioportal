@@ -275,6 +275,7 @@ log2_cna[[sample_id]] <- gene_data$log2_ratio
 cat("Creating DISCRETE_LONG format...\n")
 discrete_long <- data.table(
   Hugo_Symbol = gene_data$gene_symbol,
+  Entrez_Gene_Id = gene_data$entrez_ncbi_id,
   Sample_Id = opt$sample_id,
   Value = gene_data$discrete_cna
 )

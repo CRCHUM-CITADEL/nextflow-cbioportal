@@ -1,5 +1,5 @@
-process FORMAT_ML_CNV {
-    publishDir "${params.outdir}/${group}/machine_learning/", mode: 'copy'
+process PROCESS_ML_MUTATION {
+    publishDir "${params.outdir}/${group}/machine_learning/processed", mode: 'copy'
 
     container params.container_r
 
@@ -11,6 +11,6 @@ process FORMAT_ML_CNV {
 
     script:
     """
-    ml_format_cnv.R $results_cnv_long 
+    ml_mutation_processor.R $mutation_results
     """
 }

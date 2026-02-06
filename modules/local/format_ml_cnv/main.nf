@@ -4,12 +4,7 @@ process FORMAT_ML_CNV {
     container params.container_r
 
     input:
-<<<<<<< HEAD
         tuple val(group), path(results_cnv_long)
-=======
-        val group
-        path results_cnv_long
->>>>>>> 555063098b4c3191c53c1bb5f99da149294529b1
 
     output:
         path "cnv_gene.tsv"

@@ -1,7 +1,7 @@
 // modules/local/gene_cnv_fold_changes/main.nf
 
 process EXTRACT_GENE_CNV_FOLD_CHANGES {
-    //publishDir "${params.outdir}/${meta.group}/${meta.subject}", mode: 'copy'
+    publishDir "${params.outdir}/${meta.group}/${meta.subject}", mode: 'copy'
     tag { meta.sample }   // helps logging/tracing per sample
 
     container params.container_r
@@ -19,7 +19,7 @@ process EXTRACT_GENE_CNV_FOLD_CHANGES {
     zcat $somatic_cnv_vcf  | grep "#" > ${meta.sample}.somatic.cnv.vcf
     zcat $somatic_cnv_vcf  | grep PASS >> ${meta.sample}.somatic.cnv.vcf
 
-    gen_gene_cnv_fold_changes.R \
+    gen_gene_cnv_fold_changes2.R \
       --vcf ${meta.sample}.somatic.cnv.vcf \
       --annotation $gene_annotations \
       --output ${meta.sample}.genes.cnv.tsv

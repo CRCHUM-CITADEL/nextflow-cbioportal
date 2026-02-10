@@ -25,13 +25,15 @@ include { UTILS_NEXTFLOW_PIPELINE   } from '../../nf-core/utils_nextflow_pipelin
 workflow PIPELINE_INITIALISATION {
 
     take:
-    version           // boolean: Display version and exit
-    monochrome_logs   // boolean: Do not use coloured log outputs
-    nextflow_cli_args // array: List of positional nextflow CLI args
-    mode              // string: pipeline mode [clinical, genomic]
-    outdir            // string: The output directory where the results will be saved
-    genomic_input     // string: Path to input samplesheet
-    clinical_input    // string: Path to input samplesheet
+    version           	// boolean: Display version and exit
+    monochrome_logs   	// boolean: Do not use coloured log outputs
+    nextflow_cli_args 	// array: List of positional nextflow CLI args
+    mode              	// string: pipeline mode [clinical, genomic]
+    outdir            	// string: The output directory where the results will be saved
+    genomic_input     	// string: Path to input samplesheet
+    clinical_input    	// string: Path to input samplesheet
+    project_name      	// string: String of project name to be in the metadata
+	project_description // string : String of project description to be put in metadata
 
     main:
 
@@ -58,7 +60,10 @@ workflow PIPELINE_INITIALISATION {
     // Custom validation for pipeline parameters
     //
 
+	// custom function validation
     validateInputParameters()
+
+	// nf-schema validation
     validateParameters()
 
     //
@@ -82,9 +87,21 @@ workflow PIPELINE_INITIALISATION {
         error("ERROR: This should not be possible, the mode check should have caught this. Killing pipeline.")
     }
 
+	if (project_name == "" ) {
+		warning("WARNING : project name not set. 'test_name' will be used.")
+		project_name = "test_name"
+	}
+
+	if (project_description == "") {
+		warning("WARNING : project description not set. 'test_description' will be used")
+		project_description = 'test_description'
+	}
+
 
     emit:
     samplesheet = samplesheet_list
+	name 		= project_name
+	description = project_description
     versions    = ch_versions
 }
 
@@ -168,6 +185,12 @@ def validateInputParameters() {
 
         if (!genome_file.exists()) {
             error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
+        }
+
+        def cosmic_data = file(params.cosmic_data)
+
+        if (!cosmic_data.exists()) {
+            error("ERROR: Cosmic data file does not exist: ${params.cosmic_data}")
         }
 
     }

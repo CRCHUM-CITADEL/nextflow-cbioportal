@@ -78,7 +78,7 @@ jobs:
             git add -A
             git commit -m "[automated] Fix code linting" || echo "Nothing to commit"
             # push will fail if token doesn't have push rights (e.g. PR from fork without PAT)
-            git push https://x-access-token:${{ env.BOT_TOKEN }}@github.com/CRCHUM-CITADEL/nextflow-cbioportal.git HEAD:dev
+            git push https://x-access-token:${{ env.BOT_TOKEN }}@github.com/CRCHUM-CITADEL/nextflow-cbioportal.git HEAD:cnv-patch1
           else
             echo "No changes to commit"
           fi

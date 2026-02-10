@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 # Gene Fusion Annotation Script for cBioPortal Data
 # This script filters known cancer fusions and creates a sample x fusion matrix
 
@@ -51,7 +53,7 @@ encode_binary_fusions <- function(data, samples, known_fusions) {
     }
   }
 #data <- data[data$Fusion %in% known_fusions,]
-
+  print(head(fusion_matrix))
   as_tibble(fusion_matrix, rownames = "sample")
 }
 
@@ -112,14 +114,23 @@ cat("Gene Fusion Annotation Pipeline\n")
 cat("================================\n\n")
 cat("Input file:", input_file, "\n")
 
+# Read input files as dataframes
+cat("Reading known fusions database...\n")
+chimerKB_db <- read_excel(known_fusions)
+
+cat("Reading COSMIC fusion data...\n")
+cosmic_data_df <- read.delim(cosmic_data, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+
 # Output file (same directory as input)
 output_file <- "filtered_fusions_matrix.tsv"
 
-cosmic_fusions <- cosmic_data[,!is.null(cosmic_data$COSMIC_FUSION_ID)]
-cosmic_fusions <- unique(paste0(cosmic_db[,"FIVE_PRIME_GENE_SYMBOL"],"-",cosmic_data[,"THREE_PRIME_GENE_SYMBOL"]))
+cosmic_fusions <- cosmic_data_df[,!is.null(cosmic_data_df$COSMIC_FUSION_ID)]
+cosmic_fusions <- unique(paste0(cosmic_data_df[,"FIVE_PRIME_GENE_SYMBOL"],"-",cosmic_data_df[,"THREE_PRIME_GENE_SYMBOL"]))
 
 chimerKB_fusions <- unique(chimerKB_db$Fusion_pair)
 
 all_fusions <- c(cosmic_fusions, chimerKB_fusions)
 
+process_fusion_data(input_file, output_file, all_fusions)
 

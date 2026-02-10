@@ -5,6 +5,6 @@ process DOWNLOAD_KNOWN_FUSIONS {
 
    script:
    """
-curl https://www.kobic.re.kr/chimerdb/downloads?name=ChimerKB4.xlsx --name ChimerKB4.xlsx
+curl -o ChimerKB4.xlsx https://www.kobic.re.kr/chimerdb/downloads?name=ChimerKB4.xlsx
    """
 }

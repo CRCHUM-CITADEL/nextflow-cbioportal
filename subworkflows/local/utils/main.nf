@@ -189,7 +189,7 @@ def validateInputParameters() {
 
         def cosmic_data = file(params.cosmic_data)
 
-        if (!cosmic_file.exists()) {
+        if (!cosmic_data.exists()) {
             error("ERROR: Cosmic data file does not exist: ${params.cosmic_data}")
         }
 

@@ -247,10 +247,10 @@ workflow GENOMIC {
 
         // get output ML ready ---------------
         GENOMIC_ML(
-            GENOMIC_AGGREGATE_OUTPUT.out.ml_cnv,
-            GENOMIC_AGGREGATE_OUTPUT.out.ml_expression,
-            GENOMIC_AGGREGATE_OUTPUT.out.ml_mutation,
-            GENOMIC_AGGRAGATE_OUTPUT.out.ml_sv,
+            GENOMIC_AGGREGATE_OUTPUT.out.cnv,
+            GENOMIC_AGGREGATE_OUTPUT.out.expression,
+            GENOMIC_AGGREGATE_OUTPUT.out.mutation,
+            GENOMIC_AGGREGATE_OUTPUT.out.sv,
             cosmic_data,
         )
 

@@ -1,5 +1,5 @@
 process FORMAT_PROCESS_ML_SV {
-    publishDir "${params.outdir}/${group}/machine_learning/", mode: 'copy'
+    publishDir "${params.outdir}/${group}/machine_learning/processed", mode: 'copy'
 
     container params.container_r
 
@@ -9,7 +9,7 @@ process FORMAT_PROCESS_ML_SV {
         tuple val(group), path(results_sv)
 
     output:
-        path "fusions_processed_matrix.tsv"
+        path "filtered_fusions_matrix.tsv"
 
     script:
     """

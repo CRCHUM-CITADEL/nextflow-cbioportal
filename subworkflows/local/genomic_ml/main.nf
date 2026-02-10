@@ -45,13 +45,8 @@ workflow GENOMIC_ML {
 
         FORMAT_PROCESS_ML_SV(
             cosmic_data,
-            known_fusions,
-            sv_results
+            known_fusions_data,
+            sv_result
         )
 
-    emit:
-        ml_sv           = FORMAT_PROCESS_ML_SV.out
-        ml_mutation     = PROCESS_ML_MUTATION.out
-        ml_expression   = PROCESS_ML_EXPRESSION.out
-        ml_cnv          = PROCESS_ML_CNV.out
 }

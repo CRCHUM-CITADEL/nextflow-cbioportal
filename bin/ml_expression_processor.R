@@ -46,8 +46,8 @@ standardize_expression <- function(expression_df) {
 #' @export
 process_expression_data <- function(input_file, min_tpm = 1, min_samples = 3) {
   # Construct file paths
-  output_file_log2 <- file.path(processed_dir, "expression_processed_log2.tsv")
-  output_file_standardized <- file.path(processed_dir, "expression_processed_standardized.tsv")
+  output_file_log2 <- "expression_processed_log2.tsv"
+  output_file_standardized <- "expression_processed_standardized.tsv"
   
   # Read expression data
   expression_data <- read_tsv(input_file, show_col_types = FALSE)

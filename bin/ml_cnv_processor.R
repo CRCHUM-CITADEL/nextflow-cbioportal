@@ -28,7 +28,7 @@ process_cnv_data <- function(input_file, output_file) {
     as.data.frame() %>%
     rownames_to_column("Sample_ID")
  
-  write_tsv(cnv_data_t)
+  write_tsv(cnv_data_t, "cnv_genes.tsv")
 
 }
 

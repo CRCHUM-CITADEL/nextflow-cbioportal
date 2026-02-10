@@ -44,6 +44,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                           sort: 'deep') { group, filepath ->
                              ["${group}/data_cna_long.txt", filepath.text]
                           }
+            .map {filepath -> tuple(filepath.parent.name, filepath) }
 
         // merge sv -------------------------------------------------------------
         sv_output = sv_results
@@ -58,6 +59,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                         sort : 'deep') { group, filepath ->
                             ["${group}/data_sv.txt", filepath.text]
                         }
+            .map {filepath -> tuple(filepath.parent.name, filepath) }
 
         // merge expression with merging not possible within pure nextflow. This will publish the file to output via the module
         tpm_file_list = expression_results
@@ -78,16 +80,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             }
             .filter { it != null }
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-        MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
-=======
-        // TODO: add meta (or group, in the very least)
         expression_output = MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
->>>>>>> Stashed changes
-=======
-        expression_output = MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
->>>>>>> 555063098b4c3191c53c1bb5f99da149294529b1
             tpm_file_list
         )
 
@@ -104,10 +97,10 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                        sort: 'deep') { group, filepath ->
                           ["${group}/data_mutations_dna_rna_germline.txt", filepath.text]
                        }
+            .map {filepath -> tuple(filepath.parent.name, filepath) }
+        
 
         // create meta files and case lists ---------------------------------------------------------
-
-        case_name_all = channel.of("cnv","sequenced")
 
         cnv_sample_list = cnv_results_seg
             .map {meta, filepath -> meta.sample}
@@ -119,6 +112,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             .collect()
             .map { it.sort(false).join('\t') }
 
+        case_name_all = channel.of("cnv", "sequenced")
         case_sample_lists = cnv_sample_list.concat(mutation_sample_list)
         all_groups_cases = all_groups.combine(case_name_all).map{all_groups, case_name_all -> all_groups }
 
@@ -188,20 +182,9 @@ data_filename: data_mutations_dna_rna_germline.txt
             meta_text_all
         )
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-    emit:
-        cnv         = cnv_long_output
-        expression  = expression_output.map { it[1] } // get second element on tuple which is the file path.
-        mutation    = mutation_output
->>>>>>> 555063098b4c3191c53c1bb5f99da149294529b1
-
-=======
     emit:
         cnv         = cnv_long_output
         expression  = expression_output
         mutation    = mutation_output
         sv          = sv_output
->>>>>>> Stashed changes
 }

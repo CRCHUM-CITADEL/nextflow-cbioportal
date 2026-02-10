@@ -1,5 +1,5 @@
 process FORMAT_ML_CNV {
-    publishDir "${params.outdir}/${group}/machine_learning/", mode: 'copy'
+    publishDir "${params.outdir}/${group}/machine_learning/formatted", mode: 'copy'
 
     container params.container_r
 
@@ -7,7 +7,7 @@ process FORMAT_ML_CNV {
         tuple val(group), path(results_cnv_long)
 
     output:
-        path "cnv_gene.tsv"
+        tuple val(group), path("cnv_gene.tsv")
 
     script:
     """

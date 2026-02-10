@@ -7,7 +7,7 @@ process PROCESS_ML_MUTATION {
         tuple val(group), path(mutation_results)
 
     output:
-        path "mutations_processes_*.tsv"
+        path "mutations_processed_*.tsv"
 
     script:
     """

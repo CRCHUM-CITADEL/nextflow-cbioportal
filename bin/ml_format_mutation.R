@@ -76,8 +76,8 @@ cat("  → Somatic mutations:", nrow(somatic), "\n")
 cat("  → Germline mutations:", nrow(germline), "\n\n")
 
 # --- Write final files ---
-write_tsv(somatic, file.path(getwd(), "all_somatic_mutations.tsv"))
-write_tsv(germline, file.path(getwd(), "all_germline_mutations.tsv"))
+write_tsv(somatic, "all_somatic_mutations.tsv")
+write_tsv(germline, "all_germline_mutations.tsv")
 
 cat("✔ DONE!\n")
 cat("Final files created:\n")

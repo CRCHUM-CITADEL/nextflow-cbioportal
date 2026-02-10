@@ -1,4 +1,4 @@
-#!/usr/env/bin Rscript
+#!/usr/bin/env Rscript
 
 library(tidyverse)
 library(httr)
@@ -13,7 +13,7 @@ fetch_hotspots <- function(){
   message("Fetching hotspot data from cancerhotspots.org...")
   
   # Single residue hotspots
-  response <- GET("https://www.cancerhotspots.org/api/hotspots/single")
+  response <- GET("https://www.cancerhotspots.org/api/hotspots/single", config=config(ssl_verifypeer = FALSE))
   single_hotspots <- fromJSON(rawToChar(response$content), flatten = TRUE)
   
   # Process single hotspots data
@@ -49,9 +49,6 @@ fetch_hotspots <- function(){
       hotspot_id = paste(hugoSymbol, residue, variant, sep = "_"),
       residue = as.character(residue)
     )
-  
-  # Cache the data
-  saveRDS(hotspots, cache_file)
   
   message(sprintf("Found %d significant hotspot mutations across %d genes",
                  nrow(hotspots),
@@ -113,6 +110,7 @@ process_mutation_data <- function(input_file, min_freq = 0.01) {
   file_suffixes <- c("binary", "effect", "vaf", "integrated", "hybrid")
   
   for (suffix in file_suffixes) {
+    print("saving...")
     write_tsv(
       matrices[[suffix]],
       sprintf("mutations_processed_%s.tsv", suffix)
@@ -379,3 +377,4 @@ if (!file.exists(input_file)) {
   stop("Error : Input file does not exist: ", input_file)
 }
 
+process_mutation_data(input_file)

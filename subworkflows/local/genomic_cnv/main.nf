@@ -3,7 +3,7 @@ include { GENE_CNV_FOLD_CHANGES_TO_CBIOPORTAL } from '../../../modules/local/gen
 
 workflow GENOMIC_CNV {
     take:
-        cnv_vcf // tuple (meta, filepath) 
+        cnv_vcf // tuple (meta, filepath)
         ensembl_annotations
     main:
 

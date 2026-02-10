@@ -176,11 +176,11 @@
         "id_linking_file": {
             "type": "string"
         },
-        "project_name" : {
-            "type" : "string"
+        "project_name": {
+            "type": "string"
         },
-        "project_description" : {
-            "type" : "string"
+        "project_description": {
+            "type": "string"
         }
     }
 }

@@ -78,7 +78,7 @@ process_fusion_data <- function(input_file, output_file, known_fusions ) {
   validate_fusion_data(binary_matrix)
 
   # Save binary matrix
-  write_tsv(binary_matrix, output_file) 
+  write_tsv(binary_matrix, output_file)
 
 }
 
@@ -133,4 +133,3 @@ chimerKB_fusions <- unique(chimerKB_db$Fusion_pair)
 all_fusions <- c(cosmic_fusions, chimerKB_fusions)
 
 process_fusion_data(input_file, output_file, all_fusions)
-

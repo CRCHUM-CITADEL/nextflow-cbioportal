@@ -1,5 +1,5 @@
 process DOWNLOAD_KNOWN_FUSIONS {
-   
+
    output:
         file("ChimerKB4.xlsx")
 

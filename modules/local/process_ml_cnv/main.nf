@@ -11,6 +11,6 @@ process PROCESS_ML_CNV {
 
     script:
     """
-    ml_cnv_processor.R $results_cnv cnv_genes.tsv 
+    ml_cnv_processor.R $results_cnv cnv_genes.tsv
     """
 }

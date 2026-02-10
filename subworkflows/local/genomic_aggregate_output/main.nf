@@ -98,7 +98,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                           ["${group}/data_mutations_dna_rna_germline.txt", filepath.text]
                        }
             .map {filepath -> tuple(filepath.parent.name, filepath) }
-        
+
 
         // create meta files and case lists ---------------------------------------------------------
 

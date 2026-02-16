@@ -39,6 +39,8 @@ workflow {
         params.outdir,
         params.genomic_samplesheet,
         params.clinical_samplesheet,
+        params.project_name,
+        params.project_description
     )
 
     //
@@ -64,13 +66,16 @@ workflow {
             ch_pcgr_data,
             needs_vep_download,
             needs_pcgr_download,
-            params.genome_reference
+            params.genome_reference,
+            params.cosmic_data,
+            PIPELINE_INITIALISATION.out.name,
+            PIPELINE_INITIALISATION.out.description,
         )
     }
     else if (params.mode == 'clinical'){
         CLINICAL(
             PIPELINE_INITIALISATION.out.samplesheet,
-            params.id_linking_file
+            params.id_linking_file,
         )
     }
 

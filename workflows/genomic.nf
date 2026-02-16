@@ -56,6 +56,9 @@ workflow GENOMIC {
         needs_vep
         needs_pcgr
         fasta
+        cosmic_data
+        project_name
+        project_description
 
     main:
 
@@ -239,26 +242,26 @@ workflow GENOMIC {
             all_cnv_long_results,
             all_sv_results,
             all_expression_results,
-            all_mutations_results
+            all_mutations_results,
         )
-
-        all_groups = ch_meta_all.map {meta -> meta.group}.unique()
 
         // get output ML ready ---------------
         GENOMIC_ML(
-            all_groups,
             GENOMIC_AGGREGATE_OUTPUT.out.cnv,
             GENOMIC_AGGREGATE_OUTPUT.out.expression,
-            GENOMIC_AGGREGATE_OUTPUT.out.mutation
+            GENOMIC_AGGREGATE_OUTPUT.out.mutation,
+            GENOMIC_AGGREGATE_OUTPUT.out.sv,
+            cosmic_data,
         )
 
 
         // generate meta files and linking file -------------
+        all_groups = ch_meta_all.map {meta -> meta.group}.unique()
 
         meta_text = """type_of_cancer: add_text
 cancer_study_identifier: add_text
-name: add_text
-description: add_text
+name: ${project_name}
+description: ${project_description}
 add_global_case_list: true
 reference_genome: hg38
         """

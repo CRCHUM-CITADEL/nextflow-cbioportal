@@ -34,7 +34,7 @@ annotations <- fread(opt$annotation, header = TRUE, sep = "\t", stringsAsFactors
 # Clean up the chromosome format in annotations and ensure numeric columns are numeric
 annotations$chr <- gsub("^chr", "", annotations$chr)
 annotations$start <- as.numeric(annotations$start)
-annotations$end <- as.numeric(annotations$end)
+annotations$stop <- as.numeric(annotations$stop)
 
 # Define canonical chromosomes
 canonical_chr <- c(as.character(1:22), "X", "Y", "MT", "M")
@@ -50,7 +50,6 @@ annotations$chr_factor <- factor(annotations$chr, levels = chr_order, ordered = 
 cat("\nAnnotation Statistics:\n")
 cat(sprintf("Total annotations: %d\n", nrow(annotations)))
 cat(sprintf("Unique Ensembl IDs: %d\n", length(unique(annotations$ensembl_id))))
-cat(sprintf("Unique Entrez IDs: %d\n", length(unique(annotations$entrez_ncbi_id))))
 cat(sprintf("Unique gene symbols: %d\n", length(unique(annotations$gene_symbol))))
 
 # Read the VCF file
@@ -131,7 +130,7 @@ for (i in 1:nrow(vcf_data)) {
   overlapping_genes <- annotations[
     annotations$chr == cnv$chr &
     annotations$start <= cnv$end &
-    annotations$end >= cnv$start,
+    annotations$stop >= cnv$start,
   ]
 
   if (nrow(overlapping_genes) > 0) {
@@ -150,10 +149,9 @@ for (i in 1:nrow(vcf_data)) {
         gene_symbol = gene$gene_symbol,
         gene_chr = gene$chr,
         gene_start = gene$start,
-        gene_end = gene$end,
+        gene_stop = gene$stop,
         gene_strand = gene$strand,
-        gene_description = gene$description,
-	entrez_ncbi_id = gene$entrez_ncbi_id
+        gene_description = gene$description
       )
 
       # Add gene_biotype if present in annotations
@@ -176,8 +174,6 @@ result <- data.table()
 # Group by gene symbol and find the most significant alteration
 gene_symbols <- unique(all_results$gene_symbol)
 cat(sprintf("Processing %d unique genes to find most significant alterations...\n", length(gene_symbols)))
-
-print(all_results)
 
 for (symbol in gene_symbols) {
   # Get all rows for this gene
@@ -223,12 +219,10 @@ for (symbol in gene_symbols) {
   }
 }
 
-print(head(result))
-
 # Ensure all required columns exist and are in correct order
 output_columns <- c("chr", "start", "end", "svtype", "copy_number", "fold_change",
-                   "ensembl_id", "gene_symbol", "gene_chr", "gene_start", "gene_end",
-                   "gene_strand", "gene_description", "entrez_ncbi_id")
+                   "ensembl_id", "gene_symbol", "gene_chr", "gene_start", "gene_stop",
+                   "gene_strand", "gene_description")
 
 # Add missing columns
 for (col in output_columns) {

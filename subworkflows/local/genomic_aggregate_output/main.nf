@@ -44,10 +44,10 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                           sort: 'deep') { group, filepath ->
                              ["${group}/data_cna_long.txt", filepath.text]
                           }
+            .map {filepath -> tuple(filepath.parent.name, filepath) }
 
         // merge sv -------------------------------------------------------------
-
-        sv_results
+        sv_output = sv_results
             .map {meta, filepath -> [meta.group, filepath]}
             .groupTuple()
             .flatMap { group, files ->
@@ -59,6 +59,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                         sort : 'deep') { group, filepath ->
                             ["${group}/data_sv.txt", filepath.text]
                         }
+            .map {filepath -> tuple(filepath.parent.name, filepath) }
 
         // merge expression with merging not possible within pure nextflow. This will publish the file to output via the module
         tpm_file_list = expression_results
@@ -96,10 +97,10 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                        sort: 'deep') { group, filepath ->
                           ["${group}/data_mutations_dna_rna_germline.txt", filepath.text]
                        }
+            .map {filepath -> tuple(filepath.parent.name, filepath) }
+
 
         // create meta files and case lists ---------------------------------------------------------
-
-        case_name_all = channel.of("cnv","sequenced")
 
         cnv_sample_list = cnv_results_seg
             .map {meta, filepath -> meta.sample}
@@ -111,6 +112,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             .collect()
             .map { it.sort(false).join('\t') }
 
+        case_name_all = channel.of("cnv", "sequenced")
         case_sample_lists = cnv_sample_list.concat(mutation_sample_list)
         all_groups_cases = all_groups.combine(case_name_all).map{all_groups, case_name_all -> all_groups }
 
@@ -121,7 +123,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         )
 
         // to get all groups, just take .seg files (we assume seg and long are the same)
-
+        // add_text is the key word to replac with the group.
         meta_text_seg = """cancer_study_identifier: add_text
 genetic_alteration_type: COPY_NUMBER_ALTERATION
 datatype: SEG
@@ -182,7 +184,7 @@ data_filename: data_mutations_dna_rna_germline.txt
 
     emit:
         cnv         = cnv_long_output
-        expression  = expression_output.map { it[1] } // get second element on tuple which is the file path.
+        expression  = expression_output
         mutation    = mutation_output
-
+        sv          = sv_output
 }

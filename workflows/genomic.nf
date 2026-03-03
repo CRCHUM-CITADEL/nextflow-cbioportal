@@ -57,8 +57,6 @@ workflow GENOMIC {
         needs_pcgr
         fasta
         cosmic_data
-        project_name
-        project_description
 
     main:
 
@@ -260,8 +258,8 @@ workflow GENOMIC {
 
         meta_text = """type_of_cancer: add_text
 cancer_study_identifier: add_text
-name: ${project_name}
-description: ${project_description}
+name: ${params.project_name}
+description: ${params.project_description}
 add_global_case_list: true
 reference_genome: hg38
         """

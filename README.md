@@ -34,6 +34,7 @@ You will need to change parameters in the nextflow config in order to point to c
 | container_vcf2maf        | Location of nf-core vcf2maf module container`<br>` apptainer image (remote or local) (optional)                                |
 | clinical_samplesheet     | Input samplesheet for clinical pipeline. See section below.                                                                    |
 | id_linking_file          | ID linking file generated from genomic pipeline.                                                                               |
+| cosmic_data              | Cosmic fusion data .tsv                                                                                                         |
 
 ## Samplesheet
 
@@ -219,6 +220,8 @@ Vous devrez modifier les paramètres dans le fichier de configuration nextflow a
 | container_vcf2maf        | Emplacement de l'image apptainer du module`<br>` nf-core vcf2maf (distant ou local) (optionnel)                                             |
 | clinical_samplesheet     | Feuille d'échantillons clinique en entrée. Voir la section ci-dessous.                                                                      |
 | id_linking_file          | Fichier de linkage d'échantillion, créé par pipeline génomique                                                                              |
+| cosmic_data              | Fichier de fusion data tsv                                                                                                                  |
+
 
 ## Feuille d'échantillons
 

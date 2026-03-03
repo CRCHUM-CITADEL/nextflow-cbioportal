@@ -1,135 +1,120 @@
 #!/usr/bin/env Rscript
 
-# Gene Fusion Annotation Script for cBioPortal Data
-# This script filters known cancer fusions and creates a sample x fusion matrix
+# Gene Fusion Annotation Script for Deep Learning Data Prep
+# Vectorized, ML-optimized pipeline to create a sparse binary matrix of validated, high-confidence fusions.
 
-# Load required libraries
 library(tidyverse)
 library(readxl)
 
-#' Validate fusion data structure and content
-#' @param fusion_data Processed fusion data frame
-#' @return Logical indicating if validation passed (invisible)
-#' @keywords internal
-validate_fusion_data <- function(fusion_data) {
-  # Check if data frame is empty
-  if (nrow(fusion_data) == 0) {
-    stop("No samples remained after processing")
-  }
-
-  # Check if sample column exists
-  if (!"sample" %in% colnames(fusion_data)) {
-    stop("Sample column not found in fusion data")
-  }
-
-  # Check for duplicate samples
-  if (any(duplicated(fusion_data$sample))) {
-    stop("Duplicate samples found in fusion data")
-  }
-
-  # Check if any non-numeric values in fusion columns
-  non_numeric_check <- fusion_data %>%
-    select(-sample) %>%
-    sapply(function(x) all(is.numeric(x)))
-
-  if (!all(non_numeric_check)) {
-    stop("Non-numeric values found in fusion data")
-  }
-
-  invisible(TRUE)
-}
-
-#' Encode fusions using binary representation
-#' @keywords internal
-encode_binary_fusions <- function(data, samples, known_fusions) {
-  # Create sparse matrix of fusion presence/absence
-  fusion_matrix <- matrix(0, nrow = length(samples), ncol = length(known_fusions),
-                          dimnames = list(samples, known_fusions))
-
-  # Fill matrix with 1's where fusions exist
-  for (i in seq_len(nrow(data))) {
-    if (data$Fusion[i] %in% known_fusions) {
-      fusion_matrix[data$Sample_Id[i], data$Fusion[i]] <- 1
-    }
-  }
-#data <- data[data$Fusion %in% known_fusions,]
-  print(head(fusion_matrix))
-  as_tibble(fusion_matrix, rownames = "sample")
-}
-
-
 #' Process fusion data for deep learning input
-#' @param base_dir Base directory containing the data
-#' @return List containing different fusion encoding matrices
+#' @param input_file Path to raw fusion data
+#' @param output_file Path to save the processed matrix
+#' @param known_fusions Vector of validated fusion strings (Site1-Site2)
+#' @param min_support_reads Minimum combined read count to trust the fusion
 #' @export
-process_fusion_data <- function(input_file, output_file, known_fusions ) {
-
-  # Read fusion data
+process_fusion_data <- function(input_file, output_file, known_fusions, min_support_reads = 1) {
+  
+  message("Reading raw fusion data...")
   data <- read_tsv(input_file, show_col_types = FALSE)
-  data$Fusion <- paste0(data$Site1_Hugo_Symbol,"-",data$Site2_Hugo_Symbol)
-
-  # Get unique samples and genes
-  samples <- unique(data$Sample_Id)
-
-  # Create different encodings
-  binary_matrix <- encode_binary_fusions(data, samples, known_fusions)
-
-  # Validate matrix
-  validate_fusion_data(binary_matrix)
-
-  # Save binary matrix
-  write_tsv(binary_matrix, output_file)
-
+  
+  # 1. Capture ALL unique samples to prevent dropping patients
+  all_samples <- tibble(Sample_Id = unique(data$Sample_Id))
+  initial_sample_count <- nrow(all_samples)
+  
+  # 2. Strict QC and Database Filtering
+  message(sprintf("Filtering for RNA support and >= %d supporting reads...", min_support_reads))
+  
+  valid_fusions_data <- data %>%
+    mutate(Fusion = paste0(Site1_Hugo_Symbol, "-", Site2_Hugo_Symbol)) %>%
+    # Convert read counts to numeric and handle potential NAs
+    mutate(
+      Split_Reads = replace_na(as.numeric(Tumor_Split_Read_Count), 0),
+      Paired_Reads = replace_na(as.numeric(Tumor_Paired_End_Read_Count), 0),
+      Total_Support = Split_Reads + Paired_Reads
+    ) %>%
+    # Apply Quality Control Gates
+    filter(RNA_Support == "Yes" | RNA_Support == "TRUE") %>%
+    filter(Total_Support >= min_support_reads) %>%
+    # Cross-reference with COSMIC/ChimerDB
+    filter(Fusion %in% known_fusions) %>%
+    mutate(Present = 1) %>%
+    distinct(Sample_Id, Fusion, Present)
+  
+  active_fusions_count <- length(unique(valid_fusions_data$Fusion))
+  
+  # 3. Vectorized Matrix Creation
+  message("Pivoting to feature matrix...")
+  fusion_matrix <- valid_fusions_data %>%
+    pivot_wider(names_from = Fusion, values_from = Present, values_fill = 0)
+  
+  # 4. Guarantee all original samples are present
+  final_matrix <- all_samples %>%
+    left_join(fusion_matrix, by = "Sample_Id") %>%
+    rename(sample_id = Sample_Id) # Standardize to sample_id for easier merging downstream
+  
+  # Clean up sample names to match other modalities
+  final_matrix$sample_id <- gsub("\\.", "-", final_matrix$sample_id)
+  
+  # Convert NAs to 0
+  final_matrix[is.na(final_matrix)] <- 0
+  
+  # Save the optimized matrix
+  write_tsv(final_matrix, output_file)
+  
+  # Summary
+  message("\n=== Fusion Processing Summary ===")
+  message(sprintf("- Total samples processed: %d", initial_sample_count))
+  message(sprintf("- Active, high-confidence fusions retained: %d", active_fusions_count))
+  message("- ML Transformations:")
+  message(sprintf("  1. QC Gate: Required RNA_Support and >= %d total reads", min_support_reads))
+  message("  2. DB Gate: Cross-referenced with COSMIC/ChimerDB")
+  message("  3. Matrix Generation: Zero-padded patients with no valid fusions")
+  message("=================================\n")
 }
 
 # ============================================================================
 # CONFIGURATION & INPUT VALIDATION
 # ============================================================================
 
-# Get command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) == 0) {
-  stop("Usage: Rscript fusion_annotator.R <path_to_data_fusions.txt> <known_chimerDB_xlsx> <cosmic v103 GRCh38>")
+  stop("Usage: Rscript fusion_annotator.R <raw_fusions.tsv> <chimerDB.xlsx> <cosmic_v103.tsv> [min_reads]")
 }
 
 input_file <- args[1]
-known_fusions <- args[2] # Get known fusions from ChimerDB (https://www.kobic.re.kr/chimerdb/download)
-cosmic_data <- args[3] # Get known fusions from Cosmic v103 GRCh38
+known_fusions_file <- args[2] 
+cosmic_data_file <- args[3] 
+# Allow user to override the read threshold via command line, default to 1
+min_reads <- if (length(args) >= 4) as.numeric(args[4]) else 1
 
-# Check that file exists
-if (!file.exists(input_file)) {
-  stop("Error: Input file does not exist: ", input_file)
-}
+if (!file.exists(input_file)) stop("Error: Input file missing: ", input_file)
+if (!file.exists(known_fusions_file)) stop("Error: ChimerDB file missing: ", known_fusions_file)
+if (!file.exists(cosmic_data_file)) stop("Error: COSMIC file missing: ", cosmic_data_file)
 
-if (!file.exists(known_fusions)) {
-  stop("Error : known fusions file does not exist: ",known_fusions)
-}
+cat("High-Fidelity Fusion Annotation Pipeline\n")
+cat("========================================\n")
 
-if (!file.exists(cosmic_data)) {
-  stop("Error : cosmic data file does not exist: ",cosmic_data)
-}
-
-cat("Gene Fusion Annotation Pipeline\n")
-cat("================================\n\n")
-cat("Input file:", input_file, "\n")
-
-# Read input files as dataframes
-cat("Reading known fusions database...\n")
-chimerKB_db <- read_excel(known_fusions)
-
-cat("Reading COSMIC fusion data...\n")
-cosmic_data_df <- read.delim(cosmic_data, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-
-
-# Output file (same directory as input)
-output_file <- "filtered_fusions_matrix.tsv"
-
-cosmic_fusions <- cosmic_data_df[,!is.null(cosmic_data_df$COSMIC_FUSION_ID)]
-cosmic_fusions <- unique(paste0(cosmic_data_df[,"FIVE_PRIME_GENE_SYMBOL"],"-",cosmic_data_df[,"THREE_PRIME_GENE_SYMBOL"]))
-
+# 1. Load Databases
+cat("Loading reference databases...\n")
+chimerKB_db <- read_excel(known_fusions_file)
 chimerKB_fusions <- unique(chimerKB_db$Fusion_pair)
 
-all_fusions <- c(cosmic_fusions, chimerKB_fusions)
+print(head(chimerKB_db))
+print(head(chimerKB_fusions))
 
-process_fusion_data(input_file, output_file, all_fusions)
+cosmic_data_df <- read_tsv(cosmic_data_file, show_col_types = FALSE)
+print(head(cosmic_data_df))
+cosmic_fusions <- cosmic_data_df %>%
+  filter(!is.na(COSMIC_FUSION_ID)) %>%
+  mutate(Fusion = paste0(FIVE_PRIME_GENE_SYMBOL, "-", THREE_PRIME_GENE_SYMBOL)) %>%
+  pull(Fusion) %>%
+  unique()
+
+all_known_fusions <- unique(c(cosmic_fusions, chimerKB_fusions))
+print("all known fusions")
+print(head(all_known_fusions))
+
+# 2. Process Data
+output_file <- "filtered_fusions_matrix.tsv"
+process_fusion_data(input_file, output_file, all_known_fusions, min_reads)

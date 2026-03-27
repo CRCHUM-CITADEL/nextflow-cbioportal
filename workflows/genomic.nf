@@ -46,96 +46,98 @@ workflow GENOMIC {
         ch_versions = channel.empty()
 
         // ── Parse samplesheet ────────────────────────────────────────────────
-        // The oncoanalyser samplesheet has one row per file (BAM, BAI, …).
-        // We deduplicate to one entry per unique (group, subject, sample,
-        // sample_type, sequence_type) combination.
+        // One row per subject: group, subject_id, sample_id, folder.
+        // All modality files are resolved relative to folder.
 
         ch_samples = samplesheet_list
             .map { rec ->
                 [
-                    group        : "${rec[0].group}",
-                    subject      : "${rec[0].subject}",
-                    sample       : "${rec[0].sample}",
-                    sample_type  : "${rec[0].sample_type}",    // 'tumor' or 'normal'
-                    sequence_type: "${rec[0].sequence_type}"   // 'dna' or 'rna'
+                    group  : "${rec[0].group}",
+                    subject: "${rec[0].subject}",
+                    sample : "${rec[0].sample}",
+                    folder : "${rec[0].folder}",
                 ]
             }
-            .unique { meta -> "${meta.group}_${meta.sample}_${meta.sample_type}_${meta.sequence_type}" }
-
-        // Tumor DNA → SAGE mutations, PURPLE CNV, ESVEE SVs
-        ch_tumor_dna = ch_samples
-            .filter { meta -> meta.sample_type == 'tumor' && meta.sequence_type == 'dna' }
-
-        // Normal DNA → SAGE germline mutations
-        ch_normal_dna = ch_samples
-            .filter { meta -> meta.sample_type == 'normal' && meta.sequence_type == 'dna' }
-
-        // Tumor RNA → Isofox expression + fusions
-        ch_tumor_rna = ch_samples
-            .filter { meta -> meta.sample_type == 'tumor' && meta.sequence_type == 'rna' }
-
-        def onco = params.oncoanalyser_outdir
 
         // ── Build per-modality input channels ─────────────────────────────────
+        // File naming conventions (relative to folder):
+        //   sage/somatic/${sample_id}-T.sage.somatic.vcf.gz   — SAGE somatic DNA
+        //   sage/germline/${sample_id}-N.sage.germline.vcf.gz — SAGE germline DNA
+        //   sage/append/${sample_id}-T.sage.append.vcf.gz     — SAGE somatic RNA append
+        //   esvee/caller/${sample_id}-T.esvee.unfiltered.vcf.gz
+        //   purple/${sample_id}-T.purple.cnv.somatic.tsv
+        //   purple/${sample_id}-T.purple.cnv.gene.tsv
+        //   ${sample_id}-T.isf.fusions.csv
+        //   ${sample_id}-T.isf.gene_data.csv
 
         // SAGE somatic VCF → mutations
-        ch_sage_vcf = ch_tumor_dna
+        ch_sage_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${onco}/${meta.group}/sage/${meta.sample}.sage.vcf.gz",
-                    'mutation (SAGE)')
+                    "${meta.folder}/sage/somatic/${meta.sample}-T.sage.somatic.vcf.gz",
+                    'mutation (SAGE somatic)')
                 vcf ? [meta + [pipeline: 'mutation'], vcf] : null
             }
             .filter { it != null }
 
         // SAGE germline VCF → germline mutations
-        ch_sage_germline_vcf = ch_normal_dna
+        ch_sage_germline_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${onco}/${meta.group}/sage/germline/${meta.sample}.sage.germline.vcf.gz",
+                    "${meta.folder}/sage/germline/${meta.sample}-N.sage.germline.vcf.gz",
                     'germline mutation (SAGE)')
                 vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
             .filter { it != null }
 
+        // SAGE RNA-append VCF → somatic RNA mutations
+        ch_sage_rna_vcf = ch_samples
+            .map { meta ->
+                def vcf = findOncoFile(meta,
+                    "${meta.folder}/sage/append/${meta.sample}-T.sage.append.vcf.gz",
+                    'mutation (SAGE RNA append)')
+                vcf ? [meta + [pipeline: 'mutation_rna'], vcf] : null
+            }
+            .filter { it != null }
+
         // PURPLE CNV somatic + gene TSV → copy-number
-        ch_purple_cnv = ch_tumor_dna
+        ch_purple_cnv = ch_samples
             .map { meta ->
                 def somatic = findOncoFile(meta,
-                    "${onco}/${meta.group}/purple/${meta.sample}.purple.cnv.somatic.tsv",
+                    "${meta.folder}/purple/${meta.sample}-T.purple.cnv.somatic.tsv",
                     'cnv (PURPLE somatic)')
                 def gene = findOncoFile(meta,
-                    "${onco}/${meta.group}/purple/${meta.sample}.purple.cnv.gene.tsv",
+                    "${meta.folder}/purple/${meta.sample}-T.purple.cnv.gene.tsv",
                     'cnv (PURPLE gene)')
                 (somatic && gene) ? [meta + [pipeline: 'cnv'], somatic, gene] : null
             }
             .filter { it != null }
 
-        // ESVEE somatic VCF → structural variants
-        ch_esvee_vcf = ch_tumor_dna
+        // ESVEE unfiltered VCF → structural variants
+        ch_esvee_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${onco}/${meta.group}/esvee/${meta.sample}.esvee.somatic.vcf.gz",
+                    "${meta.folder}/esvee/caller/${meta.sample}-T.esvee.unfiltered.vcf.gz",
                     'sv (ESVEE)')
                 vcf ? [meta + [pipeline: 'sv'], vcf] : null
             }
             .filter { it != null }
 
-        // Isofox expression TSV → TPM
-        ch_isofox_exp = ch_tumor_rna
+        // Isofox gene expression CSV → TPM
+        ch_isofox_exp = ch_samples
             .map { meta ->
                 def exp = findOncoFile(meta,
-                    "${onco}/${meta.group}/isofox/${meta.sample}.isofox.exp.tsv",
+                    "${meta.folder}/${meta.sample}-T.isf.gene_data.csv",
                     'expression (Isofox)')
                 exp ? [meta + [pipeline: 'expression'], exp] : null
             }
             .filter { it != null }
 
-        // Isofox fusion TSV → RNA fusions
-        ch_isofox_fusion = ch_tumor_rna
+        // Isofox fusions CSV → RNA fusions
+        ch_isofox_fusion = ch_samples
             .map { meta ->
                 def fusion = findOncoFile(meta,
-                    "${onco}/${meta.group}/isofox/${meta.sample}.isofox.fusion.tsv",
+                    "${meta.folder}/${meta.sample}-T.isf.fusions.csv",
                     'sv (Isofox fusions)')
                 fusion ? [meta + [pipeline: 'sv'], fusion] : null
             }
@@ -188,7 +190,6 @@ reference_genome: hg38
         // ── Subject → tumor sample linking file ───────────────────────────────
 
         ch_samples
-            .filter { meta -> meta.sample_type == 'tumor' && meta.sequence_type == 'dna' }
             .map    { meta -> tuple(meta.group, "${meta.subject}\t${meta.sample}") }
             .unique()
             .groupTuple()

@@ -1,6 +1,4 @@
-# CRCHUM-CITADEL/nextflow-cbioportal (English)
-
-(Traduction en francais suit)
+# CRCHUM-CITADEL/nextflow-cbioportal
 
 ## Clone
 
@@ -21,8 +19,7 @@ You will need to change parameters in the nextflow config in order to point to c
 | Field                    | Description                                                                                                                    |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | mode                     | Pipeline run mode. Options : ['clinical', 'genomic']                                                                           |
-| genomic_samplesheet      | Input samplesheet for genomic pipeline. See section below.                                                                     |
-| oncoanalyser_outdir      | Path to the nf-core/oncoanalyser output directory. See expected layout below.                                                  |
+| genomic_samplesheet      | Input samplesheet for genomic pipeline (one row per subject). See section below.                                               |
 | ensembl_annotations_expr | Ensembl annotation .tsv file for expression subworkflow (tested with ensembl 110 with biomart)                                 |
 | ensembl_annotations      | Ensembl annotation .tsv file. (tested with 113 with biomart)                                                                   |
 | vep_data                 | Cache folder of downloaded ensembl vep release.                                                                                |
@@ -41,58 +38,52 @@ You will need to create a samplesheet for this pipeline, which can differ betwee
 
 ### Mode = 'genomic'
 
-The samplesheet format is identical to the input samplesheet used for `<a href="https://github.com/nf-core/oncoanalyser">` nf-core/oncoanalyser `</a>`. It describes which samples were processed by oncoanalyser; the pipeline then resolves output files from `oncoanalyser_outdir`. See below for exact specifications:
+The genomic samplesheet has **one row per subject**. The `folder` column points to the oncoanalyser output directory for that subject; all modality files are resolved relative to it.
 
 #### Genomic Input Schema
 
-The genomic input file must be a CSV file where each row describes one file submitted to oncoanalyser:
-
-| Column Name     | Type   | Required | Pattern                      | Options                                                 | Description                        |
-| --------------- | ------ | -------- | ---------------------------- | ------------------------------------------------------- | ---------------------------------- |
-| `group_id`      | string | No       | `^\S+$` (no spaces)          | -                                                       | Study/cohort group identifier      |
-| `subject_id`    | string | **Yes**  | `^(?:\d+\|\S+)$` (no spaces) | -                                                       | Patient/subject identifier         |
-| `sample_id`     | string | **Yes**  | `^\S+$` (no spaces)          | -                                                       | Sample identifier                  |
-| `sample_type`   | string | **Yes**  | -                            | `tumor`, `normal`                                       | Sample classification              |
-| `sequence_type` | string | **Yes**  | -                            | `dna`, `rna`                                            | Data modality                      |
-| `filetype`      | string | **Yes**  | -                            | `bam`, `bai`, `cram`, `crai`, `fastq`, `bam_redux`, `cram_redux` | Input file type    |
-| `filepath`      | string | **Yes**  | -                            | -                                                       | Path to the input file             |
+| Column Name  | Type   | Required | Pattern                      | Description                                               |
+| ------------ | ------ | -------- | ---------------------------- | --------------------------------------------------------- |
+| `group`      | string | **Yes**  | `^\S+$` (no spaces)          | Study/cohort group identifier                             |
+| `subject_id` | string | **Yes**  | `^(?:\d+\|\S+)$` (no spaces) | Patient/subject identifier                                |
+| `sample_id`  | string | **Yes**  | `^\S+$` (no spaces)          | Sample base name used in output file names                |
+| `folder`     | string | **Yes**  | -                            | Path to the oncoanalyser output directory for this subject |
 
 > [!NOTE]
-> Fields marked as **Required** must be present in each row.
-> All string fields cannot contain spaces unless otherwise noted.
+> All string fields cannot contain spaces.
 
 Example:
 
 ```csv
-group_id,subject_id,sample_id,sample_type,sequence_type,filetype,filepath
-COHORT1,PATIENT1,SAMPLE-N,normal,dna,bam,/data/SAMPLE-N.bam
-COHORT1,PATIENT1,SAMPLE-T,tumor,dna,bam,/data/SAMPLE-T.bam
-COHORT1,PATIENT1,SAMPLE-R,tumor,rna,bam,/data/SAMPLE-R.bam
+group,subject_id,sample_id,folder
+COHORT1,PATIENT1,SAMPLE1,/data/oncoanalyser_output/COHORT1/PATIENT1
+COHORT1,PATIENT2,SAMPLE2,/data/oncoanalyser_output/COHORT1/PATIENT2
 ```
 
-#### Expected oncoanalyser output layout
+#### Expected folder layout
 
-The pipeline resolves output files from `oncoanalyser_outdir` using this directory layout:
+The pipeline resolves output files from each subject's `folder` using this layout:
 
 ```
-<oncoanalyser_outdir>/
-└── <group_id>/
-    ├── sage/
-    │   ├── <tumor_sample_id>.sage.vcf.gz          ← somatic mutations
-    │   └── germline/
-    │       └── <normal_sample_id>.sage.germline.vcf.gz  ← germline mutations
-    ├── purple/
-    │   ├── <tumor_sample_id>.purple.cnv.somatic.tsv
-    │   └── <tumor_sample_id>.purple.cnv.gene.tsv
-    ├── esvee/
-    │   └── <tumor_sample_id>.esvee.somatic.vcf.gz
-    └── isofox/
-        ├── <rna_sample_id>.isofox.exp.tsv
-        └── <rna_sample_id>.isofox.fusion.tsv
+<folder>/
+├── sage/
+│   ├── somatic/
+│   │   └── <sample_id>-T.sage.somatic.vcf.gz     ← somatic DNA mutations
+│   ├── germline/
+│   │   └── <sample_id>-N.sage.germline.vcf.gz    ← germline DNA mutations
+│   └── append/
+│       └── <sample_id>-T.sage.append.vcf.gz      ← somatic RNA mutations
+├── esvee/
+│   └── caller/
+│       └── <sample_id>-T.esvee.unfiltered.vcf.gz ← structural variants
+├── purple/
+│   ├── <sample_id>-T.purple.cnv.somatic.tsv
+│   └── <sample_id>-T.purple.cnv.gene.tsv
+├── <sample_id>-T.isf.fusions.csv                 ← RNA fusions (Isofox)
+└── <sample_id>-T.isf.gene_data.csv               ← gene expression (Isofox)
 ```
 
 > [!NOTE]
-> Germline mutations are processed from `sage/germline/` using the **normal** sample ID from the samplesheet (`sample_type = normal`, `sequence_type = dna`). Somatic mutations use the **tumor** DNA sample ID. Both are converted to MAF format via vcf2maf and merged into `data_mutations_dna_rna_germline.txt`.
 > Files that are absent or empty are skipped with a warning — each modality is optional.
 
 ### mode = 'clinical'
@@ -212,224 +203,6 @@ apptainer exec containers/nextflow-citadel_v25.10.2.sif nf-test test --profile a
 ```
 
 To run pre-commit (to check linting before pull request):
-
-```
-apptainer exec containers/nextflow-citadel_v25.10.2.sif pre-commit run .
-```
-
-# CRCHUM-CITADEL/nextflow-cbioportal (Francais)
-
-Documentation de démarrage (Traduction en français)
-
-## Cloner
-
-Pour exécuter ce pipeline, vous devez d'abord cloner ce dépôt git et entrer dans le répertoire :
-
-```
-git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git && cd
-```
-
-> [!NOTE]
-> Pour tous les conteneurs, nous utilisons Apptainer en raison de sa compatibilité avec les environnements HPC.
-> Si vous ne travaillez pas dans un environment HPC, trouvez comment l'installer ici : https://apptainer.org/docs/admin/main/installation.html
-
-## Modifier le fichier nextflow.config
-
-Vous devrez modifier les paramètres dans le fichier de configuration nextflow afin de pointer vers certains fichiers. Ces options se trouvent dans le dictionnaire `params` dans nextflow.config. Obligatoire sauf indication contraire.
-
-| Champ                    | Description                                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| mode                     | Mode d'exécution du pipeline. Options : ['clinical', 'genomic']                                                                             |
-| genomic_samplesheet      | Feuille d'échantillons génomique en entrée. Voir la section ci-dessous.                                                                     |
-| oncoanalyser_outdir      | Chemin vers le répertoire de sortie de nf-core/oncoanalyser. Voir la structure attendue ci-dessous.                                         |
-| ensembl_annotations_expr | Fichier d'annotations Ensembl .tsv. pour resultats d'expression (peut etre pareil)                                                          |
-| ensembl_annotations      | Fichier d'annotations Ensembl .tsv.                                                                                                         |
-| vep_data                 | Dossier du cache de la version ensembl vep téléchargée.                                                                                     |
-| vep_params               | Paramètres pour l'utilisation de VEP comme décrit ici :`<br>` https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optionnel) |
-| genome_reference         | Emplacement du fichier fasta de référence GRCh38.                                                                                           |
-| container_python         | Emplacement de l'image apptainer Python (distant ou local)                                                                                  |
-| container_r              | Emplacement de l'image apptainer R (distant ou local)                                                                                       |
-| container_vcf2maf        | Emplacement de l'image apptainer du module`<br>` nf-core vcf2maf (distant ou local) (optionnel)                                             |
-| clinical_samplesheet     | Feuille d'échantillons clinique en entrée. Voir la section ci-dessous.                                                                      |
-| id_linking_file          | Fichier de linkage d'échantillion, créé par pipeline génomique                                                                              |
-| cosmic_data              | Fichier de fusion data tsv                                                                                                                  |
-
-
-## Feuille d'échantillons
-
-Vous devrez créer une feuille d'échantillons pour ce pipeline, qui peut différer selon les modes.
-
-### Mode = 'genomic'
-
-Le format de la feuille d'échantillons est identique à celui utilisé en entrée pour `<a href="https://github.com/nf-core/oncoanalyser">` nf-core/oncoanalyser `</a>`. Elle décrit les échantillons traités par oncoanalyser ; le pipeline résout ensuite les fichiers de sortie à partir de `oncoanalyser_outdir`. Voir ci-dessous pour les spécifications exactes :
-
-#### Schéma d'entrée génomique
-
-Le fichier d'entrée génomique doit être un fichier CSV où chaque ligne décrit un fichier soumis à oncoanalyser :
-
-| Nom de colonne  | Type   | Requis  | Motif                            | Options                                                                       | Description                        |
-| --------------- | ------ | ------- | -------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------- |
-| `group_id`      | chaîne | Non     | `^\S+$` (pas d'espaces)          | -                                                                             | Identifiant de groupe              |
-| `subject_id`    | chaîne | **Oui** | `^(?:\d+\|\S+)$` (pas d'espaces) | -                                                                             | Identifiant du sujet               |
-| `sample_id`     | chaîne | **Oui** | `^\S+$` (pas d'espaces)          | -                                                                             | Identifiant d'échantillon          |
-| `sample_type`   | chaîne | **Oui** | -                                | `tumor`, `normal`                                                             | Type d'échantillon                 |
-| `sequence_type` | chaîne | **Oui** | -                                | `dna`, `rna`                                                                  | Type de données de séquençage      |
-| `filetype`      | chaîne | **Oui** | -                                | `bam`, `bai`, `cram`, `crai`, `fastq`, `bam_redux`, `cram_redux`              | Type de fichier d'entrée           |
-| `filepath`      | chaîne | **Oui** | -                                | -                                                                             | Chemin vers le fichier d'entrée    |
-
-> [!NOTE]
-> Les champs marqués comme **Requis** doivent être présents dans chaque ligne.
-> Tous les champs de type chaîne ne peuvent pas contenir d'espaces sauf indication contraire.
-
-Exemple :
-
-```csv
-group_id,subject_id,sample_id,sample_type,sequence_type,filetype,filepath
-COHORTE1,PATIENT1,SAMPLE-N,normal,dna,bam,/data/SAMPLE-N.bam
-COHORTE1,PATIENT1,SAMPLE-T,tumor,dna,bam,/data/SAMPLE-T.bam
-COHORTE1,PATIENT1,SAMPLE-R,tumor,rna,bam,/data/SAMPLE-R.bam
-```
-
-#### Structure attendue des sorties oncoanalyser
-
-Le pipeline résout les fichiers de sortie depuis `oncoanalyser_outdir` selon cette arborescence :
-
-```
-<oncoanalyser_outdir>/
-└── <group_id>/
-    ├── sage/
-    │   ├── <tumor_sample_id>.sage.vcf.gz                       ← mutations somatiques
-    │   └── germline/
-    │       └── <normal_sample_id>.sage.germline.vcf.gz         ← mutations germinales
-    ├── purple/
-    │   ├── <tumor_sample_id>.purple.cnv.somatic.tsv
-    │   └── <tumor_sample_id>.purple.cnv.gene.tsv
-    ├── esvee/
-    │   └── <tumor_sample_id>.esvee.somatic.vcf.gz
-    └── isofox/
-        ├── <rna_sample_id>.isofox.exp.tsv
-        └── <rna_sample_id>.isofox.fusion.tsv
-```
-
-> [!NOTE]
-> Les mutations germinales sont traitées depuis `sage/germline/` en utilisant l'identifiant de l'échantillon **normal** (`sample_type = normal`, `sequence_type = dna`). Les mutations somatiques utilisent l'identifiant de l'échantillon **tumoral** ADN. Les deux sont convertis au format MAF via vcf2maf et fusionnés dans `data_mutations_dna_rna_germline.txt`.
-> Les fichiers absents ou vides sont ignorés avec un avertissement — chaque modalité est optionnelle.
-
-### mode = 'clinical'
-
-#### Schéma d’entrée clinique
-
-Le fichier d’entrée clinique doit être un fichier CSV où chaque objet contient les champs suivants :
-
-| Nom de colonne    | Type   | Requis  | Motif                  | Options                                                                                                   | Description                                                               |
-| ----------------- | ------ | ------- | ---------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `group_id`        | chaîne | Non     | `^\S+$` (sans espaces) | -                                                                                                         | Identifiant de groupe                                                     |
-| `filetype`        | chaîne | **Oui** | -                      | `patient`, `diagnosis`, `treatment`, `surgeries` `<br>` `systemic_treatment`, `specimen`, `radio_therapy` | Catégorie du type de fichier                                              |
-| `filepath`        | chaîne | **Oui** | `^\S+\.csv)$`          | -                                                                                                         | Chemin vers le fichier de données cliniques (doit se terminer par `.csv`) |
-| `extraction_date` | chaîne | **Oui** | `^\S+$`                | -                                                                                                         | Date à laquelle les données ont été extraites de la base de données       |
-| `info`            | chaîne | Non     | -                      | -                                                                                                         | Informations supplémentaires                                              |
-
-> [!NOTE]
-> Les champs marqués comme **Requis** doivent être présents dans chaque objet.
-> Les champs de type chaîne ne peuvent pas contenir d’espaces sauf indication contraire.
-> Le `filepath` doit pointer vers un fichier valide avec une des extensions acceptées.
-
-## Pour les environnements non-HPC (c'est-à-dire sans SLURM)
-
-### Télécharger l'image conteneur nextflow
-
-Afin d'exécuter nextflow avec le logiciel exact utilisé pour construire le pipeline, téléchargez l'image conteneur hébergée sur le GitHub organisationnel de CITADEL (ou si vous n'êtes pas membre de crchum-citadel GitHub, demandez l'emplacement du fichier .sif stocké localement.)
-
-```
-apptainer pull --dir containers/ oras://ghcr.io/crchum-citadel/sdp-nextflow:25.04.7
-```
-
-> [!NOTE]
-> Pour télécharger depuis le dépôt GitHub, vous devez avoir vos identifiants stockés dans votre environnement et être membre du GitHub crchum-citadel.
-> Vous devrez d'abord créer un `<a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens" target="_blank">`jeton PAT avec les permissions appropriées`</a>`
-> Pour vous authentifier :
-> `apptainer registry login --username <nom_utilisateur> oras://ghcr.io`
-> Vous serez invité à entrer votre jeton PAT.
-
-### Exécuter nextflow via apptainer
-
-Structurez votre commande comme suit :
-
-```
-apptainer exec containers/sdp-nextflow_<version>.sif nextflow <commande>
-```
-
-Pour obtenir la version :
-
-```
-apptainer exec containers/sdp-nextflow_v25.10.2.sif nextflow -v
-```
-
-Pour exécuter le test du pipeline (en utilisant des données minimales) :
-
-```
-apptainer exec containers/sdp-nextflow_v25.10.2.sif nextflow run main.nf -profile test,apptainer
-```
-
-## Dans un environnement HPC (c'est-à-dire avec SLURM)
-
-### Charger le module nextflow
-
-```
-module load nextflow/25.04.6 apptainer htslib
-```
-
-### Exécuter nextflow
-
-```
-nextflow run main.nf -profile apptainer,slurm
-```
-
-> [!IMPORTANT]
-> Exécutez toujours le pipeline avec au moins l'option de profil apptainer, sinon il ne fonctionnera pas. (Par ex. -profile apptainer)
-
-## Fonctionnalité nf-core
-
-Ce pipeline a été construit à partir d'un modèle nf-core. Vous voudrez peut-être utiliser certaines fonctionnalités CLI de nf-core.
-
-Selon la documentation, vous pouvez exécuter directement depuis le conteneur :
-
-```
-apptainer exec \
-    --bind $(pwd):$(pwd) \
-    --pwd $(pwd) \
-    docker://nfcore/tools:3.3.2 \
-    nf-core pipelines list
-```
-
-> [!NOTE]
-> Vous voudrez probablement créer un alias dans votre fichier ~/.bashrc. Dans ce fichier, incluez :
-> `alias nf-core="apptainer exec --bind $(pwd):$(pwd) --pwd $(pwd) docker://nfcore/tools:3.3.2 nf-core"`
-> (N'oubliez pas de sourcer et de changer les versions lors d'une mise à jour !)
-
-> [!NOTE]
-> Si vous cherchez à mettre à jour le registre de conteneurs, vous devez :
->
-> 1. Construire l'image
->    `apptainer build <nouveau_fichier_sif>.sif <fichier_def>.def`
-> 2. Pousser l'image :
->    `apptainer push <nouveau_fichier_sif>.sif oras://ghcr.io/crchum-citadel/<nom>:<version>`
-
-## Pour les développeurs :
-
-> [!IMPORTANT]
-> Effectuez toujours les modifications dans la branche dev du dépôt. Pour fusionner les modifications vers la branche main, créez une demande de tirage (pull request) et assurez-vous que tous les tests réussissent.
-> Alternativement, créez un problème (issue) dans le dépôt GitHub.
-
-### Autres fonctionnalités :
-
-Pour exécuter nf-test :
-
-```
-apptainer exec containers/nextflow-citadel_v25.10.2.sif nf-test test --profile apptainer
-```
-
-Pour exécuter pre-commit (pour vérifier le linting avant la demande de tirage) :
 
 ```
 apptainer exec containers/nextflow-citadel_v25.10.2.sif pre-commit run .

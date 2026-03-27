@@ -1,13 +1,3 @@
-group_id,subject_id,sample_id,sample_type,sequence_type,filetype,filepath
-TEST,T1,T1-N,normal,dna,bam,assets/test_data/genomic/dna/T1-N.bam
-TEST,T1,T1-N,normal,dna,bai,assets/test_data/genomic/dna/T1-N.bam.bai
-TEST,T1,T1-T,tumor,dna,bam,assets/test_data/genomic/dna/T1-T.bam
-TEST,T1,T1-T,tumor,dna,bai,assets/test_data/genomic/dna/T1-T.bam.bai
-TEST,T1,T1-RNA,tumor,rna,bam,assets/test_data/genomic/rna/T1-RNA.bam
-TEST,T1,T1-RNA,tumor,rna,bai,assets/test_data/genomic/rna/T1-RNA.bam.bai
-TEST,T2,T2-N,normal,dna,bam,assets/test_data/genomic/dna/T2-N.bam
-TEST,T2,T2-N,normal,dna,bai,assets/test_data/genomic/dna/T2-N.bam.bai
-TEST,T2,T2-T,tumor,dna,bam,assets/test_data/genomic/dna/T2-T.bam
-TEST,T2,T2-T,tumor,dna,bai,assets/test_data/genomic/dna/T2-T.bam.bai
-TEST,T2,T2-RNA,tumor,rna,bam,assets/test_data/genomic/rna/T2-RNA.bam
-TEST,T2,T2-RNA,tumor,rna,bai,assets/test_data/genomic/rna/T2-RNA.bam.bai
+group,subject_id,sample_id,folder
+TEST,T1,T1,assets/test_data/oncoanalyser_output/TEST/T1
+TEST,T2,T2,assets/test_data/oncoanalyser_output/TEST/T2

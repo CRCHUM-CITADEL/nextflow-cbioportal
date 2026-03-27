@@ -2,21 +2,21 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-sante-precision/assets/schema_genomic_input.json",
     "title": "CRCHUM-CITADEL/nextflow-sante-precision genomic pipeline parameters",
-    "description": "Pipeline Nextflow pour besoins des projets santé de précision, pipeline genomique — accepts nf-core/oncoanalyser samplesheet format",
+    "description": "One row per subject. The folder column points to the oncoanalyser output directory for that subject; all modality files are resolved relative to it.",
     "type": "array",
     "items": {
         "type": "object",
         "properties": {
-            "group_id": {
+            "group": {
                 "type": "string",
                 "pattern": "^\\S+$",
-                "errorMessage": "Group id cannot contain spaces",
+                "errorMessage": "group cannot contain spaces",
                 "meta": "group"
             },
             "subject_id": {
                 "type": "string",
                 "pattern": "^(?:\\d+|\\S+)$",
-                "errorMessage": "Subject id must be provided and cannot contain spaces",
+                "errorMessage": "subject_id must be provided and cannot contain spaces",
                 "meta": "subject"
             },
             "sample_id": {
@@ -25,32 +25,12 @@
                 "errorMessage": "sample_id must be provided and cannot contain spaces",
                 "meta": "sample"
             },
-            "sample_type": {
+            "folder": {
                 "type": "string",
-                "errorMessage": "sample_type must be provided and be one of 'tumor', 'normal'",
-                "enum": ["tumor", "normal"],
-                "meta": "sample_type"
-            },
-            "sequence_type": {
-                "type": "string",
-                "errorMessage": "sequence_type must be provided and be one of 'dna', 'rna'",
-                "enum": ["dna", "rna"],
-                "meta": "sequence_type"
-            },
-            "filetype": {
-                "type": "string",
-                "errorMessage": "filetype must be one of 'bam', 'bai', 'cram', 'crai', 'fastq', 'bam_redux', 'cram_redux'",
-                "enum": ["bam", "bai", "cram", "crai", "fastq", "bam_redux", "cram_redux"]
-            },
-            "filepath": {
-                "type": "string",
-                "errorMessage": "filepath must be provided"
-            },
-            "info": {
-                "type": "string",
-                "meta": "info"
+                "errorMessage": "folder must be provided — path to the oncoanalyser output directory for this subject",
+                "meta": "folder"
             }
         },
-        "required": ["group_id", "subject_id", "sample_id", "sample_type", "sequence_type", "filetype", "filepath"]
+        "required": ["group", "subject_id", "sample_id", "folder"]
     }
 }

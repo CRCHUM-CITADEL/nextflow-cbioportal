@@ -74,10 +74,6 @@ workflow PIPELINE_INITIALISATION {
         samplesheet_list = Channel.fromList(samplesheetToList(clinical_input, "assets/schema_clinical_input.json"))
 
     } else if (mode == 'genomic'){
-        if (!params.oncoanalyser_outdir){
-            error("ERROR: oncoanalyser_outdir must be set to the output directory of nf-core/oncoanalyser. Check input in nextflow.config")
-        }
-
         if (!params.ensembl_annotations){
             error("ERROR: Missing ensembl_annotations file (tsv format). Check input in nextflow.config")
         }

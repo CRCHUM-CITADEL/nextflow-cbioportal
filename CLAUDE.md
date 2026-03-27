@@ -212,14 +212,13 @@ process MY_PROCESS {
 | Param | Purpose |
 |---|---|
 | `mode` | `"genomic"` or `"clinical"` |
-| `genomic_samplesheet` | CSV with genomic sample paths |
+| `genomic_samplesheet` | CSV with columns `group, subject_id, sample_id, folder` (one row per subject) |
 | `clinical_samplesheet` | CSV with clinical data paths |
 | `id_linking_file` | Links genomic ↔ clinical sample IDs |
 | `ensembl_annotations` | BioMart TSV for gene annotation |
 | `vep_data` | Path to pre-staged VEP cache |
-| `pcgr_data` | Path to pre-staged PCGR reference data |
 | `genome_reference` | GRCh38 FASTA |
-| `container_r/python/pcgr/vcf2maf` | ORAS image URIs |
+| `container_r/python/vcf2maf` | ORAS image URIs |
 | `outdir` | Output directory (default: `output/`) |
 
 ---

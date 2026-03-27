@@ -67,7 +67,7 @@ workflow GENOMIC {
         //   esvee/caller/${sample_id}-T.esvee.unfiltered.vcf.gz
         //   purple/${sample_id}-T.purple.cnv.somatic.tsv
         //   purple/${sample_id}-T.purple.cnv.gene.tsv
-        //   ${sample_id}-T.isf.fusions.csv
+        //   isofox/${sample_id}-T.isf.fusions.csv
         //   ${sample_id}-T.isf.gene_data.csv
 
         // SAGE somatic VCF → mutations
@@ -137,7 +137,7 @@ workflow GENOMIC {
         ch_isofox_fusion = ch_samples
             .map { meta ->
                 def fusion = findOncoFile(meta,
-                    "${meta.folder}/${meta.sample}-T.isf.fusions.csv",
+                    "${meta.folder}/isofox/${meta.sample}-T.isf.fusions.csv",
                     'sv (Isofox fusions)')
                 fusion ? [meta + [pipeline: 'sv'], fusion] : null
             }

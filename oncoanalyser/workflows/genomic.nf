@@ -17,7 +17,7 @@ include { GENERATE_META_FILE        } from '../modules/local/generate_meta_file'
 def findOncoFile(meta, path_str, label) {
     def f = file(path_str, checkIfExists: false)
     if (!f.exists() || f.isEmpty()) {
-        log.warn "File not found for ${meta.sample} (${label}): ${path_str}"
+        log.warn "File not found for ${meta.subject} (${label}): ${path_str}"
         return null
     }
     return f
@@ -73,7 +73,7 @@ workflow GENOMIC {
         ch_sage_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/sage/somatic/${meta.sample}-T.sage.somatic.vcf.gz",
+                    "${meta.folder}/sage/somatic/${meta.subject}-T.sage.somatic.vcf.gz",
                     'mutation (SAGE somatic)')
                 vcf ? [meta + [pipeline: 'mutation'], vcf] : null
             }
@@ -83,7 +83,7 @@ workflow GENOMIC {
         ch_sage_germline_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/sage/germline/${meta.sample}-N.sage.germline.vcf.gz",
+                    "${meta.folder}/sage/germline/${meta.subject}-T.sage.germline.vcf.gz",
                     'germline mutation (SAGE)')
                 vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
@@ -93,7 +93,7 @@ workflow GENOMIC {
         ch_sage_rna_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/sage/append/${meta.sample}-T.sage.append.vcf.gz",
+                    "${meta.folder}/sage/append/${meta.subject}-T.sage.append.vcf.gz",
                     'mutation (SAGE RNA append)')
                 vcf ? [meta + [pipeline: 'mutation_rna'], vcf] : null
             }
@@ -103,10 +103,10 @@ workflow GENOMIC {
         ch_purple_cnv = ch_samples
             .map { meta ->
                 def somatic = findOncoFile(meta,
-                    "${meta.folder}/purple/${meta.sample}-T.purple.cnv.somatic.tsv",
+                    "${meta.folder}/purple/${meta.subject}-T.purple.cnv.somatic.tsv",
                     'cnv (PURPLE somatic)')
                 def gene = findOncoFile(meta,
-                    "${meta.folder}/purple/${meta.sample}-T.purple.cnv.gene.tsv",
+                    "${meta.folder}/purple/${meta.subject}-T.purple.cnv.gene.tsv",
                     'cnv (PURPLE gene)')
                 (somatic && gene) ? [meta + [pipeline: 'cnv'], somatic, gene] : null
             }
@@ -116,7 +116,7 @@ workflow GENOMIC {
         ch_esvee_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/esvee/caller/${meta.sample}-T.esvee.unfiltered.vcf.gz",
+                    "${meta.folder}/esvee/caller/${meta.subject}-T.esvee.unfiltered.vcf.gz",
                     'sv (ESVEE)')
                 vcf ? [meta + [pipeline: 'sv'], vcf] : null
             }
@@ -126,7 +126,7 @@ workflow GENOMIC {
         ch_isofox_exp = ch_samples
             .map { meta ->
                 def exp = findOncoFile(meta,
-                    "${meta.folder}/isofox/${meta.sample}-T.isf.gene_data.csv",
+                    "${meta.folder}/isofox/${meta.subject}-T-RNA.isf.gene_data.csv",
                     'expression (Isofox)')
                 exp ? [meta + [pipeline: 'expression'], exp] : null
             }

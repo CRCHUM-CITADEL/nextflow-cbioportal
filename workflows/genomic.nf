@@ -66,6 +66,10 @@ workflow GENOMIC {
         ch_tumor_dna = ch_samples
             .filter { meta -> meta.sample_type == 'tumor' && meta.sequence_type == 'dna' }
 
+        // Normal DNA → SAGE germline mutations
+        ch_normal_dna = ch_samples
+            .filter { meta -> meta.sample_type == 'normal' && meta.sequence_type == 'dna' }
+
         // Tumor RNA → Isofox expression + fusions
         ch_tumor_rna = ch_samples
             .filter { meta -> meta.sample_type == 'tumor' && meta.sequence_type == 'rna' }
@@ -81,6 +85,16 @@ workflow GENOMIC {
                     "${onco}/${meta.group}/sage/${meta.sample}.sage.vcf.gz",
                     'mutation (SAGE)')
                 vcf ? [meta + [pipeline: 'mutation'], vcf] : null
+            }
+            .filter { it != null }
+
+        // SAGE germline VCF → germline mutations
+        ch_sage_germline_vcf = ch_normal_dna
+            .map { meta ->
+                def vcf = findOncoFile(meta,
+                    "${onco}/${meta.group}/sage/germline/${meta.sample}.sage.germline.vcf.gz",
+                    'germline mutation (SAGE)')
+                vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
             .filter { it != null }
 
@@ -135,7 +149,7 @@ workflow GENOMIC {
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
 
-        GENOMIC_MUTATIONS(ch_sage_vcf, fasta, vep_data, needs_vep)
+        GENOMIC_MUTATIONS(ch_sage_vcf, ch_sage_germline_vcf, fasta, vep_data, needs_vep)
 
         // ── Aggregate per-group outputs ───────────────────────────────────────
 

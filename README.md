@@ -22,13 +22,12 @@ You will need to change parameters in the nextflow config in order to point to c
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | mode                     | Pipeline run mode. Options : ['clinical', 'genomic']                                                                           |
 | genomic_samplesheet      | Input samplesheet for genomic pipeline. See section below.                                                                     |
+| oncoanalyser_outdir      | Path to the nf-core/oncoanalyser output directory. See expected layout below.                                                  |
 | ensembl_annotations_expr | Ensembl annotation .tsv file for expression subworkflow (tested with ensembl 110 with biomart)                                 |
 | ensembl_annotations      | Ensembl annotation .tsv file. (tested with 113 with biomart)                                                                   |
-| vep_cache                | Cache folder of downloaded ensembl vep release.                                                                                |
+| vep_data                 | Cache folder of downloaded ensembl vep release.                                                                                |
 | vep_params               | Parameters for VEP usage as described here:`<br>` https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optional) |
-| pcgr_data                | Folder of pcgr reference data (uncompressed)                                                                                   |
 | genome_reference         | Location of GRCh38 reference fasta file.                                                                                       |
-| container_pcgr           | Location of PCGR apptainer image (remote or local)                                                                             |
 | container_python         | Location of Python apptainer image (remote or local)                                                                           |
 | container_r              | Location of R apptainer image (remote or local)                                                                                |
 | container_vcf2maf        | Location of nf-core vcf2maf module container`<br>` apptainer image (remote or local) (optional)                                |
@@ -42,25 +41,59 @@ You will need to create a samplesheet for this pipeline, which can differ betwee
 
 ### Mode = 'genomic'
 
-The samplesheet format is heavily based on `<a href="https://github.com/nf-core/oncoanalyser">` oncoanalyser's nf-core pipeline `</a>`. See below for exact specfications:
+The samplesheet format is identical to the input samplesheet used for `<a href="https://github.com/nf-core/oncoanalyser">` nf-core/oncoanalyser `</a>`. It describes which samples were processed by oncoanalyser; the pipeline then resolves output files from `oncoanalyser_outdir`. See below for exact specifications:
 
 #### Genomic Input Schema
 
-The genomic input file must be a CSV file where each object contains the following fields:
+The genomic input file must be a CSV file where each row describes one file submitted to oncoanalyser:
 
-| Column Name     | Type    | Required | Pattern                      | Options               | Description                                                                        |
-| --------------- | ------- | -------- | ---------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
-| `group_id`      | string  | No       | `^\S+$` (no spaces)          | -                     | Group identifier                                                                   |
-| `subject_id`    | string  | **Yes**  | `^(?:\d+\|\S+)$` (no spaces) | -                     | Subject identifier                                                                 |
-| `sample_id`     | integer | **Yes**  | `^\d+$` (numeric only)       | -                     | Sample identifier                                                                  |
-| `sample_type`   | string  | **Yes**  | -                            | `somatic`, `germinal` | Type of sample                                                                     |
-| `sequence_data` | string  | **Yes**  | -                            | `dna`, `rna`          | Type of sequence data                                                              |
-| `info`          | string  | No       | -                            | -                     | Additional information                                                             |
-| `filepath`      | string  | **Yes**  | -                            | -                     | Path to DRAGEN output folder containing sample germinal or tumoral data (DN/DT/RT) |
+| Column Name     | Type   | Required | Pattern                      | Options                                                 | Description                        |
+| --------------- | ------ | -------- | ---------------------------- | ------------------------------------------------------- | ---------------------------------- |
+| `group_id`      | string | No       | `^\S+$` (no spaces)          | -                                                       | Study/cohort group identifier      |
+| `subject_id`    | string | **Yes**  | `^(?:\d+\|\S+)$` (no spaces) | -                                                       | Patient/subject identifier         |
+| `sample_id`     | string | **Yes**  | `^\S+$` (no spaces)          | -                                                       | Sample identifier                  |
+| `sample_type`   | string | **Yes**  | -                            | `tumor`, `normal`                                       | Sample classification              |
+| `sequence_type` | string | **Yes**  | -                            | `dna`, `rna`                                            | Data modality                      |
+| `filetype`      | string | **Yes**  | -                            | `bam`, `bai`, `cram`, `crai`, `fastq`, `bam_redux`, `cram_redux` | Input file type    |
+| `filepath`      | string | **Yes**  | -                            | -                                                       | Path to the input file             |
 
 > [!NOTE]
-> Fields marked as **Required** must be present in each object
-> All string fields cannot contain spaces unless otherwise noted
+> Fields marked as **Required** must be present in each row.
+> All string fields cannot contain spaces unless otherwise noted.
+
+Example:
+
+```csv
+group_id,subject_id,sample_id,sample_type,sequence_type,filetype,filepath
+COHORT1,PATIENT1,SAMPLE-N,normal,dna,bam,/data/SAMPLE-N.bam
+COHORT1,PATIENT1,SAMPLE-T,tumor,dna,bam,/data/SAMPLE-T.bam
+COHORT1,PATIENT1,SAMPLE-R,tumor,rna,bam,/data/SAMPLE-R.bam
+```
+
+#### Expected oncoanalyser output layout
+
+The pipeline resolves output files from `oncoanalyser_outdir` using this directory layout:
+
+```
+<oncoanalyser_outdir>/
+└── <group_id>/
+    ├── sage/
+    │   ├── <tumor_sample_id>.sage.vcf.gz          ← somatic mutations
+    │   └── germline/
+    │       └── <normal_sample_id>.sage.germline.vcf.gz  ← germline mutations
+    ├── purple/
+    │   ├── <tumor_sample_id>.purple.cnv.somatic.tsv
+    │   └── <tumor_sample_id>.purple.cnv.gene.tsv
+    ├── esvee/
+    │   └── <tumor_sample_id>.esvee.somatic.vcf.gz
+    └── isofox/
+        ├── <rna_sample_id>.isofox.exp.tsv
+        └── <rna_sample_id>.isofox.fusion.tsv
+```
+
+> [!NOTE]
+> Germline mutations are processed from `sage/germline/` using the **normal** sample ID from the samplesheet (`sample_type = normal`, `sequence_type = dna`). Somatic mutations use the **tumor** DNA sample ID. Both are converted to MAF format via vcf2maf and merged into `data_mutations_dna_rna_germline.txt`.
+> Files that are absent or empty are skipped with a warning — each modality is optional.
 
 ### mode = 'clinical'
 
@@ -208,13 +241,12 @@ Vous devrez modifier les paramètres dans le fichier de configuration nextflow a
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | mode                     | Mode d'exécution du pipeline. Options : ['clinical', 'genomic']                                                                             |
 | genomic_samplesheet      | Feuille d'échantillons génomique en entrée. Voir la section ci-dessous.                                                                     |
+| oncoanalyser_outdir      | Chemin vers le répertoire de sortie de nf-core/oncoanalyser. Voir la structure attendue ci-dessous.                                         |
 | ensembl_annotations_expr | Fichier d'annotations Ensembl .tsv. pour resultats d'expression (peut etre pareil)                                                          |
 | ensembl_annotations      | Fichier d'annotations Ensembl .tsv.                                                                                                         |
-| vep_cache                | Dossier du cache de la version ensembl vep téléchargée.                                                                                     |
+| vep_data                 | Dossier du cache de la version ensembl vep téléchargée.                                                                                     |
 | vep_params               | Paramètres pour l'utilisation de VEP comme décrit ici :`<br>` https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optionnel) |
-| pcgr_data                | Dossier des données de référence pcgr (décompressées)                                                                                       |
 | genome_reference         | Emplacement du fichier fasta de référence GRCh38.                                                                                           |
-| container_pcgr           | Emplacement de l'image apptainer PCGR (distant ou local)                                                                                    |
 | container_python         | Emplacement de l'image apptainer Python (distant ou local)                                                                                  |
 | container_r              | Emplacement de l'image apptainer R (distant ou local)                                                                                       |
 | container_vcf2maf        | Emplacement de l'image apptainer du module`<br>` nf-core vcf2maf (distant ou local) (optionnel)                                             |
@@ -229,26 +261,59 @@ Vous devrez créer une feuille d'échantillons pour ce pipeline, qui peut diffé
 
 ### Mode = 'genomic'
 
-Le format de la feuille d'échantillons est fortement basé sur `<a href="https://github.com/nf-core/oncoanalyser">` le pipeline nf-core d'oncoanalyser `</a>`. Voir ci-dessous pour les spécifications exactes :
+Le format de la feuille d'échantillons est identique à celui utilisé en entrée pour `<a href="https://github.com/nf-core/oncoanalyser">` nf-core/oncoanalyser `</a>`. Elle décrit les échantillons traités par oncoanalyser ; le pipeline résout ensuite les fichiers de sortie à partir de `oncoanalyser_outdir`. Voir ci-dessous pour les spécifications exactes :
 
 #### Schéma d'entrée génomique
 
-Le fichier d'entrée génomique doit être un tableau JSON où chaque objet contient les champs suivants :
+Le fichier d'entrée génomique doit être un fichier CSV où chaque ligne décrit un fichier soumis à oncoanalyser :
 
-| Nom de colonne  | Type   | Requis  | Motif                            | Options               | Description                                               |
-| --------------- | ------ | ------- | -------------------------------- | --------------------- | --------------------------------------------------------- |
-| `group_id`      | chaîne | Non     | `^\S+$` (pas d'espaces)          | -                     | Identifiant de groupe                                     |
-| `subject_id`    | chaîne | **Oui** | `^(?:\d+\|\S+)$` (pas d'espaces) | -                     | Identifiant du sujet                                      |
-| `sample_id`     | entier | **Oui** | `^\d+$` (numérique uniquement)   | -                     | Identifiant d'échantillon                                 |
-| `sample_type`   | chaîne | **Oui** | -                                | `somatic`, `germinal` | Type d'échantillon                                        |
-| `sequence_data` | chaîne | **Oui** | -                                | `dna`, `rna`          | Type de données de séquençage                             |
-| `info`          | chaîne | Non     | -                                | -                     | Informations supplémentaires                              |
-| `filepath`      | chaîne | **Oui** | -                                | -                     | Chemin vers le dossier de resultats DRAGEN (DN, DT ou RT) |
+| Nom de colonne  | Type   | Requis  | Motif                            | Options                                                                       | Description                        |
+| --------------- | ------ | ------- | -------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------- |
+| `group_id`      | chaîne | Non     | `^\S+$` (pas d'espaces)          | -                                                                             | Identifiant de groupe              |
+| `subject_id`    | chaîne | **Oui** | `^(?:\d+\|\S+)$` (pas d'espaces) | -                                                                             | Identifiant du sujet               |
+| `sample_id`     | chaîne | **Oui** | `^\S+$` (pas d'espaces)          | -                                                                             | Identifiant d'échantillon          |
+| `sample_type`   | chaîne | **Oui** | -                                | `tumor`, `normal`                                                             | Type d'échantillon                 |
+| `sequence_type` | chaîne | **Oui** | -                                | `dna`, `rna`                                                                  | Type de données de séquençage      |
+| `filetype`      | chaîne | **Oui** | -                                | `bam`, `bai`, `cram`, `crai`, `fastq`, `bam_redux`, `cram_redux`              | Type de fichier d'entrée           |
+| `filepath`      | chaîne | **Oui** | -                                | -                                                                             | Chemin vers le fichier d'entrée    |
 
 > [!NOTE]
-> Les champs marqués comme **Requis** doivent être présents dans chaque objet
-> Tous les champs de type chaîne ne peuvent pas contenir d'espaces sauf indication contraire
-> Le `filepath` doit pointer vers un fichier valide avec l'une des extensions acceptées
+> Les champs marqués comme **Requis** doivent être présents dans chaque ligne.
+> Tous les champs de type chaîne ne peuvent pas contenir d'espaces sauf indication contraire.
+
+Exemple :
+
+```csv
+group_id,subject_id,sample_id,sample_type,sequence_type,filetype,filepath
+COHORTE1,PATIENT1,SAMPLE-N,normal,dna,bam,/data/SAMPLE-N.bam
+COHORTE1,PATIENT1,SAMPLE-T,tumor,dna,bam,/data/SAMPLE-T.bam
+COHORTE1,PATIENT1,SAMPLE-R,tumor,rna,bam,/data/SAMPLE-R.bam
+```
+
+#### Structure attendue des sorties oncoanalyser
+
+Le pipeline résout les fichiers de sortie depuis `oncoanalyser_outdir` selon cette arborescence :
+
+```
+<oncoanalyser_outdir>/
+└── <group_id>/
+    ├── sage/
+    │   ├── <tumor_sample_id>.sage.vcf.gz                       ← mutations somatiques
+    │   └── germline/
+    │       └── <normal_sample_id>.sage.germline.vcf.gz         ← mutations germinales
+    ├── purple/
+    │   ├── <tumor_sample_id>.purple.cnv.somatic.tsv
+    │   └── <tumor_sample_id>.purple.cnv.gene.tsv
+    ├── esvee/
+    │   └── <tumor_sample_id>.esvee.somatic.vcf.gz
+    └── isofox/
+        ├── <rna_sample_id>.isofox.exp.tsv
+        └── <rna_sample_id>.isofox.fusion.tsv
+```
+
+> [!NOTE]
+> Les mutations germinales sont traitées depuis `sage/germline/` en utilisant l'identifiant de l'échantillon **normal** (`sample_type = normal`, `sequence_type = dna`). Les mutations somatiques utilisent l'identifiant de l'échantillon **tumoral** ADN. Les deux sont convertis au format MAF via vcf2maf et fusionnés dans `data_mutations_dna_rna_germline.txt`.
+> Les fichiers absents ou vides sont ignorés avec un avertissement — chaque modalité est optionnelle.
 
 ### mode = 'clinical'
 

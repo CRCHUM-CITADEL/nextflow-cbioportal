@@ -1,17 +1,19 @@
-// include modules
-include { DRAGEN_FUSION_SV_TO_CBIOPORTAL } from '../../../modules/local/dragen_fusion_sv_to_cbioportal'
-include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
+include { ESVEE_SV_TO_CBIOPORTAL      } from '../../../modules/local/esvee_sv_to_cbioportal'
+include { ISOFOX_FUSION_TO_CBIOPORTAL } from '../../../modules/local/isofox_fusion_to_cbioportal'
 
 workflow GENOMIC_SV {
     take:
-        sv_vcf
+        esvee_vcf           // tuple (meta, esvee.somatic.vcf.gz)  — DNA structural variants
+        isofox_fusion       // tuple (meta, isofox.fusion.tsv)      — RNA fusions
+        ensembl_annotations // path — used by ESVEE for gene-coordinate annotation
 
     main:
+        esvee_sv   = ESVEE_SV_TO_CBIOPORTAL(esvee_vcf, ensembl_annotations)
+        isofox_sv  = ISOFOX_FUSION_TO_CBIOPORTAL(isofox_fusion)
 
-        cbioportal_genomic_sv_files = DRAGEN_FUSION_SV_TO_CBIOPORTAL(
-            sv_vcf
-        )
+        // Merge DNA SVs and RNA fusions into one channel; both feed data_sv.txt
+        sv_combined = esvee_sv.sv.mix(isofox_sv.sv)
 
     emit:
-        sv_out = cbioportal_genomic_sv_files
+        sv_out = sv_combined // channel [ meta, data_sv.txt ]
 }

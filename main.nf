@@ -39,6 +39,8 @@ workflow {
         params.outdir,
         params.genomic_samplesheet,
         params.clinical_samplesheet,
+        params.project_name,
+        params.project_description,
     )
 
     //
@@ -49,25 +51,19 @@ workflow {
     // )
     if (params.mode == 'genomic'){
 
-        // Check params and create channels + flags at the top
-        ch_vep_data = params.vep_data ? Channel.fromPath(params.vep_data) : Channel.empty()
-        ch_pcgr_data = params.pcgr_data ? Channel.fromPath(params.pcgr_data) : Channel.empty()
+        ch_vep_data    = params.vep_data    ? Channel.fromPath(params.vep_data)    : Channel.empty()
+        ch_cosmic_data = params.cosmic_data ? Channel.fromPath(params.cosmic_data) : Channel.empty()
 
         needs_vep_download = !params.vep_data
-        needs_pcgr_download = !params.pcgr_data
 
         GENOMIC (
             PIPELINE_INITIALISATION.out.samplesheet,
             params.ensembl_annotations,
             params.ensembl_annotations_expr,
             ch_vep_data,
-            ch_pcgr_data,
             needs_vep_download,
-            needs_pcgr_download,
             params.genome_reference,
-            params.cosmic_data,
-            PIPELINE_INITIALISATION.out.name,
-            PIPELINE_INITIALISATION.out.description,
+            ch_cosmic_data,
         )
     }
     else if (params.mode == 'clinical'){

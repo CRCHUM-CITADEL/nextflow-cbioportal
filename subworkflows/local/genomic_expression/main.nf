@@ -1,22 +1,13 @@
-include { GET_TPM                              } from '../../../modules/local/get_tpm'
-include { MERGE_EXPRESSION_FILES_TO_CBIOPORTAL } from '../../../modules/local/merge_expression_files_to_cbioportal'
-include { GENERATE_META_FILE                   } from '../../../modules/local/generate_meta_file'
-
+include { ISOFOX_EXPRESSION_TO_CBIOPORTAL } from '../../../modules/local/isofox_expression_to_cbioportal'
 
 workflow GENOMIC_EXPRESSION {
     take:
-        somatic_expression // tuple (sample_id, filepath)
-        ensembl_annotations_expr // gene annotation file
+        isofox_exp           // tuple (meta, isofox.exp.tsv)
+        ensembl_annotations  // path — for Ensembl ID → Entrez ID mapping
 
     main:
-
-        all_groups = somatic_expression.map {meta, sample -> meta.group}.unique()
-
-        tpm_file_ch = GET_TPM(
-            somatic_expression,
-            ensembl_annotations_expr
-            )
+        tpm_file_ch = ISOFOX_EXPRESSION_TO_CBIOPORTAL(isofox_exp, ensembl_annotations)
 
     emit:
-        out = tpm_file_ch
+        out = tpm_file_ch.tpm // channel [ meta, tpm.tsv ]
 }

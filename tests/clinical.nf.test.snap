@@ -1,39 +1,30 @@
 {
     "clinical": {
         "content": [
-            23,
-            null,
+            10,
+            {
+                "Workflow": {
+                    "CRCHUM-CITADEL/nextflow-sante-precision": "v1.3.2dev"
+                }
+            },
             [
-                "hg",
-                "hg/cancer_type.txt",
-                "hg/data_clinical_patient.txt",
-                "hg/data_clinical_sample.txt",
-                "hg/meta_cancer_type.txt",
-                "hg/meta_clinical_patient.txt",
-                "hg/meta_clinical_sample.txt",
-                "hg2",
-                "hg2/cancer_type.txt",
-                "hg2/data_clinical_patient.txt",
-                "hg2/data_clinical_sample.txt",
+                "TEST",
+                "TEST/cancer_type.txt",
+                "TEST/meta_cancer_type.txt",
+                "TEST/meta_clinical_sample.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
             [
-                "cancer_type.txt:md5,8f7959152f709123f72a0f8332cdbc46",
-                "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
-                "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8",
+                "cancer_type.txt:md5,b8c4e04e58d58e6fa5c712d77753addf",
                 "meta_cancer_type.txt:md5,f1cde77a4c6353d6e9a6b9824df2f4eb",
-                "meta_clinical_patient.txt:md5,c955bbf283912b2f5c07f2c275e5c07d",
-                "meta_clinical_sample.txt:md5,535645d8b15bf8f8b567652fb7303f67",
-                "cancer_type.txt:md5,9d15bbfc389e4f688faea40243bffc22",
-                "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
-                "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8"
+                "meta_clinical_sample.txt:md5,28084eb9555ebab829df83fe97a1cdbe"
             ]
         ],
+        "timestamp": "2026-03-20T16:09:42.714269929",
         "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.10.2"
-        },
-        "timestamp": "2025-12-17T16:54:50.374183997"
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
     }
 }

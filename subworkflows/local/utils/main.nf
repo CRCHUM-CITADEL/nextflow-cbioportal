@@ -74,12 +74,16 @@ workflow PIPELINE_INITIALISATION {
         samplesheet_list = Channel.fromList(samplesheetToList(clinical_input, "assets/schema_clinical_input.json"))
 
     } else if (mode == 'genomic'){
-        if (!params.ensembl_annotations_expr){
-            error("ERROR: Missing ensembl_annotations_expr file (tsv format) Check input in nextflow.config")
+        if (!params.oncoanalyser_outdir){
+            error("ERROR: oncoanalyser_outdir must be set to the output directory of nf-core/oncoanalyser. Check input in nextflow.config")
         }
 
         if (!params.ensembl_annotations){
-            error("ERROR: Missing ensembl_annotations file (tsv format) Check input in nextflow.config")
+            error("ERROR: Missing ensembl_annotations file (tsv format). Check input in nextflow.config")
+        }
+
+        if (!params.ensembl_annotations_expr){
+            error("ERROR: Missing ensembl_annotations_expr file (tsv format). Check input in nextflow.config")
         }
 
         samplesheet_list = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))
@@ -187,10 +191,11 @@ def validateInputParameters() {
             error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
         }
 
-        def cosmic_data = file(params.cosmic_data)
-
-        if (!cosmic_data.exists()) {
-            error("ERROR: Cosmic data file does not exist: ${params.cosmic_data}")
+        if (params.cosmic_data) {
+            def cosmic_data = file(params.cosmic_data)
+            if (!cosmic_data.exists()) {
+                error("ERROR: Cosmic data file does not exist: ${params.cosmic_data}")
+            }
         }
 
     }

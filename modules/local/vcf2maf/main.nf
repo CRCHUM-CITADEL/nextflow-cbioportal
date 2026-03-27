@@ -74,6 +74,6 @@ process VCF2MAF {
         --output-maf tmp.${meta.sample}.maf
 
     head -2 tmp.${meta.sample}.maf > ${meta.sample}.maf
-    tail -n +3 tmp.${meta.sample}.maf | awk -v col16="${meta.sample}" -v col17="${meta.germinal_sample}" 'BEGIN {FS=OFS="\\t"} NR==0 {print; next} {\$16=col16; \$17=col17; print}' >> ${meta.sample}.maf
+    tail -n +3 tmp.${meta.sample}.maf | awk -v col16="${meta.sample}" 'BEGIN {FS=OFS="\\t"} {\$16=col16; print}' >> ${meta.sample}.maf
     """
 }

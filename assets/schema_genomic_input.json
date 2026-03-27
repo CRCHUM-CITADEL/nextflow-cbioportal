@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-sante-precision/assets/schema_genomic_input.json",
     "title": "CRCHUM-CITADEL/nextflow-sante-precision genomic pipeline parameters",
-    "description": "Pipeline Nextflow pour besoins des projets santé de précision, pipeline genomique",
+    "description": "Pipeline Nextflow pour besoins des projets santé de précision, pipeline genomique — accepts nf-core/oncoanalyser samplesheet format",
     "type": "array",
     "items": {
         "type": "object",
@@ -22,31 +22,35 @@
             "sample_id": {
                 "type": "string",
                 "pattern": "^(?:\\d+|\\S+)$",
-                "errorMessage": "sample_id must be provided cannot contain spaces",
+                "errorMessage": "sample_id must be provided and cannot contain spaces",
                 "meta": "sample"
             },
             "sample_type": {
                 "type": "string",
-                "errorMessage": "sample_type must be provided and be one of 'somatic', 'germinal'",
-                "enum": ["somatic", "germinal"],
-                "meta": "type"
+                "errorMessage": "sample_type must be provided and be one of 'tumor', 'normal'",
+                "enum": ["tumor", "normal"],
+                "meta": "sample_type"
             },
-            "sequence_data": {
+            "sequence_type": {
                 "type": "string",
-                "errorMessage": "sequence_data must be provided and be one of 'dna', 'rna'",
+                "errorMessage": "sequence_type must be provided and be one of 'dna', 'rna'",
                 "enum": ["dna", "rna"],
-                "meta": "sequence"
+                "meta": "sequence_type"
             },
-            "info": {
+            "filetype": {
                 "type": "string",
-                "meta": "information"
+                "errorMessage": "filetype must be one of 'bam', 'bai', 'cram', 'crai', 'fastq', 'bam_redux', 'cram_redux'",
+                "enum": ["bam", "bai", "cram", "crai", "fastq", "bam_redux", "cram_redux"]
             },
             "filepath": {
                 "type": "string",
-                "errorMessage": "Folder which contains genomic DN/DT/RT data",
-                "meta": "folder"
+                "errorMessage": "filepath must be provided"
+            },
+            "info": {
+                "type": "string",
+                "meta": "info"
             }
         },
-        "required": ["subject_id", "sample_id", "sample_type", "sequence_data", "filepath"]
+        "required": ["group_id", "subject_id", "sample_id", "sample_type", "sequence_type", "filetype", "filepath"]
     }
 }

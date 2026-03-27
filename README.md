@@ -79,9 +79,8 @@ The pipeline resolves output files from each subject's `folder` using this layou
 ├── purple/
 │   ├── <sample_id>-T.purple.cnv.somatic.tsv
 │   └── <sample_id>-T.purple.cnv.gene.tsv
-├── isofox/
-│   └── <sample_id>-T.isf.fusions.csv             ← RNA fusions (Isofox)
-└── <sample_id>-T.isf.gene_data.csv               ← gene expression (Isofox)
+└── isofox/
+    └── <sample_id>-T.isf.gene_data.csv           ← gene expression (Isofox)
 ```
 
 > [!NOTE]

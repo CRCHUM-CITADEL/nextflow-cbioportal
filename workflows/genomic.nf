@@ -67,8 +67,7 @@ workflow GENOMIC {
         //   esvee/caller/${sample_id}-T.esvee.unfiltered.vcf.gz
         //   purple/${sample_id}-T.purple.cnv.somatic.tsv
         //   purple/${sample_id}-T.purple.cnv.gene.tsv
-        //   isofox/${sample_id}-T.isf.fusions.csv
-        //   ${sample_id}-T.isf.gene_data.csv
+        //   isofox/${sample_id}-T.isf.gene_data.csv
 
         // SAGE somatic VCF → mutations
         ch_sage_vcf = ch_samples
@@ -127,19 +126,9 @@ workflow GENOMIC {
         ch_isofox_exp = ch_samples
             .map { meta ->
                 def exp = findOncoFile(meta,
-                    "${meta.folder}/${meta.sample}-T.isf.gene_data.csv",
+                    "${meta.folder}/isofox/${meta.sample}-T.isf.gene_data.csv",
                     'expression (Isofox)')
                 exp ? [meta + [pipeline: 'expression'], exp] : null
-            }
-            .filter { it != null }
-
-        // Isofox fusions CSV → RNA fusions
-        ch_isofox_fusion = ch_samples
-            .map { meta ->
-                def fusion = findOncoFile(meta,
-                    "${meta.folder}/isofox/${meta.sample}-T.isf.fusions.csv",
-                    'sv (Isofox fusions)')
-                fusion ? [meta + [pipeline: 'sv'], fusion] : null
             }
             .filter { it != null }
 
@@ -147,7 +136,7 @@ workflow GENOMIC {
 
         GENOMIC_CNV(ch_purple_cnv, ensembl_annotations)
 
-        GENOMIC_SV(ch_esvee_vcf, ch_isofox_fusion, ensembl_annotations)
+        GENOMIC_SV(ch_esvee_vcf, ensembl_annotations)
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
 

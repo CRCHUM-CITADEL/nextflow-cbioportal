@@ -16,7 +16,7 @@ option_list <- list(
   make_option(c("--vcf_source"), type="character", default="auto", help="VCF source: 'cnvkit', 'dragen', or 'auto' for automatic detection [default: %default]")
 )
 
-opt_parser <- OptionParser(option_list=option_list, 
+opt_parser <- OptionParser(option_list=option_list,
                           description="Convert CNVkit or Dragen CNV output to cBioPortal formats")
 opt <- parse_args(opt_parser)
 
@@ -37,7 +37,7 @@ if (!dir.exists(opt$output_dir)) {
 #fold_change_to_discrete <- function(fold_change) {
   # Estimate copy number (assuming fold_change is relative to diploid state)
 #  estimated_cn <- 2 * fold_change
-  
+
 #  if (estimated_cn < 0.5) {
 #    return(-2)  # homozygous deletion
 #  } else if (estimated_cn < 1.3) {
@@ -85,27 +85,27 @@ log2_to_fold_change <- function(log2_ratio) {
 # Function to detect VCF source
 detect_vcf_source <- function(vcf_file) {
   vcf_lines <- readLines(vcf_file, n = 100)  # Read first 100 lines
-  
+
   # Check for DRAGEN specific header
-  if (any(grepl("##DRAGENCommandLine", vcf_lines, fixed = TRUE)) || 
+  if (any(grepl("##DRAGENCommandLine", vcf_lines, fixed = TRUE)) ||
       any(grepl("##source=DRAGEN_CNV", vcf_lines, fixed = TRUE))) {
     return("dragen")
   }
-  
+
   # Check for CNVkit specific header
   if (any(grepl("##source=CNVkit", vcf_lines, fixed = TRUE))) {
     return("cnvkit")
   }
-  
+
   # Check INFO fields
   if (any(grepl("##INFO=<ID=FOLD_CHANGE,", vcf_lines, fixed = TRUE))) {
     return("cnvkit")
   }
-  
+
   if (any(grepl("##FORMAT=<ID=SM,", vcf_lines, fixed = TRUE))) {
     return("dragen")
   }
-  
+
   # Default to CNVkit if cannot determine
   cat("WARNING: Could not automatically determine VCF source. Defaulting to CNVkit format.\n")
   return("cnvkit")
@@ -142,19 +142,19 @@ if (vcf_source == "cnvkit") {
   # Process CNVkit VCF
   for (line in data_lines) {
     fields <- strsplit(line, "\t")[[1]]
-    
+
     # Skip incomplete lines
     if (length(fields) < 8) next
-    
+
     # Extract fields
     chrom <- gsub("^chr", "", fields[1])  # Remove 'chr' prefix if present
     pos <- as.numeric(fields[2])
     info_str <- fields[8]
-    
+
     # Parse INFO field
     info_parts <- strsplit(info_str, ";")[[1]]
     info <- list()
-    
+
     for (part in info_parts) {
       if (grepl("=", part)) {
         kv <- strsplit(part, "=")[[1]]
@@ -163,16 +163,16 @@ if (vcf_source == "cnvkit") {
         info[[part]] <- TRUE
       }
     }
-    
+
     # Extract required values
     if (!all(c("END", "FOLD_CHANGE", "SVTYPE") %in% names(info))) next
-    
+
     end <- as.numeric(info[["END"]])
     fold_change <- as.numeric(info[["FOLD_CHANGE"]])
     log2_ratio <- fold_change_to_log2(fold_change)
     svtype <- info[["SVTYPE"]]
     probes <- if ("PROBES" %in% names(info)) as.numeric(info[["PROBES"]]) else 0
-    
+
     # Add to segment data
     vcf_data <- rbind(vcf_data, data.table(
       ID = opt$sample_id,
@@ -188,21 +188,21 @@ if (vcf_source == "cnvkit") {
   for (line in data_lines) {
     #print(line)
     fields <- strsplit(line, "\t")[[1]]
-    
+
     # Skip incomplete lines
     if (length(fields) < 10) next
-    
+
     # Extract fields
     chrom <- gsub("^chr", "", fields[1])  # Remove 'chr' prefix if present
     pos <- as.numeric(fields[2])
     info_str <- fields[8]
     format_str <- fields[9]
     sample_str <- fields[10]
-    
+
     # Parse INFO field
     info_parts <- strsplit(info_str, ";")[[1]]
     info <- list()
-    
+
     for (part in info_parts) {
       if (grepl("=", part)) {
         kv <- strsplit(part, "=")[[1]]
@@ -211,21 +211,21 @@ if (vcf_source == "cnvkit") {
         info[[part]] <- TRUE
       }
     }
-    
+
     # Parse FORMAT field
     format_keys <- strsplit(format_str, ":")[[1]]
     sample_values <- strsplit(sample_str, ":")[[1]]
     format_data <- setNames(as.list(sample_values), format_keys)
-    
+
     # Extract required values
     if (!("END" %in% names(info))) next
-    
+
     end <- as.numeric(info[["END"]])
     svtype <- if ("SVTYPE" %in% names(info)) info[["SVTYPE"]] else "REF"
-    
+
     # Skip REF segments (optional, comment out if you want to include them)
     #if (svtype == "REF") next
-    
+
     # Extract SM (segment mean) value from FORMAT field if available, or use CN/CNF for fold change calculation
      if ("SM" %in% names(format_data)) {
       sm <- as.numeric(format_data[["SM"]])
@@ -234,10 +234,10 @@ if (vcf_source == "cnvkit") {
       # Skip if we can't determine the copy number
       next
     }
-    
+
     # Get number of bins if available
     probes <- if ("BC" %in% names(format_data)) as.numeric(format_data[["BC"]]) else 0
-    
+
     # Add to segment data
     vcf_data <- rbind(vcf_data, data.table(
       ID = opt$sample_id,

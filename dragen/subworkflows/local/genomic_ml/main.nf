@@ -16,7 +16,7 @@ workflow GENOMIC_ML {
         cosmic_data         // file
 
     main:
-        
+
         known_fusions_data = DOWNLOAD_KNOWN_FUSIONS()
 
         FORMAT_ML_CNV(
@@ -24,7 +24,7 @@ workflow GENOMIC_ML {
         )
 
         PROCESS_ML_CNV(
-           FORMAT_ML_CNV.out    
+           FORMAT_ML_CNV.out
         )
 
         FORMAT_ML_EXPRESSION(

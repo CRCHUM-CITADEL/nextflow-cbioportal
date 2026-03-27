@@ -12,6 +12,6 @@ process PROCESS_ML_EXPRESSION {
 
     script:
     """
-    ml_expression_processor.R $results_expression 
+    ml_expression_processor.R $results_expression
     """
 }

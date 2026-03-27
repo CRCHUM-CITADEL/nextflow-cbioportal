@@ -8,15 +8,15 @@ library(optparse)
 
 # Parse command line arguments
 option_list <- list(
-  make_option(c("-v", "--vcf"), type="character", default=NULL, 
+  make_option(c("-v", "--vcf"), type="character", default=NULL,
               help="Input Dragen CNV VCF file"),
-  make_option(c("-a", "--annotation"), type="character", default=NULL, 
+  make_option(c("-a", "--annotation"), type="character", default=NULL,
               help="Input gene annotation TSV file (biomart format)"),
-  make_option(c("-o", "--output"), type="character", default="cnv_fold_changes_per_gene_dragen.tsv", 
+  make_option(c("-o", "--output"), type="character", default="cnv_fold_changes_per_gene_dragen.tsv",
               help="Output file name [default: %default]")
 )
 
-opt_parser <- OptionParser(option_list=option_list, 
+opt_parser <- OptionParser(option_list=option_list,
                           description="Map Ensembl IDs in Dragen CNV VCF to gene symbols")
 opt <- parse_args(opt_parser)
 
@@ -121,24 +121,24 @@ result <- data.table()
 
 for (i in 1:nrow(vcf_data)) {
   cnv <- vcf_data[i, ]
-  
+
   # Print progress every 10 CNVs
   if (i %% 10 == 0) {
     cat(sprintf("Processing CNV %d of %d...\n", i, nrow(vcf_data)))
   }
-  
+
   # Find genes overlapping with this CNV
   overlapping_genes <- annotations[
     annotations$chr == cnv$chr &
     annotations$start <= cnv$end &
     annotations$end >= cnv$start,
   ]
-  
+
   if (nrow(overlapping_genes) > 0) {
     # Add to results with gene information
     for (j in 1:nrow(overlapping_genes)) {
       gene <- overlapping_genes[j, ]
-      
+
       cnv_result <- data.table(
         chr = cnv$chr,
         start = cnv$start,
@@ -155,7 +155,7 @@ for (i in 1:nrow(vcf_data)) {
         gene_description = gene$description,
 	entrez_ncbi_id = gene$entrez_ncbi_id
       )
-      
+
       # Add gene_biotype if present in annotations
       if(cnv_result$gene_symbol!="") {
       result <- rbind(result, cnv_result)
@@ -182,35 +182,35 @@ print(all_results)
 for (symbol in gene_symbols) {
   # Get all rows for this gene
   gene_rows <- all_results[all_results$gene_symbol == symbol, ]
-  
+
   # If only one entry, keep it
   if (nrow(gene_rows) == 1) {
     result <- rbind(result, gene_rows)
     next
   }
-  
+
   # Find the most significant alteration based on fold change
   # For gains (fold_change > 1), higher fold_change is more significant
   # For losses (fold_change < 1), lower fold_change is more significant
   gains <- gene_rows[gene_rows$fold_change > 1, ]
   losses <- gene_rows[gene_rows$fold_change < 1, ]
-  
+
   # If we have both gains and losses, take the most extreme one
   if (nrow(gains) > 0 && nrow(losses) > 0) {
     # Find max gain and min loss
     max_gain <- gains[which.max(gains$fold_change), ]
     min_loss <- losses[which.min(losses$fold_change), ]
-    
+
     # Compare deviations from normal
     gain_deviation <- max_gain$fold_change - 1
     loss_deviation <- 1 - min_loss$fold_change
-    
+
     if (loss_deviation > gain_deviation) {
       result <- rbind(result, min_loss)
     } else {
       result <- rbind(result, max_gain)
     }
-  } 
+  }
   # If we only have gains, take the highest
   else if (nrow(gains) > 0) {
     max_gain <- gains[which.max(gains$fold_change), ]
@@ -226,8 +226,8 @@ for (symbol in gene_symbols) {
 print(head(result))
 
 # Ensure all required columns exist and are in correct order
-output_columns <- c("chr", "start", "end", "svtype", "copy_number", "fold_change", 
-                   "ensembl_id", "gene_symbol", "gene_chr", "gene_start", "gene_end", 
+output_columns <- c("chr", "start", "end", "svtype", "copy_number", "fold_change",
+                   "ensembl_id", "gene_symbol", "gene_chr", "gene_start", "gene_end",
                    "gene_strand", "gene_description", "entrez_ncbi_id")
 
 # Add missing columns

@@ -57,48 +57,70 @@ fetch_hotspots <- function(){
   return(hotspots)
 }
 
+#' Helper function to strictly map MAF effect strings to biological weights
+#' @keywords internal
+get_mutation_weight <- function(effect) {
+  case_when(
+    effect %in% c("Frame_Shift_Del", "Frame_Shift_Ins", "Nonsense_Mutation", "Nonstop_Mutation", "Translation_Start_Site") ~ 4,
+    effect %in% c("Splice_Site", "Splice_Region") ~ 3,
+    effect %in% c("Missense_Mutation", "In_Frame_Del", "In_Frame_Ins") ~ 2,
+    effect %in% c("Silent") ~ 0,
+    TRUE ~ 0 # Covers 3'Flank, 5'Flank, 3'UTR, 5'UTR, RNA, Targeted_Region, etc.
+  )
+}
+
 #' Process mutation data for deep learning input
+#' @param input_file Path to mutation result data
 #' @param min_freq Minimum mutation frequency across samples to include gene (default: 0.01)
-#' @param base_dir Base directory containing the data
-#' @return List containing different mutation encoding matrices
+#' @return DataFrame containing hybrid mutation encoding
 #' @export
 process_mutation_data <- function(input_file, min_freq = 0.01) {
-
+  
   # Fetch hotspot data
   hotspots <- fetch_hotspots()
   
   # Read mutation data
   mutations <- read_tsv(input_file, show_col_types = FALSE)
-  
+  mutations <- mutations[mutations$effect != "RNA",]
+
   # Record initial dimensions
   initial_genes <- length(unique(mutations$gene))
   n_samples <- length(unique(mutations$sample))
   
   # Get unique samples and genes
   samples <- unique(mutations$sample)
+  dataset_genes <- unique(mutations$gene)
   
-  # Filter genes by mutation frequency
+  # 1. Filter genes by mutation frequency
   gene_freq <- table(mutations$gene) / n_samples
   frequent_genes <- names(gene_freq)[gene_freq >= min_freq]
   
+  # 2. Hotspot Rescue: Keep known driver genes regardless of frequency
+  hotspot_genes_list <- unique(hotspots$hugoSymbol)
+  rescue_genes <- intersect(dataset_genes, hotspot_genes_list)
+  
+  # 3. Combine and deduplicate
+  retained_genes <- unique(c(frequent_genes, rescue_genes))
+  n_rescued <- length(setdiff(rescue_genes, frequent_genes))
+  
   # Create different encodings
-  binary_matrix <- encode_binary_mutations(mutations, samples, frequent_genes)
-  effect_matrix <- encode_effect_mutations(mutations, samples, frequent_genes)
-  vaf_matrix <- encode_vaf_mutations(mutations, samples, frequent_genes)
-  integrated_matrix <- encode_integrated_mutations(mutations, samples, frequent_genes)
+  binary_matrix <- encode_binary_mutations(mutations, samples, retained_genes)
+  effect_matrix <- encode_effect_mutations(mutations, samples, retained_genes)
+  vaf_matrix <- encode_vaf_mutations(mutations, samples, retained_genes)
+  integrated_matrix <- encode_integrated_mutations(mutations, samples, retained_genes)
   
   # Create hybrid encoding with hotspots and other mutations
-  hybrid_matrix <- create_hybrid_encoding(mutations, samples, frequent_genes, hotspots)
+  hybrid_matrix <- create_hybrid_encoding(mutations, samples, retained_genes, hotspots)
   
   # Round numerical values to 3 decimal places
-   matrices <- list(
+  matrices <- list(
     binary = binary_matrix,
     effect = effect_matrix,
     vaf = vaf_matrix,
     integrated = integrated_matrix,
     hybrid = hybrid_matrix
   )
-
+  
   matrices <- lapply(matrices, function(mat) {
     mat %>% mutate(across(-sample, ~round(., 3)))
   })
@@ -110,7 +132,7 @@ process_mutation_data <- function(input_file, min_freq = 0.01) {
   file_suffixes <- c("binary", "effect", "vaf", "integrated", "hybrid")
   
   for (suffix in file_suffixes) {
-    print("saving...")
+    print(sprintf("Saving mutations_processed_%s.tsv...", suffix))
     write_tsv(
       matrices[[suffix]],
       sprintf("mutations_processed_%s.tsv", suffix)
@@ -118,208 +140,176 @@ process_mutation_data <- function(input_file, min_freq = 0.01) {
   }
   
   # Calculate summary statistics
- hotspot_genes <- unique(hotspots$hugoSymbol)
-  n_hotspot_mutations <- sum(grepl("_", colnames(hybrid_matrix)))
-  n_other_mutations <- sum(endsWith(colnames(hybrid_matrix), "_other"))
   
+  n_hotspot_features <- sum(grepl("_", colnames(hybrid_matrix)))
+  n_other_features <- sum(endsWith(colnames(hybrid_matrix), "_other"))
+
   # Print processing summary
-  message(sprintf("Mutation processing summary..."))
+  message("\nMutation processing summary:")
   message(sprintf("- Initial number of genes: %d", initial_genes))
   message(sprintf("- Removed %d genes (frequency < %g%%)", 
                  initial_genes - length(frequent_genes), min_freq * 100))
-  message(sprintf("- Retained %d genes", length(frequent_genes)))
+  message(sprintf("- Rescued %d rare hotspot genes below the frequency threshold", n_rescued))
+  message(sprintf("- Final retained genes: %d", length(retained_genes)))
   message(sprintf("- Number of samples: %d", n_samples))
-  message(sprintf("- Number of hotspot mutations: %d", n_hotspot_mutations))
-  message(sprintf("- Number of genes with other mutation features: %d", n_other_mutations))
+  message(sprintf("- Number of hotspot features (columns): %d", n_hotspot_features))
+  message(sprintf("- Number of 'other' gene features (columns): %d", n_other_features))
   message("- Encodings generated:")
   message("  1. Binary (mutation presence/absence)")
   message("  2. Effect-based (functional impact weights)")
   message("  3. VAF-based (variant allele frequencies)")
   message("  4. Integrated (effect * VAF)")
-  message("  5. Hybrid (hotspot-specific + other mutations)")
+  message("  5. Hybrid (hotspot-specific + other mutations)\n")
   
-  return(data.frame(matrices[["hybrid"]]))
+  # Return invisibly to prevent console flooding
+  return(invisible(data.frame(matrices[["hybrid"]])))
 }
 
 #' Encode mutations using binary representation
 #' @keywords internal
 encode_binary_mutations <- function(mutations, samples, genes) {
-  # Create sparse matrix of mutation presence/absence
   mutation_matrix <- matrix(0, nrow = length(samples), ncol = length(genes),
                           dimnames = list(samples, genes))
   
-  # Fill matrix with 1s where mutations exist
   for (i in seq_len(nrow(mutations))) {
     if (mutations$gene[i] %in% genes) {
       mutation_matrix[mutations$sample[i], mutations$gene[i]] <- 1
     }
   }
   
-  as_tibble(mutation_matrix, rownames = "sample")
+  as_tibble(mutation_matrix, rownames = "sample", .name_repair = "unique")
 }
 
 #' Encode mutations using effect categories
 #' @keywords internal
 encode_effect_mutations <- function(mutations, samples, genes) {
-  # Define effect categories and their weights
-  effect_weights <- c(
-    "frameshift" = 4,
-    "nonsense" = 4,
-    "splice" = 3,
-    "missense" = 2,
-    "synonymous" = 1,
-    "other" = 1
-  )
-  
-  # Create matrix
   mutation_matrix <- matrix(0, nrow = length(samples), ncol = length(genes),
                           dimnames = list(samples, genes))
   
-  # Fill matrix with effect weights
   for (i in seq_len(nrow(mutations))) {
     if (mutations$gene[i] %in% genes) {
-      effect <- mutations$effect[i]
-      weight <- case_when(
-        grepl("frameshift", effect) ~ effect_weights["frameshift"],
-        grepl("stop_gained|nonsense", effect) ~ effect_weights["nonsense"],
-        grepl("splice", effect) ~ effect_weights["splice"],
-        grepl("missense", effect) ~ effect_weights["missense"],
-        grepl("synonymous", effect) ~ effect_weights["synonymous"],
-        TRUE ~ effect_weights["other"]
-      )
-      
-      # Use maximum weight if multiple mutations exist
+      weight <- get_mutation_weight(mutations$effect[i])
       current_weight <- mutation_matrix[mutations$sample[i], mutations$gene[i]]
       mutation_matrix[mutations$sample[i], mutations$gene[i]] <- max(current_weight, weight)
     }
   }
   
-  as_tibble(mutation_matrix, rownames = "sample")
+  as_tibble(mutation_matrix, rownames = "sample", .name_repair = "unique")
 }
 
 #' Encode mutations using variant allele frequency
 #' @keywords internal
 encode_vaf_mutations <- function(mutations, samples, genes) {
-  # Create matrix
   mutation_matrix <- matrix(0, nrow = length(samples), ncol = length(genes),
                           dimnames = list(samples, genes))
   
-  # Fill matrix with VAF values
   for (i in seq_len(nrow(mutations))) {
     if (mutations$gene[i] %in% genes) {
-      # Use maximum VAF if multiple mutations exist
       current_vaf <- mutation_matrix[mutations$sample[i], mutations$gene[i]]
       mutation_matrix[mutations$sample[i], mutations$gene[i]] <- 
         max(current_vaf, mutations$dna_vaf[i])
     }
   }
   
-  as_tibble(mutation_matrix, rownames = "sample")
+  as_tibble(mutation_matrix, rownames = "sample", .name_repair = "unique")
 }
 
-#' Encode mutations using integrated approach (effect + VAF)
+#' Encode mutations using integrated approach (effect * VAF)
 #' @keywords internal
 encode_integrated_mutations <- function(mutations, samples, genes) {
-  # Get effect-weighted matrix
-  effect_matrix <- encode_effect_mutations(mutations, samples, genes)
+  mutation_matrix <- matrix(0, nrow = length(samples), ncol = length(genes),
+                          dimnames = list(samples, genes))
   
-  # Get VAF matrix
-  vaf_matrix <- encode_vaf_mutations(mutations, samples, genes)
+  weight_matrix <- matrix(-1, nrow = length(samples), ncol = length(genes),
+                          dimnames = list(samples, genes))
   
-  # Combine matrices (multiply effect weight by VAF)
-  mutation_matrix <- as.matrix(effect_matrix[-1]) * as.matrix(vaf_matrix[-1])
+  for (i in seq_len(nrow(mutations))) {
+    if (mutations$gene[i] %in% genes) {
+      weight <- get_mutation_weight(mutations$effect[i])
+      integrated_value <- weight * mutations$dna_vaf[i]
+      
+      sample_id <- mutations$sample[i]
+      gene_id <- mutations$gene[i]
+      stored_weight <- weight_matrix[sample_id, gene_id]
+      
+      if (weight > stored_weight) {
+        weight_matrix[sample_id, gene_id] <- weight
+        mutation_matrix[sample_id, gene_id] <- integrated_value
+      } else if (weight == stored_weight) {
+        mutation_matrix[sample_id, gene_id] <- max(
+          mutation_matrix[sample_id, gene_id],
+          integrated_value
+        )
+      }
+    }
+  }
   
-  # Convert to tibble and add sample column
-  as_tibble(mutation_matrix) %>%
-    bind_cols(sample = samples, .)
+  as_tibble(mutation_matrix, rownames = "sample", .name_repair = "unique")
 }
 
 #' Create hybrid encoding combining hotspots and other mutations with integrated encoding
 #' @keywords internal
-
 create_hybrid_encoding <- function(mutations, samples, genes, hotspots) {
-  # Get genes with hotspots and create lookup table for efficiency
   hotspot_genes <- unique(hotspots$hugoSymbol)
   hotspot_lookup <- unique(hotspots$hotspot_id)
   names(hotspot_lookup) <- hotspot_lookup
   
-  # Define effect categories and their weights (copied from encode_effect_mutations)
-  effect_weights <- c(
-    "frameshift" = 4,
-    "nonsense" = 4,
-    "splice" = 3,
-    "missense" = 2,
-    "synonymous" = 1,
-    "other" = 1
-  )
-  
-  # Initialize matrix for all features
   features <- c(
-    # Hotspot-specific features
-    hotspots$hotspot_id,
-    # Other mutation features for genes with hotspots
+    unique(hotspots$hotspot_id),
     paste0(hotspot_genes, "_other"),
-    # Regular features for genes without hotspots
     setdiff(genes, hotspot_genes)
   )
   
   mutation_matrix <- matrix(0, nrow = length(samples), 
                           ncol = length(features),
                           dimnames = list(samples, features))
+                          
+  weight_matrix <- matrix(-1, nrow = length(samples), 
+                          ncol = length(features),
+                          dimnames = list(samples, features))
   
-  # Process each mutation
   for (i in seq_len(nrow(mutations))) {
     if (mutations$gene[i] %in% genes) {
       gene <- mutations$gene[i]
       
-      # Calculate effect weight for integrated encoding
-      effect <- mutations$effect[i]
-      weight <- case_when(
-        grepl("frameshift", effect) ~ effect_weights["frameshift"],
-        grepl("stop_gained|nonsense", effect) ~ effect_weights["nonsense"],
-        grepl("splice", effect) ~ effect_weights["splice"],
-        grepl("missense", effect) ~ effect_weights["missense"],
-        grepl("synonymous", effect) ~ effect_weights["synonymous"],
-        TRUE ~ effect_weights["other"]
-      )
-      
-      # Calculate integrated value (effect * VAF)
+      weight <- get_mutation_weight(mutations$effect[i])
       integrated_value <- weight * mutations$dna_vaf[i]
       
+      feature_col <- NA
       if (gene %in% hotspot_genes) {
-        # Extract residue from amino acid change using the specified regex
         aa_change <- mutations$Amino_Acid_Change[i]
-        residue <- sub("p\\.([A-Z]\\d+).*", "\\1", aa_change)
-        variant <- sub("p\\.[A-Z]*\\d+([A-Za-z0-9_=*])", "\\1", aa_change)
         
-        # Create potential hotspot ID
-        hotspot_id <- paste(gene, residue, variant, sep = "_")
-        
-        # Efficient lookup using named vector
-        if (hotspot_id %in% names(hotspot_lookup)) {
-          # For hotspot mutations, we directly set the value
-          # (each specific hotspot mutation is treated independently)
-          mutation_matrix[mutations$sample[i], hotspot_id] <- integrated_value
+        if (!is.na(aa_change)) {
+          residue <- sub("p\\.([A-Z]\\d+).*", "\\1", aa_change)
+          variant <- sub("p\\.[A-Z]*\\d+([A-Za-z0-9_=*])", "\\1", aa_change)
+          hotspot_id <- paste(gene, residue, variant, sep = "_")
         } else {
-          # For other mutations in hotspot genes, we take the maximum
-          # (accumulate the strongest effect of any non-hotspot mutation)
-          other_feature <- paste0(gene, "_other")
-          mutation_matrix[mutations$sample[i], other_feature] <- 
-            max(mutation_matrix[mutations$sample[i], other_feature],
-                integrated_value)
+          hotspot_id <- "NA"
+        }
+        
+        if (hotspot_id %in% names(hotspot_lookup)) {
+          feature_col <- hotspot_id
+        } else {
+          feature_col <- paste0(gene, "_other")
         }
       } else {
-        # For regular gene-level mutations, we take the maximum
-        # (accumulate the strongest effect of any mutation in this gene)
-        mutation_matrix[mutations$sample[i], gene] <- 
-          max(mutation_matrix[mutations$sample[i], gene],
-              integrated_value)
+        feature_col <- gene
       }
-
+      
+      stored_weight <- weight_matrix[mutations$sample[i], feature_col]
+      
+      if (weight > stored_weight) {
+        weight_matrix[mutations$sample[i], feature_col] <- weight
+        mutation_matrix[mutations$sample[i], feature_col] <- integrated_value
+      } else if (weight == stored_weight) {
+        mutation_matrix[mutations$sample[i], feature_col] <- max(
+          mutation_matrix[mutations$sample[i], feature_col],
+          integrated_value
+        )
+      }
     }
   }
   
-  # Add validation output
   total_hotspots <- sum(mutation_matrix[, hotspots$hotspot_id] > 0)
   total_other <- sum(mutation_matrix[, paste0(hotspot_genes, "_other")] > 0)
   total_regular <- sum(mutation_matrix[, setdiff(genes, hotspot_genes)] > 0)
@@ -329,7 +319,7 @@ create_hybrid_encoding <- function(mutations, samples, genes, hotspots) {
   message(sprintf("- Other mutations in hotspot genes: %d", total_other))
   message(sprintf("- Regular gene mutations: %d", total_regular))
   
-  return(as_tibble(mutation_matrix, rownames = "sample"))
+  as_tibble(mutation_matrix, rownames = "sample", .name_repair = "unique")
 }
 
 #' Validate mutation data structure and content
@@ -337,29 +327,15 @@ create_hybrid_encoding <- function(mutations, samples, genes, hotspots) {
 #' @return Logical indicating if validation passed (invisible)
 #' @keywords internal
 validate_mutation_data <- function(mutation_data) {
-  # Check if data frame is empty
-  if (nrow(mutation_data) == 0) {
-    stop("No samples remained after processing")
-  }
+  if (nrow(mutation_data) == 0) stop("No samples remained after processing")
+  if (!"sample" %in% colnames(mutation_data)) stop("Sample column not found in mutation data")
+  if (any(duplicated(mutation_data$sample))) stop("Duplicate samples found in mutation data")
   
-  # Check if sample column exists
-  if (!"sample" %in% colnames(mutation_data)) {
-    stop("Sample column not found in mutation data")
-  }
-  
-  # Check for duplicate samples
-  if (any(duplicated(mutation_data$sample))) {
-    stop("Duplicate samples found in mutation data")
-  }
-  
-  # Check if any non-numeric values in mutation columns
   non_numeric_check <- mutation_data %>%
     select(-sample) %>%
     sapply(function(x) all(is.numeric(x)))
   
-  if (!all(non_numeric_check)) {
-    stop("Non-numeric values found in mutation data")
-  }
+  if (!all(non_numeric_check)) stop("Non-numeric values found in mutation data")
   
   invisible(TRUE)
 }
@@ -367,14 +343,14 @@ validate_mutation_data <- function(mutation_data) {
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) == 0){
-  stop("Usage: Rscript ml_mutation_processor.R <path to mutation result data> <output file>") 
+  stop("Usage: Rscript ml_mutation_processor.R <path to mutation result data>")
 }
 
 input_file <- args[1]
 
-# Check that file exists
 if (!file.exists(input_file)) {
   stop("Error : Input file does not exist: ", input_file)
 }
 
-process_mutation_data(input_file)
+# The invisible wrap prevents it from printing the dataframe object back to console
+invisible(process_mutation_data(input_file))

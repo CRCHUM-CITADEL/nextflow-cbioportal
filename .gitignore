@@ -14,6 +14,7 @@ containers/*.sif
 containers/*.img*
 
 output/
+output_*/
 tmp/
 
 *.swp
@@ -29,3 +30,7 @@ data/
 
 util_*.txt
 .venv
+
+modified_code
+bin/new/
+test.*

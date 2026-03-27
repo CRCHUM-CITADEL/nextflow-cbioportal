@@ -1,0 +1,23 @@
+Bootstrap: docker
+From: rocker/r-ver:4.5.1
+
+%post
+    # update and install base packages
+    R -e "install.packages(c(
+    'tidyverse',
+    'data.table',
+    'optparse',
+    'stringr',
+    'R.utils'))"
+
+%environment
+    export PATH=/usr/local/bin:$PATH
+
+%labels
+    Version 4.5.1
+    R and various packages
+
+%runscript
+    # Default behavior when running the container without specifying a command
+    # You can change this, or override with `apptainer exec ...`
+    exec /bin/bash "$@"

@@ -1,0 +1,2 @@
+submitter_treatment_extend_id,program_id,submitter_donor_id,submitter_treatment_id,radiation_therapy_modality,radiation_therapy_type,radiation_therapy_fractions,radiation_therapy_dosage,anatomical_site_irradiated,radiation_boost,reference_radiation_treatment_id
+Tr1-1,TEST,A1,A1-1,,external,,1.0,right breast,,

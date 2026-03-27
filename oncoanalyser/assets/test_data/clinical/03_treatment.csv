@@ -1,0 +1,3 @@
+submitter_donor_id,submitter_primary_diagnosis_id,submitter_treatment_id,treatment_type,treatement_intent,is_primary_treatment,treatment_start_date,treatment_end_date,program_id,treatment_intent,response_to_treatment_criteria_method,response_to_treatment,status_of_treatment
+A1,D1,Tr1,Systemic therapy,Supportive,YES,2022-04-04,2023-05-04,TEST,,,,
+A2,D2,Tr2,Surgery,,NO,2023-03-04,2023-03-04,TEST,,,,

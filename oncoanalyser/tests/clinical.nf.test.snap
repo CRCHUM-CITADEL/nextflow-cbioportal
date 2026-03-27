@@ -1,0 +1,30 @@
+{
+    "clinical": {
+        "content": [
+            10,
+            {
+                "Workflow": {
+                    "CRCHUM-CITADEL/nextflow-sante-precision": "v1.3.2dev"
+                }
+            },
+            [
+                "TEST",
+                "TEST/cancer_type.txt",
+                "TEST/meta_cancer_type.txt",
+                "TEST/meta_clinical_sample.txt",
+                "pipeline_info",
+                "pipeline_info/software_versions.yml"
+            ],
+            [
+                "cancer_type.txt:md5,b8c4e04e58d58e6fa5c712d77753addf",
+                "meta_cancer_type.txt:md5,f1cde77a4c6353d6e9a6b9824df2f4eb",
+                "meta_clinical_sample.txt:md5,28084eb9555ebab829df83fe97a1cdbe"
+            ]
+        ],
+        "timestamp": "2026-03-20T16:09:42.714269929",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

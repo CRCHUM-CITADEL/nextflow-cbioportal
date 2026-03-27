@@ -1,0 +1,24 @@
+nf_core_version: 3.3.2
+repository_type: pipeline
+template:
+  author: Justin
+  description: testing for citadel
+  force: false
+  is_nfcore: false
+  name: test
+  org: citadel-test
+  outdir: .
+  skip_features:
+    - github_badges
+    - license
+    - test_config
+    - fastqc
+    - nf_schema
+    - seqera_platform
+    - gpu
+    - gitpod
+    - codespaces
+    - vscode
+    - citations
+    - slackreport
+  version: 1.2.0dev

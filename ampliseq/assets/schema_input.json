@@ -1,0 +1,37 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/crchum-citadel/ampliseq-cbioportal/master/assets/schema_input.json",
+    "title": "crchum-citadel/ampliseq-cbioportal pipeline - params.input schema",
+    "description": "Schema for the file provided with params.input",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "group": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Group or cohort identifier",
+                "meta": ["group"]
+            },
+            "subject_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Patient or subject identifier",
+                "meta": ["subject_id"]
+            },
+            "sample_id": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Sample identifier used as SAMPLE_ID throughout output files",
+                "meta": ["id"]
+            },
+            "folder_location": {
+                "type": "string",
+                "format": "directory-path",
+                "exists": true,
+                "description": "Path to sample directory containing analysis_*_export.tsv and *-basespace-pisces.final.vcf.gz"
+            }
+        },
+        "required": ["group", "subject_id", "sample_id", "folder_location"]
+    }
+}

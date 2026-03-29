@@ -1,0 +1,3 @@
+patient_id	age	sex	os_status	os_months	smoking_history
+PATIENT_001	55	Male	0	24	Never
+PATIENT_002	62	Female	1	18	Former

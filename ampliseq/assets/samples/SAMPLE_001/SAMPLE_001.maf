@@ -1,0 +1,4 @@
+Hugo_Symbol	Entrez_Gene_Id	Center	NCBI_Build	Chromosome	Start_Position	End_Position	Strand	Variant_Classification	Variant_Type	Reference_Allele	Tumor_Seq_Allele1	Tumor_Seq_Allele2	dbSNP_RS	dbSNP_Val_Status	Tumor_Sample_Barcode
+BRAF	673	test	hg19	chr1	150000	150000	+	Missense_Mutation	SNP	A	T	T	.	.	SAMPLE_001
+TP53	7157	test	hg19	chr17	7571720	7571720	+	Missense_Mutation	SNP	G	A	A	.	.	SAMPLE_001
+UNKNOWN	0	test	hg19	chr5	1234567	1234567	+	Missense_Mutation	SNP	C	T	T	.	.	SAMPLE_001

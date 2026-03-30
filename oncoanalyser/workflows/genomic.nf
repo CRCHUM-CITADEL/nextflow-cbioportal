@@ -40,6 +40,8 @@ workflow GENOMIC {
         needs_vep               // boolean — true when vep_data is not supplied
         fasta                   // path — GRCh38 reference FASTA (for vcf2maf)
         cosmic_data             // channel<path> — COSMIC/ChimerKB fusion data for ML step
+        pcgr_data               // channel<path> — pre-staged PCGR reference data (may be empty)
+        needs_pcgr              // boolean — true when pcgr_data is not supplied
 
     main:
 
@@ -140,7 +142,16 @@ workflow GENOMIC {
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
 
-        GENOMIC_MUTATIONS(ch_sage_vcf, ch_sage_germline_vcf, fasta, vep_data, needs_vep)
+        GENOMIC_MUTATIONS(
+            ch_sage_germline_vcf,
+            ch_sage_vcf,
+            ch_sage_rna_vcf,
+            fasta,
+            vep_data,
+            pcgr_data,
+            needs_vep,
+            needs_pcgr
+        )
 
         // ── Aggregate per-group outputs ───────────────────────────────────────
 

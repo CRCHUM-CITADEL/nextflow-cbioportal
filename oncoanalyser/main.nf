@@ -53,7 +53,7 @@ workflow {
 
         ch_vep_data    = params.vep_data    ? Channel.fromPath(params.vep_data)    : Channel.empty()
         ch_cosmic_data = params.cosmic_data ? Channel.fromPath(params.cosmic_data) : Channel.empty()
-
+        ch_fasta = params.genome_reference ? Channel.fromPath(params.genome_reference) : Channel.empty()
         needs_vep_download = !params.vep_data
 
         GENOMIC (
@@ -62,7 +62,7 @@ workflow {
             params.ensembl_annotations_expr,
             ch_vep_data,
             needs_vep_download,
-            params.genome_reference,
+            ch_fasta,
             ch_cosmic_data,
         )
     }

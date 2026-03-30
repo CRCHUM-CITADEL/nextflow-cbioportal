@@ -13,8 +13,11 @@ workflow GENOMIC_MUTATIONS {
 
     main:
         ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_data.first()
+        
+        som_dna_vcf.view()
+        ch_vep_data.view()
 
-        VCF2MAF(som_dna_vcf.mix(germ_dna_vcf), fasta, ch_vep_data)
+        VCF2MAF(som_dna_vcf, fasta, ch_vep_data)
 
     emit:
         out = VCF2MAF.out.maf // channel [ meta, sample.maf ]

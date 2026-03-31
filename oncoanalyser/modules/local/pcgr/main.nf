@@ -14,10 +14,6 @@ process PCGR {
 
     script:
     """
-    # mv needed to match with index file
-    mv ${ger_dna_vcf} ${meta.sample}.vcf.gz
-
-
     cpsr \
     --input_vcf ${meta.sample}.vcf.gz \
     --vep_dir ${vep_data} \
@@ -25,6 +21,8 @@ process PCGR {
     --output_dir . \
     --genome_assembly grch38 \
     --panel_id 0 \
-    --sample_id ${meta.sample}
+    --vep_buffer_size 1000 \
+    --no_html \
+    --sample_id ${meta.subject}-N
     """
 }

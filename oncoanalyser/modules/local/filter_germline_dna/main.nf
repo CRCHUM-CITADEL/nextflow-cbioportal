@@ -15,7 +15,7 @@ process FILTER_GERMLINE_DNA {
     script:
     """
     zcat $ger_dna_vcf | grep "#" > tmp.${meta.sample}.vcf
-    zcat $ger_dna_vcf | grep PASS | grep -v "FILTER=<ID=low_depth" >> tmp.${meta.sample}.vcf
+    zgrep -v "^#" $ger_dna_vcf | grep PASS >> tmp.${meta.sample}.vcf
 
     bcftools view \\
         -s ^${meta.sample} \\

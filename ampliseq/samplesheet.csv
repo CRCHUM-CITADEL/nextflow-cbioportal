@@ -1,3 +1,0 @@
-group,subject_id,sample_id,folder_location
-cohort_A,PATIENT_001,SAMPLE_001,test_data/samples/SAMPLE_001
-cohort_A,PATIENT_002,SAMPLE_002,test_data/samples/SAMPLE_002

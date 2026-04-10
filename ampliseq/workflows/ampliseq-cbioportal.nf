@@ -7,6 +7,7 @@
 include { PER_SAMPLE_FORMAT } from '../subworkflows/local/per_sample_format/main'
 include { MERGE_DEANON      } from '../subworkflows/local/merge_deanon/main'
 include { STUDY_METADATA    } from '../subworkflows/local/study_metadata/main'
+include { FILTER_LINKING    } from '../modules/local/filter_linking/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,24 +44,65 @@ workflow AMPLISEQ_CBIOPORTAL {
             tuple(meta, tsv, folder)
         }
 
-    ch_tsv       = ch_samples.map { meta, tsv, folder -> tuple(meta, tsv) }
-    ch_vcf_input = ch_samples.map { meta, tsv, folder -> tuple(meta, folder) }
+    // -------------------------------------------------------------------------
+    // Incremental skip: branch samples by whether all 4 per-sample outputs exist
+    // -------------------------------------------------------------------------
+    ch_samples_branched = ch_samples.branch { meta, tsv, folder ->
+        existing: ['_sv.txt', '_cna.txt', '_seg.txt', '_mutations.txt'].every { suffix ->
+            file("${params.outdir}/samples/${meta.sample_id}/${meta.sample_id}${suffix}").exists()
+        }
+        new_sample: true
+    }
+
+    ch_samples_branched.existing.subscribe { meta, tsv, folder ->
+        log.info "Skipping already-processed sample: ${meta.sample_id}"
+    }
 
     // -------------------------------------------------------------------------
-    // Per-sample: format SV, CNA, and mutations
+    // Per-sample: format SV, CNA, mutations, and seg (new samples only)
     // -------------------------------------------------------------------------
-    PER_SAMPLE_FORMAT(ch_tsv, ch_vcf_input)
+    ch_tsv_new       = ch_samples_branched.new_sample.map { meta, tsv, folder -> tuple(meta, tsv) }
+    ch_vcf_input_new = ch_samples_branched.new_sample.map { meta, tsv, folder -> tuple(meta, folder) }
+
+    PER_SAMPLE_FORMAT(ch_tsv_new, ch_vcf_input_new)
 
     // -------------------------------------------------------------------------
-    // Collect: merge and deanonymise all data types
+    // Read existing per-sample outputs from disk (already-processed samples)
+    // -------------------------------------------------------------------------
+    ch_existing_sv        = ch_samples_branched.existing.map { meta, tsv, folder ->
+        file("${params.outdir}/samples/${meta.sample_id}/${meta.sample_id}_sv.txt")
+    }
+    ch_existing_cna       = ch_samples_branched.existing.map { meta, tsv, folder ->
+        file("${params.outdir}/samples/${meta.sample_id}/${meta.sample_id}_cna.txt")
+    }
+    ch_existing_mutations = ch_samples_branched.existing.map { meta, tsv, folder ->
+        file("${params.outdir}/samples/${meta.sample_id}/${meta.sample_id}_mutations.txt")
+    }
+    ch_existing_seg       = ch_samples_branched.existing.map { meta, tsv, folder ->
+        file("${params.outdir}/samples/${meta.sample_id}/${meta.sample_id}_seg.txt")
+    }
+
+    // -------------------------------------------------------------------------
+    // Filter linking file to only samples in the samplesheet
     // -------------------------------------------------------------------------
     ch_linking = Channel.value(file(params.linking_file))
 
+    ch_samplesheet_ids = ch_samplesheet
+        .map { row -> row.sample_id }
+        .collectFile(name: 'samplesheet_ids.txt', newLine: true)
+
+    FILTER_LINKING(ch_samplesheet_ids, ch_linking)
+    ch_filtered_linking = FILTER_LINKING.out
+
+    // -------------------------------------------------------------------------
+    // Collect: merge new + existing outputs, then deanonymise
+    // -------------------------------------------------------------------------
     MERGE_DEANON(
-        PER_SAMPLE_FORMAT.out.sv.collect(),
-        PER_SAMPLE_FORMAT.out.cna.collect(),
-        PER_SAMPLE_FORMAT.out.mutations.collect(),
-        ch_linking
+        PER_SAMPLE_FORMAT.out.sv.mix(ch_existing_sv).collect(),
+        PER_SAMPLE_FORMAT.out.cna.mix(ch_existing_cna).collect(),
+        PER_SAMPLE_FORMAT.out.mutations.mix(ch_existing_mutations).collect(),
+        PER_SAMPLE_FORMAT.out.seg.mix(ch_existing_seg).collect(),
+        ch_filtered_linking
     )
 
     // -------------------------------------------------------------------------
@@ -69,7 +111,7 @@ workflow AMPLISEQ_CBIOPORTAL {
     STUDY_METADATA(
         Channel.fromPath(params.patient_file),
         Channel.fromPath(params.sample_file),
-        ch_linking,
+        ch_filtered_linking,
         params.study_id
     )
 }

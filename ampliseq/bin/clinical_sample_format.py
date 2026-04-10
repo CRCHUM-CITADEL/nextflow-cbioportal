@@ -9,11 +9,11 @@ import os
 import pandas as pd
 
 HEADER_LINES = [
-    "#Patient Identifier\tSample Identifier\tCancer Type\tCancer Type Detailed\tSample Type\tPrimary site",
-    "#Patient identifier\tSample Identifier\tCancer type\tSub-type of the specified\tType of cancer sample\tPrimary site of cancer sample",
-    "#STRING\tSTRING\tSTRING\tSTRING\tSTRING\tSTRING",
-    "#1\t1\t1\t1\t1\t1",
-    "PATIENT_ID\tSAMPLE_ID\tCANCER_TYPE\tCANCER_TYPE_DETAILED\tSAMPLE_TYPE\tPRIMARY_SITE",
+    "#Patient Identifier\tSample Identifier\tCancer Type\tCancer Type Detailed\tSample Type\tPrimary site\tTumor Purity",
+    "#Patient identifier\tSample Identifier\tCancer type\tSub-type of the specified\tType of cancer sample\tPrimary site of cancer sample\tPurity of tumor sample (%)",
+    "#STRING\tSTRING\tSTRING\tSTRING\tSTRING\tSTRING\tSTRING",
+    "#1\t1\t1\t1\t1\t1\t1",
+    "PATIENT_ID\tSAMPLE_ID\tCANCER_TYPE\tCANCER_TYPE_DETAILED\tSAMPLE_TYPE\tPRIMARY_SITE\tTUMOR_PURITY",
 ]
 
 def transform_value(val):
@@ -23,8 +23,8 @@ def transform_value(val):
     return val
 
 def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <input_file>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print(f"Usage: {sys.argv[0]} <sample_file> [<linking_file>]", file=sys.stderr)
         sys.exit(1)
 
     df = pd.read_csv(sys.argv[1], sep="\t", dtype=str, usecols=range(8))
@@ -32,7 +32,12 @@ def main():
     # Drop duplicate sample_id column (columns 0 and 1 are both sample_id)
     df.columns = ["sample_id_drop", "sample_id", "patient_id", "cancer_type",
                   "cancer_type_detailed", "sample_type", "tumor_site", "tumor_purity"]
-    df = df.drop(columns=["sample_id_drop", "tumor_purity"])
+    df = df.drop(columns=["sample_id_drop"])
+
+    if len(sys.argv) == 3:
+        linking = pd.read_csv(sys.argv[2], sep="\t", dtype=str)
+        allowed = set(linking["deanon_sample_id"])
+        df = df[df["sample_id"].isin(allowed)]
 
     out = pd.DataFrame({
         "PATIENT_ID":            df["patient_id"],
@@ -41,6 +46,7 @@ def main():
         "CANCER_TYPE_DETAILED":  df["cancer_type_detailed"].apply(transform_value),
         "SAMPLE_TYPE":           df["sample_type"].apply(transform_value),
         "PRIMARY_SITE":          df["tumor_site"].apply(transform_value),
+        "TUMOR_PURITY":          df["tumor_purity"].apply(transform_value),
     })
 
     out_path = os.path.join(os.getcwd(), "data_clinical_sample.txt")

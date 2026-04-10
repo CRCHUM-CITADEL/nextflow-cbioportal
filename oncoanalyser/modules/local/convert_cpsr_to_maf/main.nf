@@ -21,9 +21,11 @@ process CONVERT_CPSR_TO_MAF {
     rm tmp.tsv # to reduce size of work dir
 
     gen_convert_cpsr_to_maf.R \
-        tmp.germline.cpsr.tsv \
-        $som_dna_rna_maf \
-        tmp.${subject_id}.somatic_rna_germline.maf
+       tmp.germline.cpsr.tsv \
+       $som_dna_rna_maf \
+       tmp.${subject_id}.somatic_rna_germline.maf
+
+    mv $som_dna_rna_maf tmp.${subject_id}.somatic_rna_germline.maf
 
     head -n2 tmp.${subject_id}.somatic_rna_germline.maf > ${subject_id}.somatic_rna_germline.maf
     awk -F'\t' 'NR>2{if(\$9!="Intron" && \$9!="IGR"){print \$0}}' tmp.${subject_id}.somatic_rna_germline.maf >> ${subject_id}.somatic_rna_germline.maf

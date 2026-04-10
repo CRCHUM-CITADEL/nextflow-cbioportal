@@ -62,6 +62,17 @@ genetic_alteration_type: CLINICAL
 datatype: SAMPLE_ATTRIBUTES
 data_filename: data_clinical_sample.txt
 """,
+    "meta_seg.txt": """\
+cancer_study_identifier: {study_id}
+genetic_alteration_type: COPY_NUMBER_ALTERATION
+datatype: SEG
+stable_id: seg
+show_profile_in_analysis_tab: false
+name: Segments (Copy Number)
+description: Segment-level copy number data for {study_id}. seg.mean = log2(CN/2).
+data_filename: data_seg.txt
+reference_genome_id: hg19
+""",
 }
 
 

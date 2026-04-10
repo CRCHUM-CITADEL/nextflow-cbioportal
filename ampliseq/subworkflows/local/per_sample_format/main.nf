@@ -1,9 +1,10 @@
-include { FORMAT_SV             } from '../../../modules/local/format_sv/main'
-include { FORMAT_CNA            } from '../../../modules/local/format_cna/main'
-include { STUB_MAF              } from '../../../modules/local/stub_maf/main'
-include { VCF_TO_MAF            } from '../../../modules/local/vcf_to_maf/main'
-include { FILTER_MUTATIONS      } from '../../../modules/local/filter_mutations/main'
-include { PASSTHROUGH_MUTATIONS } from '../../../modules/local/passthrough_mutations/main'
+include { FORMAT_SV             } from '../../../modules/local/format_sv/main.nf'
+include { FORMAT_CNA            } from '../../../modules/local/format_cna/main.nf'
+include { STUB_MAF              } from '../../../modules/local/stub_maf/main.nf'
+include { VCF_TO_MAF            } from '../../../modules/local/vcf_to_maf/main.nf'
+include { FILTER_MUTATIONS      } from '../../../modules/local/filter_mutations/main.nf'
+include { PASSTHROUGH_MUTATIONS } from '../../../modules/local/passthrough_mutations/main.nf'
+include { VCF_TO_SEG            } from '../../../modules/local/vcf_to_seg/main.nf'
 
 workflow PER_SAMPLE_FORMAT {
 
@@ -12,14 +13,16 @@ workflow PER_SAMPLE_FORMAT {
     ch_vcf_input // channel: tuple(meta, sample_folder)
 
     main:
-
-    // -------------------------------------------------------------------------
-    // SV and CNA: from TSV
-    // -------------------------------------------------------------------------
     FORMAT_SV(ch_tsv)
     FORMAT_CNA(ch_tsv)
-    ch_sv  = FORMAT_SV.out
+    ch_sv = FORMAT_SV.out
     ch_cna = FORMAT_CNA.out
+
+    // -------------------------------------------------------------------------
+    // Segmentation: CNV VCF → .seg
+    // -------------------------------------------------------------------------
+    VCF_TO_SEG(ch_vcf_input)
+    ch_seg = VCF_TO_SEG.out
 
     // -------------------------------------------------------------------------
     // Mutations: VCF → MAF, then filter by TSV coordinates
@@ -55,4 +58,5 @@ workflow PER_SAMPLE_FORMAT {
     sv        = ch_sv
     cna       = ch_cna
     mutations = ch_mutations
+    seg       = ch_seg
 }

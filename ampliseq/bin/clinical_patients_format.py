@@ -25,11 +25,16 @@ def transform_value(val):
     return val
 
 def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <input_file>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print(f"Usage: {sys.argv[0]} <patient_file> [<linking_file>]", file=sys.stderr)
         sys.exit(1)
 
     df = pd.read_csv(sys.argv[1], sep="\t", dtype=str)
+
+    if len(sys.argv) == 3:
+        linking          = pd.read_csv(sys.argv[2], sep="\t", dtype=str)
+        allowed_patients = set(linking["deanon_patient_id"])
+        df = df[df["patient_id"].isin(allowed_patients)]
 
     out = pd.DataFrame({
         "PATIENT_ID":       df["patient_id"],

@@ -4,12 +4,13 @@ process CLINICAL_SAMPLES {
 
     input:
     path(sample_file)
+    path(linking_file)
 
     output:
     path("data_clinical_sample.txt")
 
     script:
     """
-    clinical_sample_format.py ${sample_file}
+    clinical_sample_format.py ${sample_file} ${linking_file}
     """
 }

@@ -1,5 +1,6 @@
 process PASSTHROUGH_MUTATIONS {
     tag "${meta.sample_id}"
+    publishDir "${params.outdir}/samples/${meta.sample_id}", mode: 'copy'
 
     input:
     tuple val(meta), path(maf)

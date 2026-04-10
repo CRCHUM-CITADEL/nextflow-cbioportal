@@ -26,11 +26,11 @@ workflow GENOMIC_MUTATIONS {
         ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_data.first()
         ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR().data_dir.first() : pcgr_data.first()
 
-	ger_dna_filtered = FILTER_GERMLINE_DNA(ger_dna_vcf)
+      	ger_dna_filtered = FILTER_GERMLINE_DNA(ger_dna_vcf)
 
         ger_dna_index = BCFTOOLS_INDEX(ger_dna_filtered).tbi
 
-        ger_dna_vcf_with_index = ger_dna_vcf
+        ger_dna_vcf_with_index = ger_dna_filtered
             .join(ger_dna_index)
             .map {meta, filepath, index -> tuple(meta, filepath, index)}
 

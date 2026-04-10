@@ -1,6 +1,7 @@
 process FORMAT_CNA {
     tag "${meta.sample_id}"
     label 'python'
+    publishDir "${params.outdir}/samples/${meta.sample_id}", mode: 'copy'
 
     input:
     tuple val(meta), path(tsv)

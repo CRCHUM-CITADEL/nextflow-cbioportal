@@ -37,7 +37,7 @@ for (arg in c("purple_cnv_somatic", "purple_cnv_gene", "sample_id",
 
 cat("Reading PURPLE gene-level CNV:", opt$purple_cnv_gene, "\n")
 purple_gene <- fread(opt$purple_cnv_gene, header = TRUE)
-
+print(head(purple_gene))
 cat("Reading Ensembl annotations:", opt$ensembl_annotations, "\n")
 annotations <- fread(opt$ensembl_annotations, header = TRUE)
 # Build gene_symbol → entrez_ncbi_id lookup (de-duplicated)

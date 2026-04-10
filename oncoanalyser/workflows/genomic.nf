@@ -75,7 +75,7 @@ workflow GENOMIC {
         ch_sage_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/sage/somatic/${meta.subject}-T.sage.somatic.vcf.gz",
+                    "${meta.folder}/pave/${meta.subject}-T.pave.somatic.vcf.gz",
                     'mutation (SAGE somatic)')
                 vcf ? [meta + [pipeline: 'mutation'], vcf] : null
             }
@@ -85,7 +85,7 @@ workflow GENOMIC {
         ch_sage_germline_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/sage/germline/${meta.subject}-T.sage.germline.vcf.gz",
+                    "${meta.folder}/pave/${meta.subject}-T.pave.germline.vcf.gz",
                     'germline mutation (SAGE)')
                 vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
@@ -95,7 +95,7 @@ workflow GENOMIC {
         ch_sage_rna_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/sage/append/${meta.subject}-T.sage.append.vcf.gz",
+                    "${meta.folder}/sage_append/somatic/${meta.subject}-T.sage.append.vcf.gz",
                     'mutation (SAGE RNA append)')
                 vcf ? [meta + [pipeline: 'mutation_rna'], vcf] : null
             }
@@ -118,7 +118,7 @@ workflow GENOMIC {
         ch_esvee_vcf = ch_samples
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/esvee/caller/${meta.subject}-T.esvee.unfiltered.vcf.gz",
+                    "${meta.folder}/esvee/${meta.subject}-T.esvee.unfiltered.vcf.gz",
                     'sv (ESVEE)')
                 vcf ? [meta + [pipeline: 'sv'], vcf] : null
             }

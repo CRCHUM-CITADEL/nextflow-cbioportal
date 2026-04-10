@@ -1,0 +1,19 @@
+Bootstrap: docker
+From: astral/uv:python3.12-bookworm-slim
+
+%post
+    apt-get update && apt-get install -y --no-install-recommends procps && rm -rf /var/lib/apt/lists/*
+    uv venv
+    uv pip install polars==1.33.0
+
+%environment
+    export PATH=/usr/local/bin:$PATH
+
+%labels
+    Version 3.12
+    Description Python and polars
+
+%runscript
+    # Default behavior when running the container without specifying a command
+    # You can change this, or override with `apptainer exec ...`
+    exec /bin/bash "$@"

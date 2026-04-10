@@ -1,0 +1,60 @@
+Bootstrap: docker
+From: rockylinux:8.9
+
+%post
+    # update and install base packages
+    dnf -y update
+    dnf -y install curl wget java-17-openjdk python3.12 procps-ng epel-release git make gcc zlib-devel bzip2 bzip2-devel xz-devel ncurses-devel
+
+    dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+    dnf -y install htslib-tools
+
+    dnf clean all
+    rm -rf /var/cache/dnf
+
+    # install apptainer (inside the container)
+    dnf install -y https://github.com/apptainer/apptainer/releases/download/v1.4.2/apptainer-1.4.2-1.x86_64.rpm
+    dnf clean all
+    rm -rf /var/cache/dnf
+    apptainer version
+
+    # Python setup, install pre-commit
+    python3.12 -m ensurepip --upgrade
+    python3.12 -m pip install --no-cache-dir --upgrade pip
+    python3.12 -m pip install --no-cache-dir pre-commit
+
+    # Nextflow & nf-test
+    export NXF_VER=25.04.6
+    curl -s https://get.nextflow.io | bash
+    mv nextflow /usr/local/bin/nextflow
+    nextflow -v
+
+    wget -qO- https://get.nf-test.com | bash
+    mv nf-test /usr/local/bin/nf-test
+
+    cp -r /root/.nf-test /usr/local/lib/
+
+    # move to lib then replace paths in nf-test script so you can use it without root
+    sed -i \
+        -e 's|^\s*APP_HOME\s*=.*|APP_HOME="/usr/local/lib/.nf-test"|' \
+        -e 's|^\s*APP_JAR\s*=.*|APP_JAR="nf-test.jar"|' \
+        /usr/local/bin/nf-test
+
+    nf-test version
+
+
+%environment
+    export NXT_VER=25.10.2
+    export PATH=/usr/local/bin:$PATH
+    # Set JAVA_HOME (adjust if paths differ)
+    export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-$(uname -m)
+
+
+%labels
+    Version 25.10.2
+    Description Nextflow + nf-test + pre-commit on RockyLinux 8.10
+
+%runscript
+    # Default behavior when running the container without specifying a command
+    # You can change this, or override with `apptainer exec ...`
+    exec /bin/bash "$@"

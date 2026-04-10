@@ -1,0 +1,36 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-sante-precision/assets/schema_genomic_input.json",
+    "title": "CRCHUM-CITADEL/nextflow-sante-precision genomic pipeline parameters",
+    "description": "One row per subject. The folder column points to the oncoanalyser output directory for that subject; all modality files are resolved relative to it.",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "group": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "errorMessage": "group cannot contain spaces",
+                "meta": "group"
+            },
+            "subject_id": {
+                "type": "string",
+                "pattern": "^(?:\\d+|\\S+)$",
+                "errorMessage": "subject_id must be provided and cannot contain spaces",
+                "meta": "subject"
+            },
+            "sample_id": {
+                "type": "string",
+                "pattern": "^(?:\\d+|\\S+)$",
+                "errorMessage": "sample_id must be provided and cannot contain spaces",
+                "meta": "sample"
+            },
+            "folder": {
+                "type": "string",
+                "errorMessage": "folder must be provided — path to the oncoanalyser output directory for this subject",
+                "meta": "folder"
+            }
+        },
+        "required": ["group", "subject_id", "sample_id", "folder"]
+    }
+}

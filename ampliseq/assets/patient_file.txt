@@ -1,0 +1,2 @@
+patient_id	age	sex	os_status	os_months	smoking_history
+REAL_PAT_001	55	Male	0	24	Never

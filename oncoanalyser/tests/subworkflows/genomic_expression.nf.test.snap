@@ -1,0 +1,15 @@
+{
+    "Two subjects \u2014 TPM expression files are produced": {
+        "content": [
+            [
+                "T1.tpm.tsv:md5,5b70b221d60202a2617d3ebb28ef804a",
+                "T2.tpm.tsv:md5,f6d74903f28069cfb54fa1df5d382767"
+            ]
+        ],
+        "timestamp": "2026-04-10T16:19:20.315349881",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

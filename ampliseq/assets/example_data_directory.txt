@@ -1,0 +1,128 @@
+/data/optilab/patients/
+└── Cohorte_10_patients_new
+    ├── 5920_25BM002356-1-A01-5
+    │   ├── 25BM002356-1-A01-5-ADN_S4_L001_R1_001.fastq.gz
+    │   ├── 25BM002356-1-A01-5-ADN_S4_L001_R2_001.fastq.gz
+    │   ├── 25BM002356-1-A01-5-ARN_S35_L001_R1_001.fastq.gz
+    │   ├── 25BM002356-1-A01-5-ARN_S35_L001_R2_001.fastq.gz
+    │   ├── 25bm002356_5924-basespace-cnv.final.vcf
+    │   ├── 25bm002356_5924-basespace-pindel.final.vcf
+    │   ├── 25bm002356_5924-basespace-pisces.final.vcf.gz
+    │   ├── 25bm002356_5924-ready.bam
+    │   ├── 25bm002356_5924-ready.bam.bai
+    │   ├── analysis_5920_export.tsv
+    │   └── qc_metrics.json
+    ├── 5922_25CN001365-1-A3-2
+    │   ├── 25CN001365-1-A3-2-ADN_S23_L001_R1_001.fastq.gz
+    │   ├── 25CN001365-1-A3-2-ADN_S23_L001_R2_001.fastq.gz
+    │   ├── 25CN001365-1-A3-2-ARN_S54_L001_R1_001.fastq.gz
+    │   ├── 25CN001365-1-A3-2-ARN_S54_L001_R2_001.fastq.gz
+    │   ├── 25cn001365_5923-basespace-cnv.final.vcf
+    │   ├── 25cn001365_5923-basespace-pindel.final.vcf
+    │   ├── 25cn001365_5923-basespace-pisces.final.vcf.gz
+    │   ├── 25cn001365_5923-ready.bam
+    │   ├── 25cn001365_5923-ready.bam.bai
+    │   ├── analysis_5922_export.tsv
+    │   └── qc_metrics.json
+    ├── 5923_25BM002398-1-A01-4
+    │   ├── 25BM002398-1-A01-4-ADN_S22_L001_R1_001.fastq.gz
+    │   ├── 25BM002398-1-A01-4-ADN_S22_L001_R2_001.fastq.gz
+    │   ├── 25BM002398-1-A01-4-ARN_S53_L001_R1_001.fastq.gz
+    │   ├── 25BM002398-1-A01-4-ARN_S53_L001_R2_001.fastq.gz
+    │   ├── 25bm002398_5925-basespace-cnv.final.vcf
+    │   ├── 25bm002398_5925-basespace-pindel.final.vcf
+    │   ├── 25bm002398_5925-basespace-pisces.final.vcf.gz
+    │   ├── 25bm002398_5925-ready.bam
+    │   ├── 25bm002398_5925-ready.bam.bai
+    │   ├── analysis_5923_export.tsv
+    │   └── qc_metrics.json
+    ├── 5924_25BM002415-1-A01-4
+    │   ├── 25BM002415-1-A01-4-ADN_S27_L001_R1_001.fastq.gz
+    │   ├── 25BM002415-1-A01-4-ADN_S27_L001_R2_001.fastq.gz
+    │   ├── 25BM002415-1-A01-4-ARN_S58_L001_R1_001.fastq.gz
+    │   ├── 25BM002415-1-A01-4-ARN_S58_L001_R2_001.fastq.gz
+    │   ├── 25bm002415_5922-basespace-cnv.final.vcf
+    │   ├── 25bm002415_5922-basespace-pindel.final.vcf
+    │   ├── 25bm002415_5922-basespace-pisces.final.vcf.gz
+    │   ├── 25bm002415_5922-ready.bam
+    │   ├── 25bm002415_5922-ready.bam.bai
+    │   ├── analysis_5924_export.tsv
+    │   └── qc_metrics.json
+    ├── 5925_23HI053835-1-A02-6
+    │   ├── 23HI053835-1-A02-6-ADN_S12_L001_R1_001.fastq.gz
+    │   ├── 23HI053835-1-A02-6-ADN_S12_L001_R2_001.fastq.gz
+    │   ├── 23HI053835-1-A02-6-ARN_S43_L001_R1_001.fastq.gz
+    │   ├── 23HI053835-1-A02-6-ARN_S43_L001_R2_001.fastq.gz
+    │   ├── 23hi053835_5926-basespace-cnv.final.vcf
+    │   ├── 23hi053835_5926-basespace-pindel.final.vcf
+    │   ├── 23hi053835_5926-basespace-pisces.final.vcf.gz
+    │   ├── 23hi053835_5926-ready.bam
+    │   ├── 23hi053835_5926-ready.bam.bai
+    │   ├── analysis_5925_export.tsv
+    │   └── qc_metrics.json
+    ├── 5926_25HI019387-1-A11-10
+    │   ├── 25HI019387-1-A11-10-ADN_S18_L001_R1_001.fastq.gz
+    │   ├── 25HI019387-1-A11-10-ADN_S18_L001_R2_001.fastq.gz
+    │   ├── 25HI019387-1-A11-10-ARN_S49_L001_R1_001.fastq.gz
+    │   ├── 25HI019387-1-A11-10-ARN_S49_L001_R2_001.fastq.gz
+    │   ├── 25hi019387_5921-basespace-cnv.final.vcf
+    │   ├── 25hi019387_5921-basespace-pindel.final.vcf
+    │   ├── 25hi019387_5921-basespace-pisces.final.vcf.gz
+    │   ├── 25hi019387_5921-ready.bam
+    │   ├── 25hi019387_5921-ready.bam.bai
+    │   ├── analysis_5926_export.tsv
+    │   └── qc_metrics.json
+    ├── 5927_25BM002384-1-A02-4
+    │   ├── 25BM002384-1-A02-4-ADN_S8_L001_R1_001.fastq.gz
+    │   ├── 25BM002384-1-A02-4-ADN_S8_L001_R2_001.fastq.gz
+    │   ├── 25BM002384-1-A02-4-ARN_S39_L001_R1_001.fastq.gz
+    │   ├── 25BM002384-1-A02-4-ARN_S39_L001_R2_001.fastq.gz
+    │   ├── 25bm002384_5927-basespace-cnv.final.vcf
+    │   ├── 25bm002384_5927-basespace-pindel.final.vcf
+    │   ├── 25bm002384_5927-basespace-pisces.final.vcf.gz
+    │   ├── 25bm002384_5927-ready.bam
+    │   ├── 25bm002384_5927-ready.bam.bai
+    │   ├── analysis_5927_export.tsv
+    │   └── qc_metrics.json
+    ├── 5928_25BM002387-1-A01-4
+    │   ├── 25BM002387-1-A01-4-ADN_S9_L001_R1_001.fastq.gz
+    │   ├── 25BM002387-1-A01-4-ADN_S9_L001_R2_001.fastq.gz
+    │   ├── 25BM002387-1-A01-4-ARN_S40_L001_R1_001.fastq.gz
+    │   ├── 25BM002387-1-A01-4-ARN_S40_L001_R2_001.fastq.gz
+    │   ├── 25bm002387_5928-basespace-cnv.final.vcf
+    │   ├── 25bm002387_5928-basespace-pindel.final.vcf
+    │   ├── 25bm002387_5928-basespace-pisces.final.vcf.gz
+    │   ├── 25bm002387_5928-ready.bam
+    │   ├── 25bm002387_5928-ready.bam.bai
+    │   ├── analysis_5928_export.tsv
+    │   └── qc_metrics.json
+    ├── 5929_25BM002393-1-A01-4
+    │   ├── 25BM002393-1-A01-4-ADN_S19_L001_R1_001.fastq.gz
+    │   ├── 25BM002393-1-A01-4-ADN_S19_L001_R2_001.fastq.gz
+    │   ├── 25BM002393-1-A01-4-ARN_S50_L001_R1_001.fastq.gz
+    │   ├── 25BM002393-1-A01-4-ARN_S50_L001_R2_001.fastq.gz
+    │   ├── 25bm002393_5930-basespace-cnv.final.vcf
+    │   ├── 25bm002393_5930-basespace-pindel.final.vcf
+    │   ├── 25bm002393_5930-basespace-pisces.final.vcf.gz
+    │   ├── 25bm002393_5930-ready.bam
+    │   ├── 25bm002393_5930-ready.bam.bai
+    │   ├── analysis_5929_export.tsv
+    │   └── qc_metrics.json
+    ├── 5930_25BM002389-1-A10-4
+    │   ├── 25BM002389-1-A10-4-ADN_S11_L001_R1_001.fastq.gz
+    │   ├── 25BM002389-1-A10-4-ADN_S11_L001_R2_001.fastq.gz
+    │   ├── 25BM002389-1-A10-4-ARN_S42_L001_R1_001.fastq.gz
+    │   ├── 25BM002389-1-A10-4-ARN_S42_L001_R2_001.fastq.gz
+    │   ├── 25bm002389_5929-basespace-cnv.final.vcf
+    │   ├── 25bm002389_5929-basespace-pindel.final.vcf
+    │   ├── 25bm002389_5929-basespace-pisces.final.vcf.gz
+    │   ├── 25bm002389_5929-ready.bam
+    │   ├── 25bm002389_5929-ready.bam.bai
+    │   ├── analysis_5930_export.tsv
+    │   └── qc_metrics.json
+    ├── Patient_file_cohort_test.txt
+    ├── Patient_file_cohort_test.xlsx
+    ├── Sample_file_cohort_test.txt
+    └── Sample_file_cohort_test.xlsx
+
+11 directories, 114 files

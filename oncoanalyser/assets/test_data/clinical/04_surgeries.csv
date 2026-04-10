@@ -1,0 +1,2 @@
+submitter_treatment_extend_id,program_id,submitter_donor_id,submitter_treatment_id,surgery_reference_database,surgery_reference_identifier,surgery_type,surgery_site,surgery_location,tumour_length,tumour_width,greatest_dimension_tumour,tumour_focality,residual_tumour_classification,margin_types_involved,margin_types_not_involved,margin_types_not_assessed,lymphovascular_invasion,perineural_invasion
+Tr2-1,TEST,A2,Tr2,STEST,1,omentectomy (procedure),C1,Primary,,,,,,,,,,

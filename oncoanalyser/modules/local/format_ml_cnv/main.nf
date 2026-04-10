@@ -13,4 +13,9 @@ process FORMAT_ML_CNV {
     """
     ml_format_cnv.R $results_cnv_long
     """
+
+    stub:
+    """
+    touch cnv_gene.tsv
+    """
 }

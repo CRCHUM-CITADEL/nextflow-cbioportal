@@ -55,6 +55,14 @@ runs:
       if: contains(inputs.profile, 'apptainer')
       uses: eWaterCycle/setup-apptainer@main
 
+    - name: Cache VEP and PCGR reference data (storeDir assets)
+      uses: actions/cache@v4
+      with:
+        path: |
+          oncoanalyser/assets/vep
+          oncoanalyser/assets/pcgr
+        key: nf-ref-data-${{ hashFiles('oncoanalyser/modules/local/download_vep_test/main.nf', 'oncoanalyser/modules/local/download_pcgr/main.nf') }}
+
     - name: Login to GHCR and run nf-test
       shell: bash
       env:

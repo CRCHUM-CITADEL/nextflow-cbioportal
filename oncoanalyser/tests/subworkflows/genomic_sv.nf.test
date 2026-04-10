@@ -1,0 +1,52 @@
+nextflow_workflow {
+
+    name "Test GENOMIC_SV subworkflow"
+    script "subworkflows/local/genomic_sv/main.nf"
+    workflow "GENOMIC_SV"
+    tag "subworkflow"
+    tag "genomic_sv"
+
+    test("Two subjects — SV data_sv.txt files are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/esvee/T1-T.esvee.unfiltered.vcf.gz')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/esvee/T2-T.esvee.unfiltered.vcf.gz')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_chr21.tsv')
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.sv_out.size() == 2
+
+            def sv_names = workflow.out.sv_out.collect { meta, f -> f.toString().split('/').last() }.sort()
+            assert sv_names == ['T1.data_sv.txt', 'T2.data_sv.txt']
+
+            // Verify cBioPortal SV format: expected columns in header
+            def sv_t1_path = workflow.out.sv_out.collect { meta, f -> f }.find { it.toString().endsWith('T1.data_sv.txt') }
+            def header = path(sv_t1_path.toString()).readLines()[0]
+            assert header.contains('Sample_Id')
+            assert header.contains('SV_Status')
+            assert header.contains('Site1_Hugo_Symbol')
+            assert header.contains('NCBI_Build')
+
+            snapshot(
+                workflow.out.sv_out.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }
+            ).match()
+        }
+    }
+}

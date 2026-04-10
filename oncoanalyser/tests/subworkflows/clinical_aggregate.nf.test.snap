@@ -1,0 +1,14 @@
+{
+    "All seven file types \u2014 clinical output files are produced": {
+        "content": [
+            "data_clinical_sample.txt:md5,752e2837a5084082989ea0a5afe802d8",
+            "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
+            "cancer_type.txt:md5,b8c4e04e58d58e6fa5c712d77753addf"
+        ],
+        "timestamp": "2026-04-10T16:02:48.593629031",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

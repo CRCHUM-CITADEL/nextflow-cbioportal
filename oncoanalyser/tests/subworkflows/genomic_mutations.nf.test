@@ -1,0 +1,70 @@
+nextflow_workflow {
+
+    name "Test GENOMIC_MUTATIONS subworkflow"
+    script "subworkflows/local/genomic_mutations/main.nf"
+    workflow "GENOMIC_MUTATIONS"
+    tag "subworkflow"
+    tag "genomic_mutations"
+
+    // Note: This test uses real containers (PCGR ~8 GB, vcf2maf ~4 GB).
+    // VEP and PCGR reference data are downloaded on first run (storeDir: assets/).
+    // Requires caching of assets/vep/ and assets/pcgr/ in CI to avoid re-downloading.
+
+    test("One subject — somatic+germline MAF is produced") {
+
+        when {
+            params {
+                outdir    = "$outputDir"
+                vep_data  = ""    // triggers DOWNLOAD_VEP_TEST (cached after first run)
+                pcgr_data = ""    // triggers DOWNLOAD_PCGR (cached after first run)
+            }
+            workflow {
+                """
+                // Germline VCF (contains both normal T1-N and tumor T1 sample columns)
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_germline'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/T1-T.pave.germline.vcf.gz')
+                    ]
+                )
+                // Somatic VCF
+                input[1] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/T1-T.pave.somatic.vcf.gz')
+                    ]
+                )
+                // RNA-append VCF
+                input[2] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_rna'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/sage_append/somatic/T1-T.sage.append.vcf.gz')
+                    ]
+                )
+                // Reference FASTA (chr21 only)
+                input[3] = file('${projectDir}/assets/test_data/reference/Homo_sapiens_assembly38_chr21.fasta')
+                // vep_data and pcgr_data channels — empty signals "needs download"
+                input[4] = Channel.empty()
+                input[5] = Channel.empty()
+                // needs_vep and needs_pcgr — true triggers DOWNLOAD_VEP_TEST / DOWNLOAD_PCGR
+                input[6] = true
+                input[7] = true
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.out.size() == 1
+
+            def maf_path = workflow.out.out.collect { meta, f -> f }[0].toString()
+            assert maf_path.endsWith('.maf')
+
+            // Verify MAF format: version line + header present
+            def lines = path(maf_path).readLines()
+            assert lines[0].startsWith('#version')
+            assert lines[1].contains('Hugo_Symbol')
+            assert lines[1].contains('Tumor_Sample_Barcode')
+        }
+    }
+}

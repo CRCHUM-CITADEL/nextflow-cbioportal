@@ -1,0 +1,63 @@
+nextflow_workflow {
+
+    name "Test GENOMIC_CNV subworkflow"
+    script "subworkflows/local/genomic_cnv/main.nf"
+    workflow "GENOMIC_CNV"
+    tag "subworkflow"
+    tag "genomic_cnv"
+
+    test("Two subjects — CNV SEG and long files are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.cnv.somatic.tsv'),
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.cnv.gene.tsv')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple/T2-T.purple.cnv.somatic.tsv'),
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple/T2-T.purple.cnv.gene.tsv')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_chr21.tsv')
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.segfile.size()  == 2
+            assert workflow.out.longfile.size() == 2
+
+            def seg_names  = workflow.out.segfile.collect  { meta, f -> f.toString().split('/').last() }.sort()
+            def long_names = workflow.out.longfile.collect { meta, f -> f.toString().split('/').last() }.sort()
+            assert seg_names  == ['T1_data_cna_hg38.seg', 'T2_data_cna_hg38.seg']
+            assert long_names == ['T1_data_cna_long.txt', 'T2_data_cna_long.txt']
+
+            // Verify SEG format: header row + data rows present
+            def seg_t1_path = workflow.out.segfile.collect { meta, f -> f }.find { it.toString().endsWith('T1_data_cna_hg38.seg') }
+            def seg_lines = path(seg_t1_path.toString()).readLines()
+            assert seg_lines[0].startsWith('ID')
+            assert seg_lines.size() > 1
+
+            // Verify CNA long format: expected columns in header
+            def long_t1_path = workflow.out.longfile.collect { meta, f -> f }.find { it.toString().endsWith('T1_data_cna_long.txt') }
+            def long_header = path(long_t1_path.toString()).readLines()[0]
+            assert long_header.contains('Hugo_Symbol')
+            assert long_header.contains('Sample_Id')
+            assert long_header.contains('Value')
+
+            snapshot(
+                workflow.out.segfile.collect  { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() },
+                workflow.out.longfile.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }
+            ).match()
+        }
+    }
+}

@@ -1,0 +1,47 @@
+nextflow_workflow {
+
+    name "Test GENOMIC_ML subworkflow"
+    script "subworkflows/local/genomic_ml/main.nf"
+    workflow "GENOMIC_ML"
+    tag "subworkflow"
+    tag "genomic_ml"
+
+    // DOWNLOAD_KNOWN_FUSIONS is always called unconditionally inside this subworkflow.
+    // Its stub block is used here to bypass the curl download while still running
+    // all FORMAT_ML_* and PROCESS_ML_* modules with real containers.
+
+    test("Group-level ML tables produced from precomputed fixtures") {
+
+        options "-stub-run"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                // data_cna_long.txt: ml_format_cnv.R checks basename == 'data_cna_long.txt'
+                // so the file must be staged with exactly that name (stageAs ensures it)
+                input[0] = Channel.of(
+                    ['TEST', file('${projectDir}/assets/test_data/precomputed/data_cna_long.txt')]
+                )
+                // data_expression.txt: ml_format_expression.R checks basename == 'data_expression.txt'
+                input[1] = Channel.of(
+                    ['TEST', file('${projectDir}/assets/test_data/precomputed/data_expression.txt')]
+                )
+                input[2] = Channel.of(
+                    ['TEST', file('${projectDir}/assets/test_data/precomputed/data_mutations_dna_rna_germline.txt')]
+                )
+                input[3] = Channel.of(
+                    ['TEST', file('${projectDir}/assets/test_data/precomputed/data_sv.txt')]
+                )
+                input[4] = file('${projectDir}/assets/test_data/annotations/ChimerKB4.xlsx')
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+        }
+    }
+}

@@ -13,4 +13,9 @@ process PROCESS_ML_MUTATION {
     """
     ml_mutation_processor.R $mutation_results
     """
+
+    stub:
+    """
+    touch mutations_processed_somatic.tsv
+    """
 }

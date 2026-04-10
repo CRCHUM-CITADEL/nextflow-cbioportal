@@ -15,4 +15,9 @@ process FORMAT_ML_MUTATION {
     """
     ml_format_mutation.R $results_mutation
     """
+
+    stub:
+    """
+    touch all_somatic_mutations.tsv
+    """
 }

@@ -13,4 +13,9 @@ process FORMAT_ML_EXPRESSION {
     """
     ml_format_expression.R $results_expression
     """
+
+    stub:
+    """
+    touch expression_tpm.tsv
+    """
 }

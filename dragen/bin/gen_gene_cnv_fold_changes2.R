@@ -94,10 +94,16 @@ vcf_data$svtype <- sapply(vcf_data$ID, function(id) {
 vcf_data <- vcf_data[!is.na(vcf_data$svtype), ]
 
 # Extract CN (copy number) from SAMPLE field
+# DRAGEN emits the integer copy number in "CN"; some CNV callers use "CNF".
+# Prefer CNF when present, fall back to CN so downstream discrete-CNA logic
+# always has a non-NA copy number.
 vcf_data$copy_number <- sapply(1:nrow(vcf_data), function(i) {
   format_fields <- unlist(strsplit(vcf_data$FORMAT[i], ":"))
   sample_values <- unlist(strsplit(vcf_data$SAMPLE[i], ":"))
   cn_index <- which(format_fields == "CNF")
+  if (length(cn_index) == 0) {
+    cn_index <- which(format_fields == "CN")
+  }
   if (length(cn_index) > 0 && cn_index <= length(sample_values)) {
     return(as.numeric(sample_values[cn_index]))
   } else {

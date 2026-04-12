@@ -1,0 +1,15 @@
+{
+    "Two subjects \u2014 TPM expression files are produced from Sailfish quant.genes.sf": {
+        "content": [
+            [
+                "T1-1RT.tpm.tsv:md5,86a85e598c323cf9e96115bec0be176d",
+                "T2-1RT.tpm.tsv:md5,53def5fb17b9897926dec1ea41af3207"
+            ]
+        ],
+        "timestamp": "2026-04-11T09:06:51.951748157",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

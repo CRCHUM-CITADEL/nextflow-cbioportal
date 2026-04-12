@@ -200,10 +200,52 @@ process MY_PROCESS {
 
 ## Testing
 
-- Test framework: `nf-test` with `nft-utils@0.0.3` plugin
-- Test data lives in `assets/test_data/` (chr21-subset reference, small VCFs, clinical CSVs)
-- Snapshots in `tests/*.snap` — update with `nf-test test --update-snapshot` when output intentionally changes
-- CI runs tests on `ubuntu-latest` with Nextflow v25.10.2, sharded across 7 parallel jobs
+Tests use **nf-test** (binary at `./nf-test` in the pipeline directory) with the `nft-utils@0.0.3` plugin.
+
+### Test structure
+
+| Test file | Type | Containers needed |
+|---|---|---|
+| `tests/clinical.nf.test` | Pipeline-level | R only |
+| `tests/subworkflows/clinical_aggregate.nf.test` | Subworkflow | R only |
+| `tests/subworkflows/genomic_cnv.nf.test` | Subworkflow | R only |
+| `tests/subworkflows/genomic_sv.nf.test` | Subworkflow | R only |
+| `tests/subworkflows/genomic_expression.nf.test` | Subworkflow | R only |
+| `tests/subworkflows/genomic_aggregate_output.nf.test` | Subworkflow | R only |
+| `tests/subworkflows/genomic_ml.nf.test` | Subworkflow (fully stubbed) | None |
+| `tests/subworkflows/genomic_mutations.nf.test` | Subworkflow | PCGR + vcf2maf (~200s) |
+
+### Running tests
+
+```bash
+# All tests (8 total, ~5 min)
+./nf-test test tests/subworkflows/ tests/clinical.nf.test --profile test,apptainer
+
+# Individual subworkflow test
+./nf-test test tests/subworkflows/genomic_cnv.nf.test --profile test,apptainer
+
+# Update snapshots after intentional output change
+./nf-test test tests/subworkflows/genomic_cnv.nf.test --profile test,apptainer --update-snapshot
+```
+
+### Test data
+
+- **`assets/test_data/genomic/dna/`** — DRAGEN germline + somatic VCFs (chr21)
+- **`assets/test_data/genomic/rna/`** — DRAGEN RNA VCFs, quant.genes.sf, fusion_candidates.final
+- **`assets/test_data/precomputed/`** — pre-processed files for aggregate/ML tests
+- **`assets/test_data/annotations/`** — BioMart TSV (chr21) + ChimerKB4.xlsx
+- **`assets/test_data/clinical/`** — clinical CSVs for clinical pipeline tests
+
+### nf-test conventions
+
+- Channel file outputs are `String` in `then {}` blocks — use `path(f.toString())` not `f.readLines()`
+- Sort snapshots by filename for stable ordering: `.sort { it.toString().split('/').last() }`
+- `collectFile` with `storeDir` does NOT auto-create parent directories — tests must call `file("${params.outdir}/GROUP").mkdirs()` before workflow input
+- `genomic_ml` uses `options "-stub-run"` to bypass `DOWNLOAD_KNOWN_FUSIONS` curl download; all ML format/process modules have `stub:` blocks
+
+### Snapshots
+
+Snapshots live in `tests/*.snap` and `tests/subworkflows/*.snap`. Update with `--update-snapshot` when output intentionally changes.
 
 ---
 

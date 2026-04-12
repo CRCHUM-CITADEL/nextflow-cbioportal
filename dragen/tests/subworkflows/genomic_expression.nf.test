@@ -1,0 +1,54 @@
+nextflow_workflow {
+
+    name "Test GENOMIC_EXPRESSION subworkflow"
+    script "subworkflows/local/genomic_expression/main.nf"
+    workflow "GENOMIC_EXPRESSION"
+    tag "subworkflow"
+    tag "genomic_expression"
+
+    test("Two subjects — TPM expression files are produced from Sailfish quant.genes.sf") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1RT', type: 'somatic', sequence: 'rna', pipeline: 'expression'],
+                        file('${projectDir}/assets/test_data/genomic/rna/T1-1RT/HG04239.quant.genes.sf')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2-1RT', type: 'somatic', sequence: 'rna', pipeline: 'expression'],
+                        file('${projectDir}/assets/test_data/genomic/rna/T2-1RT/HG04239.quant.genes.sf')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_chr21.tsv')
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.out.size() == 2
+
+            def tpm_names = workflow.out.out.collect { meta, f -> f.toString().split('/').last() }.sort()
+            assert tpm_names == ['T1-1RT.tpm.tsv', 'T2-1RT.tpm.tsv']
+
+            // Verify cBioPortal expression format: expected columns in header
+            def tpm_t1_path = workflow.out.out.collect { meta, f -> f }.find { it.toString().endsWith('T1-1RT.tpm.tsv') }
+            def header = path(tpm_t1_path.toString()).readLines()[0]
+            assert header.contains('Hugo_Symbol')
+            assert header.contains('Entrez_Gene_Id')
+            assert header.contains('T1-1RT')
+
+            // At least one gene row present
+            assert path(tpm_t1_path.toString()).readLines().size() > 1
+
+            snapshot(
+                workflow.out.out.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }
+            ).match()
+        }
+    }
+}

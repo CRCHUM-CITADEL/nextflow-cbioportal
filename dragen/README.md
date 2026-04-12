@@ -1,6 +1,4 @@
-# CRCHUM-CITADEL/nextflow-cbioportal (English)
-
-(Traduction en francais suit)
+# CRCHUM-CITADEL/nextflow-cbioportal
 
 ## Clone
 
@@ -163,205 +161,41 @@ apptainer exec \
 > 2. Push the image:
 >    `apptainer push <new_sif_file>.sif oras://ghcr.io/crchum-citadel/<name>:<version>`
 
-## For developpers:
+## For developers:
 
 > [!IMPORTANT]
 > Always make changes in the dev branch of the repository. To merge changes to the main branch, create a pull request and make sure all tests pass.
 > Alternatively, create an issue in the GitHub repository.
 
+### Running tests
+
+The test suite includes 8 tests: 1 pipeline-level clinical test and 7 subworkflow tests.
+
+```bash
+# Run all tests (~5 min)
+./nf-test test tests/subworkflows/ tests/clinical.nf.test --profile test,apptainer
+
+# Run individual subworkflow test
+./nf-test test tests/subworkflows/genomic_cnv.nf.test --profile test,apptainer
+
+# Update snapshots after intentional output change
+./nf-test test tests/subworkflows/genomic_cnv.nf.test --profile test,apptainer --update-snapshot
+```
+
+| Test | Description | Time |
+|------|-------------|------|
+| `clinical.nf.test` | Pipeline-level clinical mode | ~15s |
+| `clinical_aggregate.nf.test` | Clinical file aggregation | ~10s |
+| `genomic_cnv.nf.test` | CNV SEG + long files from DRAGEN VCF | ~10s |
+| `genomic_sv.nf.test` | SV files from fusion_candidates.final | ~10s |
+| `genomic_expression.nf.test` | TPM from Sailfish quant.genes.sf | ~10s |
+| `genomic_aggregate_output.nf.test` | Merged genomic files + meta/case-lists | ~10s |
+| `genomic_ml.nf.test` | ML tables (stub-run) | ~10s |
+| `genomic_mutations.nf.test` | VEP + PCGR + vcf2maf chain | ~200s |
+
 ### Other functionalities:
 
-To run nf-test:
-
-```
-apptainer exec containers/nextflow-citadel_v25.10.2.sif nf-test test --profile apptainer
-```
-
 To run pre-commit (to check linting before pull request):
-
-```
-apptainer exec containers/nextflow-citadel_v25.10.2.sif pre-commit run .
-```
-
-# CRCHUM-CITADEL/nextflow-cbioportal (Francais)
-
-Documentation de démarrage (Traduction en français)
-
-## Cloner
-
-Pour exécuter ce pipeline, vous devez d'abord cloner ce dépôt git et entrer dans le répertoire :
-
-```
-git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git && cd
-```
-
-> [!NOTE]
-> Pour tous les conteneurs, nous utilisons Apptainer en raison de sa compatibilité avec les environnements HPC.
-> Si vous ne travaillez pas dans un environment HPC, trouvez comment l'installer ici : https://apptainer.org/docs/admin/main/installation.html
-
-## Modifier le fichier nextflow.config
-
-Vous devrez modifier les paramètres dans le fichier de configuration nextflow afin de pointer vers certains fichiers. Ces options se trouvent dans le dictionnaire `params` dans nextflow.config. Obligatoire sauf indication contraire.
-
-| Champ                    | Description                                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| mode                     | Mode d'exécution du pipeline. Options : ['clinical', 'genomic']                                                                             |
-| genomic_samplesheet      | Feuille d'échantillons génomique en entrée. Voir la section ci-dessous.                                                                     |
-| ensembl_annotations_expr | Fichier d'annotations Ensembl .tsv. pour resultats d'expression (peut etre pareil)                                                          |
-| ensembl_annotations      | Fichier d'annotations Ensembl .tsv.                                                                                                         |
-| vep_cache                | Dossier du cache de la version ensembl vep téléchargée.                                                                                     |
-| vep_params               | Paramètres pour l'utilisation de VEP comme décrit ici :`<br>` https://github.com/Ensembl/ensembl-vep?tab=readme-ov-file#options (optionnel) |
-| pcgr_data                | Dossier des données de référence pcgr (décompressées)                                                                                       |
-| genome_reference         | Emplacement du fichier fasta de référence GRCh38.                                                                                           |
-| container_pcgr           | Emplacement de l'image apptainer PCGR (distant ou local)                                                                                    |
-| container_python         | Emplacement de l'image apptainer Python (distant ou local)                                                                                  |
-| container_r              | Emplacement de l'image apptainer R (distant ou local)                                                                                       |
-| container_vcf2maf        | Emplacement de l'image apptainer du module`<br>` nf-core vcf2maf (distant ou local) (optionnel)                                             |
-| clinical_samplesheet     | Feuille d'échantillons clinique en entrée. Voir la section ci-dessous.                                                                      |
-| id_linking_file          | Fichier de linkage d'échantillion, créé par pipeline génomique                                                                              |
-
-## Feuille d'échantillons
-
-Vous devrez créer une feuille d'échantillons pour ce pipeline, qui peut différer selon les modes.
-
-### Mode = 'genomic'
-
-Le format de la feuille d'échantillons est fortement basé sur `<a href="https://github.com/nf-core/oncoanalyser">` le pipeline nf-core d'oncoanalyser `</a>`. Voir ci-dessous pour les spécifications exactes :
-
-#### Schéma d'entrée génomique
-
-Le fichier d'entrée génomique doit être un tableau JSON où chaque objet contient les champs suivants :
-
-| Nom de colonne  | Type   | Requis  | Motif                            | Options               | Description                                               |
-| --------------- | ------ | ------- | -------------------------------- | --------------------- | --------------------------------------------------------- |
-| `group_id`      | chaîne | Non     | `^\S+$` (pas d'espaces)          | -                     | Identifiant de groupe                                     |
-| `subject_id`    | chaîne | **Oui** | `^(?:\d+\|\S+)$` (pas d'espaces) | -                     | Identifiant du sujet                                      |
-| `sample_id`     | entier | **Oui** | `^\d+$` (numérique uniquement)   | -                     | Identifiant d'échantillon                                 |
-| `sample_type`   | chaîne | **Oui** | -                                | `somatic`, `germinal` | Type d'échantillon                                        |
-| `sequence_data` | chaîne | **Oui** | -                                | `dna`, `rna`          | Type de données de séquençage                             |
-| `info`          | chaîne | Non     | -                                | -                     | Informations supplémentaires                              |
-| `filepath`      | chaîne | **Oui** | -                                | -                     | Chemin vers le dossier de resultats DRAGEN (DN, DT ou RT) |
-
-> [!NOTE]
-> Les champs marqués comme **Requis** doivent être présents dans chaque objet
-> Tous les champs de type chaîne ne peuvent pas contenir d'espaces sauf indication contraire
-> Le `filepath` doit pointer vers un fichier valide avec l'une des extensions acceptées
-
-### mode = 'clinical'
-
-#### Schéma d’entrée clinique
-
-Le fichier d’entrée clinique doit être un fichier CSV où chaque objet contient les champs suivants :
-
-| Nom de colonne    | Type   | Requis  | Motif                  | Options                                                                                                   | Description                                                               |
-| ----------------- | ------ | ------- | ---------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `group_id`        | chaîne | Non     | `^\S+$` (sans espaces) | -                                                                                                         | Identifiant de groupe                                                     |
-| `filetype`        | chaîne | **Oui** | -                      | `patient`, `diagnosis`, `treatment`, `surgeries` `<br>` `systemic_treatment`, `specimen`, `radio_therapy` | Catégorie du type de fichier                                              |
-| `filepath`        | chaîne | **Oui** | `^\S+\.csv)$`          | -                                                                                                         | Chemin vers le fichier de données cliniques (doit se terminer par `.csv`) |
-| `extraction_date` | chaîne | **Oui** | `^\S+$`                | -                                                                                                         | Date à laquelle les données ont été extraites de la base de données       |
-| `info`            | chaîne | Non     | -                      | -                                                                                                         | Informations supplémentaires                                              |
-
-> [!NOTE]
-> Les champs marqués comme **Requis** doivent être présents dans chaque objet.
-> Les champs de type chaîne ne peuvent pas contenir d’espaces sauf indication contraire.
-> Le `filepath` doit pointer vers un fichier valide avec une des extensions acceptées.
-
-## Pour les environnements non-HPC (c'est-à-dire sans SLURM)
-
-### Télécharger l'image conteneur nextflow
-
-Afin d'exécuter nextflow avec le logiciel exact utilisé pour construire le pipeline, téléchargez l'image conteneur hébergée sur le GitHub organisationnel de CITADEL (ou si vous n'êtes pas membre de crchum-citadel GitHub, demandez l'emplacement du fichier .sif stocké localement.)
-
-```
-apptainer pull --dir containers/ oras://ghcr.io/crchum-citadel/sdp-nextflow:25.04.7
-```
-
-> [!NOTE]
-> Pour télécharger depuis le dépôt GitHub, vous devez avoir vos identifiants stockés dans votre environnement et être membre du GitHub crchum-citadel.
-> Vous devrez d'abord créer un `<a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens" target="_blank">`jeton PAT avec les permissions appropriées`</a>`
-> Pour vous authentifier :
-> `apptainer registry login --username <nom_utilisateur> oras://ghcr.io`
-> Vous serez invité à entrer votre jeton PAT.
-
-### Exécuter nextflow via apptainer
-
-Structurez votre commande comme suit :
-
-```
-apptainer exec containers/sdp-nextflow_<version>.sif nextflow <commande>
-```
-
-Pour obtenir la version :
-
-```
-apptainer exec containers/sdp-nextflow_v25.10.2.sif nextflow -v
-```
-
-Pour exécuter le test du pipeline (en utilisant des données minimales) :
-
-```
-apptainer exec containers/sdp-nextflow_v25.10.2.sif nextflow run main.nf -profile test,apptainer
-```
-
-## Dans un environnement HPC (c'est-à-dire avec SLURM)
-
-### Charger le module nextflow
-
-```
-module load nextflow/25.04.6 apptainer htslib
-```
-
-### Exécuter nextflow
-
-```
-nextflow run main.nf -profile apptainer,slurm
-```
-
-> [!IMPORTANT]
-> Exécutez toujours le pipeline avec au moins l'option de profil apptainer, sinon il ne fonctionnera pas. (Par ex. -profile apptainer)
-
-## Fonctionnalité nf-core
-
-Ce pipeline a été construit à partir d'un modèle nf-core. Vous voudrez peut-être utiliser certaines fonctionnalités CLI de nf-core.
-
-Selon la documentation, vous pouvez exécuter directement depuis le conteneur :
-
-```
-apptainer exec \
-    --bind $(pwd):$(pwd) \
-    --pwd $(pwd) \
-    docker://nfcore/tools:3.3.2 \
-    nf-core pipelines list
-```
-
-> [!NOTE]
-> Vous voudrez probablement créer un alias dans votre fichier ~/.bashrc. Dans ce fichier, incluez :
-> `alias nf-core="apptainer exec --bind $(pwd):$(pwd) --pwd $(pwd) docker://nfcore/tools:3.3.2 nf-core"`
-> (N'oubliez pas de sourcer et de changer les versions lors d'une mise à jour !)
-
-> [!NOTE]
-> Si vous cherchez à mettre à jour le registre de conteneurs, vous devez :
->
-> 1. Construire l'image
->    `apptainer build <nouveau_fichier_sif>.sif <fichier_def>.def`
-> 2. Pousser l'image :
->    `apptainer push <nouveau_fichier_sif>.sif oras://ghcr.io/crchum-citadel/<nom>:<version>`
-
-## Pour les développeurs :
-
-> [!IMPORTANT]
-> Effectuez toujours les modifications dans la branche dev du dépôt. Pour fusionner les modifications vers la branche main, créez une demande de tirage (pull request) et assurez-vous que tous les tests réussissent.
-> Alternativement, créez un problème (issue) dans le dépôt GitHub.
-
-### Autres fonctionnalités :
-
-Pour exécuter nf-test :
-
-```
-apptainer exec containers/nextflow-citadel_v25.10.2.sif nf-test test --profile apptainer
-```
-
-Pour exécuter pre-commit (pour vérifier le linting avant la demande de tirage) :
 
 ```
 apptainer exec containers/nextflow-citadel_v25.10.2.sif pre-commit run .

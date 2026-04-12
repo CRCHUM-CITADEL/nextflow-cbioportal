@@ -1,0 +1,19 @@
+{
+    "Two subjects \u2014 CNV SEG and long files are produced": {
+        "content": [
+            [
+                "T1.1DT_data_cna_hg38.seg:md5,8bd99ccb25be552e83518610dba347bc",
+                "T2.1DT_data_cna_hg38.seg:md5,e1f8161d0bd1f3e1d56f095dbe2c3a2b"
+            ],
+            [
+                "T1.1DT_data_cna_long.txt:md5,a6a6bc7dd7cf5eae7a19ba03e2536451",
+                "T2.1DT_data_cna_long.txt:md5,16bb2da72b8457c79ab552025f16d625"
+            ]
+        ],
+        "timestamp": "2026-04-11T09:06:03.482475278",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

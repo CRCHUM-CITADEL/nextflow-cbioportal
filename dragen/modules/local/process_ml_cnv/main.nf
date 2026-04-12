@@ -13,4 +13,9 @@ process PROCESS_ML_CNV {
     """
     ml_cnv_processor.R $results_cnv
     """
+
+    stub:
+    """
+    touch cnv_genes.tsv
+    """
 }

@@ -14,4 +14,10 @@ process PROCESS_ML_EXPRESSION {
     """
     ml_expression_processor.R $results_expression
     """
+
+    stub:
+    """
+    touch expression_processed_log2.tsv
+    touch expression_processed_standardized.tsv
+    """
 }

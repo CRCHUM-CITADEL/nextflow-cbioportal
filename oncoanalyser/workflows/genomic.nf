@@ -61,6 +61,88 @@ workflow GENOMIC {
                 ]
             }
 
+        // ── Incremental processing: detect already-processed subjects ────────
+        // Check output directory for existing per-subject files.
+        // If all expected outputs exist, skip processing and reuse cached files.
+
+        ch_files_ran = ch_samples
+            .filter { meta ->
+                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
+                baseDir.exists() && baseDir.isDirectory()
+            }
+            .flatMap { meta ->
+                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
+                def files = []
+
+                // CNV files (use meta.sample for filename)
+                def seg = file("${baseDir}/${meta.sample}_data_cna_hg38.seg", checkIfExists: false)
+                def long_cnv = file("${baseDir}/${meta.sample}_data_cna_long.txt", checkIfExists: false)
+                if (seg.exists() && long_cnv.exists()) {
+                    files.add([meta + [pipeline: 'cnv'], [seg: seg, longfile: long_cnv]])
+                }
+
+                // SV file
+                def sv = file("${baseDir}/${meta.sample}.data_sv.txt", checkIfExists: false)
+                if (sv.exists()) {
+                    files.add([meta + [pipeline: 'sv'], sv])
+                }
+
+                // Expression file
+                def tpm = file("${baseDir}/${meta.sample}.tpm.tsv", checkIfExists: false)
+                if (tpm.exists()) {
+                    files.add([meta + [pipeline: 'expression'], tpm])
+                }
+
+                // Mutation file (uses subject for filename)
+                def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf", checkIfExists: false)
+                if (maf.exists()) {
+                    files.add([meta + [pipeline: 'mutation'], maf])
+                }
+
+                return files
+            }
+
+        // Get set of already-processed subject names (those with all 4 outputs)
+        existing_subjects = ch_samples
+            .filter { meta ->
+                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
+                if (!baseDir.exists()) return false
+                def seg = file("${baseDir}/${meta.sample}_data_cna_hg38.seg", checkIfExists: false)
+                def long_cnv = file("${baseDir}/${meta.sample}_data_cna_long.txt", checkIfExists: false)
+                def sv = file("${baseDir}/${meta.sample}.data_sv.txt", checkIfExists: false)
+                def tpm = file("${baseDir}/${meta.sample}.tpm.tsv", checkIfExists: false)
+                def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf", checkIfExists: false)
+                return seg.exists() && long_cnv.exists() && sv.exists() && tpm.exists() && maf.exists()
+            }
+            .map { meta -> meta.subject }
+            .collect()
+            .map { it.toSet() }
+            .ifEmpty([] as Set)
+
+        // Filter to only new samples that need processing
+        ch_samples_to_run = ch_samples
+            .combine(existing_subjects)
+            .filter { meta, existing_set -> meta.subject !in existing_set }
+            .map { meta, existing_set -> meta }
+
+        // Log skipped samples
+        ch_samples
+            .combine(existing_subjects)
+            .filter { meta, existing_set -> meta.subject in existing_set }
+            .subscribe { meta, set ->
+                log.info "Skipping already-processed subject: ${meta.subject}"
+            }
+
+        // Error if all samples already processed
+        ch_samples_to_run
+            .collect()
+            .filter { list ->
+                if (list.isEmpty()) {
+                    error "All subjects in samplesheet already processed. Nothing to run."
+                }
+                return true
+            }
+
         // ── Build per-modality input channels ─────────────────────────────────
         // File naming conventions (relative to folder):
         //   sage/somatic/${sample_id}-T.sage.somatic.vcf.gz   — SAGE somatic DNA
@@ -72,7 +154,7 @@ workflow GENOMIC {
         //   isofox/${sample_id}-T.isf.gene_data.csv
 
         // SAGE somatic VCF → mutations
-        ch_sage_vcf = ch_samples
+        ch_sage_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
                     "${meta.folder}/pave/${meta.subject}-T.pave.somatic.vcf.gz",
@@ -82,7 +164,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // SAGE germline VCF → germline mutations
-        ch_sage_germline_vcf = ch_samples
+        ch_sage_germline_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
                     "${meta.folder}/pave/${meta.subject}-T.pave.germline.vcf.gz",
@@ -92,7 +174,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // SAGE RNA-append VCF → somatic RNA mutations
-        ch_sage_rna_vcf = ch_samples
+        ch_sage_rna_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
                     "${meta.folder}/sage_append/somatic/${meta.subject}-T.sage.append.vcf.gz",
@@ -102,7 +184,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // PURPLE CNV somatic + gene TSV → copy-number
-        ch_purple_cnv = ch_samples
+        ch_purple_cnv = ch_samples_to_run
             .map { meta ->
                 def somatic = findOncoFile(meta,
                     "${meta.folder}/purple/${meta.subject}-T.purple.cnv.somatic.tsv",
@@ -115,7 +197,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // ESVEE unfiltered VCF → structural variants
-        ch_esvee_vcf = ch_samples
+        ch_esvee_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
                     "${meta.folder}/esvee/${meta.subject}-T.esvee.unfiltered.vcf.gz",
@@ -125,7 +207,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // Isofox gene expression CSV → TPM
-        ch_isofox_exp = ch_samples
+        ch_isofox_exp = ch_samples_to_run
             .map { meta ->
                 def exp = findOncoFile(meta,
                     "${meta.folder}/isofox/${meta.subject}-T-RNA.isf.gene_data.csv",
@@ -153,14 +235,35 @@ workflow GENOMIC {
             needs_pcgr
         )
 
+        // ── Mix new results with pre-existing cached results ──────────────────
+
+        all_cnv_seg = GENOMIC_CNV.out.segfile
+            .mix(ch_files_ran
+                .filter { meta, files -> meta.pipeline == 'cnv' }
+                .map { meta, files -> [meta, files.seg] })
+
+        all_cnv_long = GENOMIC_CNV.out.longfile
+            .mix(ch_files_ran
+                .filter { meta, files -> meta.pipeline == 'cnv' }
+                .map { meta, files -> [meta, files.longfile] })
+
+        all_sv = GENOMIC_SV.out.sv_out
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv' })
+
+        all_expression = GENOMIC_EXPRESSION.out.out
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'expression' })
+
+        all_mutations = GENOMIC_MUTATIONS.out.out
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'mutation' })
+
         // ── Aggregate per-group outputs ───────────────────────────────────────
 
         GENOMIC_AGGREGATE_OUTPUT(
-            GENOMIC_CNV.out.segfile,
-            GENOMIC_CNV.out.longfile,
-            GENOMIC_SV.out.sv_out,
-            GENOMIC_EXPRESSION.out.out,
-            GENOMIC_MUTATIONS.out.out,
+            all_cnv_seg,
+            all_cnv_long,
+            all_sv,
+            all_expression,
+            all_mutations,
         )
 
         // ── ML formatting ─────────────────────────────────────────────────────

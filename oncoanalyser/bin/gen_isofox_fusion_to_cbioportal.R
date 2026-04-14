@@ -118,6 +118,12 @@ result <- data.table(
 result <- unique(result, by = c("Site1_Chromosome", "Site1_Position",
                                 "Site2_Chromosome", "Site2_Position"))
 
+# Filter out rows with empty or NA Hugo symbols at either site
+result <- result[
+    !is.na(Site1_Hugo_Symbol) & Site1_Hugo_Symbol != "" &
+    !is.na(Site2_Hugo_Symbol) & Site2_Hugo_Symbol != ""
+]
+
 cat("Writing fusion SV output:", opt$output, "\n")
 cat("Total records:", nrow(result), "\n")
 write.table(result, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")

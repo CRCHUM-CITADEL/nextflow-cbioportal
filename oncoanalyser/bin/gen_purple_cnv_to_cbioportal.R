@@ -64,13 +64,14 @@ purple_annotated <- merge(purple_gene, gene_entrez, by.x = "Hugo_Symbol", by.y =
 
 discrete_long <- data.table(
     Hugo_Symbol    = purple_annotated$Hugo_Symbol,
-    Entrez_Gene_Id = ifelse(is.na(purple_annotated$entrez_ncbi_id), "", as.character(purple_annotated$entrez_ncbi_id)),
+    Entrez_Gene_Id = purple_annotated$entrez_ncbi_id,
     Sample_Id      = opt$sample_id,
     Value          = purple_annotated$cn_value
 )
 
-# One entry per gene per sample (keep first occurrence)
-discrete_long <- unique(discrete_long, by = c("Hugo_Symbol", "Sample_Id"))
+# Remove rows with NA Entrez_Gene_Id, then deduplicate keeping first occurrence
+discrete_long <- discrete_long[!is.na(Entrez_Gene_Id)]
+discrete_long <- discrete_long[!duplicated(discrete_long, by = c("Sample_Id", "Entrez_Gene_Id"))]
 
 cat("Writing discrete CNA long file:", opt$output_long, "\n")
 write.table(discrete_long, opt$output_long, sep = "\t", quote = FALSE, row.names = FALSE)

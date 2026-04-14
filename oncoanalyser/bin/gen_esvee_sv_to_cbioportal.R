@@ -164,7 +164,7 @@ for (id in names(bnd_list)) {
     gene2 <- tryCatch(find_gene(mate$chrom, mate$pos), error = function(e) NA_character_)
 
     # Skip rows without Hugo gene symbols - both sites must have gene annotation
-    if (is.na(gene1) || is.na(gene2)) next
+    if (is.na(gene1) || is.na(gene2) || gene1 == "" || gene2 == "") next
 
     chr1 <- sub("^chr", "", rec$chrom)
     chr2 <- sub("^chr", "", mate$chrom)

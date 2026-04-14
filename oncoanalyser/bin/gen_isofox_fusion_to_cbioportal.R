@@ -56,7 +56,7 @@ if (nrow(fusions) == 0) {
         Site2_Chromosome = character(), Site2_Position = integer(),
         Tumor_Split_Read_Count = integer(), Tumor_Paired_End_Read_Count = integer()
     )
-    write.table(empty, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
+    write.table(empty, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
     cat("Done!\n")
     quit(status = 0)
 }
@@ -120,5 +120,5 @@ result <- unique(result, by = c("Site1_Chromosome", "Site1_Position",
 
 cat("Writing fusion SV output:", opt$output, "\n")
 cat("Total records:", nrow(result), "\n")
-write.table(result, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
+write.table(result, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
 cat("Done!\n")

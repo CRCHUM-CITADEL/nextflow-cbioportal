@@ -163,27 +163,23 @@ for (id in names(bnd_list)) {
     gene1 <- tryCatch(find_gene(rec$chrom, rec$pos),  error = function(e) NA_character_)
     gene2 <- tryCatch(find_gene(mate$chrom, mate$pos), error = function(e) NA_character_)
 
+    # Skip rows without Hugo gene symbols - both sites must have gene annotation
+    if (is.na(gene1) || is.na(gene2)) next
+
     chr1 <- sub("^chr", "", rec$chrom)
     chr2 <- sub("^chr", "", mate$chrom)
     sv_class <- if (chr1 == chr2) "INVERSION" else "TRANSLOCATION"
 
-    gene1_str <- ifelse(is.na(gene1), ".", gene1)
-    gene2_str <- ifelse(is.na(gene2), ".", gene2)
-
-    event_info <- if (!is.na(gene1) && !is.na(gene2)) {
-        paste0("DNA SV: ", gene1, "--", gene2)
-    } else {
-        paste0(rec$chrom, ":", rec$pos, "--", mate$chrom, ":", mate$pos)
-    }
+    event_info <- paste0("DNA SV: ", gene1, "--", gene2)
 
     sv_rows <- c(sv_rows, list(data.table(
         Sample_Id                  = opt$sample,
         SV_Status                  = "SOMATIC",
-        Site1_Hugo_Symbol          = gene1_str,
+        Site1_Hugo_Symbol          = gene1,
         Site1_Ensembl_Transcript_Id= NA_character_,
         Site1_Region_Number        = NA_character_,
         Site1_Region               = NA_character_,
-        Site2_Hugo_Symbol          = gene2_str,
+        Site2_Hugo_Symbol          = gene2,
         Site2_Ensembl_Transcript_Id= NA_character_,
         Site2_Region_Number        = NA_character_,
         Site2_Region               = NA_character_,
@@ -228,5 +224,5 @@ if (length(sv_rows) > 0) {
 
 cat("Writing SV output:", opt$output, "\n")
 cat("Total SV records:", nrow(result), "\n")
-write.table(result, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
+write.table(result, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
 cat("Done!\n")

@@ -201,6 +201,7 @@ process MY_PROCESS {
 - Do not add `renv` or install packages at runtime — all packages must be baked into the container `.def`
 - To add a new R package: edit `containers/r_v4.5.1.def` and rebuild the container
 - `ml_format_cnv.R` and `ml_format_expression.R` check `basename(input)` against `"data_cna_long.txt"` / `"data_expression.txt"` — input files must use those exact names
+- **Output formatting**: empty/missing values must be `NA` (not `.` or empty string). Use `write.table(..., na = "NA")`. For `data_sv.txt`, rows must have Hugo gene symbols at both sites — filter out rows without gene annotation.
 
 ---
 

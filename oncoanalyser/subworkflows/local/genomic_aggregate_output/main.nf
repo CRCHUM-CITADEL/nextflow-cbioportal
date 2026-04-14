@@ -80,6 +80,8 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
             }
             .filter { it != null }
 
+        tpm_file_list.view()
+
         expression_output = MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
             tpm_file_list
         )

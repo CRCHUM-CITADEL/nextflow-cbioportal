@@ -37,12 +37,12 @@ workflow GENOMIC {
         ensembl_annotations     // path — BioMart TSV for CNV gene mapping + ESVEE gene overlap
         ensembl_annotations_expr// path — BioMart TSV for Isofox expression Entrez ID mapping
         vep_data                // channel<path> — pre-staged VEP cache (may be empty)
+        pcgr_data               // channel<path> — pre-staged PCGR reference data (may be empty)
         needs_vep               // boolean — true when vep_data is not supplied
+        needs_pcgr              // boolean — true when pcgr_data is not supplied
         fasta                   // path — GRCh38 reference FASTA (for vcf2maf)
         cosmic_data             // channel<path> — COSMIC/ChimerKB fusion data for ML step
-        pcgr_data               // channel<path> — pre-staged PCGR reference data (may be empty)
-        needs_pcgr              // boolean — true when pcgr_data is not supplied
-
+        
     main:
 
         ch_versions = channel.empty()
@@ -249,6 +249,8 @@ workflow GENOMIC {
 
         all_sv = GENOMIC_SV.out.sv_out
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv' })
+
+        GENOMIC_EXPRESSION.out.out.view()
 
         all_expression = GENOMIC_EXPRESSION.out.out
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'expression' })

@@ -10,7 +10,7 @@ process GENERATE_CASE_LIST {
     path "cases_${label}.txt"
 
     script:
-    def group_lower = group.toLowerCase()
+    def group_lower = group.toLowerCase().replace("-","_")
     """
     echo -e "cancer_study_identifier: ${group_lower}" > cases_${label}.txt
     echo -e "stable_id: ${group_lower}_${label}" >> cases_${label}.txt

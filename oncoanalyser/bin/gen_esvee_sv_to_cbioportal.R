@@ -17,9 +17,10 @@ suppressPackageStartupMessages({
 })
 
 option_list <- list(
-    make_option(c("-i", "--input"),       type = "character", help = "Input ESVEE somatic VCF (.esvee.somatic.vcf.gz or .vcf)"),
-    make_option(c("-s", "--sample"),      type = "character", help = "Tumor sample ID"),
+    make_option(c("-i", "--input"),       type = "character", help = "Input ESVEE VCF (.esvee.unfiltered.vcf.gz or .vcf)"),
+    make_option(c("-s", "--sample"),      type = "character", help = "Sample ID"),
     make_option("--ensembl_annotations",  type = "character", help = "Ensembl annotations TSV (cols: ensembl_id, entrez_ncbi_id, gene_symbol, chr, start, end, ...)"),
+    make_option("--sv_status",            type = "character", default = "SOMATIC", help = "SV_Status value: SOMATIC or GERMLINE (default: SOMATIC)"),
     make_option(c("-o", "--output"),      type = "character", help = "Output data_sv.txt path")
 )
 
@@ -170,11 +171,11 @@ for (id in names(bnd_list)) {
     chr2 <- sub("^chr", "", mate$chrom)
     sv_class <- if (chr1 == chr2) "INVERSION" else "TRANSLOCATION"
 
-    event_info <- paste0("DNA SV: ", gene1, "--", gene2)
+    event_info <- paste0("DNA WGS Fusion: ", gene1, "--", gene2)
 
     sv_rows <- c(sv_rows, list(data.table(
         Sample_Id                  = opt$sample,
-        SV_Status                  = "SOMATIC",
+        SV_Status                  = opt$sv_status,
         Site1_Hugo_Symbol          = gene1,
         Site1_Ensembl_Transcript_Id= NA_character_,
         Site1_Region_Number        = NA_character_,

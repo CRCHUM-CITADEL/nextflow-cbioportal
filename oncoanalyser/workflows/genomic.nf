@@ -196,13 +196,23 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // ESVEE unfiltered VCF → structural variants
+        // ESVEE unfiltered VCF (tumor) → structural variants
         ch_esvee_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
                     "${meta.folder}/esvee/${meta.subject}-T.esvee.unfiltered.vcf.gz",
-                    'sv (ESVEE)')
+                    'sv (ESVEE tumor)')
                 vcf ? [meta + [pipeline: 'sv'], vcf] : null
+            }
+            .filter { it != null }
+
+        // ESVEE unfiltered VCF (normal) → structural variants from normal sample
+        ch_esvee_vcf_normal = ch_samples_to_run
+            .map { meta ->
+                def vcf = findOncoFile(meta,
+                    "${meta.folder}/esvee/${meta.subject}-N.esvee.unfiltered.vcf.gz",
+                    'sv (ESVEE normal)')
+                vcf ? [meta + [pipeline: 'sv_normal'], vcf] : null
             }
             .filter { it != null }
 
@@ -220,7 +230,16 @@ workflow GENOMIC {
 
         GENOMIC_CNV(ch_purple_cnv, ensembl_annotations)
 
-        GENOMIC_SV(ch_esvee_vcf, ensembl_annotations)
+        // Join tumor and normal ESVEE VCFs by sample key before passing to subworkflow
+        ch_esvee_vcf_joined = ch_esvee_vcf
+            .map { meta, vcf -> [meta.subject, meta, vcf] }
+            .join(
+                ch_esvee_vcf_normal.map { meta, vcf -> [meta.subject, vcf] },
+                by: 0
+            )
+            .map { subject, meta, vcf_tumor, vcf_normal -> [meta, vcf_tumor, vcf_normal] }
+
+        GENOMIC_SV(ch_esvee_vcf_joined, ensembl_annotations)
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
 

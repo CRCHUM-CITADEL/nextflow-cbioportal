@@ -17,11 +17,13 @@ nextflow_workflow {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sv'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/esvee/T1-T.esvee.unfiltered.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/esvee/T1-T.esvee.unfiltered.vcf.gz'),
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/esvee/T1-N.esvee.unfiltered.vcf.gz')
                     ],
                     [
                         [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sv'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/esvee/T2-T.esvee.unfiltered.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/esvee/T2-T.esvee.unfiltered.vcf.gz'),
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/esvee/T2-N.esvee.unfiltered.vcf.gz')
                     ]
                 )
                 input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_chr21.tsv')

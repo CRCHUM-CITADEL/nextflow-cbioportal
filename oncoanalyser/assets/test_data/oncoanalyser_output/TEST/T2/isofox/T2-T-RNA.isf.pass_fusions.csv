@@ -1,0 +1,2 @@
+GeneNameUp,GeneIdUp,ChrUp,PosUp,OrientUp,GeneNameDown,GeneIdDown,ChrDown,PosDown,OrientDown,JunctionReadCount,DiscordantFragments
+PRDM15,ENSG00000141956,chr21,41800500,1,PFKL,ENSG00000141959,chr21,44300200,-1,6,2

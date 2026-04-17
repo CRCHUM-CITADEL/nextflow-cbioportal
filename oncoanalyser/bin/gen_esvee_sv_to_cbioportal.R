@@ -1,15 +1,17 @@
 #!/usr/bin/env Rscript
 
-# Convert ESVEE somatic structural variant VCF to cBioPortal data_sv.txt format.
+# Convert ESVEE tumor VCF to cBioPortal data_sv.txt format (somatic only).
 #
 # ESVEE represents each SV as a pair of BND (breakend) records linked by MATEID.
 # This script:
-#   1. Reads the ESVEE somatic VCF (may be gzipped).
+#   1. Reads the ESVEE tumor VCF (may be gzipped).
 #   2. Filters to PASS BND records.
 #   3. Pairs BNDs by MATEID to recover the two-end breakpoint.
 #   4. Annotates each breakpoint with the overlapping gene from the Ensembl
 #      annotation file (interval overlap using data.table::foverlaps).
-#   5. Writes cBioPortal SV format.
+#   5. Classifies each SV (DELETION/DUPLICATION/INVERSION/TRANSLOCATION) from
+#      BND strand orientation encoded in the ALT field.
+#   6. Writes cBioPortal SV format (SV_Status = SOMATIC).
 
 suppressPackageStartupMessages({
     library(optparse)
@@ -17,10 +19,9 @@ suppressPackageStartupMessages({
 })
 
 option_list <- list(
-    make_option(c("-i", "--input"),       type = "character", help = "Input ESVEE VCF (.esvee.unfiltered.vcf.gz or .vcf)"),
+    make_option(c("-i", "--input"),       type = "character", help = "Input ESVEE tumor VCF (.esvee.unfiltered.vcf.gz or .vcf)"),
     make_option(c("-s", "--sample"),      type = "character", help = "Sample ID"),
     make_option("--ensembl_annotations",  type = "character", help = "Ensembl annotations TSV (cols: ensembl_id, entrez_ncbi_id, gene_symbol, chr, start, end, ...)"),
-    make_option("--sv_status",            type = "character", default = "SOMATIC", help = "SV_Status value: SOMATIC or GERMLINE (default: SOMATIC)"),
     make_option(c("-o", "--output"),      type = "character", help = "Output data_sv.txt path")
 )
 
@@ -28,6 +29,36 @@ opt <- parse_args(OptionParser(option_list = option_list))
 
 for (arg in c("input", "sample", "ensembl_annotations", "output")) {
     if (is.null(opt[[arg]])) stop(paste("Missing required argument: --", arg, sep = ""))
+}
+
+# ── BND helpers ───────────────────────────────────────────────────────────────
+
+# Determine local strand from BND ALT field.
+# If the REF allele appears BEFORE the bracket (e.g. "N[chr:pos[", "N]chr:pos]"): + strand.
+# If the REF allele appears AFTER the bracket (e.g. "[chr:pos[N", "]chr:pos]N"): - strand.
+get_bnd_strand <- function(alt) {
+    if (grepl("^[A-Za-z.]+[\\[\\]]", alt)) "+" else "-"
+}
+
+# Classify SV from the strand orientations of the two BND ends.
+# Same-chromosome:
+#   (+, -) → DELETION   (standard forward→forward skip)
+#   (-, +) → DUPLICATION (back-junction tandem duplication)
+#   (+, +) or (-, -) → INVERSION
+# Different chromosomes: TRANSLOCATION
+classify_sv <- function(chr1, chr2, strand1, strand2) {
+    if (chr1 != chr2) return("TRANSLOCATION")
+    if (strand1 == "+" && strand2 == "-") return("DELETION")
+    if (strand1 == "-" && strand2 == "+") return("DUPLICATION")
+    return("INVERSION")
+}
+
+# Connection_Type: describes which end (5' or 3') of each gene contributes to the fusion.
+# + strand → gene contributes its 5' end; - strand → gene contributes its 3' end.
+get_connection_type <- function(strand1, strand2) {
+    s1 <- if (strand1 == "+") "5" else "3"
+    s2 <- if (strand2 == "+") "5" else "3"
+    paste0(s1, "to", s2)
 }
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,7 +106,7 @@ extract_read_counts <- function(fmt_data) {
 
 # ── Read VCF ─────────────────────────────────────────────────────────────────
 
-cat("Reading ESVEE VCF:", opt$input, "\n")
+cat("Reading ESVEE tumor VCF:", opt$input, "\n")
 if (grepl("\\.gz$", opt$input)) {
     con <- gzfile(opt$input, "rt")
     vcf_lines <- readLines(con)
@@ -121,6 +152,7 @@ for (line in data_lines) {
         chrom       = fields[1],
         pos         = suppressWarnings(as.integer(fields[2])),
         alt         = fields[5],
+        strand      = get_bnd_strand(fields[5]),
         mateid      = as.character(mateid),
         split_reads = rc$split,
         paired_reads= rc$paired
@@ -169,13 +201,14 @@ for (id in names(bnd_list)) {
 
     chr1 <- sub("^chr", "", rec$chrom)
     chr2 <- sub("^chr", "", mate$chrom)
-    sv_class <- if (chr1 == chr2) "INVERSION" else "TRANSLOCATION"
 
-    event_info <- paste0("DNA WGS Fusion: ", gene1, "--", gene2)
+    sv_class      <- classify_sv(chr1, chr2, rec$strand, mate$strand)
+    conn_type     <- get_connection_type(rec$strand, mate$strand)
+    event_info    <- paste0("DNA WGS Fusion: ", gene1, "--", gene2)
 
     sv_rows <- c(sv_rows, list(data.table(
         Sample_Id                  = opt$sample,
-        SV_Status                  = opt$sv_status,
+        SV_Status                  = "SOMATIC",
         Site1_Hugo_Symbol          = gene1,
         Site1_Ensembl_Transcript_Id= NA_character_,
         Site1_Region_Number        = NA_character_,
@@ -190,7 +223,7 @@ for (id in names(bnd_list)) {
         DNA_Support                = "Yes",
         RNA_Support                = "No",
         Tumor_Variant_Count        = rec$split_reads,
-        Connection_Type            = "5to3",
+        Connection_Type            = conn_type,
         Breakpoint_Type            = "PRECISE",
         Event_Info                 = event_info,
         Annotation                 = NA_character_,

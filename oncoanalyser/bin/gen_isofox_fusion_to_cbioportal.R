@@ -77,7 +77,8 @@ pos2_col  <- pick_col(cols, c("OtherPosition", "PosDown", "JunctionPositionDown"
 split_col  <- Filter(function(c) c %in% cols,
                      c("JunctionReadCount", "SpliceReadCount", "SplitFragmentCount", "junction_read_count"))[1]
 discord_col <- Filter(function(c) c %in% cols,
-                      c("DiscordantFragmentCount", "discordant_fragment_count", "DiscordantReads"))[1]
+                      c("DiscordantFragments", "DiscordantFragmentCount",
+                        "discordant_fragment_count", "DiscordantReads"))[1]
 
 cat("Using columns: 5'gene=", gene1_col, ", 5'chr=", chr1_col, ", 5'pos=", pos1_col, "\n")
 cat("              3'gene=", gene2_col, ", 3'chr=", chr2_col, ", 3'pos=", pos2_col, "\n")

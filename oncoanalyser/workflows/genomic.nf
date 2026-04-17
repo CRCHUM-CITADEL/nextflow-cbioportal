@@ -4,13 +4,14 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 include { softwareVersionsToYAML    } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { GENOMIC_CNV               } from '../subworkflows/local/genomic_cnv'
-include { GENOMIC_SV                } from '../subworkflows/local/genomic_sv'
-include { GENOMIC_EXPRESSION        } from '../subworkflows/local/genomic_expression'
-include { GENOMIC_MUTATIONS         } from '../subworkflows/local/genomic_mutations'
-include { GENOMIC_ML                } from '../subworkflows/local/genomic_ml'
-include { GENOMIC_AGGREGATE_OUTPUT  } from '../subworkflows/local/genomic_aggregate_output'
-include { GENERATE_META_FILE        } from '../modules/local/generate_meta_file'
+include { GENOMIC_CNV                  } from '../subworkflows/local/genomic_cnv'
+include { GENOMIC_SV                   } from '../subworkflows/local/genomic_sv'
+include { GENOMIC_EXPRESSION           } from '../subworkflows/local/genomic_expression'
+include { GENOMIC_MUTATIONS            } from '../subworkflows/local/genomic_mutations'
+include { GENOMIC_ML                   } from '../subworkflows/local/genomic_ml'
+include { GENOMIC_AGGREGATE_OUTPUT     } from '../subworkflows/local/genomic_aggregate_output'
+include { GENERATE_META_FILE           } from '../modules/local/generate_meta_file'
+include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
 
 
 // Resolve an oncoanalyser output file path; log a warning and return null if absent.
@@ -97,6 +98,12 @@ workflow GENOMIC {
                 def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf", checkIfExists: false)
                 if (maf.exists()) {
                     files.add([meta + [pipeline: 'mutation'], maf])
+                }
+
+                // RNA fusion file (optional — only present for samples with RNA data)
+                def rna_fusion = file("${baseDir}/${meta.sample}.isofox_fusion.data_sv.txt", checkIfExists: false)
+                if (rna_fusion.exists()) {
+                    files.add([meta + [pipeline: 'sv_rna_fusion'], rna_fusion])
                 }
 
                 return files
@@ -196,23 +203,13 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // ESVEE unfiltered VCF (tumor) → structural variants
+        // ESVEE unfiltered VCF (tumor only) → structural variants
         ch_esvee_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
                     "${meta.folder}/esvee/${meta.subject}-T.esvee.unfiltered.vcf.gz",
                     'sv (ESVEE tumor)')
                 vcf ? [meta + [pipeline: 'sv'], vcf] : null
-            }
-            .filter { it != null }
-
-        // ESVEE unfiltered VCF (normal) → structural variants from normal sample
-        ch_esvee_vcf_normal = ch_samples_to_run
-            .map { meta ->
-                def vcf = findOncoFile(meta,
-                    "${meta.folder}/esvee/${meta.subject}-N.esvee.unfiltered.vcf.gz",
-                    'sv (ESVEE normal)')
-                vcf ? [meta + [pipeline: 'sv_normal'], vcf] : null
             }
             .filter { it != null }
 
@@ -226,20 +223,23 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
+        // Isofox pass_fusions CSV (tumor RNA) → RNA fusions for data_sv.txt
+        ch_isofox_fusion = ch_samples_to_run
+            .map { meta ->
+                def fusions = findOncoFile(meta,
+                    "${meta.folder}/isofox/${meta.subject}-T-RNA.isf.pass_fusions.csv",
+                    'rna fusion (Isofox)')
+                fusions ? [meta + [pipeline: 'sv_rna_fusion'], fusions] : null
+            }
+            .filter { it != null }
+
         // ── Run subworkflows ──────────────────────────────────────────────────
 
         GENOMIC_CNV(ch_purple_cnv, ensembl_annotations)
 
-        // Join tumor and normal ESVEE VCFs by sample key before passing to subworkflow
-        ch_esvee_vcf_joined = ch_esvee_vcf
-            .map { meta, vcf -> [meta.subject, meta, vcf] }
-            .join(
-                ch_esvee_vcf_normal.map { meta, vcf -> [meta.subject, vcf] },
-                by: 0
-            )
-            .map { subject, meta, vcf_tumor, vcf_normal -> [meta, vcf_tumor, vcf_normal] }
+        GENOMIC_SV(ch_esvee_vcf, ensembl_annotations)
 
-        GENOMIC_SV(ch_esvee_vcf_joined, ensembl_annotations)
+        ISOFOX_FUSION_TO_CBIOPORTAL(ch_isofox_fusion)
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
 
@@ -267,7 +267,9 @@ workflow GENOMIC {
                 .map { meta, files -> [meta, files.longfile] })
 
         all_sv = GENOMIC_SV.out.sv_out
+            .mix(ISOFOX_FUSION_TO_CBIOPORTAL.out.sv)
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv' })
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv_rna_fusion' })
 
         GENOMIC_EXPRESSION.out.out.view()
 

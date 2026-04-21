@@ -14,7 +14,7 @@ containers/*.sif
 containers/*.img*
 
 output/
-output_*/
+output*/
 tmp/
 
 *.swp

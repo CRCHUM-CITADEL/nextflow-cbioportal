@@ -36,6 +36,8 @@ data <- read.table(input_file, header = TRUE, sep = "\t", stringsAsFactors = FAL
 # Hugo_Symbol values become row names
 wide_data <- data %>%
   select(Hugo_Symbol, Sample_Id, Value) %>%
+  group_by(Hugo_Symbol, Sample_Id) %>%
+  summarise(Value = first(Value, na_rm = TRUE), .groups = "drop") %>%
   pivot_wider(names_from = Sample_Id, values_from = Value)
 
 # Convert to data frame and set Hugo_Symbol as row names

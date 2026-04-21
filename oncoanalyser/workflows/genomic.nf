@@ -207,7 +207,7 @@ workflow GENOMIC {
         ch_esvee_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/esvee/${meta.subject}-T.esvee.unfiltered.vcf.gz",
+                    "${meta.folder}/esvee/${meta.subject}-T.esvee.somatic.vcf.gz",
                     'sv (ESVEE tumor)')
                 vcf ? [meta + [pipeline: 'sv'], vcf] : null
             }
@@ -270,8 +270,6 @@ workflow GENOMIC {
             .mix(ISOFOX_FUSION_TO_CBIOPORTAL.out.sv)
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv' })
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv_rna_fusion' })
-
-        GENOMIC_EXPRESSION.out.out.view()
 
         all_expression = GENOMIC_EXPRESSION.out.out
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'expression' })

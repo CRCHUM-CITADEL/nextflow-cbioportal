@@ -47,8 +47,6 @@ workflow GENOMIC_MUTATIONS {
                 return tuple(meta, som_vcf)
             }
 
-        som_dna_vcf_input.view()
-
         VCF2MAF(
             som_dna_vcf_input,
             fasta,
@@ -73,8 +71,6 @@ workflow GENOMIC_MUTATIONS {
             .join(
                 ger_dna_tsv.map { meta, file -> return tuple(meta.subject, meta, file) } 
             )
-
-        som_dna_maf_tsv.view()
 
         cbioportal_genomic_mutation_files = CONVERT_CPSR_TO_MAF(som_dna_maf_tsv)
 

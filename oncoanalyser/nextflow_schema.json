@@ -181,6 +181,9 @@
         },
         "project_description": {
             "type": "string"
+        },
+        "cosmic_data" : {
+            "type": "string"
         }
     }
 }

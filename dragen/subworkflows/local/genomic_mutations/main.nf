@@ -22,7 +22,6 @@ workflow GENOMIC_MUTATIONS {
 
     main:
 
-
         ch_vep_data = needs_vep ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_data.first()
         ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR().data_dir.first() : pcgr_data.first()
 

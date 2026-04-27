@@ -76,60 +76,95 @@ workflow GENOMIC {
             }
 
 
-        // create a channel using meta of files already ran (Channel : [meta, file])
+        // create a channel of already-processed rows (Channel : [meta, file])
         ch_files_ran = ch_meta_all
-            .filter {meta ->
-                def sample_dir = file("${params.outdir}/${meta.group}/${meta.subject}")
-                sample_dir.exists() && sample_dir.isDirectory()
+            .filter { meta ->
+                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
+                baseDir.exists() && baseDir.isDirectory()
             }
             .flatMap { meta ->
                 def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
-
                 def files = []
 
-                    if (meta.sequence == "dna") {
-                        def cnv_seg = findFile(meta, "${baseDir}/${meta.sample}_data_cna_hg38.seg", "cnv", true)
-                        def cnv_long = findFile(meta, "${baseDir}/${meta.sample}_data_cna_long.txt", "cnv", true)
-
-                        // merge
-                        if (cnv_seg && cnv_long) {
-                            def meta_cnv = cnv_seg[0]  // Extract meta from the first tuple
-                            def seg_file = cnv_seg[1]   // Extract seg filepath
-                            def long_file = cnv_long[1] // Extract long filepath
-                            def cnv = tuple(meta_cnv, [seg: seg_file, longfile: long_file])
-                            files.add(cnv)
-                        }
+                if (meta.sequence == "dna") {
+                    def cnv_seg  = findFile(meta, "${baseDir}/${meta.sample}_data_cna_hg38.seg", "cnv", true)
+                    def cnv_long = findFile(meta, "${baseDir}/${meta.sample}_data_cna_long.txt", "cnv", true)
+                    if (cnv_seg && cnv_long) {
+                        def meta_cnv  = cnv_seg[0]
+                        def seg_file  = cnv_seg[1]
+                        def long_file = cnv_long[1]
+                        files.add(tuple(meta_cnv, [seg: seg_file, longfile: long_file]))
                     }
+                }
 
-                    if (meta.sequence == "rna") {
-                        def expression = findFile(meta, "${baseDir}/${meta.sample}.tpm.tsv", "expression", true)
-                        if (expression) files.add(expression)
+                if (meta.sequence == "rna") {
+                    def expression = findFile(meta, "${baseDir}/${meta.sample}.tpm.tsv", "expression", true)
+                    if (expression) files.add(expression)
 
-                        def sv = findFile(meta, "${baseDir}/${meta.sample}.data_sv.txt", "sv", true)
-                        if (sv) files.add(sv)
+                    def sv = findFile(meta, "${baseDir}/${meta.sample}.data_sv.txt", "sv", true)
+                    if (sv) files.add(sv)
+                }
 
-                    }
-
-                    def mutation = findFile(meta, "${baseDir}/${meta.subject}.somatic_rna_germline.maf", "mutation", true)
-                    if (mutation) files.add(mutation)
+                def mutation = findFile(meta, "${baseDir}/${meta.subject}.somatic_rna_germline.maf", "mutation", true)
+                if (mutation) files.add(mutation)
 
                 return files
+            }
 
-           }
-
-        // get subject names of that have not yet been run
-        existing_subject_names = ch_files_ran
-            .map { meta, filepath -> meta.subject }
-            .collect()
-            .map { it.toSet() }
-            .ifEmpty([] as Set)
-
+        // Filter to rows whose specific expected outputs are all present (per-row check).
+        // A germline-DNA row is done when the merged MAF exists.
+        // A somatic-DNA row is done when both CNV files and the merged MAF exist.
+        // A somatic-RNA row is done when TPM and SV files exist.
         ch_files_not_ran = ch_meta_all
-            .combine(existing_subject_names)
-            .filter { meta, sample_set -> meta.subject !in sample_set }
-            .map { meta, sample_set -> meta }
+            .filter { meta ->
+                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
+                if (!baseDir.exists()) return true
 
-        // error if there are no files to run
+                if (meta.type == 'germinal' && meta.sequence == 'dna') {
+                    def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf")
+                    return !maf.exists()
+                }
+                if (meta.type == 'somatic' && meta.sequence == 'dna') {
+                    def seg  = file("${baseDir}/${meta.sample}_data_cna_hg38.seg")
+                    def lng  = file("${baseDir}/${meta.sample}_data_cna_long.txt")
+                    def maf  = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf")
+                    return !(seg.exists() && lng.exists() && maf.exists())
+                }
+                if (meta.type == 'somatic' && meta.sequence == 'rna') {
+                    def tpm = file("${baseDir}/${meta.sample}.tpm.tsv")
+                    def sv  = file("${baseDir}/${meta.sample}.data_sv.txt")
+                    return !(tpm.exists() && sv.exists())
+                }
+                return true
+            }
+
+        // Log skipped rows
+        ch_meta_all
+            .filter { meta ->
+                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
+                if (!baseDir.exists()) return false
+
+                if (meta.type == 'germinal' && meta.sequence == 'dna') {
+                    return file("${baseDir}/${meta.subject}.somatic_rna_germline.maf").exists()
+                }
+                if (meta.type == 'somatic' && meta.sequence == 'dna') {
+                    def seg = file("${baseDir}/${meta.sample}_data_cna_hg38.seg")
+                    def lng = file("${baseDir}/${meta.sample}_data_cna_long.txt")
+                    def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf")
+                    return seg.exists() && lng.exists() && maf.exists()
+                }
+                if (meta.type == 'somatic' && meta.sequence == 'rna') {
+                    def tpm = file("${baseDir}/${meta.sample}.tpm.tsv")
+                    def sv  = file("${baseDir}/${meta.sample}.data_sv.txt")
+                    return tpm.exists() && sv.exists()
+                }
+                return false
+            }
+            .subscribe { meta ->
+                log.info "Skipping already-processed row: ${meta.subject} (${meta.type}/${meta.sequence})"
+            }
+
+        // Error if there are no rows left to run
         ch_files_not_ran
             .collect()
             .filter { list ->
@@ -203,7 +238,7 @@ workflow GENOMIC {
             ch_file_to_run.sv
         )
 
-        all_sv_results = GENOMIC_SV.out
+        all_sv_results = GENOMIC_SV.out.sv_out
             .mix(ch_files_ran
                     .filter{meta, filepath -> meta.pipeline == 'sv'}
                 )
@@ -213,7 +248,7 @@ workflow GENOMIC {
            ensembl_annotations_expr
         )
 
-        all_expression_results = GENOMIC_EXPRESSION.out
+        all_expression_results = GENOMIC_EXPRESSION.out.out
             .mix(ch_files_ran
                     .filter{meta, filepath -> meta.pipeline == 'expression'}
                 )
@@ -229,10 +264,11 @@ workflow GENOMIC {
             needs_pcgr
         )
 
-        all_mutations_results = GENOMIC_MUTATIONS.out
+        all_mutations_results = GENOMIC_MUTATIONS.out.out
             .mix(ch_files_ran
                     .filter{meta, filepath -> meta.pipeline == 'mutation'}
                 )
+            .unique { it[0].subject }
 
         // if results already existed, try to merge -----------
         GENOMIC_AGGREGATE_OUTPUT(

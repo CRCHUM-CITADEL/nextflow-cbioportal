@@ -193,6 +193,7 @@ data_filename: data_mutations_dna_rna_germline.txt
         meta_text_sigs = """cancer_study_identifier: add_text
 genetic_alteration_type: GENERIC_ASSAY
 generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: CONTINUOUS
 stable_id: mutational_signatures
 show_profile_in_analysis_tab: true
 profile_name: Mutational Signatures
@@ -200,7 +201,7 @@ profile_description: Mutational signatures based on COSMIC v3 (WGS)
 data_filename: data_sigs.txt
 value_sort_order: DESC
 pivot_threshold_value: 0.01
-        """
+"""
 
         meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs)
         file_name_all = channel.of("cna_hg38", "cna_long", "sv", "expression", "sequenced", "sigs")

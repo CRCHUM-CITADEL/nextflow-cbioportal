@@ -12,6 +12,7 @@ include { GENOMIC_ML                   } from '../subworkflows/local/genomic_ml'
 include { GENOMIC_AGGREGATE_OUTPUT     } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE           } from '../modules/local/generate_meta_file'
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
+include { SIGS_TO_CBIOPORTAL           } from '../modules/local/sigs_to_cbioportal'
 
 
 // Resolve an oncoanalyser output file path; log a warning and return null if absent.
@@ -104,6 +105,12 @@ workflow GENOMIC {
                 def rna_fusion = file("${baseDir}/${meta.sample}.isofox_fusion.data_sv.txt", checkIfExists: false)
                 if (rna_fusion.exists()) {
                     files.add([meta + [pipeline: 'sv_rna_fusion'], rna_fusion])
+                }
+
+                // Signatures file (optional — only present when sufficient mutations exist)
+                def sigs = file("${baseDir}/${meta.sample}.data_sigs.txt", checkIfExists: false)
+                if (sigs.exists()) {
+                    files.add([meta + [pipeline: 'sigs'], sigs])
                 }
 
                 return files
@@ -233,6 +240,16 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
+        // SIGS allocation TSV → mutational signatures
+        ch_sigs = ch_samples_to_run
+            .map { meta ->
+                def sig = findOncoFile(meta,
+                    "${meta.folder}/sigs/${meta.subject}-T.sig.allocation.tsv",
+                    'mutational signatures (SIGS)')
+                sig ? [meta + [pipeline: 'sigs'], sig] : null
+            }
+            .filter { it != null }
+
         // ── Run subworkflows ──────────────────────────────────────────────────
 
         GENOMIC_CNV(ch_purple_cnv, ensembl_annotations)
@@ -240,6 +257,8 @@ workflow GENOMIC {
         GENOMIC_SV(ch_esvee_vcf, ensembl_annotations)
 
         ISOFOX_FUSION_TO_CBIOPORTAL(ch_isofox_fusion)
+
+        SIGS_TO_CBIOPORTAL(ch_sigs)
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
 
@@ -277,6 +296,9 @@ workflow GENOMIC {
         all_mutations = GENOMIC_MUTATIONS.out.out
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'mutation' })
 
+        all_sigs = SIGS_TO_CBIOPORTAL.out.sigs
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs' })
+
         // ── Aggregate per-group outputs ───────────────────────────────────────
 
         GENOMIC_AGGREGATE_OUTPUT(
@@ -285,6 +307,7 @@ workflow GENOMIC {
             all_sv,
             all_expression,
             all_mutations,
+            all_sigs,
         )
 
         // ── ML formatting ─────────────────────────────────────────────────────

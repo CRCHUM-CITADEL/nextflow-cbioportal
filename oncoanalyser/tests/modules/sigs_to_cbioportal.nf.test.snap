@@ -1,0 +1,15 @@
+{
+    "Two subjects \u2014 data_sigs.txt files are produced": {
+        "content": [
+            [
+                "T1.data_sigs.txt:md5,cf8e12f9cb35b2b714ccf438e999e070",
+                "T2.data_sigs.txt:md5,3e355d5cb3e49c02a3a0dfbbf41356e7"
+            ]
+        ],
+        "timestamp": "2026-04-23T16:39:12.892975514",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

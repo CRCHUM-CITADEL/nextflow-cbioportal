@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Merge per-sample SIGS cBioPortal files into a single wide-format matrix.
-# Each input file has columns: ENTITY_STABLE_ID, NAME, DESCRIPTION, {sample_id}
+# Each input file has columns: ENTITY_STABLE_ID, NAME, DESCRIPTION, URL, {sample_id}
 # Output: data_sigs.txt with all samples as columns, signatures as rows.
 # Missing signatures for a given sample are filled with 0.
 
@@ -26,7 +26,7 @@ cat("Merging", length(input_files), "signature file(s)\n")
 # Read each per-sample file; track the sample column (4th column)
 read_sigs_file <- function(path) {
     dt <- fread(path, sep = "\t", header = TRUE)
-    expected <- c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION")
+    expected <- c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION", "URL")
     missing <- setdiff(expected, colnames(dt))
     if (length(missing) > 0) stop("Missing columns in ", path, ": ", paste(missing, collapse = ", "))
     dt
@@ -34,26 +34,28 @@ read_sigs_file <- function(path) {
 
 tables <- lapply(input_files, read_sigs_file)
 
-# Merge all tables by ENTITY_STABLE_ID, NAME, DESCRIPTION
+meta_cols <- c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION", "URL")
+
+# Merge all tables by meta columns
 merged <- tables[[1]]
 if (length(tables) > 1) {
     for (i in 2:length(tables)) {
         merged <- merge(merged, tables[[i]],
-                        by = c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION"),
+                        by = meta_cols,
                         all = TRUE)
         cat("  Merged file", i, "of", length(tables), "\n")
     }
 }
 
 # Fill missing signature contributions with 0
-sample_cols <- setdiff(colnames(merged), c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION"))
+sample_cols <- setdiff(colnames(merged), meta_cols)
 for (col in sample_cols) {
     merged[[col]][is.na(merged[[col]])] <- 0
 }
 
 # Sort sample columns alphabetically for deterministic output
 sample_cols_sorted <- sort(sample_cols)
-setcolorder(merged, c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION", sample_cols_sorted))
+setcolorder(merged, c(meta_cols, sample_cols_sorted))
 
 # Sort rows by ENTITY_STABLE_ID
 setorder(merged, ENTITY_STABLE_ID)

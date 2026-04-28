@@ -13,6 +13,7 @@ include { GENOMIC_AGGREGATE_OUTPUT     } from '../subworkflows/local/genomic_agg
 include { GENERATE_META_FILE           } from '../modules/local/generate_meta_file'
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
 include { SIGS_TO_CBIOPORTAL           } from '../modules/local/sigs_to_cbioportal'
+include { SIGS_COUNTS_TO_CBIOPORTAL    } from '../modules/local/sigs_counts_to_cbioportal'
 
 
 // Resolve an oncoanalyser output file path; log a warning and return null if absent.
@@ -107,10 +108,16 @@ workflow GENOMIC {
                     files.add([meta + [pipeline: 'sv_rna_fusion'], rna_fusion])
                 }
 
-                // Signatures file (optional — only present when sufficient mutations exist)
-                def sigs = file("${baseDir}/${meta.sample}.data_sigs.txt", checkIfExists: false)
+                // Signatures contribution file (optional — only present when sufficient mutations exist)
+                def sigs = file("${baseDir}/${meta.sample}.data_mutational_signatures_contribution_SBS.txt", checkIfExists: false)
                 if (sigs.exists()) {
                     files.add([meta + [pipeline: 'sigs'], sigs])
+                }
+
+                // Signatures counts file (optional — only present when sufficient mutations exist)
+                def sigs_counts = file("${baseDir}/${meta.sample}.data_mutational_signatures_counts_SBS.txt", checkIfExists: false)
+                if (sigs_counts.exists()) {
+                    files.add([meta + [pipeline: 'sigs_counts'], sigs_counts])
                 }
 
                 return files
@@ -250,6 +257,16 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
+        // SIGS SNV counts CSV → mutational signature trinucleotide counts
+        ch_sigs_counts = ch_samples_to_run
+            .map { meta ->
+                def snv_counts = findOncoFile(meta,
+                    "${meta.folder}/sigs/${meta.subject}-T.sig.snv_counts.csv",
+                    'mutational signature SNV counts')
+                snv_counts ? [meta + [pipeline: 'sigs_counts'], snv_counts] : null
+            }
+            .filter { it != null }
+
         // ── Run subworkflows ──────────────────────────────────────────────────
 
         GENOMIC_CNV(ch_purple_cnv, ensembl_annotations)
@@ -259,6 +276,8 @@ workflow GENOMIC {
         ISOFOX_FUSION_TO_CBIOPORTAL(ch_isofox_fusion)
 
         SIGS_TO_CBIOPORTAL(ch_sigs, file(params.signatures_etiology))
+
+        SIGS_COUNTS_TO_CBIOPORTAL(ch_sigs_counts)
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
 
@@ -299,6 +318,9 @@ workflow GENOMIC {
         all_sigs = SIGS_TO_CBIOPORTAL.out.sigs
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs' })
 
+        all_sigs_counts = SIGS_COUNTS_TO_CBIOPORTAL.out.sigs_counts
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_counts' })
+
         // ── Aggregate per-group outputs ───────────────────────────────────────
 
         GENOMIC_AGGREGATE_OUTPUT(
@@ -308,6 +330,7 @@ workflow GENOMIC {
             all_expression,
             all_mutations,
             all_sigs,
+            all_sigs_counts,
         )
 
         // ── ML formatting ─────────────────────────────────────────────────────

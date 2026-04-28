@@ -48,8 +48,9 @@ descriptions <- ifelse(is.na(matched_etiology),
                        paste0("Mutational signature ", sigs$signature),
                        matched_etiology)
 
+sig_num <- gsub("SBS", "", sigs$signature)
 out <- data.table(
-    ENTITY_STABLE_ID = sigs$signature,
+    ENTITY_STABLE_ID = paste0("mutational_signatures_contribution_SBS", sig_num),
     NAME             = sigs$signature,
     DESCRIPTION      = descriptions
 )

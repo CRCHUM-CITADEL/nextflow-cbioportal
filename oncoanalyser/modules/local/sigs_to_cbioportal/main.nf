@@ -11,7 +11,7 @@ process SIGS_TO_CBIOPORTAL {
         path etiology
 
     output:
-        tuple val(meta), path("${meta.sample}.data_sigs.txt"), emit: sigs
+        tuple val(meta), path("${meta.sample}.data_mutational_signatures_contribution_SBS.txt"), emit: sigs
 
     when:
         task.ext.when == null || task.ext.when
@@ -22,11 +22,11 @@ process SIGS_TO_CBIOPORTAL {
         --input    ${sig_alloc} \\
         --sample   ${meta.sample} \\
         --etiology ${etiology} \\
-        --output   ${meta.sample}.data_sigs.txt
+        --output   ${meta.sample}.data_mutational_signatures_contribution_SBS.txt
     """
 
     stub:
     """
-    touch ${meta.sample}.data_sigs.txt
+    touch ${meta.sample}.data_mutational_signatures_contribution_SBS.txt
     """
 }

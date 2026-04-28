@@ -217,6 +217,7 @@ show_profile_in_analysis_tab: true
 profile_name: Mutational Signatures
 profile_description: Mutational signatures based on COSMIC v3 (WGS)
 data_filename: data_mutational_signatures_contribution_SBS.txt
+generic_entity_meta_properties: NAME,DESCRIPTION
 pivot_threshold_value: 0.0
 """
 
@@ -229,6 +230,7 @@ show_profile_in_analysis_tab: true
 profile_name: Mutational Signatures Counts
 profile_description: Mutational signature trinucleotide counts based on COSMIC v3 (WGS)
 data_filename: data_mutational_signatures_counts_SBS.txt
+generic_entity_meta_properties: NAME
 pivot_threshold_value: 0.0
 """
 

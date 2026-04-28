@@ -7,7 +7,7 @@ Nextflow DSL2 pipeline converting oncoanalyser WGS/WTS output + clinical CSVs �
 ## Layout
 
 ```
-workflows/genomic.nf          # CNV, SV (DNA+RNA fusions), expression, mutations, ML
+workflows/genomic.nf          # CNV, SV (DNA+RNA fusions), expression, mutations, sigs, ML
 workflows/clinical.nf         # Clinical CSV processing
 subworkflows/local/
   genomic_cnv/                # Purple TSVs → SEG + CNA long
@@ -19,24 +19,23 @@ subworkflows/local/
   clinical_aggregate/
 modules/local/                # One process per file
 bin/                          # R scripts (optparse, data.table, tidyverse)
-tests/subworkflows/           # nextflow_workflow tests (one per subworkflow)
-tests/modules/                # nextflow_process tests (e.g. isofox_fusion_to_cbioportal)
+tests/subworkflows/           # nextflow_workflow tests
+tests/modules/                # nextflow_process tests
 ```
 
 ---
 
 ## Containers
 
-Images are ORAS-hosted, cached as `.img` in `containers/` (`apptainer.cacheDir`):
 ```
 container_r       = "oras://ghcr.io/crchum-citadel/sdp-r:4.5.1"
 container_python  = "oras://ghcr.io/crchum-citadel/sdp-python:3.12"
 container_pcgr    = "oras://ghcr.io/sigven/pcgr:2.1.2.singularity"
 container_vcf2maf = "oras://ghcr.io/crchum-citadel/vcf2maf_ensembl-vep:v1.6.22_2"
 ```
-- Always use `-profile apptainer`. Never suggest Docker.
-- `apptainer build` creates `.sif`; Nextflow expects `.img` — create a symlink after building manually.
+- Always `-profile apptainer`. Never Docker.
 - R scripts → `container_r`; Python scripts → `container_python`.
+- `apptainer build` creates `.sif`; Nextflow expects `.img` — symlink after building.
 
 ---
 
@@ -48,8 +47,6 @@ container_vcf2maf = "oras://ghcr.io/crchum-citadel/vcf2maf_ensembl-vep:v1.6.22_2
 | `process_low` | 2 | 12 GB | 4 h |
 | `process_medium` | 6 | 36 GB | 8 h |
 | `process_high` | 12 | 72 GB | 16 h |
-| `process_long` | — | — | 20 h |
-| `process_medium_memory` | 8 | 30 GB | 2 h |
 | `process_high_memory` | — | 200 GB | — |
 | `error_retry` | — | — | maxRetries 3 |
 
@@ -57,21 +54,48 @@ container_vcf2maf = "oras://ghcr.io/crchum-citadel/vcf2maf_ensembl-vep:v1.6.22_2
 
 ## HPC Constraints
 
-- **No internet on compute nodes** — set `NXF_OFFLINE=true`; pre-pull containers on login nodes.
-- **SLURM account**: `def-chasse` (in `nextflow.config`).
-- VEP cache and PCGR data must be pre-staged; empty paths trigger download and will fail on compute nodes.
+- No internet on compute nodes — set `NXF_OFFLINE=true`; pre-pull containers on login nodes.
+- SLURM account: `def-chasse`.
+- VEP/PCGR data must be pre-staged.
 
 ---
 
 ## Modules & R Scripts — Key Rules
 
-- Always add a `stub:` block to every new process (`-stub-run` is used in tests).
-- Use `params.container_*` variables — never hardcode image paths.
-- Output empty/missing values as `NA` (not `.`). Use `write.table(..., na = "NA")`.
-- `data_sv.txt` rows require Hugo symbols at both sites — filter out unannotated rows.
-- **SV classification** (`gen_esvee_sv_to_cbioportal.R`): `Class` is derived from BND ALT strand — `(+,-)` → `DELETION`, `(-,+)` → `DUPLICATION`, `(+,+)/(−,−)` → `INVERSION`, diff chr → `TRANSLOCATION`. DNA SVs: `DNA_Support=Yes, RNA_Support=No`.
-- **RNA fusions** (`gen_isofox_fusion_to_cbioportal.R`): reads `*.isf.pass_fusions.csv`; auto-detects columns across Isofox versions. `DiscordantFragments` is the discord count column in pass_fusions.csv. RNA fusions: `Class=FUSION, DNA_Support=No, RNA_Support=Yes`. Both sources merge into `data_sv.txt` via `GENOMIC_AGGREGATE_OUTPUT`.
-- `ml_format_cnv.R` and `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`.
+- Always add a `stub:` block to every new process.
+- Use `params.container_*` — never hardcode image paths.
+- Output missing values as `NA`. Use `write.table(..., na = "NA")`.
+- `data_sv.txt` rows require Hugo symbols at both sites — filter unannotated rows.
+- **SV classification** (`gen_esvee_sv_to_cbioportal.R`): BND ALT strand → `(+,-)` DELETION, `(-,+)` DUPLICATION, `(+,+)/(−,−)` INVERSION, diff chr TRANSLOCATION. DNA SVs: `DNA_Support=Yes, RNA_Support=No`.
+- **RNA fusions** (`gen_isofox_fusion_to_cbioportal.R`): reads `*.isf.pass_fusions.csv`; auto-detects columns across Isofox versions. `Class=FUSION, DNA_Support=No, RNA_Support=Yes`. Both merge into `data_sv.txt`.
+- `ml_format_cnv.R` / `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`.
+
+---
+
+## Mutational Signatures
+
+Two cBioPortal GENERIC_ASSAY file pairs are produced from `sigs/` output.
+
+### Contribution (`data_mutational_signatures_contribution_SBS.txt`)
+
+- Input: `{subject}-T.sig.allocation.tsv` (columns: `signature`, `allocation`, `percent`)
+- R script: `gen_sigs_to_cbioportal.R` (per-sample) + `gen_merge_sigs_to_cbioportal.R` (merge)
+- Columns: `ENTITY_STABLE_ID`, `NAME`, `DESCRIPTION`, `{sample}`
+  - `ENTITY_STABLE_ID` = `mutational_signatures_contribution_{n}` (e.g. `mutational_signatures_contribution_1` for SBS1)
+  - `NAME` = original signature ID (e.g. `SBS1`)
+  - `DESCRIPTION` = etiology from `assets/signatures_etiology.tsv`; falls back to `"Mutational signature {id}"`
+- Meta: `datatype: LIMIT-VALUE`, `generic_entity_meta_properties: NAME,DESCRIPTION`, `pivot_threshold_value: 0.0`
+
+### Counts (`data_mutational_signatures_counts_SBS.txt`)
+
+- Input: `{subject}-T.sig.snv_counts.csv` (long format: columns `BucketName`, `{sample}`)
+- R script: `gen_sigs_counts_to_cbioportal.R` (per-sample) + `gen_merge_sigs_counts_to_cbioportal.R` (merge)
+- Columns: `ENTITY_STABLE_ID`, `NAME`, `{sample}` (no DESCRIPTION)
+  - Context transform: `C>A_ACA` → `ENTITY_STABLE_ID` = `mutational_signatures_matrix_A_C-A_A`, `NAME` = `A[C>A]A`
+  - Pattern: `mutational_signatures_matrix_{5'}_{from}-{to}_{3'}`
+- Meta: `datatype: LIMIT-VALUE`, `generic_entity_meta_properties: NAME`, `pivot_threshold_value: 0.0`
+
+Both meta files use `generic_assay_type: MUTATIONAL_SIGNATURE` (not `genetic_assay_type`).
 
 ---
 
@@ -94,11 +118,12 @@ container_vcf2maf = "oras://ghcr.io/crchum-citadel/vcf2maf_ensembl-vep:v1.6.22_2
 | `tests/subworkflows/genomic_ml.nf.test` | None (fully stubbed) |
 | `tests/subworkflows/genomic_mutations.nf.test` | PCGR + vcf2maf (CI only) |
 | `tests/modules/isofox_fusion_to_cbioportal.nf.test` | R only |
+| `tests/modules/sigs_to_cbioportal.nf.test` | R only |
+| `tests/modules/sigs_counts_to_cbioportal.nf.test` | R only |
 
 **nf-test gotchas:**
 - Use `path(f.toString())` — channel file outputs are `String`, not `Path`.
 - Sort snapshots: `.sort { it.toString().split('/').last() }`.
 - `collectFile` with `storeDir` won't create directories — call `file("${params.outdir}/GROUP").mkdirs()` in test setup.
 - `genomic_ml` uses `options "-stub-run"` to skip the `DOWNLOAD_KNOWN_FUSIONS` curl call.
-- Module tests in `tests/modules/` use `nextflow_process {}` blocks.
-- Snapshots: `tests/*.snap`, `tests/subworkflows/*.snap`, `tests/modules/*.snap`.
+- Module tests use `nextflow_process {}` blocks; snapshots live in `tests/modules/*.snap`.

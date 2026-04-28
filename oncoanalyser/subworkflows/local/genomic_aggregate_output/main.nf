@@ -192,7 +192,7 @@ data_filename: data_mutations_dna_rna_germline.txt
 
         meta_text_sigs = """cancer_study_identifier: add_text
 genetic_alteration_type: GENERIC_ASSAY
-generic_assay_type: MUTATIONAL_SIGNATURE
+genetic_assay_type: MUTATIONAL_SIGNATURE
 datatype: CONTINUOUS
 stable_id: mutational_signatures
 show_profile_in_analysis_tab: true

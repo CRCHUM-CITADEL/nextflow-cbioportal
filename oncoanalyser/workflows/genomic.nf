@@ -258,7 +258,7 @@ workflow GENOMIC {
 
         ISOFOX_FUSION_TO_CBIOPORTAL(ch_isofox_fusion)
 
-        SIGS_TO_CBIOPORTAL(ch_sigs)
+        SIGS_TO_CBIOPORTAL(ch_sigs, file(params.signatures_etiology))
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
 

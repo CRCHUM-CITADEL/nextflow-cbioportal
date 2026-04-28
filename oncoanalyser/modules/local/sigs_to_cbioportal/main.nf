@@ -8,6 +8,7 @@ process SIGS_TO_CBIOPORTAL {
 
     input:
         tuple val(meta), path(sig_alloc)
+        path etiology
 
     output:
         tuple val(meta), path("${meta.sample}.data_sigs.txt"), emit: sigs
@@ -18,9 +19,10 @@ process SIGS_TO_CBIOPORTAL {
     script:
     """
     Rscript ${projectDir}/bin/gen_sigs_to_cbioportal.R \\
-        --input  ${sig_alloc} \\
-        --sample ${meta.sample} \\
-        --output ${meta.sample}.data_sigs.txt
+        --input    ${sig_alloc} \\
+        --sample   ${meta.sample} \\
+        --etiology ${etiology} \\
+        --output   ${meta.sample}.data_sigs.txt
     """
 
     stub:

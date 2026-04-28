@@ -211,26 +211,24 @@ data_filename: data_mutations_dna_rna_germline.txt
         meta_text_sigs = """cancer_study_identifier: add_text
 genetic_alteration_type: GENERIC_ASSAY
 generic_assay_type: MUTATIONAL_SIGNATURE
-datatype: CONTINUOUS
+datatype: LIMIT-VALUE
 stable_id: mutational_signatures_contribution_SBS
 show_profile_in_analysis_tab: true
 profile_name: Mutational Signatures
 profile_description: Mutational signatures based on COSMIC v3 (WGS)
 data_filename: data_mutational_signatures_contribution_SBS.txt
-value_sort_order: DESC
 pivot_threshold_value: 0.0
 """
 
         meta_text_counts = """cancer_study_identifier: add_text
 genetic_alteration_type: GENERIC_ASSAY
 generic_assay_type: MUTATIONAL_SIGNATURE
-datatype: CONTINUOUS
+datatype: LIMIT-VALUE
 stable_id: mutational_signatures_counts_SBS
 show_profile_in_analysis_tab: true
 profile_name: Mutational Signatures Counts
 profile_description: Mutational signature trinucleotide counts based on COSMIC v3 (WGS)
 data_filename: data_mutational_signatures_counts_SBS.txt
-value_sort_order: DESC
 pivot_threshold_value: 0.0
 """
 

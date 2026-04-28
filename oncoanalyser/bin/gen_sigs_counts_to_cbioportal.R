@@ -21,7 +21,7 @@ for (arg in c("input", "sample", "output")) {
     if (is.null(opt[[arg]])) stop(paste0("Missing required argument: --", arg))
 }
 
-# Transform C>A_ACA → A[C>A]A
+# Transform C>A_ACA → NAME: A[C>A]A, ENTITY_STABLE_ID: mutational_signatures_matrix_A_C-A_A
 transform_context <- function(x) {
     parts <- strsplit(x, "_")[[1]]   # e.g. c("C>A", "ACA")
     if (length(parts) != 2) stop(paste0("Unexpected BucketName format: ", x))
@@ -29,6 +29,17 @@ transform_context <- function(x) {
     ctx <- parts[2]                   # "ACA"
     if (nchar(ctx) != 3) stop(paste0("Expected 3-character context, got: ", ctx))
     paste0(substr(ctx, 1, 1), "[", mut, "]", substr(ctx, 3, 3))
+}
+
+gen_entity_id <- function(x) {
+    parts    <- strsplit(x, "_")[[1]]      # c("C>A", "ACA")
+    mut      <- parts[1]                    # "C>A"
+    ctx      <- parts[2]                    # "ACA"
+    from_to  <- strsplit(mut, ">")[[1]]    # c("C", "A")
+    paste0("mutational_signatures_matrix_",
+           substr(ctx, 1, 1), "_",
+           from_to[1], "-", from_to[2], "_",
+           substr(ctx, 3, 3))
 }
 
 cat("Reading SNV counts file:", opt$input, "\n")
@@ -39,12 +50,12 @@ if (colnames(counts)[1] != "BucketName") stop("Expected first column to be 'Buck
 
 cat("Found", nrow(counts), "trinucleotide contexts\n")
 
-entity_ids <- sapply(counts$BucketName, transform_context, USE.NAMES = FALSE)
+entity_ids <- sapply(counts$BucketName, gen_entity_id,       USE.NAMES = FALSE)
+names      <- sapply(counts$BucketName, transform_context, USE.NAMES = FALSE)
 
 out <- data.table(
     ENTITY_STABLE_ID = entity_ids,
-    NAME             = entity_ids,
-    DESCRIPTION      = paste0("Trinucleotide context: ", entity_ids)
+    NAME             = names
 )
 out[[opt$sample]] <- counts[[2]]
 

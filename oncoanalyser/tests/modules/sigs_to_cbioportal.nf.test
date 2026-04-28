@@ -44,13 +44,13 @@ nextflow_process {
             assert header.contains('DESCRIPTION')
             assert header.contains('T1')
 
-            // Verify ENTITY_STABLE_ID uses the mutational_signatures_contribution_SBS prefix
+            // Verify ENTITY_STABLE_ID uses the mutational_signatures_contribution_ prefix (no SBS)
             def t1_lines = path(t1_path.toString()).readLines()
             assert t1_lines.size() > 1
             def entity_ids = t1_lines[1..-1].collect { it.split('\t')[0] }
-            assert entity_ids.any { it.startsWith('mutational_signatures_contribution_SBS') }
-            assert entity_ids.contains('mutational_signatures_contribution_SBS1')
-            assert entity_ids.contains('mutational_signatures_contribution_SBS5')
+            assert entity_ids.any { it.startsWith('mutational_signatures_contribution_') }
+            assert entity_ids.contains('mutational_signatures_contribution_1')
+            assert entity_ids.contains('mutational_signatures_contribution_5')
 
             snapshot(
                 process.out.sigs.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }

@@ -6,7 +6,7 @@ nextflow_process {
     tag "module"
     tag "sigs"
 
-    test("Two subjects — data_sigs.txt files are produced") {
+    test("Two subjects — data_mutational_signatures_contribution_SBS.txt files are produced") {
 
         when {
             params {
@@ -24,6 +24,7 @@ nextflow_process {
                         file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/sigs/T2-T.sig.allocation.tsv')
                     ]
                 )
+                input[1] = file('${projectDir}/assets/signatures_etiology.tsv')
                 """
             }
         }
@@ -33,22 +34,23 @@ nextflow_process {
             assert process.out.sigs.size() == 2
 
             def names = process.out.sigs.collect { meta, f -> f.toString().split('/').last() }.sort()
-            assert names == ['T1.data_sigs.txt', 'T2.data_sigs.txt']
+            assert names == ['T1.data_mutational_signatures_contribution_SBS.txt', 'T2.data_mutational_signatures_contribution_SBS.txt']
 
             // Verify cBioPortal GENERIC_ASSAY format columns
-            def t1_path = process.out.sigs.collect { meta, f -> f }.find { it.toString().endsWith('T1.data_sigs.txt') }
+            def t1_path = process.out.sigs.collect { meta, f -> f }.find { it.toString().endsWith('T1.data_mutational_signatures_contribution_SBS.txt') }
             def header = path(t1_path.toString()).readLines()[0]
             assert header.contains('ENTITY_STABLE_ID')
             assert header.contains('NAME')
             assert header.contains('DESCRIPTION')
             assert header.contains('T1')
 
-            // Verify signature rows are present
+            // Verify ENTITY_STABLE_ID uses the mutational_signatures_contribution_SBS prefix
             def t1_lines = path(t1_path.toString()).readLines()
             assert t1_lines.size() > 1
-            def sig_ids = t1_lines[1..-1].collect { it.split('\t')[0] }
-            assert sig_ids.contains('SBS1')
-            assert sig_ids.contains('SBS5')
+            def entity_ids = t1_lines[1..-1].collect { it.split('\t')[0] }
+            assert entity_ids.any { it.startsWith('mutational_signatures_contribution_SBS') }
+            assert entity_ids.contains('mutational_signatures_contribution_SBS1')
+            assert entity_ids.contains('mutational_signatures_contribution_SBS5')
 
             snapshot(
                 process.out.sigs.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }

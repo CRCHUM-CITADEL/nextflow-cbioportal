@@ -2,11 +2,11 @@
     "Two subjects \u2014 data_mutational_signatures_contribution_SBS.txt files are produced": {
         "content": [
             [
-                "T1.data_mutational_signatures_contribution_SBS.txt:md5,fa1341e9fe8d43733ff02c10ef454207",
-                "T2.data_mutational_signatures_contribution_SBS.txt:md5,cae92879e09dc36bc240c08c7700cb6d"
+                "T1.data_mutational_signatures_contribution_SBS.txt:md5,6e61fc9f1dcaaeaaa95ca77ea105348f",
+                "T2.data_mutational_signatures_contribution_SBS.txt:md5,4626ea7a3fdf96c34fe024bde9b164f2"
             ]
         ],
-        "timestamp": "2026-05-04T13:08:51.899134832",
+        "timestamp": "2026-05-04T16:18:45.384448657",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "25.10.4"

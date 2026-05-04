@@ -81,7 +81,7 @@ Two cBioPortal GENERIC_ASSAY file pairs are produced from `sigs/` output.
 - Input: `{subject}-T.sig.allocation.tsv` (columns: `signature`, `allocation`, `percent`)
 - R script: `gen_sigs_to_cbioportal.R` (per-sample) + `gen_merge_sigs_to_cbioportal.R` (merge)
 - Columns: `ENTITY_STABLE_ID`, `NAME`, `DESCRIPTION`, `{sample}`
-  - `ENTITY_STABLE_ID` = `mutational_signatures_contribution_{n}` (e.g. `mutational_signatures_contribution_1` for SBS1)
+  - `ENTITY_STABLE_ID` = `mutational_signatures_contribution_SBS{n}` (e.g. `mutational_signatures_contribution_SBS1` for SBS1)
   - `NAME` = original signature ID (e.g. `SBS1`)
   - `DESCRIPTION` = etiology from `assets/signatures_etiology.tsv`; falls back to `"Mutational signature {id}"`
 - Meta: `datatype: LIMIT-VALUE`, `generic_entity_meta_properties: NAME,DESCRIPTION`, `pivot_threshold_value: 0.0`

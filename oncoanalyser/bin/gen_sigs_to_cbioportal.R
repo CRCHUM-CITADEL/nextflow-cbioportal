@@ -1,10 +1,10 @@
 #!/usr/bin/env Rscript
 # Convert HMFTOOLS SIGS allocation output to per-sample cBioPortal GENERIC_ASSAY format.
 # Input: {subject}-T.sig.allocation.tsv (columns: signature, allocation, percent)
+#        signature column uses Sig1/Sig2 notation.
 # Output: {sample}.data_mutational_signatures_contribution_SBS.txt
 #         (ENTITY_STABLE_ID, NAME, DESCRIPTION, {sample})
 # DESCRIPTION is "{etiology} ({main effect})" from signatures_etiology.tsv.
-# The etiology file uses Sig1/Sig2 notation; SBS1/SBS2 input is converted for lookup.
 
 suppressPackageStartupMessages({
     library(optparse)
@@ -107,8 +107,8 @@ setkey(etiology, signature)
 
 cat("Found", nrow(sigs), "allocated signatures\n")
 
-# HMFTOOLS uses SBS notation (SBS1); etiology file uses Sig notation (Sig1) — convert for lookup
-sig_key <- gsub("^SBS", "Sig", sigs$signature)
+# Input uses Sig notation (Sig1); etiology file and categories/main_effects are keyed the same way
+sig_key <- sigs$signature
 
 matched_etiology <- etiology[sig_key, etiology]
 matched_effect   <- main_effects[sig_key]
@@ -129,16 +129,16 @@ descriptions <- ifelse(
     )
 )
 
-sig_num      <- gsub("SBS", "", sigs$signature)
+sig_num      <- gsub("Sig", "", sigs$signature)
 matched_cat  <- categories[sig_key]
 sig_names    <- ifelse(
     !is.na(matched_cat),
-    paste0(sigs$signature, " (", matched_cat, ")"),
-    sigs$signature
+    paste0("SBS", sig_num, " (", matched_cat, ")"),
+    paste0("SBS", sig_num)
 )
 
 out <- data.table(
-    ENTITY_STABLE_ID = paste0("mutational_signatures_contribution_", sig_num),
+    ENTITY_STABLE_ID = paste0("mutational_signatures_contribution_SBS", sig_num),
     NAME             = sig_names,
     DESCRIPTION      = descriptions
 )

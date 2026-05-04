@@ -26,7 +26,7 @@ cat("Merging", length(input_files), "counts file(s)\n")
 
 read_counts_file <- function(path) {
     dt <- fread(path, sep = "\t", header = TRUE)
-    expected <- c("ENTITY_STABLE_ID", "NAME")
+    expected <- c("ENTITY_STABLE_ID", "NAME", "CATEGORY")
     missing <- setdiff(expected, colnames(dt))
     if (length(missing) > 0) stop("Missing columns in ", path, ": ", paste(missing, collapse = ", "))
     dt
@@ -38,21 +38,21 @@ merged <- tables[[1]]
 if (length(tables) > 1) {
     for (i in 2:length(tables)) {
         merged <- merge(merged, tables[[i]],
-                        by = c("ENTITY_STABLE_ID", "NAME"),
+                        by = c("ENTITY_STABLE_ID", "NAME", "CATEGORY"),
                         all = TRUE)
         cat("  Merged file", i, "of", length(tables), "\n")
     }
 }
 
 # Fill missing counts with 0
-sample_cols <- setdiff(colnames(merged), c("ENTITY_STABLE_ID", "NAME"))
+sample_cols <- setdiff(colnames(merged), c("ENTITY_STABLE_ID", "NAME", "CATEGORY"))
 for (col in sample_cols) {
     merged[[col]][is.na(merged[[col]])] <- 0
 }
 
 # Sort sample columns alphabetically for deterministic output
 sample_cols_sorted <- sort(sample_cols)
-setcolorder(merged, c("ENTITY_STABLE_ID", "NAME", sample_cols_sorted))
+setcolorder(merged, c("ENTITY_STABLE_ID", "NAME", "CATEGORY", sample_cols_sorted))
 
 # Sort rows by ENTITY_STABLE_ID
 setorder(merged, ENTITY_STABLE_ID)

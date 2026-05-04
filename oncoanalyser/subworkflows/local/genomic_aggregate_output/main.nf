@@ -230,7 +230,7 @@ show_profile_in_analysis_tab: true
 profile_name: Mutational Signatures Counts
 profile_description: Mutational signature trinucleotide counts based on COSMIC v3 (WGS)
 data_filename: data_mutational_signatures_counts_SBS.txt
-generic_entity_meta_properties: NAME
+generic_entity_meta_properties: NAME,CATEGORY
 pivot_threshold_value: 0.0
 """
 

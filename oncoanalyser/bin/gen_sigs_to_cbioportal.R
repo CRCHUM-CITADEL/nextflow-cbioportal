@@ -24,6 +24,40 @@ for (arg in c("input", "sample", "etiology", "output")) {
     if (is.null(opt[[arg]])) stop(paste0("Missing required argument: --", arg))
 }
 
+# Short broad category labels for the NAME column, keyed by Sig notation
+categories <- c(
+    Sig1  = "Aging",
+    Sig2  = "APOBEC",
+    Sig3  = "HR deficiency",
+    Sig4  = "Tobacco",
+    Sig5  = "Clock-like",
+    Sig6  = "MMR deficiency",
+    Sig7  = "UV",
+    Sig8  = "Unknown",
+    Sig9  = "AID activity",
+    Sig10 = "POLE deficiency",
+    Sig11 = "Chemotherapy",
+    Sig12 = "Unknown",
+    Sig13 = "APOBEC",
+    Sig14 = "MMR deficiency",
+    Sig15 = "MMR deficiency",
+    Sig16 = "Unknown",
+    Sig17 = "Unknown",
+    Sig18 = "ROS",
+    Sig19 = "Unknown",
+    Sig20 = "MMR deficiency",
+    Sig21 = "MMR deficiency",
+    Sig22 = "Carcinogen",
+    Sig23 = "Unknown",
+    Sig24 = "Carcinogen",
+    Sig25 = "Chemotherapy",
+    Sig26 = "MMR deficiency",
+    Sig27 = "Unknown",
+    Sig28 = "Unknown",
+    Sig29 = "Tobacco",
+    Sig30 = "BER deficiency"
+)
+
 # Main biological effects for parenthetical annotation, keyed by Sig notation
 main_effects <- c(
     Sig1  = "aging",
@@ -95,10 +129,17 @@ descriptions <- ifelse(
     )
 )
 
-sig_num <- gsub("SBS", "", sigs$signature)
+sig_num      <- gsub("SBS", "", sigs$signature)
+matched_cat  <- categories[sig_key]
+sig_names    <- ifelse(
+    !is.na(matched_cat),
+    paste0(sigs$signature, " (", matched_cat, ")"),
+    sigs$signature
+)
+
 out <- data.table(
     ENTITY_STABLE_ID = paste0("mutational_signatures_contribution_", sig_num),
-    NAME             = sigs$signature,
+    NAME             = sig_names,
     DESCRIPTION      = descriptions
 )
 out[[opt$sample]] <- sigs$percent

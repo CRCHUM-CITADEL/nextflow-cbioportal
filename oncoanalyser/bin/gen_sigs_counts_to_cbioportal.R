@@ -52,10 +52,13 @@ cat("Found", nrow(counts), "trinucleotide contexts\n")
 
 entity_ids <- sapply(counts$BucketName, gen_entity_id,       USE.NAMES = FALSE)
 names      <- sapply(counts$BucketName, transform_context, USE.NAMES = FALSE)
+# CATEGORY is the mutation type (e.g. "C>A") — drives colour grouping in cBioPortal
+categories <- sub("_.*", "", counts$BucketName)
 
 out <- data.table(
     ENTITY_STABLE_ID = entity_ids,
-    NAME             = names
+    NAME             = names,
+    CATEGORY         = categories
 )
 out[[opt$sample]] <- counts[[2]]
 

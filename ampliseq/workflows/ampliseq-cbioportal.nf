@@ -4,10 +4,11 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { PER_SAMPLE_FORMAT } from '../subworkflows/local/per_sample_format/main'
-include { MERGE_DEANON      } from '../subworkflows/local/merge_deanon/main'
-include { STUDY_METADATA    } from '../subworkflows/local/study_metadata/main'
-include { FILTER_LINKING    } from '../modules/local/filter_linking/main'
+include { PER_SAMPLE_FORMAT  } from '../subworkflows/local/per_sample_format/main'
+include { MERGE_DEANON       } from '../subworkflows/local/merge_deanon/main'
+include { STUDY_METADATA     } from '../subworkflows/local/study_metadata/main'
+include { FILTER_LINKING     } from '../modules/local/filter_linking/main'
+include { PACKAGE_CBIOPORTAL } from '../modules/local/package_cbioportal/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,6 +114,24 @@ workflow AMPLISEQ_CBIOPORTAL {
         Channel.fromPath(params.sample_file),
         ch_filtered_linking,
         params.study_id
+    )
+
+    // -------------------------------------------------------------------------
+    // Package all cBioPortal files into a tar.gz for sharing between instances
+    // -------------------------------------------------------------------------
+    all_data_files = MERGE_DEANON.out.mutations
+        .mix(MERGE_DEANON.out.sv)
+        .mix(MERGE_DEANON.out.cna)
+        .mix(MERGE_DEANON.out.seg)
+        .mix(STUDY_METADATA.out.clinical_patient)
+        .mix(STUDY_METADATA.out.clinical_sample)
+        .collect()
+
+    PACKAGE_CBIOPORTAL(
+        params.study_id,
+        all_data_files,
+        STUDY_METADATA.out.meta_files,
+        STUDY_METADATA.out.case_lists
     )
 }
 

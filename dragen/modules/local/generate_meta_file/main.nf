@@ -7,7 +7,7 @@ process GENERATE_META_FILE {
     val text
 
     output:
-    path "meta_${label}.txt"
+    tuple val(group), path("meta_${label}.txt")
 
     script:
     def group_lower = group.toLowerCase()

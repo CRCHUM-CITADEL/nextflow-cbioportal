@@ -23,7 +23,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         all_groups = cnv_results_seg.map {meta, sample -> meta.group}.unique()
 
         // merge cnv ----------------------------------------
-        cnv_results_seg
+        cnv_seg_output = cnv_results_seg
              .map {meta, filepath -> [meta.group, filepath]}
              .groupTuple()
              .flatMap { group, files ->
@@ -35,6 +35,7 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
                          sort: 'deep') { group, filepath ->
                              ["${group}/data_cna_hg38.seg", filepath.text]
                          }
+             .map { filepath -> tuple(filepath.parent.name, filepath) }
 
          cnv_long_output = cnv_results_long
              .map {meta, filepath -> [meta.group, filepath]}
@@ -246,9 +247,12 @@ pivot_threshold_value: 0.0
 
     emit:
         cnv         = cnv_long_output
+        cnv_seg     = cnv_seg_output
         expression  = expression_output
         mutation    = mutation_output
         sv          = sv_output
         sigs        = sigs_output
         sigs_counts = sigs_counts_output
+        meta_files  = GENERATE_META_FILE.out
+        case_files  = GENERATE_CASE_LIST.out
 }

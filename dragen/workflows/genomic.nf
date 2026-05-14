@@ -11,6 +11,7 @@ include { GENOMIC_MUTATIONS } from '../subworkflows/local/genomic_mutations'
 include { GENOMIC_ML } from '../subworkflows/local/genomic_ml'
 include { GENOMIC_AGGREGATE_OUTPUT } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE } from '../modules/local/generate_meta_file'
+include { PACKAGE_CBIOPORTAL } from '../modules/local/package_cbioportal'
 
 
 // finds a file given a pattern and sends a warning to console if it's not found
@@ -305,6 +306,20 @@ reference_genome: hg38
             "study",
             meta_text
          )
+
+        // ── Package all cBioPortal files into a tar.gz per group ──────────────
+
+        all_package_files = GENOMIC_AGGREGATE_OUTPUT.out.cnv
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.cnv_seg)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sv)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.expression)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.mutation)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
+            .mix(GENERATE_META_FILE.out)
+            .groupTuple()
+
+        PACKAGE_CBIOPORTAL(all_package_files)
 
     samplesheet_list
         .filter { rec -> rec[0].type != "germinal" && rec[0].sequence == "dna"}

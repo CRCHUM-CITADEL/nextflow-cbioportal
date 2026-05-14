@@ -74,6 +74,9 @@ nextflow_workflow {
                         file('${projectDir}/assets/test_data/precomputed/T2.somatic_rna_germline.maf')
                     ]
                 )
+                // Sigs and sigs_counts — empty channels (optional; not all runs produce signatures)
+                input[5] = Channel.empty()
+                input[6] = Channel.empty()
                 """
             }
         }

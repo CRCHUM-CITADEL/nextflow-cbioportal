@@ -16,4 +16,10 @@ workflow STUDY_METADATA {
     CLINICAL_SAMPLES(ch_sample_file, ch_linking)
     WRITE_CASE_LISTS(ch_linking, study_id)
     WRITE_META(study_id)
+
+    emit:
+    clinical_patient = CLINICAL_PATIENTS.out
+    clinical_sample  = CLINICAL_SAMPLES.out
+    meta_files       = WRITE_META.out
+    case_lists       = WRITE_CASE_LISTS.out
 }

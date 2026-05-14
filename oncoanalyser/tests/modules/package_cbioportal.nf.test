@@ -1,0 +1,68 @@
+nextflow_process {
+
+    name "Test PACKAGE_CBIOPORTAL module"
+    script "modules/local/package_cbioportal/main.nf"
+    process "PACKAGE_CBIOPORTAL"
+    tag "module"
+    tag "package"
+
+    test("Creates a tar.gz with data/meta files at root and cases files in case_lists/") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                // Create minimal meta and case files for testing
+                def testDir = file("${params.outdir}")
+                testDir.mkdirs()
+
+                def metaFile = file("${params.outdir}/meta_study.txt")
+                metaFile.text = 'cancer_study_identifier: test_group'
+
+                def casesFile = file("${params.outdir}/cases_sequenced.txt")
+                casesFile.text = 'cancer_study_identifier: test_group'
+
+                input[0] = Channel.of([
+                    'TEST_GROUP',
+                    [
+                        file('${projectDir}/assets/test_data/precomputed/data_cna_long.txt'),
+                        file('${projectDir}/assets/test_data/precomputed/data_sv.txt'),
+                        metaFile,
+                        casesFile
+                    ]
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out[0].size() == 1
+
+            def tarPath = process.out[0][0].toString()
+            assert tarPath.endsWith('TEST_GROUP.tar.gz')
+            assert new File(tarPath).length() > 0
+
+            // Extract and verify directory structure
+            def extractDir = file("${params.outdir}/extracted")
+            extractDir.mkdirs()
+            def proc = ["tar", "-xzf", tarPath, "-C", extractDir.toString()].execute()
+            proc.waitFor()
+            assert proc.exitValue() == 0
+
+            // Data and meta files land at the root of the group directory
+            assert file("${params.outdir}/extracted/TEST_GROUP/data_cna_long.txt").exists()
+            assert file("${params.outdir}/extracted/TEST_GROUP/data_sv.txt").exists()
+            assert file("${params.outdir}/extracted/TEST_GROUP/meta_study.txt").exists()
+
+            // Case list files land in case_lists/ subdirectory
+            assert file("${params.outdir}/extracted/TEST_GROUP/case_lists/cases_sequenced.txt").exists()
+
+            // Case files must NOT be at the root, and meta files must NOT be in case_lists/
+            assert !file("${params.outdir}/extracted/TEST_GROUP/cases_sequenced.txt").exists()
+            assert !file("${params.outdir}/extracted/TEST_GROUP/case_lists/meta_study.txt").exists()
+        }
+    }
+}

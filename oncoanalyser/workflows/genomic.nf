@@ -14,6 +14,7 @@ include { GENERATE_META_FILE           } from '../modules/local/generate_meta_fi
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
 include { SIGS_TO_CBIOPORTAL           } from '../modules/local/sigs_to_cbioportal'
 include { SIGS_COUNTS_TO_CBIOPORTAL    } from '../modules/local/sigs_counts_to_cbioportal'
+include { PACKAGE_CBIOPORTAL           } from '../modules/local/package_cbioportal'
 
 
 // Resolve an oncoanalyser output file path; log a warning and return null if absent.
@@ -356,6 +357,22 @@ reference_genome: hg38
         """
 
         GENERATE_META_FILE(all_groups, "study", meta_text)
+
+        // ── Package all cBioPortal files into a tar.gz per group ──────────────
+
+        all_package_files = GENOMIC_AGGREGATE_OUTPUT.out.cnv
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.cnv_seg)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sv)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.expression)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.mutation)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
+            .mix(GENERATE_META_FILE.out)
+            .groupTuple()
+
+        PACKAGE_CBIOPORTAL(all_package_files)
 
         // ── Subject → tumor sample linking file ───────────────────────────────
 

@@ -184,6 +184,9 @@
         },
         "cosmic_data" : {
             "type": "string"
+        },
+        "signatures_etiology": {
+            "type": "string"
         }
     }
 }

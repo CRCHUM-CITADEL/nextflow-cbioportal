@@ -1,0 +1,23 @@
+dbs_id	category	etiology	main_effect
+DBS1	UV	Ultraviolet light exposure	Skin melanoma, head and neck
+DBS2	Tobacco	Tobacco smoking and other mutagens (e.g. acetaldehyde)	Lung, head and neck, various
+DBS3	POLE deficiency	POLE exonuclease domain mutations (polymerase epsilon)	Colorectal, uterine
+DBS4	Unknown	Unknown	Various
+DBS5	Chemotherapy	Platinum chemotherapy	Ovarian, breast
+DBS6	Unknown	Unknown	Various
+DBS7	MMR deficiency	Defective DNA mismatch repair	Colorectal, uterine, stomach
+DBS8	Unknown	Unknown	Various
+DBS9	Unknown	Unknown	Lymphoid malignancies
+DBS10	MMR deficiency	Defective DNA mismatch repair	Colorectal, uterine
+DBS11	APOBEC	APOBEC3 cytidine deaminase activity	Breast, cervical, bladder
+DBS12	Unknown	Unknown	Various
+DBS13	Unknown	Unknown (associated with SBS3 and HR deficiency)	Breast, ovarian
+DBS14	Unknown	Unknown	Various
+DBS15	Unknown	Unknown (CG dinucleotide mutations)	Bladder
+DBS16	Unknown	Unknown (possible short inversion mechanism)	Various
+DBS17	Unknown	Unknown (GC-AT base pair substitution)	CNS, uterine
+DBS18	Unknown	Unknown (shares aetiology with SBS8 and SBS22)	Various
+DBS19	Unknown	Unknown (possible UV or other mechanism)	Skin, colorectal
+DBS20	Unknown	Unknown	Various
+DBS21	Unknown	Unknown	Various
+DBS22	Unknown	Unknown	Various

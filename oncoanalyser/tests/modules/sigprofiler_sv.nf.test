@@ -1,0 +1,86 @@
+nextflow_process {
+
+    name "Test SIGPROFILER_SV module"
+    script "modules/local/sigprofiler_sv/main.nf"
+    process "SIGPROFILER_SV"
+    tag "module"
+    tag "sigs"
+
+    test("Two subjects — SV contribution and counts files are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sigs_sv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/esvee/T1-T.esvee.somatic.vcf.gz')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sigs_sv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/esvee/T2-T.esvee.somatic.vcf.gz')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/COSMIC_Human_v3.6.zip')
+                input[2] = file('${projectDir}/assets/cosmic_sv_metadata.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            // Contribution files
+            assert process.out.sigs_sv.size() == 2
+            def contrib_names = process.out.sigs_sv.collect { meta, f -> f.toString().split('/').last() }.sort()
+            assert contrib_names == ['T1.data_mutational_signatures_contribution_SV.txt', 'T2.data_mutational_signatures_contribution_SV.txt']
+
+            // Counts files
+            assert process.out.sigs_counts_sv.size() == 2
+            def counts_names = process.out.sigs_counts_sv.collect { meta, f -> f.toString().split('/').last() }.sort()
+            assert counts_names == ['T1.data_mutational_signatures_counts_SV.txt', 'T2.data_mutational_signatures_counts_SV.txt']
+
+            // Verify contribution format
+            def t1_contrib = process.out.sigs_sv.collect { meta, f -> f }.find { it.toString().endsWith('T1.data_mutational_signatures_contribution_SV.txt') }
+            def contrib_header = path(t1_contrib.toString()).readLines()[0]
+            assert contrib_header.contains('ENTITY_STABLE_ID')
+            assert contrib_header.contains('NAME')
+            assert contrib_header.contains('DESCRIPTION')
+            assert contrib_header.contains('T1')
+
+            // Verify contribution has SV signature IDs
+            def contrib_lines = path(t1_contrib.toString()).readLines()
+            if (contrib_lines.size() > 1) {
+                def contrib_ids = contrib_lines[1..-1].collect { it.split('\t')[0] }
+                assert contrib_ids.any { it.startsWith('mutational_signatures_contribution_SV') }
+            }
+
+            // Verify counts format (CATEGORY, no DESCRIPTION)
+            def t1_counts = process.out.sigs_counts_sv.collect { meta, f -> f }.find { it.toString().endsWith('T1.data_mutational_signatures_counts_SV.txt') }
+            def counts_header = path(t1_counts.toString()).readLines()[0]
+            assert counts_header.contains('ENTITY_STABLE_ID')
+            assert counts_header.contains('NAME')
+            assert counts_header.contains('CATEGORY')
+            assert !counts_header.contains('DESCRIPTION')
+            assert counts_header.contains('T1')
+
+            // Verify counts ENTITY_STABLE_ID uses SV format
+            def counts_lines = path(t1_counts.toString()).readLines()
+            assert counts_lines.size() > 1
+            def counts_ids = counts_lines[1..-1].collect { it.split('\t')[0] }
+            assert counts_ids.any { it.startsWith('mutational_signatures_matrix_SV_') }
+
+            // Verify CATEGORY uses SV type grouping (DEL, INV, TDS, TRANS)
+            def categories = counts_lines[1..-1].collect { it.split('\t')[2] }
+            assert categories.any { it in ['DEL', 'INV', 'TDS', 'TRANS'] }
+
+            snapshot(
+                process.out.sigs_sv.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() },
+                process.out.sigs_counts_sv.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }
+            ).match()
+        }
+    }
+}

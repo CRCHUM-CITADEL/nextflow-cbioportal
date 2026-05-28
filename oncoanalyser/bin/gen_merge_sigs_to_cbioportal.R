@@ -29,6 +29,8 @@ read_sigs_file <- function(path) {
     expected <- c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION")
     missing <- setdiff(expected, colnames(dt))
     if (length(missing) > 0) stop("Missing columns in ", path, ": ", paste(missing, collapse = ", "))
+    # Coerce key columns to character — fread infers logical for header-only files
+    for (col in expected) dt[[col]] <- as.character(dt[[col]])
     dt
 }
 

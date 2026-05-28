@@ -12,7 +12,9 @@ include { GENOMIC_ML                   } from '../subworkflows/local/genomic_ml'
 include { GENOMIC_AGGREGATE_OUTPUT     } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE           } from '../modules/local/generate_meta_file'
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
-include { SIGS_TO_CBIOPORTAL           } from '../modules/local/sigs_to_cbioportal'
+include { SIGPROFILER_SBS               } from '../modules/local/sigprofiler_sbs'
+include { SIGPROFILER_DBS              } from '../modules/local/sigprofiler_dbs'
+include { SIGPROFILER_SV               } from '../modules/local/sigprofiler_sv'
 include { SIGS_COUNTS_TO_CBIOPORTAL    } from '../modules/local/sigs_counts_to_cbioportal'
 include { PACKAGE_CBIOPORTAL           } from '../modules/local/package_cbioportal'
 
@@ -119,6 +121,30 @@ workflow GENOMIC {
                 def sigs_counts = file("${baseDir}/${meta.sample}.data_mutational_signatures_counts_SBS.txt", checkIfExists: false)
                 if (sigs_counts.exists()) {
                     files.add([meta + [pipeline: 'sigs_counts'], sigs_counts])
+                }
+
+                // DBS signature contribution file
+                def sigs_dbs = file("${baseDir}/${meta.sample}.data_mutational_signatures_contribution_DBS.txt", checkIfExists: false)
+                if (sigs_dbs.exists()) {
+                    files.add([meta + [pipeline: 'sigs_dbs'], sigs_dbs])
+                }
+
+                // DBS signature counts file
+                def sigs_counts_dbs = file("${baseDir}/${meta.sample}.data_mutational_signatures_counts_DBS.txt", checkIfExists: false)
+                if (sigs_counts_dbs.exists()) {
+                    files.add([meta + [pipeline: 'sigs_counts_dbs'], sigs_counts_dbs])
+                }
+
+                // SV signature contribution file
+                def sigs_sv = file("${baseDir}/${meta.sample}.data_mutational_signatures_contribution_SV.txt", checkIfExists: false)
+                if (sigs_sv.exists()) {
+                    files.add([meta + [pipeline: 'sigs_sv'], sigs_sv])
+                }
+
+                // SV signature counts file
+                def sigs_counts_sv = file("${baseDir}/${meta.sample}.data_mutational_signatures_counts_SV.txt", checkIfExists: false)
+                if (sigs_counts_sv.exists()) {
+                    files.add([meta + [pipeline: 'sigs_counts_sv'], sigs_counts_sv])
                 }
 
                 return files
@@ -248,13 +274,33 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // SIGS allocation TSV → mutational signatures
-        ch_sigs = ch_samples_to_run
+        // SBS signature fitting: reuse snv_counts.csv with pipeline:'sigs' for cache compatibility
+        ch_sigs_for_assignment = ch_samples_to_run
             .map { meta ->
-                def sig = findOncoFile(meta,
-                    "${meta.folder}/sigs/${meta.subject}-T.sig.allocation.tsv",
-                    'mutational signatures (SIGS)')
-                sig ? [meta + [pipeline: 'sigs'], sig] : null
+                def f = findOncoFile(meta,
+                    "${meta.folder}/sigs/${meta.subject}-T.sig.snv_counts.csv",
+                    'SNV counts (SigProfiler SBS)')
+                f ? [meta + [pipeline: 'sigs'], f] : null
+            }
+            .filter { it != null }
+
+        // DBS signature fitting: extract from PAVE somatic VCF
+        ch_sigs_dbs = ch_samples_to_run
+            .map { meta ->
+                def f = findOncoFile(meta,
+                    "${meta.folder}/pave/${meta.subject}-T.pave.somatic.vcf.gz",
+                    'somatic VCF (SigProfiler DBS)')
+                f ? [meta + [pipeline: 'sigs_dbs'], f] : null
+            }
+            .filter { it != null }
+
+        // SV signature fitting: classify from ESVEE somatic VCF
+        ch_sigs_sv = ch_samples_to_run
+            .map { meta ->
+                def f = findOncoFile(meta,
+                    "${meta.folder}/esvee/${meta.subject}-T.esvee.somatic.vcf.gz",
+                    'SV VCF (SigProfiler SV)')
+                f ? [meta + [pipeline: 'sigs_sv'], f] : null
             }
             .filter { it != null }
 
@@ -276,7 +322,11 @@ workflow GENOMIC {
 
         ISOFOX_FUSION_TO_CBIOPORTAL(ch_isofox_fusion)
 
-        SIGS_TO_CBIOPORTAL(ch_sigs, file(params.signatures_etiology))
+        SIGPROFILER_SBS(ch_sigs_for_assignment, file(params.cosmic_reference), file(params.sbs_metadata))
+
+        SIGPROFILER_DBS(ch_sigs_dbs, file(params.cosmic_reference), file(params.dbs_metadata))
+
+        SIGPROFILER_SV(ch_sigs_sv, file(params.cosmic_reference), file(params.sv_metadata))
 
         SIGS_COUNTS_TO_CBIOPORTAL(ch_sigs_counts)
 
@@ -316,11 +366,23 @@ workflow GENOMIC {
         all_mutations = GENOMIC_MUTATIONS.out.out
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'mutation' })
 
-        all_sigs = SIGS_TO_CBIOPORTAL.out.sigs
+        all_sigs = SIGPROFILER_SBS.out.sigs
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs' })
 
         all_sigs_counts = SIGS_COUNTS_TO_CBIOPORTAL.out.sigs_counts
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_counts' })
+
+        all_sigs_dbs = SIGPROFILER_DBS.out.sigs_dbs
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_dbs' })
+
+        all_sigs_counts_dbs = SIGPROFILER_DBS.out.sigs_counts_dbs
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_counts_dbs' })
+
+        all_sigs_sv = SIGPROFILER_SV.out.sigs_sv
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_sv' })
+
+        all_sigs_counts_sv = SIGPROFILER_SV.out.sigs_counts_sv
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_counts_sv' })
 
         // ── Aggregate per-group outputs ───────────────────────────────────────
 
@@ -332,6 +394,10 @@ workflow GENOMIC {
             all_mutations,
             all_sigs,
             all_sigs_counts,
+            all_sigs_dbs,
+            all_sigs_counts_dbs,
+            all_sigs_sv,
+            all_sigs_counts_sv,
         )
 
         // ── ML formatting ─────────────────────────────────────────────────────
@@ -367,6 +433,10 @@ reference_genome: hg38
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.mutation)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_dbs)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_dbs)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_sv)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_sv)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
             .mix(GENERATE_META_FILE.out)

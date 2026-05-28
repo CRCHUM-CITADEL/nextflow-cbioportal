@@ -3,6 +3,10 @@ include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
 include { MERGE_EXPRESSION_FILES_TO_CBIOPORTAL } from '../../../modules/local/merge_expression_files_to_cbioportal'
 include { MERGE_SIGS_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_to_cbioportal'
 include { MERGE_SIGS_COUNTS_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_counts_to_cbioportal'
+include { MERGE_SIGS_DBS_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_dbs_to_cbioportal'
+include { MERGE_SIGS_COUNTS_DBS_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_counts_dbs_to_cbioportal'
+include { MERGE_SIGS_SV_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_sv_to_cbioportal'
+include { MERGE_SIGS_COUNTS_SV_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_counts_sv_to_cbioportal'
 
 workflow GENOMIC_AGGREGATE_OUTPUT {
 
@@ -14,6 +18,10 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         mutation_results
         sigs_results
         sigs_counts_results
+        sigs_dbs_results
+        sigs_counts_dbs_results
+        sigs_sv_results
+        sigs_counts_sv_results
 
     main:
 
@@ -137,6 +145,70 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
 
         sigs_counts_output = MERGE_SIGS_COUNTS_TO_CBIOPORTAL(sigs_counts_file_list)
 
+        // merge DBS signatures --------------------------------------------------------
+        sigs_dbs_file_list = sigs_dbs_results
+            .map { meta, filepath -> tuple(meta.group, meta, filepath) }
+            .groupTuple()
+            .map { group, metas, files ->
+                def meta = metas[0]
+                def sortedFiles = files.sort { a, b ->
+                    def na = a.toString().split(/[\/\\]/).last()
+                    def nb = b.toString().split(/[\/\\]/).last()
+                    na <=> nb
+                }
+                return tuple(meta, sortedFiles)
+            }
+
+        sigs_dbs_output = MERGE_SIGS_DBS_TO_CBIOPORTAL(sigs_dbs_file_list)
+
+        // merge DBS signature counts --------------------------------------------------
+        sigs_counts_dbs_file_list = sigs_counts_dbs_results
+            .map { meta, filepath -> tuple(meta.group, meta, filepath) }
+            .groupTuple()
+            .map { group, metas, files ->
+                def meta = metas[0]
+                def sortedFiles = files.sort { a, b ->
+                    def na = a.toString().split(/[\/\\]/).last()
+                    def nb = b.toString().split(/[\/\\]/).last()
+                    na <=> nb
+                }
+                return tuple(meta, sortedFiles)
+            }
+
+        sigs_counts_dbs_output = MERGE_SIGS_COUNTS_DBS_TO_CBIOPORTAL(sigs_counts_dbs_file_list)
+
+        // merge SV signatures ---------------------------------------------------------
+        sigs_sv_file_list = sigs_sv_results
+            .map { meta, filepath -> tuple(meta.group, meta, filepath) }
+            .groupTuple()
+            .map { group, metas, files ->
+                def meta = metas[0]
+                def sortedFiles = files.sort { a, b ->
+                    def na = a.toString().split(/[\/\\]/).last()
+                    def nb = b.toString().split(/[\/\\]/).last()
+                    na <=> nb
+                }
+                return tuple(meta, sortedFiles)
+            }
+
+        sigs_sv_output = MERGE_SIGS_SV_TO_CBIOPORTAL(sigs_sv_file_list)
+
+        // merge SV signature counts ---------------------------------------------------
+        sigs_counts_sv_file_list = sigs_counts_sv_results
+            .map { meta, filepath -> tuple(meta.group, meta, filepath) }
+            .groupTuple()
+            .map { group, metas, files ->
+                def meta = metas[0]
+                def sortedFiles = files.sort { a, b ->
+                    def na = a.toString().split(/[\/\\]/).last()
+                    def nb = b.toString().split(/[\/\\]/).last()
+                    na <=> nb
+                }
+                return tuple(meta, sortedFiles)
+            }
+
+        sigs_counts_sv_output = MERGE_SIGS_COUNTS_SV_TO_CBIOPORTAL(sigs_counts_sv_file_list)
+
         // create meta files and case lists ---------------------------------------------------------
 
         cnv_sample_list = cnv_results_seg
@@ -216,7 +288,7 @@ datatype: LIMIT-VALUE
 stable_id: mutational_signatures_contribution_SBS
 show_profile_in_analysis_tab: true
 profile_name: Mutational Signatures
-profile_description: Mutational signatures based on COSMIC v3 (WGS)
+profile_description: Mutational signatures based on COSMIC v3.6 (WGS)
 data_filename: data_mutational_signatures_contribution_SBS.txt
 generic_entity_meta_properties: NAME,DESCRIPTION
 pivot_threshold_value: 0.0
@@ -229,14 +301,66 @@ datatype: LIMIT-VALUE
 stable_id: mutational_signatures_counts_SBS
 show_profile_in_analysis_tab: true
 profile_name: Mutational Signatures Counts
-profile_description: Mutational signature trinucleotide counts based on COSMIC v3 (WGS)
+profile_description: Mutational signature trinucleotide counts based on COSMIC v3.6 (WGS)
 data_filename: data_mutational_signatures_counts_SBS.txt
 generic_entity_meta_properties: NAME,CATEGORY
 pivot_threshold_value: 0.0
 """
 
-        meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs, meta_text_counts)
-        file_name_all = channel.of("cna_hg38", "cna_long", "sv", "expression", "sequenced", "mutational_signatures_contribution_SBS", "mutational_signatures_counts_SBS")
+        meta_text_sigs_dbs = """cancer_study_identifier: add_text
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_contribution_DBS
+show_profile_in_analysis_tab: true
+profile_name: DBS Mutational Signatures
+profile_description: Doublet base substitution signatures based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_contribution_DBS.txt
+generic_entity_meta_properties: NAME,DESCRIPTION
+pivot_threshold_value: 0.0
+"""
+
+        meta_text_counts_dbs = """cancer_study_identifier: add_text
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_counts_DBS
+show_profile_in_analysis_tab: true
+profile_name: DBS Mutational Signatures Counts
+profile_description: Doublet base substitution trinucleotide counts based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_counts_DBS.txt
+generic_entity_meta_properties: NAME,CATEGORY
+pivot_threshold_value: 0.0
+"""
+
+        meta_text_sigs_sv = """cancer_study_identifier: add_text
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_contribution_SV
+show_profile_in_analysis_tab: true
+profile_name: SV Mutational Signatures
+profile_description: Structural variant signatures based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_contribution_SV.txt
+generic_entity_meta_properties: NAME,DESCRIPTION
+pivot_threshold_value: 0.0
+"""
+
+        meta_text_counts_sv = """cancer_study_identifier: add_text
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_counts_SV
+show_profile_in_analysis_tab: true
+profile_name: SV Mutational Signatures Counts
+profile_description: Structural variant type counts based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_counts_SV.txt
+generic_entity_meta_properties: NAME,CATEGORY
+pivot_threshold_value: 0.0
+"""
+
+        meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs, meta_text_counts, meta_text_sigs_dbs, meta_text_counts_dbs, meta_text_sigs_sv, meta_text_counts_sv)
+        file_name_all = channel.of("cna_hg38", "cna_long", "sv", "expression", "sequenced", "mutational_signatures_contribution_SBS", "mutational_signatures_counts_SBS", "mutational_signatures_contribution_DBS", "mutational_signatures_counts_DBS", "mutational_signatures_contribution_SV", "mutational_signatures_counts_SV")
         all_groups_meta = all_groups.combine(file_name_all).map{all_groups, file_name_all -> all_groups }
 
         GENERATE_META_FILE(
@@ -251,8 +375,12 @@ pivot_threshold_value: 0.0
         expression  = expression_output
         mutation    = mutation_output
         sv          = sv_output
-        sigs        = sigs_output
-        sigs_counts = sigs_counts_output
-        meta_files  = GENERATE_META_FILE.out
+        sigs            = sigs_output
+        sigs_counts     = sigs_counts_output
+        sigs_dbs        = sigs_dbs_output
+        sigs_counts_dbs = sigs_counts_dbs_output
+        sigs_sv         = sigs_sv_output
+        sigs_counts_sv  = sigs_counts_sv_output
+        meta_files      = GENERATE_META_FILE.out
         case_files  = GENERATE_CASE_LIST.out
 }

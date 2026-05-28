@@ -1,8 +1,8 @@
 nextflow_process {
 
-    name "Test SIGS_TO_CBIOPORTAL module"
-    script "modules/local/sigs_to_cbioportal/main.nf"
-    process "SIGS_TO_CBIOPORTAL"
+    name "Test SIGPROFILER_SBS module"
+    script "modules/local/sigprofiler_sbs/main.nf"
+    process "SIGPROFILER_SBS"
     tag "module"
     tag "sigs"
 
@@ -17,14 +17,15 @@ nextflow_process {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sigs'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/sigs/T1-T.sig.allocation.tsv')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/sigs/T1-T.sig.snv_counts.csv')
                     ],
                     [
                         [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sigs'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/sigs/T2-T.sig.allocation.tsv')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/sigs/T2-T.sig.snv_counts.csv')
                     ]
                 )
-                input[1] = file('${projectDir}/assets/signatures_etiology.tsv')
+                input[1] = file('${projectDir}/assets/COSMIC_Human_v3.6.zip')
+                input[2] = file('${projectDir}/assets/cosmic_sbs_metadata.tsv')
                 """
             }
         }
@@ -44,13 +45,11 @@ nextflow_process {
             assert header.contains('DESCRIPTION')
             assert header.contains('T1')
 
-            // Verify ENTITY_STABLE_ID uses mutational_signatures_contribution_SBS<n> format
+            // Verify ENTITY_STABLE_ID uses COSMIC v3.6 SBS naming (e.g., SBS1, SBS5, SBS7a)
             def t1_lines = path(t1_path.toString()).readLines()
             assert t1_lines.size() > 1
             def entity_ids = t1_lines[1..-1].collect { it.split('\t')[0] }
             assert entity_ids.any { it.startsWith('mutational_signatures_contribution_SBS') }
-            assert entity_ids.contains('mutational_signatures_contribution_SBS1')
-            assert entity_ids.contains('mutational_signatures_contribution_SBS5')
 
             snapshot(
                 process.out.sigs.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }

@@ -1,0 +1,15 @@
+{
+    "Two subjects \u2014 SV data_sv.txt files are produced": {
+        "content": [
+            [
+                "T1.data_sv.txt:md5,160e2cfebb0b949e1c63b8d9aa807a15",
+                "T2.data_sv.txt:md5,24f907b9f745fb9b0eccda9ac852aaf6"
+            ]
+        ],
+        "timestamp": "2026-05-28T08:18:07.532047062",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

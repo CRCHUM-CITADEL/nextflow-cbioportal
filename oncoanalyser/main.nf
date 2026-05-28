@@ -55,6 +55,8 @@ workflow {
         ch_pcgr_data   = params.pcgr_data   ? Channel.fromPath(params.pcgr_data)   : Channel.empty()
         ch_cosmic_data = params.cosmic_data ? Channel.fromPath(params.cosmic_data) : Channel.empty()
 
+        ch_chimer_data = params.chimer_data ? Channel.fromPath(params.chimer_data) : Channel.empty()
+
         needs_vep_download  = !params.vep_data
         needs_pcgr_download = !params.pcgr_data
 
@@ -68,6 +70,7 @@ workflow {
             needs_pcgr_download,
             params.genome_reference,
             params.cosmic_data,
+            params.chimer_data,
         )
     }
     else if (params.mode == 'clinical'){

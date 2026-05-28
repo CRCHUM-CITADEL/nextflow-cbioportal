@@ -14,10 +14,11 @@ workflow GENOMIC_ML {
         mutation_result     // tuple (group, filepath)
         sv_result           // tuple (group, filepath)
         cosmic_data         // file
+        chimer_data
 
     main:
 
-        known_fusions_data = DOWNLOAD_KNOWN_FUSIONS()
+        // known_fusions_data = DOWNLOAD_KNOWN_FUSIONS()
 
         FORMAT_ML_CNV(
             cnv_result_long
@@ -45,7 +46,7 @@ workflow GENOMIC_ML {
 
         FORMAT_PROCESS_ML_SV(
             cosmic_data,
-            known_fusions_data,
+            chimer_data,
             sv_result
         )
 

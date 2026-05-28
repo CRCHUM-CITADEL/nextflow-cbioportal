@@ -46,6 +46,7 @@ workflow GENOMIC {
         needs_pcgr              // boolean — true when pcgr_data is not supplied
         fasta                   // path — GRCh38 reference FASTA (for vcf2maf)
         cosmic_data             // channel<path> — COSMIC/ChimerKB fusion data for ML step
+        chimer_data
         
     main:
 
@@ -342,6 +343,7 @@ workflow GENOMIC {
             GENOMIC_AGGREGATE_OUTPUT.out.mutation,
             GENOMIC_AGGREGATE_OUTPUT.out.sv,
             cosmic_data,
+            chimer_data,
         )
 
         // ── Study-level metadata ──────────────────────────────────────────────

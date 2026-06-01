@@ -51,10 +51,10 @@ nextflow_process {
             assert entity_ids.any { it.startsWith('mutational_signatures_matrix_') }
             assert entity_ids.contains('mutational_signatures_matrix_A_C-A_A')
 
-            // Verify NAME uses A[C>A]A format
+            // Verify NAME uses A_C-A_A format (alphanumeric + _ + - only)
             def name_vals = t1_lines[1..-1].collect { it.split('\t')[1] }
-            assert name_vals.any { it ==~ /[ACGT]\[[ACGT]>[ACGT]\][ACGT]/ }
-            assert name_vals.contains('A[C>A]A')
+            assert name_vals.any { it ==~ /[ACGT]_[ACGT]-[ACGT]_[ACGT]/ }
+            assert name_vals.contains('A_C-A_A')
 
             snapshot(
                 process.out.sigs_counts.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }

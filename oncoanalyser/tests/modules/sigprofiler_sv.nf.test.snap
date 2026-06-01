@@ -6,11 +6,11 @@
                 "T2.data_mutational_signatures_contribution_SV.txt:md5,d9cdf6611733f1c7cd6d2ce9c5888254"
             ],
             [
-                "T1.data_mutational_signatures_counts_SV.txt:md5,f51c6127da978d6dac09a816eb4062c0",
-                "T2.data_mutational_signatures_counts_SV.txt:md5,22fe954a42a6e7a0a5a5f69a94208761"
+                "T1.data_mutational_signatures_counts_SV.txt:md5,07d33a9f7afab595493dfe590a299683",
+                "T2.data_mutational_signatures_counts_SV.txt:md5,9cbbd26ec879687ad7bd3fcce312a90b"
             ]
         ],
-        "timestamp": "2026-05-28T08:45:26.989155569",
+        "timestamp": "2026-06-01T14:58:11.962867867",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "25.10.4"

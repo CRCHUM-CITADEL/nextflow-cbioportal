@@ -23,39 +23,44 @@ if (is.null(opt$input_files)) stop("--input_files is required")
 input_files <- trimws(strsplit(opt$input_files, ",")[[1]])
 cat("Merging", length(input_files), "signature file(s)\n")
 
-# Read each per-sample file; track the sample column (4th column)
+# Known metadata column names (non-sample columns)
+KNOWN_META_COLS <- c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION", "CATEGORY", "URL")
+
+# Read each per-sample file; auto-detect metadata columns
 read_sigs_file <- function(path) {
     dt <- fread(path, sep = "\t", header = TRUE)
-    expected <- c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION")
-    missing <- setdiff(expected, colnames(dt))
-    if (length(missing) > 0) stop("Missing columns in ", path, ": ", paste(missing, collapse = ", "))
-    # Coerce key columns to character — fread infers logical for header-only files
-    for (col in expected) dt[[col]] <- as.character(dt[[col]])
+    if (!"ENTITY_STABLE_ID" %in% colnames(dt)) stop("Missing ENTITY_STABLE_ID in ", path)
+    # Coerce metadata columns to character — fread infers logical for header-only files
+    meta_cols <- intersect(KNOWN_META_COLS, colnames(dt))
+    for (col in meta_cols) dt[[col]] <- as.character(dt[[col]])
     dt
 }
 
 tables <- lapply(input_files, read_sigs_file)
 
-# Merge all tables by ENTITY_STABLE_ID, NAME, DESCRIPTION
+# Auto-detect merge keys: metadata columns present in the first file
+meta_keys <- intersect(KNOWN_META_COLS, colnames(tables[[1]]))
+cat("Merge keys:", paste(meta_keys, collapse = ", "), "\n")
+
 merged <- tables[[1]]
 if (length(tables) > 1) {
     for (i in 2:length(tables)) {
         merged <- merge(merged, tables[[i]],
-                        by = c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION"),
+                        by = meta_keys,
                         all = TRUE)
         cat("  Merged file", i, "of", length(tables), "\n")
     }
 }
 
 # Fill missing signature contributions with 0
-sample_cols <- setdiff(colnames(merged), c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION"))
+sample_cols <- setdiff(colnames(merged), meta_keys)
 for (col in sample_cols) {
     merged[[col]][is.na(merged[[col]])] <- 0
 }
 
 # Sort sample columns alphabetically for deterministic output
 sample_cols_sorted <- sort(sample_cols)
-setcolorder(merged, c("ENTITY_STABLE_ID", "NAME", "DESCRIPTION", sample_cols_sorted))
+setcolorder(merged, c(meta_keys, sample_cols_sorted))
 
 # Sort rows by ENTITY_STABLE_ID
 setorder(merged, ENTITY_STABLE_ID)

@@ -319,10 +319,12 @@ def write_counts(matrix_df, sample_id, output_path):
         else:
             base_type = parts[1]
 
+        # Sanitize ">" to "gt" for cBioPortal (only alphanumeric, _, - allowed)
+        safe_type = sv_type.replace(">", "gt")
         rows.append(
             {
-                "ENTITY_STABLE_ID": f"mutational_signatures_matrix_SV_{sv_type}",
-                "NAME": sv_type,
+                "ENTITY_STABLE_ID": f"mutational_signatures_matrix_SV_{safe_type}",
+                "NAME": safe_type,
                 "CATEGORY": base_type.upper(),
                 sample_id: int(count),
             }

@@ -14,6 +14,7 @@ include { GENERATE_META_FILE           } from '../modules/local/generate_meta_fi
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
 include { SIGPROFILER_SBS               } from '../modules/local/sigprofiler_sbs'
 include { SIGPROFILER_DBS              } from '../modules/local/sigprofiler_dbs'
+include { SIGPROFILER_ID               } from '../modules/local/sigprofiler_id'
 include { SIGPROFILER_SV               } from '../modules/local/sigprofiler_sv'
 include { SIGS_COUNTS_TO_CBIOPORTAL    } from '../modules/local/sigs_counts_to_cbioportal'
 include { PACKAGE_CBIOPORTAL           } from '../modules/local/package_cbioportal'
@@ -133,6 +134,18 @@ workflow GENOMIC {
                 def sigs_counts_dbs = file("${baseDir}/${meta.sample}.data_mutational_signatures_counts_DBS.txt", checkIfExists: false)
                 if (sigs_counts_dbs.exists()) {
                     files.add([meta + [pipeline: 'sigs_counts_dbs'], sigs_counts_dbs])
+                }
+
+                // ID signature contribution file
+                def sigs_id = file("${baseDir}/${meta.sample}.data_mutational_signatures_contribution_ID.txt", checkIfExists: false)
+                if (sigs_id.exists()) {
+                    files.add([meta + [pipeline: 'sigs_id'], sigs_id])
+                }
+
+                // ID signature counts file
+                def sigs_counts_id = file("${baseDir}/${meta.sample}.data_mutational_signatures_counts_ID.txt", checkIfExists: false)
+                if (sigs_counts_id.exists()) {
+                    files.add([meta + [pipeline: 'sigs_counts_id'], sigs_counts_id])
                 }
 
                 // SV signature contribution file
@@ -294,6 +307,16 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
+        // ID signature fitting: extract indels from PAVE somatic VCF
+        ch_sigs_id = ch_samples_to_run
+            .map { meta ->
+                def f = findOncoFile(meta,
+                    "${meta.folder}/pave/${meta.subject}-T.pave.somatic.vcf.gz",
+                    'somatic VCF (SigProfiler ID)')
+                f ? [meta + [pipeline: 'sigs_id'], f] : null
+            }
+            .filter { it != null }
+
         // SV signature fitting: classify from ESVEE somatic VCF
         ch_sigs_sv = ch_samples_to_run
             .map { meta ->
@@ -325,6 +348,8 @@ workflow GENOMIC {
         SIGPROFILER_SBS(ch_sigs_for_assignment, file(params.cosmic_reference), file(params.sbs_metadata))
 
         SIGPROFILER_DBS(ch_sigs_dbs, file(params.cosmic_reference), file(params.dbs_metadata))
+
+        SIGPROFILER_ID(ch_sigs_id, file(params.cosmic_reference), file(params.id_metadata), fasta)
 
         SIGPROFILER_SV(ch_sigs_sv, file(params.cosmic_reference), file(params.sv_metadata))
 
@@ -378,6 +403,12 @@ workflow GENOMIC {
         all_sigs_counts_dbs = SIGPROFILER_DBS.out.sigs_counts_dbs
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_counts_dbs' })
 
+        all_sigs_id = SIGPROFILER_ID.out.sigs_id
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_id' })
+
+        all_sigs_counts_id = SIGPROFILER_ID.out.sigs_counts_id
+            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_counts_id' })
+
         all_sigs_sv = SIGPROFILER_SV.out.sigs_sv
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_sv' })
 
@@ -396,6 +427,8 @@ workflow GENOMIC {
             all_sigs_counts,
             all_sigs_dbs,
             all_sigs_counts_dbs,
+            all_sigs_id,
+            all_sigs_counts_id,
             all_sigs_sv,
             all_sigs_counts_sv,
         )
@@ -435,6 +468,8 @@ reference_genome: hg38
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_dbs)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_dbs)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_id)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_id)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_sv)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_sv)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)

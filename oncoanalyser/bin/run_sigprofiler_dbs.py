@@ -231,9 +231,8 @@ def write_counts(matrix_df, sample_id, output_path):
         alt = dbs_type.split(">")[1]
         rows.append(
             {
-                "ENTITY_STABLE_ID": f"mutational_signatures_matrix_DBS_{ref}_{alt}",
-                "NAME": dbs_type.replace(">", "-"),
-                "CATEGORY": ref,
+                "ENTITY_STABLE_ID": f"mutational_signatures_matrix_{ref}-{alt}",
+                "NAME": dbs_type,
                 sample_id: int(count),
             }
         )

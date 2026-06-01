@@ -75,8 +75,14 @@ nextflow_workflow {
                     ]
                 )
                 // Sigs and sigs_counts — empty channels (optional; not all runs produce signatures)
-                input[5] = Channel.empty()
-                input[6] = Channel.empty()
+                input[5] = Channel.empty()   // sigs_results (SBS contribution)
+                input[6] = Channel.empty()   // sigs_counts_results (SBS counts)
+                input[7] = Channel.empty()   // sigs_dbs_results (DBS contribution)
+                input[8] = Channel.empty()   // sigs_counts_dbs_results (DBS counts)
+                input[9] = Channel.empty()   // sigs_id_results (ID contribution)
+                input[10] = Channel.empty()  // sigs_counts_id_results (ID counts)
+                input[11] = Channel.empty()  // sigs_sv_results (SV contribution)
+                input[12] = Channel.empty()  // sigs_counts_sv_results (SV counts)
                 """
             }
         }

@@ -1,0 +1,18 @@
+id_id	category	etiology	main_effect
+ID1	Slippage	Slippage during DNA replication of the replicated DNA strand; tends to be highly elevated in cancer samples with defective DNA mismatch repair and microsatellite instability (MSI)	MSI, colorectal, uterine
+ID2	Slippage	Slippage during DNA replication of the template DNA strand; tends to be highly elevated in cancer samples with defective DNA mismatch repair and microsatellite instability (MSI)	MSI, colorectal, uterine
+ID3	Smoking	Associated with tobacco smoking	Lung, head and neck
+ID4	Unknown	Unknown; shows large numbers of mutations in a subset of samples which do not obviously have the mutational features of defective DNA mismatch repair	Various
+ID5	Unknown	Unknown; the mutation burden is correlated with the age of cancer diagnosis and this clock-like behaviour suggests that ID5 mutations may accumulate in normal cells	Various
+ID6	HRD	Homologous recombination-based DNA damage repair defects (HRD), often due to inactivating BRCA1 or BRCA2 mutations, leading to non-homologous DNA end-joining activity	Breast, ovarian, pancreatic
+ID7	MMR	Defective DNA mismatch repair; associated with ID1 and ID2 mutations	Colorectal, uterine
+ID8	Unknown	Unknown; the features of ID8 mutations have some similarities to those of radiation induced mutations	Various
+ID9	Unknown	Unknown	Various
+ID10	Unknown	Unknown	Various
+ID11	Unknown	Unknown; occasional samples show large numbers of ID11 mutations without obvious evidence of defective DNA mismatch repair	Various
+ID12	Unknown	Unknown	Various
+ID13	UV	Exposure to ultraviolet light; associated with DBS1, SBS7a and SBS7b	Skin melanoma
+ID14	Unknown	Unknown; generates large numbers of indels in a small number of samples without obvious evidence of defective DNA mismatch repair	Various
+ID15	Unknown	Unknown; generates a large number of indels in a small number of cancers without obvious evidence of defective DNA mismatch repair	Various
+ID16	Unknown	Unknown; generates high number of indels in a single ovarian cancer without obvious evidence of defective DNA mismatch repair	Ovarian
+ID17	TOP2A	Appears to be caused by mutations in topoisomerase TOP2A	Various

@@ -25,11 +25,10 @@ for (arg in c("input", "sample", "output")) {
 transform_context <- function(x) {
     parts <- strsplit(x, "_")[[1]]   # e.g. c("C>A", "ACA")
     if (length(parts) != 2) stop(paste0("Unexpected BucketName format: ", x))
-    mut <- gsub(">", "-", parts[1])  # "C>A" → "C-A"
+    mut <- parts[1]                   # "C>A"
     ctx <- parts[2]                   # "ACA"
     if (nchar(ctx) != 3) stop(paste0("Expected 3-character context, got: ", ctx))
-    # Use only allowed chars: alphanumeric, _, -
-    paste0(substr(ctx, 1, 1), "_", mut, "_", substr(ctx, 3, 3))
+    paste0(substr(ctx, 1, 1), "[", mut, "]", substr(ctx, 3, 3))
 }
 
 gen_entity_id <- function(x) {
@@ -53,14 +52,10 @@ cat("Found", nrow(counts), "trinucleotide contexts\n")
 
 entity_ids <- sapply(counts$BucketName, gen_entity_id,       USE.NAMES = FALSE)
 names      <- sapply(counts$BucketName, transform_context, USE.NAMES = FALSE)
-# CATEGORY is the mutation type (e.g. "C-A") — drives colour grouping in cBioPortal
-# Use "-" instead of ">" since ENTITY_STABLE_ID/NAME/CATEGORY only allow [a-zA-Z0-9_-]
-categories <- gsub(">", "-", sub("_.*", "", counts$BucketName))
 
 out <- data.table(
     ENTITY_STABLE_ID = entity_ids,
-    NAME             = names,
-    CATEGORY         = categories
+    NAME             = names
 )
 out[[opt$sample]] <- counts[[2]]
 

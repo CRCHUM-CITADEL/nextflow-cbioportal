@@ -35,12 +35,12 @@ nextflow_process {
             def names = process.out.sigs_counts.collect { meta, f -> f.toString().split('/').last() }.sort()
             assert names == ['T1.data_mutational_signatures_counts_SBS.txt', 'T2.data_mutational_signatures_counts_SBS.txt']
 
-            // Verify cBioPortal GENERIC_ASSAY format columns (ENTITY_STABLE_ID, NAME, CATEGORY — no DESCRIPTION)
+            // Verify cBioPortal GENERIC_ASSAY format columns (ENTITY_STABLE_ID, NAME — no CATEGORY, no DESCRIPTION)
             def t1_path = process.out.sigs_counts.collect { meta, f -> f }.find { it.toString().endsWith('T1.data_mutational_signatures_counts_SBS.txt') }
             def header = path(t1_path.toString()).readLines()[0]
             assert header.contains('ENTITY_STABLE_ID')
             assert header.contains('NAME')
-            assert header.contains('CATEGORY')
+            assert !header.contains('CATEGORY')
             assert !header.contains('DESCRIPTION')
             assert header.contains('T1')
 
@@ -51,10 +51,9 @@ nextflow_process {
             assert entity_ids.any { it.startsWith('mutational_signatures_matrix_') }
             assert entity_ids.contains('mutational_signatures_matrix_A_C-A_A')
 
-            // Verify NAME uses A_C-A_A format (alphanumeric + _ + - only)
+            // Verify NAME uses A[C>A]A format
             def name_vals = t1_lines[1..-1].collect { it.split('\t')[1] }
-            assert name_vals.any { it ==~ /[ACGT]_[ACGT]-[ACGT]_[ACGT]/ }
-            assert name_vals.contains('A_C-A_A')
+            assert name_vals.contains('A[C>A]A')
 
             snapshot(
                 process.out.sigs_counts.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }

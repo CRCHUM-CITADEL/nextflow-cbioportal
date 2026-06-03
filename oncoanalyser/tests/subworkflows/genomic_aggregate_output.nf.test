@@ -81,8 +81,6 @@ nextflow_workflow {
                 input[8] = Channel.empty()   // sigs_counts_dbs_results (DBS counts)
                 input[9] = Channel.empty()   // sigs_id_results (ID contribution)
                 input[10] = Channel.empty()  // sigs_counts_id_results (ID counts)
-                input[11] = Channel.empty()  // sigs_sv_results (SV contribution)
-                input[12] = Channel.empty()  // sigs_counts_sv_results (SV counts)
                 """
             }
         }

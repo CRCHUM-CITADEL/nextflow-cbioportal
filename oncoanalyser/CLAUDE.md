@@ -75,7 +75,7 @@ container_sigprofiler  = "oras://ghcr.io/crchum-citadel/sdp-sigprofiler:1.1.3"
 
 ## Mutational Signatures
 
-Three signature types are fitted against COSMIC v3.6 reference (`assets/COSMIC_Human_v3.6.zip`), producing 6 cBioPortal GENERIC_ASSAY data files per group. Metadata files in `assets/` provide `category`, `etiology`, `main_effect` for NAME/DESCRIPTION columns.
+Three signature types (SBS, DBS, ID) are fitted against COSMIC v3.6 GRCh38 reference (`assets/COSMIC_Human_v3.6.zip`), producing 6 cBioPortal GENERIC_ASSAY data files per group. Metadata files in `assets/` provide `category`, `etiology`, `main_effect` for NAME/DESCRIPTION columns.
 
 ### SBS — Single Base Substitutions (101 signatures)
 
@@ -91,7 +91,7 @@ Three signature types are fitted against COSMIC v3.6 reference (`assets/COSMIC_H
 **Counts** (`data_mutational_signatures_counts_SBS.txt`):
 - Input: same `sig.snv_counts.csv`
 - Script: `bin/gen_sigs_counts_to_cbioportal.R` (context transform: `C>A_ACA` → `A[C>A]A`)
-- Columns: `ENTITY_STABLE_ID` (`mutational_signatures_matrix_{5'}_{from}-{to}_{3'}`), `NAME`, `CATEGORY`, `{sample}`
+- Columns: `ENTITY_STABLE_ID` (`mutational_signatures_matrix_{5'}_{from}-{to}_{3'}`), `NAME`, `{sample}`
 - Merge: `gen_merge_sigs_counts_to_cbioportal.R`
 
 ### DBS — Doublet Base Substitutions (22 signatures)
@@ -104,24 +104,24 @@ Three signature types are fitted against COSMIC v3.6 reference (`assets/COSMIC_H
 
 **Counts** (`data_mutational_signatures_counts_DBS.txt`):
 - Same script produces both contribution and counts
-- `ENTITY_STABLE_ID` = `mutational_signatures_matrix_DBS_{ref}_{alt}`, `CATEGORY` = reference dinucleotide
+- `ENTITY_STABLE_ID` = `mutational_signatures_matrix_{ref}-{alt}`, `NAME` = `AC>CA` format
 
-### SV — Structural Variants (12 signatures)
+### ID — Indels (17 signatures)
 
-**Contribution** (`data_mutational_signatures_contribution_SV.txt`):
-- Input: `{subject}-T.esvee.somatic.vcf.gz` (BND records → 32-channel SV type matrix)
-- Script: `bin/run_sigprofiler_sv.py` → `scipy.optimize.nnls` (SigProfilerAssignment doesn't support SV context)
-- Metadata: `assets/cosmic_sv_metadata.tsv`
-- SV classification: type (del/inv/tds/trans) × size bin (5 bins) × clustering (25kb proximity threshold) = 32 categories
+**Contribution** (`data_mutational_signatures_contribution_ID.txt`):
+- Input: `{subject}-T.pave.somatic.vcf.gz` (extracts indels → 83-channel ID matrix via pysam + reference FASTA)
+- Script: `bin/run_sigprofiler_id.py` → `Analyzer.cosmic_fit(context_type="ID")`
+- Metadata: `assets/cosmic_id_metadata.tsv`
+- 83-channel classification: 1bp C/T del/ins at homopolymers (24) + 2-5bp repeat-mediated del/ins (48) + 2-5bp microhomology del (11)
 
-**Counts** (`data_mutational_signatures_counts_SV.txt`):
+**Counts** (`data_mutational_signatures_counts_ID.txt`):
 - Same script produces both contribution and counts
-- `ENTITY_STABLE_ID` = `mutational_signatures_matrix_SV_{type}`, `CATEGORY` = base type (DEL/INV/TDS/TRANS)
+- `ENTITY_STABLE_ID` = `mutational_signatures_matrix_{size}_{type}_{base}_{count}`, `NAME` = `1:Del:C:0` format
 
 ### Common
 
 - All meta files use `generic_assay_type: MUTATIONAL_SIGNATURE`, `datatype: LIMIT-VALUE`, `pivot_threshold_value: 0.0`.
-- Merge modules (6 total) reuse `gen_merge_sigs_to_cbioportal.R` / `gen_merge_sigs_counts_to_cbioportal.R` with different output filenames.
+- Merge modules reuse `gen_merge_sigs_to_cbioportal.R` / `gen_merge_sigs_counts_to_cbioportal.R` with different output filenames.
 - Zero-mutation edge case: scripts write header-only files; <50 mutations: stderr warning but continues.
 
 ---
@@ -147,7 +147,6 @@ Three signature types are fitted against COSMIC v3.6 reference (`assets/COSMIC_H
 | `tests/modules/isofox_fusion_to_cbioportal.nf.test` | R only |
 | `tests/modules/sigprofiler_sbs.nf.test` | SigProfiler |
 | `tests/modules/sigprofiler_dbs.nf.test` | SigProfiler |
-| `tests/modules/sigprofiler_sv.nf.test` | SigProfiler |
 | `tests/modules/sigs_counts_to_cbioportal.nf.test` | R only |
 
 **nf-test gotchas:**

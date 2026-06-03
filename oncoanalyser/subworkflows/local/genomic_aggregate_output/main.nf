@@ -7,8 +7,6 @@ include { MERGE_SIGS_DBS_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs
 include { MERGE_SIGS_COUNTS_DBS_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_counts_dbs_to_cbioportal'
 include { MERGE_SIGS_ID_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_id_to_cbioportal'
 include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_counts_id_to_cbioportal'
-include { MERGE_SIGS_SV_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_sv_to_cbioportal'
-include { MERGE_SIGS_COUNTS_SV_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_counts_sv_to_cbioportal'
 
 workflow GENOMIC_AGGREGATE_OUTPUT {
 
@@ -24,8 +22,6 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
         sigs_counts_dbs_results
         sigs_id_results
         sigs_counts_id_results
-        sigs_sv_results
-        sigs_counts_sv_results
 
     main:
 
@@ -213,38 +209,6 @@ workflow GENOMIC_AGGREGATE_OUTPUT {
 
         sigs_counts_id_output = MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL(sigs_counts_id_file_list)
 
-        // merge SV signatures ---------------------------------------------------------
-        sigs_sv_file_list = sigs_sv_results
-            .map { meta, filepath -> tuple(meta.group, meta, filepath) }
-            .groupTuple()
-            .map { group, metas, files ->
-                def meta = metas[0]
-                def sortedFiles = files.sort { a, b ->
-                    def na = a.toString().split(/[\/\\]/).last()
-                    def nb = b.toString().split(/[\/\\]/).last()
-                    na <=> nb
-                }
-                return tuple(meta, sortedFiles)
-            }
-
-        sigs_sv_output = MERGE_SIGS_SV_TO_CBIOPORTAL(sigs_sv_file_list)
-
-        // merge SV signature counts ---------------------------------------------------
-        sigs_counts_sv_file_list = sigs_counts_sv_results
-            .map { meta, filepath -> tuple(meta.group, meta, filepath) }
-            .groupTuple()
-            .map { group, metas, files ->
-                def meta = metas[0]
-                def sortedFiles = files.sort { a, b ->
-                    def na = a.toString().split(/[\/\\]/).last()
-                    def nb = b.toString().split(/[\/\\]/).last()
-                    na <=> nb
-                }
-                return tuple(meta, sortedFiles)
-            }
-
-        sigs_counts_sv_output = MERGE_SIGS_COUNTS_SV_TO_CBIOPORTAL(sigs_counts_sv_file_list)
-
         // create meta files and case lists ---------------------------------------------------------
 
         cnv_sample_list = cnv_results_seg
@@ -392,34 +356,8 @@ data_filename: data_mutational_signatures_counts_ID.txt
 generic_entity_meta_properties: NAME
 """
 
-        meta_text_sigs_sv = """cancer_study_identifier: add_text
-genetic_alteration_type: GENERIC_ASSAY
-generic_assay_type: MUTATIONAL_SIGNATURE
-datatype: LIMIT-VALUE
-stable_id: mutational_signatures_contribution_SV
-show_profile_in_analysis_tab: true
-profile_name: SV Mutational Signatures
-profile_description: Structural variant signatures based on COSMIC v3.6 (WGS)
-data_filename: data_mutational_signatures_contribution_SV.txt
-generic_entity_meta_properties: NAME,DESCRIPTION
-pivot_threshold_value: 0.0
-"""
-
-        meta_text_counts_sv = """cancer_study_identifier: add_text
-genetic_alteration_type: GENERIC_ASSAY
-generic_assay_type: MUTATIONAL_SIGNATURE
-datatype: LIMIT-VALUE
-stable_id: mutational_signatures_counts_SV
-show_profile_in_analysis_tab: true
-profile_name: SV Mutational Signatures Counts
-profile_description: Structural variant type counts based on COSMIC v3.6 (WGS)
-data_filename: data_mutational_signatures_counts_SV.txt
-generic_entity_meta_properties: NAME,CATEGORY
-pivot_threshold_value: 0.0
-"""
-
-        meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs, meta_text_counts, meta_text_sigs_dbs, meta_text_counts_dbs, meta_text_sigs_id, meta_text_counts_id, meta_text_sigs_sv, meta_text_counts_sv)
-        file_name_all = channel.of("cna_hg38", "cna_long", "sv", "expression", "sequenced", "mutational_signatures_contribution_SBS", "mutational_signatures_counts_SBS", "mutational_signatures_contribution_DBS", "mutational_signatures_counts_DBS", "mutational_signatures_contribution_ID", "mutational_signatures_counts_ID", "mutational_signatures_contribution_SV", "mutational_signatures_counts_SV")
+        meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs, meta_text_counts, meta_text_sigs_dbs, meta_text_counts_dbs, meta_text_sigs_id, meta_text_counts_id)
+        file_name_all = channel.of("cna_hg38", "cna_long", "sv", "expression", "sequenced", "mutational_signatures_contribution_SBS", "mutational_signatures_counts_SBS", "mutational_signatures_contribution_DBS", "mutational_signatures_counts_DBS", "mutational_signatures_contribution_ID", "mutational_signatures_counts_ID")
         all_groups_meta = all_groups.combine(file_name_all).map{all_groups, file_name_all -> all_groups }
 
         GENERATE_META_FILE(
@@ -440,8 +378,6 @@ pivot_threshold_value: 0.0
         sigs_counts_dbs = sigs_counts_dbs_output
         sigs_id         = sigs_id_output
         sigs_counts_id  = sigs_counts_id_output
-        sigs_sv         = sigs_sv_output
-        sigs_counts_sv  = sigs_counts_sv_output
         meta_files      = GENERATE_META_FILE.out
         case_files  = GENERATE_CASE_LIST.out
 }

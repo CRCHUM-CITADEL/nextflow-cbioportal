@@ -1,0 +1,19 @@
+{
+    "Two subjects \u2014 ID contribution and counts files are produced": {
+        "content": [
+            [
+                "T1.data_mutational_signatures_contribution_ID.txt:md5,1b787af78ebb7cfd48bcf989642755ea",
+                "T2.data_mutational_signatures_contribution_ID.txt:md5,9d25f5f32d1a83ff5acea9fa3606ab80"
+            ],
+            [
+                "T1.data_mutational_signatures_counts_ID.txt:md5,36d2ce630ecf0309681f857655d6bc47",
+                "T2.data_mutational_signatures_counts_ID.txt:md5,48dc8a06b0cd2f8faa79e96b21032e39"
+            ]
+        ],
+        "timestamp": "2026-06-03T15:12:48.515518078",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

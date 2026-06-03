@@ -3,7 +3,7 @@ process INTEGRATE_RNA_VARIANTS {
     tag { subject_id }
     
 
-    label "process_medium"
+    label "process_medium_memory"
     container params.container_r
 
     input:

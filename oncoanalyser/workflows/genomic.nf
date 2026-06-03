@@ -136,17 +136,6 @@ workflow GENOMIC {
                     files.add([meta + [pipeline: 'sigs_counts_dbs'], sigs_counts_dbs])
                 }
 
-                // ID signature contribution file
-                def sigs_id = file("${baseDir}/${meta.sample}.data_mutational_signatures_contribution_ID.txt", checkIfExists: false)
-                if (sigs_id.exists()) {
-                    files.add([meta + [pipeline: 'sigs_id'], sigs_id])
-                }
-
-                // ID signature counts file
-                def sigs_counts_id = file("${baseDir}/${meta.sample}.data_mutational_signatures_counts_ID.txt", checkIfExists: false)
-                if (sigs_counts_id.exists()) {
-                    files.add([meta + [pipeline: 'sigs_counts_id'], sigs_counts_id])
-                }
 
                 return files
             }
@@ -207,7 +196,7 @@ workflow GENOMIC {
             .map { meta ->
                 def vcf = findOncoFile(meta,
                     "${meta.folder}/pave/${meta.subject}-T.pave.somatic.vcf.gz",
-                    'mutation (SAGE somatic)')
+                    'mutation (PAVE somatic)')
                 vcf ? [meta + [pipeline: 'mutation'], vcf] : null
             }
             .filter { it != null }
@@ -217,7 +206,7 @@ workflow GENOMIC {
             .map { meta ->
                 def vcf = findOncoFile(meta,
                     "${meta.folder}/pave/${meta.subject}-T.pave.germline.vcf.gz",
-                    'germline mutation (SAGE)')
+                    'germline mutation (PAVE)')
                 vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
             .filter { it != null }
@@ -438,7 +427,6 @@ reference_genome: hg38
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_dbs)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_dbs)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_id)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_id)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
             .mix(GENERATE_META_FILE.out)

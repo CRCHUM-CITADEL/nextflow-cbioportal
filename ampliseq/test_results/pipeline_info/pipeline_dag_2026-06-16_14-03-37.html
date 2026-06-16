@@ -1,0 +1,133 @@
+<!--
+  ~ Copyright 2013-2024, Seqera Labs
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<html>
+<head>
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+</head>
+<body>
+<pre class="mermaid" style="text-align: center;">
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#B6ECE2',
+      'primaryTextColor': '#160F26',
+      'primaryBorderColor': '#065647',
+      'lineColor': '#545555',
+      'clusterBkg': '#BABCBD22',
+      'clusterBorder': '#DDDEDE',
+      'fontFamily': 'arial'
+    }
+  }
+}%%
+flowchart TB
+    subgraph " "
+    v0["Channel.fromPath"]
+    v18["ch_linking"]
+    v36["Channel.fromPath"]
+    v37["Channel.fromPath"]
+    v40["study_id"]
+    v42["study_id"]
+    v50["study_id"]
+    end
+    subgraph "CRCHUMCITADEL_AMPLISEQ_CBIOPORTAL [CRCHUMCITADEL_AMPLISEQ_CBIOPORTAL]"
+    subgraph "CRCHUMCITADEL_AMPLISEQ_CBIOPORTAL:AMPLISEQ_CBIOPORTAL [AMPLISEQ_CBIOPORTAL]"
+    subgraph "CRCHUMCITADEL_AMPLISEQ_CBIOPORTAL:AMPLISEQ_CBIOPORTAL:PER_SAMPLE_FORMAT [PER_SAMPLE_FORMAT]"
+    v7(["FORMAT_SV"])
+    v8(["FORMAT_CNA"])
+    v9(["VCF_TO_SEG"])
+    v10(["STUB_MAF"])
+    v11(["PASSTHROUGH_MUTATIONS"])
+    end
+    v19(["FILTER_LINKING"])
+    subgraph "CRCHUMCITADEL_AMPLISEQ_CBIOPORTAL:AMPLISEQ_CBIOPORTAL:MERGE_DEANON [MERGE_DEANON]"
+    v28(["MERGE_SV"])
+    v29(["MERGE_CNA"])
+    v30(["MERGE_MUTATIONS"])
+    v31(["MERGE_SEG"])
+    v32(["DEANON_MUTATIONS"])
+    v33(["DEANON_SV"])
+    v34(["DEANON_CNA"])
+    v35(["DEANON_SEG"])
+    end
+    subgraph "CRCHUMCITADEL_AMPLISEQ_CBIOPORTAL:AMPLISEQ_CBIOPORTAL:STUDY_METADATA [STUDY_METADATA]"
+    v38(["CLINICAL_PATIENTS"])
+    v39(["CLINICAL_SAMPLES"])
+    v41(["WRITE_CASE_LISTS"])
+    v43(["WRITE_META"])
+    end
+    v51(["PACKAGE_CBIOPORTAL"])
+    v2(( ))
+    v16(( ))
+    v44(( ))
+    end
+    end
+    subgraph " "
+    v52[" "]
+    end
+    v1(( ))
+    v0 --> v1
+    v2 --> v7
+    v7 --> v2
+    v2 --> v8
+    v8 --> v2
+    v2 --> v9
+    v9 --> v2
+    v2 --> v10
+    v10 --> v11
+    v11 --> v2
+    v18 --> v19
+    v16 --> v19
+    v19 --> v32
+    v19 --> v33
+    v19 --> v34
+    v19 --> v35
+    v19 --> v38
+    v19 --> v39
+    v19 --> v41
+    v2 --> v28
+    v28 --> v33
+    v2 --> v29
+    v29 --> v34
+    v2 --> v30
+    v30 --> v32
+    v2 --> v31
+    v31 --> v35
+    v32 --> v44
+    v33 --> v44
+    v34 --> v44
+    v35 --> v44
+    v36 --> v38
+    v37 --> v39
+    v38 --> v44
+    v39 --> v44
+    v40 --> v41
+    v41 --> v51
+    v42 --> v43
+    v43 --> v51
+    v50 --> v51
+    v44 --> v51
+    v51 --> v52
+    v1 --> v2
+    v1 --> v16
+
+</pre>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, maxTextSize: Number.MAX_SAFE_INTEGER, maxEdges: Number.MAX_SAFE_INTEGER });
+</script>
+</body>
+</html>

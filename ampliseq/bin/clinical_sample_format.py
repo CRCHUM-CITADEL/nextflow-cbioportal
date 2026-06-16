@@ -27,12 +27,7 @@ def main():
         print(f"Usage: {sys.argv[0]} <sample_file> [<linking_file>]", file=sys.stderr)
         sys.exit(1)
 
-    df = pd.read_csv(sys.argv[1], sep="\t", dtype=str, usecols=range(8))
-
-    # Drop duplicate sample_id column (columns 0 and 1 are both sample_id)
-    df.columns = ["sample_id_drop", "sample_id", "patient_id", "cancer_type",
-                  "cancer_type_detailed", "sample_type", "tumor_site", "tumor_purity"]
-    df = df.drop(columns=["sample_id_drop"])
+    df = pd.read_csv(sys.argv[1], sep="\t", dtype=str)
 
     if len(sys.argv) == 3:
         linking = pd.read_csv(sys.argv[2], sep="\t", dtype=str)

@@ -11,7 +11,7 @@ process FORMAT_SV {
 
     script:
     """
-    format_tsv.py "${tsv}" "${meta.subject_id}"
+    format_tsv.py "${tsv}" "${meta.sample_id}"
     mv data_sv.txt "${meta.sample_id}_sv.txt"
     """
 }

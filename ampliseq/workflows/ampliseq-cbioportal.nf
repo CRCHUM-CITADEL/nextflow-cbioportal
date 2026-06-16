@@ -90,7 +90,7 @@ workflow AMPLISEQ_CBIOPORTAL {
     ch_linking = Channel.value(file(params.linking_file))
 
     ch_samplesheet_ids = ch_samplesheet
-        .map { row -> row.subject_id.toUpperCase() }
+        .map { row -> row.sample_id.toUpperCase() }
         .collectFile(name: 'samplesheet_ids.txt', newLine: true)
 
     FILTER_LINKING(ch_samplesheet_ids, ch_linking)

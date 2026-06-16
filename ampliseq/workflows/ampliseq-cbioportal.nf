@@ -96,17 +96,7 @@ workflow AMPLISEQ_CBIOPORTAL {
     FILTER_LINKING(ch_samplesheet_ids, ch_linking)
     ch_filtered_linking = FILTER_LINKING.out
 
-    // -------------------------------------------------------------------------
-    // When anonymize=true, build an anonymised linking file where
-    // deanon_sample_id and deanon_patient_id = lowercase of sample_id.
-    // The existing DEANON scripts then map to anonymised IDs instead of real IDs.
-    // -------------------------------------------------------------------------
-    if (params.anonymize) {
-        BUILD_ANON_LINKING(ch_filtered_linking)
-        ch_output_linking = BUILD_ANON_LINKING.out
-    } else {
-        ch_output_linking = ch_filtered_linking
-    }
+    ch_output_linking = ch_filtered_linking
 
     // -------------------------------------------------------------------------
     // Collect: merge new + existing outputs, then remap sample IDs

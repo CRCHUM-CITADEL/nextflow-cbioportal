@@ -22,14 +22,25 @@ workflow MERGE_DEANON {
     MERGE_MUTATIONS(ch_mutation_files)
     MERGE_SEG(ch_seg_files)
 
-    DEANON_MUTATIONS(MERGE_MUTATIONS.out, ch_linking)
-    DEANON_SV(MERGE_SV.out, ch_linking)
-    DEANON_CNA(MERGE_CNA.out, ch_linking)
-    DEANON_SEG(MERGE_SEG.out, ch_linking)
+    if (params.anonymize) {
+        ch_mutations = MERGE_MUTATIONS.out
+        ch_sv        = MERGE_SV.out
+        ch_cna       = MERGE_CNA.out
+        ch_seg       = MERGE_SEG.out
+    } else {
+        DEANON_MUTATIONS(MERGE_MUTATIONS.out, ch_linking)
+        DEANON_SV(MERGE_SV.out, ch_linking)
+        DEANON_CNA(MERGE_CNA.out, ch_linking)
+        DEANON_SEG(MERGE_SEG.out, ch_linking)
+        ch_mutations = DEANON_MUTATIONS.out
+        ch_sv        = DEANON_SV.out
+        ch_cna       = DEANON_CNA.out
+        ch_seg       = DEANON_SEG.out
+    }
 
     emit:
-    mutations = DEANON_MUTATIONS.out
-    sv        = DEANON_SV.out
-    cna       = DEANON_CNA.out
-    seg       = DEANON_SEG.out
+    mutations = ch_mutations
+    sv        = ch_sv
+    cna       = ch_cna
+    seg       = ch_seg
 }

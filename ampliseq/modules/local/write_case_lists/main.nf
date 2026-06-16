@@ -9,10 +9,11 @@ process WRITE_CASE_LISTS {
     path("case_lists")
 
     script:
+    def id_col = params.anonymize ? '1' : '2'
     """
     mkdir -p case_lists
 
-    IDS_TAB=\$(awk 'NR>1 {printf "%s\\t", \$2}' ${linking_file} | sed 's/\\t\$//')
+    IDS_TAB=\$(awk 'NR>1 {printf "%s\\t", \$${id_col}}' ${linking_file} | sed 's/\\t\$//')
 
     {
         echo "cancer_study_identifier: ${study_id}"

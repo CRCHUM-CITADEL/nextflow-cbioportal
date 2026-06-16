@@ -107,12 +107,20 @@ workflow AMPLISEQ_CBIOPORTAL {
     )
 
     // -------------------------------------------------------------------------
+    // Build patient map: subject_id <TAB> sample_id (for anonymization)
+    // -------------------------------------------------------------------------
+    ch_patient_map = ch_samplesheet
+        .map { row -> "${row.subject_id}\t${row.sample_id}" }
+        .collectFile(name: 'patient_map.txt', newLine: true)
+
+    // -------------------------------------------------------------------------
     // Once: clinical files, case lists, and meta files
     // -------------------------------------------------------------------------
     STUDY_METADATA(
         Channel.fromPath(params.patient_file),
         Channel.fromPath(params.sample_file),
         ch_filtered_linking,
+        ch_patient_map,
         params.study_id
     )
 

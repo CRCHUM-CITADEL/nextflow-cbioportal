@@ -9,11 +9,11 @@ import os
 import pandas as pd
 
 HEADER_LINES = [
-    "#Patient Identifier\tAge\tSex\tOverall Survival Status\tOverall Survival (Months)\tSmoking History",
-    "#Patient identifier\tAge at which the condition was first diagnosed, in years\tSex\tOverall Survival Status\tOverall survival in months since initial diagnosis\tSmoking history",
-    "#STRING\tNUMBER\tSTRING\tSTRING\tNUMBER\tSTRING",
-    "#1\t1\t1\t1\t1\t1",
-    "PATIENT_ID\tAGE\tSEX\tOS_STATUS\tOS_MONTHS\tSMOKING_HISTORY",
+    "#Patient Identifier\tMoH ID\tAge\tSex\tOverall Survival Status\tOverall Survival (Months)\tSmoking History",
+    "#Patient identifier\tMoH ID\tAge at which the condition was first diagnosed, in years\tSex\tOverall Survival Status\tOverall survival in months since initial diagnosis\tSmoking history",
+    "#STRING\tSTRING\tNUMBER\tSTRING\tSTRING\tNUMBER\tSTRING",
+    "#1\t1\t1\t1\t1\t1\t1",
+    "PATIENT_ID\tMOH_ID\tAGE\tSEX\tOS_STATUS\tOS_MONTHS\tSMOKING_HISTORY",
 ]
 
 OS_STATUS_MAP = {"0": "0:LIVING", "1": "1:DECEASED"}
@@ -38,6 +38,7 @@ def main():
 
     out = pd.DataFrame({
         "PATIENT_ID":       df["patient_id"],
+        "MOH_ID":           df["moh_id"],
         "AGE":              df["age"].apply(transform_value),
         "SEX":              df["sex"].apply(transform_value),
         "OS_STATUS":        df["os_status"].apply(

@@ -11,7 +11,7 @@ process FORMAT_CNA {
 
     script:
     """
-    format_cna.py "${tsv}" "${meta.sample_id}"
+    format_cna.py "${tsv}" "${meta.subject_id}"
     mv data_cna.txt "${meta.sample_id}_cna.txt"
     """
 }

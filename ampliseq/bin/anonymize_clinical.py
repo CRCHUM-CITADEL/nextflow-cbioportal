@@ -2,14 +2,12 @@
 """
 Replace deanonymised (real) IDs with anonymised IDs in a cBioPortal clinical file.
 
-Uses the linking file to build reverse mappings:
-  deanon_sample_id  -> sample_id     (for SAMPLE_ID column)
-  deanon_patient_id -> subject_id    (for PATIENT_ID column, from patient_map)
+Uses the original linking file (real IDs) and the anonymised linking file to build
+reverse mappings:
+  real sample_id  -> anonymised sample_id
+  real patient_id -> anonymised patient_id
 
-Usage: anonymize_clinical.py <clinical_file> <linking_file> <patient_map_file>
-
-patient_map_file is a two-column TSV (no header): subject_id<TAB>sample_id
-used to derive the anonymised patient IDs from the samplesheet.
+Usage: anonymize_clinical.py <clinical_file> <orig_linking> <anon_linking>
 
 The script preserves the cBioPortal header lines (starting with '#') and
 rewrites the file in-place.
@@ -22,29 +20,21 @@ import pandas as pd
 def main():
     if len(sys.argv) != 4:
         print(
-            f"Usage: {sys.argv[0]} <clinical_file> <linking_file> <patient_map_file>",
+            f"Usage: {sys.argv[0]} <clinical_file> <orig_linking> <anon_linking>",
             file=sys.stderr,
         )
         sys.exit(1)
 
     clinical_file = sys.argv[1]
-    linking_file = sys.argv[2]
-    patient_map_file = sys.argv[3]
+    orig_linking = pd.read_csv(sys.argv[2], sep="\t", dtype=str)
+    anon_linking = pd.read_csv(sys.argv[3], sep="\t", dtype=str)
 
-    linking = pd.read_csv(linking_file, sep="\t", dtype=str)
-    patient_map_df = pd.read_csv(
-        patient_map_file, sep="\t", dtype=str, header=None, names=["subject_id", "sample_id"]
-    )
+    # Map real sample IDs -> anonymised sample IDs
+    sample_map = dict(zip(orig_linking["deanon_sample_id"], anon_linking["deanon_sample_id"]))
+    # Map real patient IDs -> anonymised patient IDs
+    patient_map = dict(zip(orig_linking["deanon_patient_id"], anon_linking["deanon_patient_id"]))
 
-    # sample mapping: deanon_sample_id -> sample_id (anonymised)
-    sample_map = dict(zip(linking["deanon_sample_id"], linking["sample_id"]))
-
-    # patient mapping: deanon_patient_id -> subject_id (anonymised)
-    # Join linking with patient_map via sample_id to get subject_id for each deanon_patient_id
-    merged = linking.merge(patient_map_df, on="sample_id", how="left")
-    patient_map = dict(zip(merged["deanon_patient_id"], merged["subject_id"]))
-
-    # Read header lines (starting with '#') and data separately
+    # Read header lines (starting with '#') separately
     header_lines = []
     with open(clinical_file) as f:
         for line in f:

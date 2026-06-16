@@ -10,17 +10,17 @@ workflow STUDY_METADATA {
     take:
     ch_patient_file   // channel: patient file path
     ch_sample_file    // channel: sample file path
-    ch_linking        // value channel: filtered linking file (samplesheet samples only)
-    ch_patient_map    // value channel: subject_id<TAB>sample_id mapping file
+    ch_orig_linking   // value channel: original filtered linking file (real IDs)
+    ch_output_linking // value channel: linking file for output IDs (anon or orig)
     study_id          // val: study ID string
 
     main:
-    CLINICAL_PATIENTS(ch_patient_file, ch_linking)
-    CLINICAL_SAMPLES(ch_sample_file, ch_linking)
+    CLINICAL_PATIENTS(ch_patient_file, ch_orig_linking)
+    CLINICAL_SAMPLES(ch_sample_file, ch_orig_linking)
 
     if (params.anonymize) {
-        ANON_PATIENT(CLINICAL_PATIENTS.out, ch_linking, ch_patient_map)
-        ANON_SAMPLE(CLINICAL_SAMPLES.out, ch_linking, ch_patient_map)
+        ANON_PATIENT(CLINICAL_PATIENTS.out, ch_orig_linking, ch_output_linking)
+        ANON_SAMPLE(CLINICAL_SAMPLES.out, ch_orig_linking, ch_output_linking)
         ch_clinical_patient = ANON_PATIENT.out
         ch_clinical_sample  = ANON_SAMPLE.out
     } else {
@@ -28,7 +28,7 @@ workflow STUDY_METADATA {
         ch_clinical_sample  = CLINICAL_SAMPLES.out
     }
 
-    WRITE_CASE_LISTS(ch_linking, study_id)
+    WRITE_CASE_LISTS(ch_output_linking, study_id)
     WRITE_META(study_id)
 
     emit:

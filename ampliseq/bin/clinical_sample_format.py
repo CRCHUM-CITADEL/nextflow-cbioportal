@@ -13,7 +13,7 @@ HEADER_LINES = [
     "#Patient identifier\tSample Identifier\tCancer type\tSub-type of the specified\tType of cancer sample\tTumor site of cancer sample\tPurity of tumor sample (%)",
     "#STRING\tSTRING\tSTRING\tSTRING\tSTRING\tSTRING\tSTRING",
     "#1\t1\t1\t1\t1\t1\t1",
-    "PATIENT_ID\tSAMPLE_ID\tCANCER_TYPE\tCANCER_TYPE_DETAILED\tSAMPLE_TYPE\tMETASTATIC_SITE\tTUMOR_PURITY",
+    "PATIENT_ID\tSAMPLE_ID\tCANCER_TYPE\tCANCER_TYPE_DETAILED\tSAMPLE_TYPE\tTUMOR_SITE\tTUMOR_PURITY",
 ]
 
 def transform_value(val):
@@ -40,7 +40,7 @@ def main():
         "CANCER_TYPE":           df["cancer_type"].apply(transform_value),
         "CANCER_TYPE_DETAILED":  df["cancer_type_detailed"].apply(transform_value),
         "SAMPLE_TYPE":           df["sample_type"].apply(transform_value),
-        "METASTATIC_SITE":       df["metastatic_tumor_site"].apply(transform_value),
+        "TUMOR_SITE":            df["tumor_site"].apply(transform_value),
         "TUMOR_PURITY":          df["tumor_purity"].apply(transform_value),
     })
 

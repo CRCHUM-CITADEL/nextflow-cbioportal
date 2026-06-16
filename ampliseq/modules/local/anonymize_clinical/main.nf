@@ -5,14 +5,14 @@ process ANONYMIZE_CLINICAL {
 
     input:
     path(clinical_file)
-    path(linking_file)
-    path(patient_map)
+    path(orig_linking)
+    path(anon_linking)
 
     output:
     path("${clinical_file}")
 
     script:
     """
-    anonymize_clinical.py ${clinical_file} ${linking_file} ${patient_map}
+    anonymize_clinical.py ${clinical_file} ${orig_linking} ${anon_linking}
     """
 }

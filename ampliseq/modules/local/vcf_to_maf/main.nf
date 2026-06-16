@@ -20,7 +20,7 @@ process VCF_TO_MAF {
     MAF_OUT="${meta.sample_id}-basespace-pisces.final.maf"
 
     vcf2maf.pl \\
-        --tumor-id "${meta.sample_id}" --cache-version 113 \\
+        --tumor-id "${meta.subject_id}" --cache-version 113 \\
         --ncbi-build GRCh37 --vep-path /opt/conda/bin \\
         --vep-data ${vep_data} --ref-fasta ${ref_fasta} \\
         --input-vcf "${meta.sample_id}.final.vcf" \\

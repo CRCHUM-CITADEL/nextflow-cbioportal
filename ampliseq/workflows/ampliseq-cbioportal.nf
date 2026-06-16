@@ -8,6 +8,7 @@ include { PER_SAMPLE_FORMAT  } from '../subworkflows/local/per_sample_format/mai
 include { MERGE_DEANON       } from '../subworkflows/local/merge_deanon/main'
 include { STUDY_METADATA     } from '../subworkflows/local/study_metadata/main'
 include { FILTER_LINKING     } from '../modules/local/filter_linking/main'
+include { BUILD_ANON_LINKING } from '../modules/local/build_anon_linking/main'
 include { PACKAGE_CBIOPORTAL } from '../modules/local/package_cbioportal/main'
 
 /*
@@ -89,29 +90,34 @@ workflow AMPLISEQ_CBIOPORTAL {
     ch_linking = Channel.value(file(params.linking_file))
 
     ch_samplesheet_ids = ch_samplesheet
-        .map { row -> row.sample_id }
+        .map { row -> row.subject_id.toUpperCase() }
         .collectFile(name: 'samplesheet_ids.txt', newLine: true)
 
     FILTER_LINKING(ch_samplesheet_ids, ch_linking)
     ch_filtered_linking = FILTER_LINKING.out
 
     // -------------------------------------------------------------------------
-    // Collect: merge new + existing outputs, then deanonymise
+    // When anonymize=true, build an anonymised linking file where
+    // deanon_sample_id and deanon_patient_id = lowercase of sample_id.
+    // The existing DEANON scripts then map to anonymised IDs instead of real IDs.
+    // -------------------------------------------------------------------------
+    if (params.anonymize) {
+        BUILD_ANON_LINKING(ch_filtered_linking)
+        ch_output_linking = BUILD_ANON_LINKING.out
+    } else {
+        ch_output_linking = ch_filtered_linking
+    }
+
+    // -------------------------------------------------------------------------
+    // Collect: merge new + existing outputs, then remap sample IDs
     // -------------------------------------------------------------------------
     MERGE_DEANON(
         PER_SAMPLE_FORMAT.out.sv.mix(ch_existing_sv).collect(),
         PER_SAMPLE_FORMAT.out.cna.mix(ch_existing_cna).collect(),
         PER_SAMPLE_FORMAT.out.mutations.mix(ch_existing_mutations).collect(),
         PER_SAMPLE_FORMAT.out.seg.mix(ch_existing_seg).collect(),
-        ch_filtered_linking
+        ch_output_linking
     )
-
-    // -------------------------------------------------------------------------
-    // Build patient map: subject_id <TAB> sample_id (for anonymization)
-    // -------------------------------------------------------------------------
-    ch_patient_map = ch_samplesheet
-        .map { row -> "${row.subject_id}\t${row.sample_id}" }
-        .collectFile(name: 'patient_map.txt', newLine: true)
 
     // -------------------------------------------------------------------------
     // Once: clinical files, case lists, and meta files
@@ -120,7 +126,7 @@ workflow AMPLISEQ_CBIOPORTAL {
         Channel.fromPath(params.patient_file),
         Channel.fromPath(params.sample_file),
         ch_filtered_linking,
-        ch_patient_map,
+        ch_output_linking,
         params.study_id
     )
 

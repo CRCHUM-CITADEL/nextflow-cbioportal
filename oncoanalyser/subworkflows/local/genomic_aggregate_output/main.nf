@@ -234,126 +234,126 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
             // to get all groups, just take .seg files (we assume seg and long are the same)
             // add_text is the key word to replac with the group.
             meta_text_seg = """cancer_study_identifier: add_text
-    genetic_alteration_type: COPY_NUMBER_ALTERATION
-    datatype: SEG
-    reference_genome_id: hg38
-    description: Somatic CNA data (copy number segment file)
-    data_filename: data_cna_hg38.seg
+genetic_alteration_type: COPY_NUMBER_ALTERATION
+datatype: SEG
+reference_genome_id: hg38
+description: Somatic CNA data (copy number segment file)
+data_filename: data_cna_hg38.seg
             """
 
             meta_text_long = """cancer_study_identifier: add_text
-    genetic_alteration_type: COPY_NUMBER_ALTERATION
-    datatype: DISCRETE_LONG
-    stable_id: cna
-    show_profile_in_analysis_tab: TRUE
-    profile_name: Copy-number alterations
-    profile_description: ADD TEXT
-    data_filename: data_cna_long.txt
+genetic_alteration_type: COPY_NUMBER_ALTERATION
+datatype: DISCRETE_LONG
+stable_id: cna
+show_profile_in_analysis_tab: TRUE
+profile_name: Copy-number alterations
+profile_description: ADD TEXT
+data_filename: data_cna_long.txt
             """
 
             meta_text_sv = """cancer_study_identifier: add_text
-    genetic_alteration_type: STRUCTURAL_VARIANT
-    datatype: SV
-    stable_id: structural_variants
-    show_profile_in_analysis_tab: true
-    profile_name: Structural variants from DNA
-    profile_description: Structural Variant Data DNA
-    data_filename: data_sv.txt
+genetic_alteration_type: STRUCTURAL_VARIANT
+datatype: SV
+stable_id: structural_variants
+show_profile_in_analysis_tab: true
+profile_name: Structural variants from DNA
+profile_description: Structural Variant Data DNA
+data_filename: data_sv.txt
             """
 
             meta_text_expression = """cancer_study_identifier: add_text
-    genetic_alteration_type: MRNA_EXPRESSION
-    datatype: CONTINUOUS
-    stable_id: rna_seq_v2_mrna
-    show_profile_in_analysis_tab: true
-    profile_name: mRNA expression (RNA-Seq TPM)
-    profile_description: Expression levels (RNA-Seq TPM values)
-    data_filename: data_expression.txt
+genetic_alteration_type: MRNA_EXPRESSION
+datatype: CONTINUOUS
+stable_id: rna_seq_v2_mrna
+show_profile_in_analysis_tab: true
+profile_name: mRNA expression (RNA-Seq TPM)
+profile_description: Expression levels (RNA-Seq TPM values)
+data_filename: data_expression.txt
             """
 
             meta_text_mutations = """cancer_study_identifier: add_text
-    genetic_alteration_type: MUTATION_EXTENDED
-    stable_id: mutations
-    datatype: MAF
-    show_profile_in_analysis_tab: true
-    profile_description: ADD TEXT
-    profile_name: Mutations
-    data_filename: data_mutations_dna_rna_germline.txt
+genetic_alteration_type: MUTATION_EXTENDED
+stable_id: mutations
+datatype: MAF
+show_profile_in_analysis_tab: true
+profile_description: ADD TEXT
+profile_name: Mutations
+data_filename: data_mutations_dna_rna_germline.txt
     """
 
             meta_text_sigs = """cancer_study_identifier: add_text
-    genetic_alteration_type: GENERIC_ASSAY
-    generic_assay_type: MUTATIONAL_SIGNATURE
-    datatype: LIMIT-VALUE
-    stable_id: mutational_signatures_contribution_SBS
-    show_profile_in_analysis_tab: true
-    profile_name: Mutational Signatures
-    profile_description: Mutational signatures based on COSMIC v3.6 (WGS)
-    data_filename: data_mutational_signatures_contribution_SBS.txt
-    generic_entity_meta_properties: NAME,DESCRIPTION
-    pivot_threshold_value: 0.0
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_contribution_SBS
+show_profile_in_analysis_tab: true
+profile_name: Mutational Signatures
+profile_description: Mutational signatures based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_contribution_SBS.txt
+generic_entity_meta_properties: NAME,DESCRIPTION
+pivot_threshold_value: 0.0
     """
 
             meta_text_counts = """cancer_study_identifier: add_text
-    genetic_alteration_type: GENERIC_ASSAY
-    generic_assay_type: MUTATIONAL_SIGNATURE
-    datatype: LIMIT-VALUE
-    stable_id: mutational_signatures_counts_SBS
-    show_profile_in_analysis_tab: false
-    profile_name: Mutational Signatures Counts
-    profile_description: Mutational signature trinucleotide counts based on COSMIC v3.6 (WGS)
-    data_filename: data_mutational_signatures_counts_SBS.txt
-    generic_entity_meta_properties: NAME
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_counts_SBS
+show_profile_in_analysis_tab: false
+profile_name: Mutational Signatures Counts
+profile_description: Mutational signature trinucleotide counts based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_counts_SBS.txt
+generic_entity_meta_properties: NAME
     """
 
             meta_text_sigs_dbs = """cancer_study_identifier: add_text
-    genetic_alteration_type: GENERIC_ASSAY
-    generic_assay_type: MUTATIONAL_SIGNATURE
-    datatype: LIMIT-VALUE
-    stable_id: mutational_signatures_contribution_DBS
-    show_profile_in_analysis_tab: true
-    profile_name: DBS Mutational Signatures
-    profile_description: Doublet base substitution signatures based on COSMIC v3.6 (WGS)
-    data_filename: data_mutational_signatures_contribution_DBS.txt
-    generic_entity_meta_properties: NAME,DESCRIPTION
-    pivot_threshold_value: 0.0
-    """
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_contribution_DBS
+show_profile_in_analysis_tab: true
+profile_name: DBS Mutational Signatures
+profile_description: Doublet base substitution signatures based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_contribution_DBS.txt
+generic_entity_meta_properties: NAME,DESCRIPTION
+pivot_threshold_value: 0.0
+"""
 
             meta_text_counts_dbs = """cancer_study_identifier: add_text
-    genetic_alteration_type: GENERIC_ASSAY
-    generic_assay_type: MUTATIONAL_SIGNATURE
-    datatype: LIMIT-VALUE
-    stable_id: mutational_signatures_counts_DBS
-    show_profile_in_analysis_tab: false
-    profile_name: DBS Mutational Signatures Counts
-    profile_description: Doublet base substitution counts based on COSMIC v3.6 (WGS)
-    data_filename: data_mutational_signatures_counts_DBS.txt
-    generic_entity_meta_properties: NAME
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_counts_DBS
+show_profile_in_analysis_tab: false
+profile_name: DBS Mutational Signatures Counts
+profile_description: Doublet base substitution counts based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_counts_DBS.txt
+generic_entity_meta_properties: NAME
     """
 
             meta_text_sigs_id = """cancer_study_identifier: add_text
-    genetic_alteration_type: GENERIC_ASSAY
-    generic_assay_type: MUTATIONAL_SIGNATURE
-    datatype: LIMIT-VALUE
-    stable_id: mutational_signatures_contribution_ID
-    show_profile_in_analysis_tab: true
-    profile_name: ID Mutational Signatures
-    profile_description: Indel signatures based on COSMIC v3.6 (WGS)
-    data_filename: data_mutational_signatures_contribution_ID.txt
-    generic_entity_meta_properties: NAME,DESCRIPTION
-    pivot_threshold_value: 0.0
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_contribution_ID
+show_profile_in_analysis_tab: true
+profile_name: ID Mutational Signatures
+profile_description: Indel signatures based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_contribution_ID.txt
+generic_entity_meta_properties: NAME,DESCRIPTION
+pivot_threshold_value: 0.0
     """
 
             meta_text_counts_id = """cancer_study_identifier: add_text
-    genetic_alteration_type: GENERIC_ASSAY
-    generic_assay_type: MUTATIONAL_SIGNATURE
-    datatype: LIMIT-VALUE
-    stable_id: mutational_signatures_counts_ID
-    show_profile_in_analysis_tab: false
-    profile_name: ID Mutational Signatures Counts
-    profile_description: Indel classification counts based on COSMIC v3.6 (WGS)
-    data_filename: data_mutational_signatures_counts_ID.txt
-    generic_entity_meta_properties: NAME
+genetic_alteration_type: GENERIC_ASSAY
+generic_assay_type: MUTATIONAL_SIGNATURE
+datatype: LIMIT-VALUE
+stable_id: mutational_signatures_counts_ID
+show_profile_in_analysis_tab: false
+profile_name: ID Mutational Signatures Counts
+profile_description: Indel classification counts based on COSMIC v3.6 (WGS)
+data_filename: data_mutational_signatures_counts_ID.txt
+generic_entity_meta_properties: NAME
     """
 
         meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs, meta_text_counts, meta_text_sigs_dbs, meta_text_counts_dbs, meta_text_sigs_id, meta_text_counts_id)

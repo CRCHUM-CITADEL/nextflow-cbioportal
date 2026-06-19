@@ -50,7 +50,7 @@ data_filename: data_clinical_patient.txt
         """,
         """genetic_alteration_type: CANCER_TYPE
 datatype: CANCER_TYPE
-date_filename: cancer_type.txt
+data_filename: cancer_type.txt
         """)
 
         file_names = Channel.of("clinical_sample", "clinical_patient", "cancer_type")
@@ -64,7 +64,8 @@ date_filename: cancer_type.txt
         )
 
         GENERATE_CANCER_TYPE_FILE(
-            all_groups
+            all_groups,
+            params.oncotree_code
         )
 
         emit:

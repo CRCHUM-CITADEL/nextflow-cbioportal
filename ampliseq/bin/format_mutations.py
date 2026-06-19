@@ -19,17 +19,19 @@ def main():
     df      = pd.read_csv(input_tsv, sep="\t", dtype=str)
     linking = pd.read_csv(linking_file, sep="\t", dtype=str)
 
-    mapping = linking.set_index("sample_id")["deanon_sample_id"].to_dict()
+    # Build mapping with uppercase keys for case-insensitive matching
+    mapping = {k.upper(): v for k, v in
+               linking.set_index("sample_id")["deanon_sample_id"].to_dict().items()}
 
     # Warn on any unmatched IDs
-    unmatched = df[~df["Tumor_Sample_Barcode"].isin(mapping)]["Tumor_Sample_Barcode"].unique()
+    unmatched = df[~df["Tumor_Sample_Barcode"].str.upper().isin(mapping)]["Tumor_Sample_Barcode"].unique()
     if len(unmatched):
         print(f"WARNING: {len(unmatched)} unmatched Tumor_Sample_Barcode value(s) left as-is:",
               file=sys.stderr)
         for uid in unmatched:
             print(f"  {uid}", file=sys.stderr)
 
-    df["Tumor_Sample_Barcode"] = df["Tumor_Sample_Barcode"].map(mapping).fillna(
+    df["Tumor_Sample_Barcode"] = df["Tumor_Sample_Barcode"].str.upper().map(mapping).fillna(
         df["Tumor_Sample_Barcode"]
     )
 

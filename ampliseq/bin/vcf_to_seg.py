@@ -33,7 +33,7 @@ def main():
             if line.startswith('#CHROM'):
                 cols = line.strip().split('\t')
                 format_idx = cols.index('FORMAT')
-                sample_idx = cols.index('SAMPLE')
+                sample_idx = len(cols) - 1  # sample column is always last
                 continue
 
             if format_idx is None:

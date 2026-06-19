@@ -1,209 +1,463 @@
-# CRCHUM-CITADEL/nextflow-sante-precision: Usage
-
-> _Documentation of pipeline parameters is generated automatically from the pipeline schema and can no longer be found in markdown files._
+# User's Guide
 
 ## Introduction
 
-<!-- TODO nf-core: Add documentation about anything specific to running your pipeline. For general topics, please point to (and add to) the main nf-core website. -->
+This pipeline converts [nf-core/oncoanalyser](https://github.com/nf-core/oncoanalyser) WGS/WTS output and clinical CSVs into [cBioPortal](https://www.cbioportal.org/)-compatible import packages. It runs on HPC clusters using SLURM and Apptainer (no Docker, no sudo).
 
-## Samplesheet input
+The pipeline has two independent modes:
 
-You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row as shown in the examples below.
+- **Genomic mode** — processes per-subject oncoanalyser output (mutations, copy-number, structural variants, gene expression, RNA fusions, mutational signatures) and produces merged, group-level cBioPortal data files packaged as a `.tar.gz`.
+- **Clinical mode** — transforms clinical CSVs (patient demographics, diagnoses, treatments, specimens, etc.) into cBioPortal patient and sample attribute files.
 
-```bash
---input '[path to samplesheet file]'
+### Genomic mode processing steps
+
+| Step | Input | Output |
+|---|---|---|
+| Copy-number variants | PURPLE somatic + gene TSVs | `data_cna_hg38.seg`, `data_cna_long.txt` |
+| Structural variants (DNA) | ESVEE somatic VCF | `data_sv.txt` (DNA rows) |
+| RNA fusions | Isofox pass_fusions CSV | `data_sv.txt` (RNA rows) |
+| Gene expression | Isofox gene_data CSV | `data_expression.txt` |
+| Mutations | PAVE somatic + germline + RNA VCFs | `data_mutations_dna_rna_germline.txt` (MAF) |
+| Mutational signatures (SBS) | SNV trinucleotide counts | Contribution + counts matrices |
+| Mutational signatures (DBS) | PAVE somatic VCF | Contribution + counts matrices |
+| Mutational signatures (ID) | PAVE somatic VCF | Contribution + counts matrices |
+| ML feature tables | Merged group-level files | ML-formatted CNV, expression, mutation, SV |
+
+DNA SVs and RNA fusions share the same `data_sv.txt` file; they are distinguished by `DNA_Support` / `RNA_Support` flags and the `Class` column (`DELETION`/`DUPLICATION`/`INVERSION`/`TRANSLOCATION` for DNA, `FUSION` for RNA).
+
+### Incremental processing
+
+The pipeline detects already-processed subjects by checking for existing output files. Subjects with all expected outputs are skipped automatically, allowing you to add new subjects to the samplesheet and re-run without reprocessing the entire cohort.
+
+---
+
+## Prerequisites
+
+### Software
+
+| Software | Version | Notes |
+|---|---|---|
+| [Nextflow](https://www.nextflow.io/) | >= 24.10.2 | `module load nextflow/25.10.2` on most HPC systems |
+| [Apptainer](https://apptainer.org/) | >= 1.0 | Required for all container execution. Not Docker. |
+| [htslib](http://www.htslib.org/) | Any recent | Provides `bcftools` and `tabix` |
+
+### Container images
+
+Five Apptainer containers are used. They are pulled automatically on first run and cached in `containers/`:
+
+| Container | Purpose |
+|---|---|
+| `sdp-r:4.5.1` | R scripts (CNV, SV, expression, aggregation) |
+| `sdp-python:3.12` | Python scripts |
+| `vcf2maf + ensembl-vep` | VCF-to-MAF conversion |
+| `pcgr:2.2.5` | Germline variant annotation (PCGR/CPSR) |
+| `sdp-sigprofiler:1.1.3` | Mutational signature fitting (SigProfilerAssignment) |
+
+> **GHCR authentication**: Containers hosted at `ghcr.io/crchum-citadel` require membership in the `crchum-citadel` GitHub organization and a personal access token:
+> ```bash
+> apptainer registry login --username <github_username> oras://ghcr.io
+> ```
+
+### Reference data
+
+These must be pre-staged before running, especially on HPC compute nodes that lack internet access.
+
+| Reference | Parameter | Description |
+|---|---|---|
+| GRCh38 FASTA | `genome_reference` | Human reference genome with `.fai` index. Required for vcf2maf. |
+| VEP cache | `vep_data` | Ensembl VEP cache directory (version 113). If empty, the pipeline attempts to download a test cache. |
+| PCGR reference | `pcgr_data` | PCGR reference data directory. If empty, the pipeline attempts to download from PCGR servers. |
+| Ensembl annotations (CNV/SV) | `ensembl_annotations` | BioMart TSV (Ensembl 113) with `entrez_ncbi_id` column. Used for CNV gene mapping and SV breakpoint annotation. |
+| Ensembl annotations (expression) | `ensembl_annotations_expr` | BioMart TSV (Ensembl 110) for Isofox Ensembl-to-Entrez ID mapping. |
+| COSMIC fusion data | `cosmic_data` | COSMIC Fusion TSV (e.g., `Cosmic_Fusion_v103_GRCh38.tsv`) for ML SV processing. |
+| ChimerKB data | `chimer_data` | ChimerDB KnownFusions Excel file. Bundled as `assets/test_data/annotations/ChimerKB4.xlsx`. |
+| COSMIC v3.6 signatures | `cosmic_reference` | Bundled at `assets/COSMIC_Human_v3.6.zip`. No action needed unless overriding. |
+| Signature metadata | `sbs_metadata`, `dbs_metadata`, `id_metadata` | Bundled in `assets/`. No action needed unless overriding. |
+
+> **Offline HPC nodes**: Set `NXF_OFFLINE=true` and pre-pull all containers on a login node before submitting jobs:
+> ```bash
+> apptainer pull --dir containers/ oras://ghcr.io/crchum-citadel/sdp-r:4.5.1
+> ```
+
+---
+
+## Preparing input data
+
+### Genomic samplesheet
+
+The genomic samplesheet is a CSV with one row per subject.
+
+| Column | Required | Description |
+|---|---|---|
+| `group` | Yes | Study/cohort identifier (no spaces) |
+| `subject_id` | Yes | Patient/subject identifier |
+| `sample_id` | Yes | Sample base name used in output filenames |
+| `folder` | Yes | Absolute path to the oncoanalyser output directory for this subject |
+
+**Example:**
+
+```csv
+group,subject_id,sample_id,folder
+COHORT1,PATIENT1,SAMPLE1,/data/oncoanalyser_output/COHORT1/PATIENT1
+COHORT1,PATIENT2,SAMPLE2,/data/oncoanalyser_output/COHORT1/PATIENT2
+COHORT2,PATIENT3,SAMPLE3,/data/oncoanalyser_output/COHORT2/PATIENT3
 ```
 
-### Multiple runs of the same sample
+#### Expected folder layout
 
-The `sample` identifiers have to be the same when you have re-sequenced the same sample more than once e.g. to increase sequencing depth. The pipeline will concatenate the raw reads before performing any downstream analysis. Below is an example for the same sample sequenced across 3 lanes:
+Each subject's `folder` must contain oncoanalyser output organized as follows. **All modalities are optional** — missing or empty files are silently skipped.
 
-```csv title="samplesheet.csv"
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L003_R1_001.fastq.gz,AEG588A1_S1_L003_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L004_R1_001.fastq.gz,AEG588A1_S1_L004_R2_001.fastq.gz
+```
+<folder>/
+├── pave/
+│   ├── <subject_id>-T.pave.somatic.vcf.gz          # Somatic DNA mutations
+│   └── <subject_id>-T.pave.germline.vcf.gz         # Germline DNA mutations
+├── sage_append/
+│   └── somatic/
+│       └── <subject_id>-T.sage.append.vcf.gz       # RNA-supported somatic mutations
+├── esvee/
+│   └── <subject_id>-T.esvee.somatic.vcf.gz         # Somatic structural variants
+├── purple/
+│   ├── <subject_id>-T.purple.cnv.somatic.tsv       # Somatic copy-number segments
+│   └── <subject_id>-T.purple.cnv.gene.tsv          # Gene-level copy numbers
+├── isofox/
+│   ├── <subject_id>-T-RNA.isf.gene_data.csv        # Gene expression (Isofox)
+│   └── <subject_id>-T-RNA.isf.pass_fusions.csv     # RNA gene fusions (Isofox)
+└── sigs/
+    └── <subject_id>-T.sig.snv_counts.csv           # Trinucleotide SNV counts (96-channel)
 ```
 
-### Full samplesheet
+> **File naming**: The pipeline resolves files using `subject_id` (from the samplesheet), not `sample_id`. For example, if `subject_id=PATIENT1`, the pipeline looks for `PATIENT1-T.pave.somatic.vcf.gz`.
 
-The pipeline will auto-detect whether a sample is single- or paired-end using the information provided in the samplesheet. The samplesheet can have as many columns as you desire, however, there is a strict requirement for the first 3 columns to match those defined in the table below.
+### Clinical samplesheet
 
-A final samplesheet file consisting of both single- and paired-end data may look something like the one below. This is for 6 samples, where `TREATMENT_REP3` has been sequenced twice.
+The clinical samplesheet is a CSV pointing to individual clinical data files.
 
-```csv title="samplesheet.csv"
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP2,AEG588A2_S2_L002_R1_001.fastq.gz,AEG588A2_S2_L002_R2_001.fastq.gz
-CONTROL_REP3,AEG588A3_S3_L002_R1_001.fastq.gz,AEG588A3_S3_L002_R2_001.fastq.gz
-TREATMENT_REP1,AEG588A4_S4_L003_R1_001.fastq.gz,
-TREATMENT_REP2,AEG588A5_S5_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L004_R1_001.fastq.gz,
+| Column | Required | Description |
+|---|---|---|
+| `group_id` | No | Group/study identifier |
+| `filetype` | Yes | Data type (see table below) |
+| `filepath` | Yes | Path to clinical CSV file |
+| `extraction_date` | Yes | Date the data was extracted (YYYY-MM-DD) |
+| `info` | No | Additional information |
+
+**Supported filetypes:**
+
+| Filetype | Description |
+|---|---|
+| `patient` | Patient demographics |
+| `diagnosis` | Diagnosis data |
+| `treatment` | Treatment records |
+| `surgeries` | Surgical procedures |
+| `systemic_treatment` | Systemic treatments (chemotherapy, immunotherapy, etc.) |
+| `specimen` | Specimen/biobank data |
+| `radio_therapy` | Radiotherapy records |
+
+**Example:**
+
+```csv
+group_id,filetype,filepath,extraction_date,info
+COHORT1,patient,/data/clinical/01_patient.csv,2025-05-20,
+COHORT1,diagnosis,/data/clinical/02_diagnosis.csv,2025-05-20,
+COHORT1,treatment,/data/clinical/03_treatment.csv,2025-05-20,
+COHORT1,surgeries,/data/clinical/04_surgeries.csv,2025-05-20,
+COHORT1,systemic_treatment,/data/clinical/05_systemic_treatment.csv,2025-05-20,
+COHORT1,specimen,/data/clinical/06_specimen.csv,2025-05-20,
+COHORT1,radio_therapy,/data/clinical/08_radio_therapy.csv,2025-05-20,
 ```
 
-| Column    | Description                                                                                                                                                                            |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sample`  | Custom sample name. This entry will be identical for multiple sequencing libraries/runs from the same sample. Spaces in sample names are automatically converted to underscores (`_`). |
-| `fastq_1` | Full path to FastQ file for Illumina short reads 1. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
-| `fastq_2` | Full path to FastQ file for Illumina short reads 2. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
+### ID linking file (optional)
 
-An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
+A TSV file mapping genomic sample IDs to clinical patient IDs. Used when genomic and clinical data use different identifier schemes.
+
+```
+genomic_id	clinical_id
+SAMPLE1	PATIENT_001
+SAMPLE2	PATIENT_002
+```
+
+Pass via `--id_linking_file path/to/linking.tsv`.
+
+---
+
+## Configuration reference
+
+All parameters are set in `nextflow.config` or overridden on the command line with `--param_name value`.
+
+### Core parameters
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `mode` | Yes | `genomic` | Pipeline mode: `genomic` or `clinical` |
+| `project_name` | Yes | — | Study name written to `meta_study.txt` |
+| `project_description` | Yes | — | Study description written to `meta_study.txt` |
+| `outdir` | No | `output_<project>_<date>` | Output directory |
+
+### Genomic input parameters
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `genomic_samplesheet` | Yes | — | Path to genomic samplesheet CSV |
+| `ensembl_annotations` | Yes | — | BioMart TSV (Ensembl 113) for CNV/SV gene annotation |
+| `ensembl_annotations_expr` | Yes | — | BioMart TSV (Ensembl 110) for expression Entrez mapping |
+| `genome_reference` | Yes | — | GRCh38 reference FASTA (for vcf2maf) |
+| `vep_data` | No | (empty) | VEP cache directory. Empty = auto-download test cache |
+| `vep_params` | No | `--cache-version 113 --ncbi-build=GRCh38` | Additional VEP CLI arguments |
+| `pcgr_data` | No | (empty) | PCGR reference data directory. Empty = auto-download |
+| `cosmic_data` | No | — | COSMIC Fusion TSV for ML SV processing |
+| `chimer_data` | No | bundled | ChimerKB4.xlsx for ML fusion annotation |
+| `cosmic_reference` | No | bundled | COSMIC v3.6 signature reference ZIP |
+| `sbs_metadata` | No | bundled | SBS signature metadata TSV |
+| `dbs_metadata` | No | bundled | DBS signature metadata TSV |
+| `id_metadata` | No | bundled | ID (indel) signature metadata TSV |
+
+### Clinical input parameters
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `clinical_samplesheet` | Yes | — | Path to clinical samplesheet CSV |
+| `id_linking_file` | No | (empty) | TSV mapping genomic to clinical IDs |
+
+### Container parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `container_r` | ORAS or local SIF | R 4.5.1 container |
+| `container_python` | ORAS or local SIF | Python 3.12 container |
+| `container_vcf2maf` | Wave container | vcf2maf + Ensembl-VEP |
+| `container_pcgr` | ORAS or local SIF | PCGR 2.2.5 |
+| `container_sigprofiler` | ORAS or local SIF | SigProfiler 1.1.3 |
+
+### Notification parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `email` | — | Email address for pipeline completion notifications |
+| `email_on_fail` | — | Email address for failure notifications |
+| `plaintext_email` | `false` | Send plain-text emails instead of HTML |
+| `hook_url` | `null` | Webhook URL for notifications (e.g., Slack) |
+
+---
 
 ## Running the pipeline
 
-The typical command for running the pipeline is as follows:
+### Profiles
+
+Always include the `apptainer` profile. Combine with other profiles as needed.
+
+| Profile | Purpose |
+|---|---|
+| `apptainer` | **Required.** Enables Apptainer containers, sets cache directory to `containers/`. |
+| `slurm` | Submits jobs to SLURM. Default account: `def-chasse`. Edit `clusterOptions` in `nextflow.config` for your allocation. |
+| `debug` | Dumps process hashes, prints hostname, disables work directory cleanup. |
+| `gpu` | Adds `--nv` flag to Apptainer for GPU passthrough. |
+| `local` | Uses local SIF file paths instead of ORAS URIs (for environments without GHCR access). |
+| `test` | Uses bundled test data with reduced resource limits. Good for verifying installation. |
+
+### Genomic mode
 
 ```bash
-nextflow run CRCHUM-CITADEL/nextflow-sante-precision --input ./samplesheet.csv --outdir ./results --genome GRCh37 -profile docker
+module load nextflow/25.10.2 apptainer htslib
+
+nextflow run main.nf \
+    -profile slurm,apptainer \
+    --mode genomic \
+    --project_name "MY_STUDY" \
+    --project_description "Description of my study" \
+    --genomic_samplesheet samplesheet.csv \
+    --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
+    --ensembl_annotations_expr /path/to/biomart_grch38_ensembl_110.tsv \
+    --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
+    --vep_data /path/to/vep_cache \
+    --pcgr_data /path/to/pcgr_ref_data
 ```
 
-This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
-
-Note that the pipeline will create the following files in your working directory:
+### Clinical mode
 
 ```bash
-work                # Directory containing the nextflow working files
-<OUTDIR>            # Finished results in specified location (defined with --outdir)
-.nextflow_log       # Log file from Nextflow
-# Other nextflow hidden files, eg. history of pipeline runs and old logs.
+nextflow run main.nf \
+    -profile slurm,apptainer \
+    --mode clinical \
+    --project_name "MY_STUDY" \
+    --project_description "Description of my study" \
+    --clinical_samplesheet clinical_samplesheet.csv
 ```
 
-If you wish to repeatedly use the same parameters for multiple runs, rather than specifying each flag in the command, you can specify these in a params file.
+### Using a params file
 
-Pipeline settings can be provided in a `yaml` or `json` file via `-params-file <file>`.
+Instead of passing every parameter on the command line, create a YAML file:
 
-> [!WARNING]
-> Do not use `-c <file>` to specify parameters as this will result in errors. Custom config files specified with `-c` must only be used for [tuning process resource specifications](https://nf-co.re/docs/usage/configuration#tuning-workflow-resources), other infrastructural tweaks (such as output directories), or module arguments (args).
+```yaml
+# params.yaml
+mode: "genomic"
+project_name: "MY_STUDY"
+project_description: "Description of my study"
+genomic_samplesheet: "/data/samplesheet.csv"
+ensembl_annotations: "/path/to/biomart_grch38_ensembl_113.tsv"
+ensembl_annotations_expr: "/path/to/biomart_grch38_ensembl_110.tsv"
+genome_reference: "/path/to/Homo_sapiens_assembly38.fasta"
+vep_data: "/path/to/vep_cache"
+pcgr_data: "/path/to/pcgr_ref_data"
+cosmic_data: "/path/to/Cosmic_Fusion_v103_GRCh38.tsv"
+outdir: "output_my_study"
+email: "user@example.com"
+```
 
-The above pipeline run specified with a params file in yaml format:
+Then run:
 
 ```bash
-nextflow run CRCHUM-CITADEL/nextflow-sante-precision -profile docker -params-file params.yaml
+nextflow run main.nf -profile slurm,apptainer -params-file params.yaml
 ```
 
-with:
+> **Warning**: Use `-params-file` (not `-c`) for parameters. Custom config files via `-c` should only be used for process resource tuning and infrastructure settings.
 
-```yaml title="params.yaml"
-input: './samplesheet.csv'
-outdir: './results/'
-genome: 'GRCh37'
-<...>
-```
-
-You can also generate such `YAML`/`JSON` files via [nf-core/launch](https://nf-co.re/launch).
-
-### Updating the pipeline
-
-When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
+### Local execution (no SLURM)
 
 ```bash
-nextflow pull CRCHUM-CITADEL/nextflow-sante-precision
+nextflow run main.nf -profile apptainer \
+    --mode genomic \
+    --genomic_samplesheet samplesheet.csv
 ```
 
-### Reproducibility
+### Running via Nextflow container
 
-It is a good idea to specify the pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
-
-First, go to the [CRCHUM-CITADEL/nextflow-sante-precision releases page](https://github.com/CRCHUM-CITADEL/nextflow-sante-precision/releases) and find the latest pipeline version - numeric only (eg. `1.3.1`). Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 1.3.1`. Of course, you can switch to another version by changing the number after the `-r` flag.
-
-This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future.
-
-To further assist in reproducibility, you can use share and reuse [parameter files](#running-the-pipeline) to repeat pipeline runs with the same settings without having to write out a command with every single parameter.
-
-> [!TIP]
-> If you wish to share such profile (such as upload as supplementary material for academic publications), make sure to NOT include cluster specific paths to files, nor institutional specific profiles.
-
-## Core Nextflow arguments
-
-> [!NOTE]
-> These options are part of Nextflow and use a _single_ hyphen (pipeline parameters use a double-hyphen)
-
-### `-profile`
-
-Use this parameter to choose a configuration profile. Profiles can give configuration presets for different compute environments.
-
-Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Podman, Shifter, Charliecloud, Apptainer, Conda) - see below.
-
-> [!IMPORTANT]
-> We highly recommend the use of Docker or Singularity containers for full pipeline reproducibility, however when this is not possible, Conda is also supported.
-
-The pipeline also dynamically loads configurations from [https://github.com/nf-core/configs](https://github.com/nf-core/configs) when it runs, making multiple config profiles for various institutional clusters available at run time. For more information and to check if your system is supported, please see the [nf-core/configs documentation](https://github.com/nf-core/configs#documentation).
-
-Note that multiple profiles can be loaded, for example: `-profile test,docker` - the order of arguments is important!
-They are loaded in sequence, so later profiles can overwrite earlier profiles.
-
-If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`. This is _not_ recommended, since it can lead to different results on different machines dependent on the computer environment.
-
-- `docker`
-  - A generic configuration profile to be used with [Docker](https://docker.com/)
-- `singularity`
-  - A generic configuration profile to be used with [Singularity](https://sylabs.io/docs/)
-- `podman`
-  - A generic configuration profile to be used with [Podman](https://podman.io/)
-- `shifter`
-  - A generic configuration profile to be used with [Shifter](https://nersc.gitlab.io/development/shifter/how-to-use/)
-- `charliecloud`
-  - A generic configuration profile to be used with [Charliecloud](https://hpc.github.io/charliecloud/)
-- `apptainer`
-  - A generic configuration profile to be used with [Apptainer](https://apptainer.org/)
-- `wave`
-  - A generic configuration profile to enable [Wave](https://seqera.io/wave/) containers. Use together with one of the above (requires Nextflow ` 24.03.0-edge` or later).
-- `conda`
-  - A generic configuration profile to be used with [Conda](https://conda.io/docs/). Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker, Singularity, Podman, Shifter, Charliecloud, or Apptainer.
-
-### `-resume`
-
-Specify this when restarting a pipeline. Nextflow will use cached results from any pipeline steps where the inputs are the same, continuing from where it got to previously. For input to be considered the same, not only the names must be identical but the files' contents as well. For more info about this parameter, see [this blog post](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html).
-
-You can also supply a run name to resume a specific run: `-resume [run-name]`. Use the `nextflow log` command to show previous run names.
-
-### `-c`
-
-Specify the path to a specific config file (this is a core Nextflow command). See the [nf-core website documentation](https://nf-co.re/usage/configuration) for more information.
-
-## Custom configuration
-
-### Resource requests
-
-Whilst the default requirements set within the pipeline will hopefully work for most people and with most input data, you may find that you want to customise the compute resources that the pipeline requests. Each step in the pipeline has a default set of requirements for number of CPUs, memory and time. For most of the pipeline steps, if the job exits with any of the error codes specified [here](https://github.com/nf-core/rnaseq/blob/4c27ef5610c87db00c3c5a3eed10b1d161abf575/conf/base.config#L18) it will automatically be resubmitted with higher resources request (2 x original, then 3 x original). If it still fails after the third attempt then the pipeline execution is stopped.
-
-To change the resource requests, please see the [max resources](https://nf-co.re/docs/usage/configuration#max-resources) and [tuning workflow resources](https://nf-co.re/docs/usage/configuration#tuning-workflow-resources) section of the nf-core website.
-
-### Custom Containers
-
-In some cases, you may wish to change the container or conda environment used by a pipeline steps for a particular tool. By default, nf-core pipelines use containers and software from the [biocontainers](https://biocontainers.pro/) or [bioconda](https://bioconda.github.io/) projects. However, in some cases the pipeline specified version maybe out of date.
-
-To use a different container from the default container or conda environment specified in a pipeline, please see the [updating tool versions](https://nf-co.re/docs/usage/configuration#updating-tool-versions) section of the nf-core website.
-
-### Custom Tool Arguments
-
-A pipeline might not always support every possible argument or option of a particular tool used in pipeline. Fortunately, nf-core pipelines provide some freedom to users to insert additional parameters that the pipeline does not include by default.
-
-To learn how to provide additional arguments to a particular tool of the pipeline, please see the [customising tool arguments](https://nf-co.re/docs/usage/configuration#customising-tool-arguments) section of the nf-core website.
-
-### nf-core/configs
-
-In most cases, you will only need to create a custom config as a one-off but if you and others within your organisation are likely to be running nf-core pipelines regularly and need to use the same settings regularly it may be a good idea to request that your custom config file is uploaded to the `nf-core/configs` git repository. Before you do this please can you test that the config file works with your pipeline of choice using the `-c` parameter. You can then create a pull request to the `nf-core/configs` repository with the addition of your config file, associated documentation file (see examples in [`nf-core/configs/docs`](https://github.com/nf-core/configs/tree/master/docs)), and amending [`nfcore_custom.config`](https://github.com/nf-core/configs/blob/master/nfcore_custom.config) to include your custom profile.
-
-See the main [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for more information about creating your own configuration files.
-
-If you have any questions or issues please send us a message on [Slack](https://nf-co.re/join/slack) on the [`#configs` channel](https://nfcore.slack.com/channels/configs).
-
-## Running in the background
-
-Nextflow handles job submissions and supervises the running jobs. The Nextflow process must run until the pipeline is finished.
-
-The Nextflow `-bg` flag launches Nextflow in the background, detached from your terminal so that the workflow does not stop if you log out of your session. The logs are saved to a file.
-
-Alternatively, you can use `screen` / `tmux` or similar tool to create a detached session which you can log back into at a later time.
-Some HPC setups also allow you to run nextflow within a cluster job submitted your job scheduler (from where it submits more jobs).
-
-## Nextflow memory requirements
-
-In some cases, the Nextflow Java virtual machines can start to request a large amount of memory.
-We recommend adding the following line to your environment to limit this (typically in `~/.bashrc` or `~./bash_profile`):
+If Nextflow is not installed on your system, run it inside an Apptainer container:
 
 ```bash
-NXF_OPTS='-Xms1g -Xmx4g'
+apptainer pull --dir containers/ oras://ghcr.io/crchum-citadel/sdp-nextflow:25.04.7
+
+apptainer exec containers/sdp-nextflow_25.04.7.sif \
+    nextflow run main.nf -profile apptainer \
+    --mode genomic \
+    --genomic_samplesheet samplesheet.csv
+```
+
+### Resuming a failed run
+
+Nextflow caches intermediate results. If a run fails, fix the issue and resume:
+
+```bash
+nextflow run main.nf -profile slurm,apptainer -params-file params.yaml -resume
+```
+
+Nextflow reuses cached results from completed steps and only re-runs what failed. Additionally, the pipeline's incremental processing skips subjects that already have all expected output files in the output directory.
+
+### Running tests
+
+Verify your installation with the bundled test data:
+
+```bash
+# Run all locally-testable tests
+./nf-test test tests/clinical.nf.test tests/subworkflows/ tests/modules/ --profile test,apptainer
+
+# Run a single test
+./nf-test test tests/subworkflows/genomic_cnv.nf.test --profile test,apptainer
+```
+
+See the [README](../README.md#testing) for more test commands.
+
+---
+
+## Troubleshooting
+
+### Container pull failures
+
+**Symptom**: `FATAL: Unable to pull from ORAS` or authentication errors.
+
+**Fix**: Log in to GHCR on the node that pulls containers:
+
+```bash
+apptainer registry login --username <github_username> oras://ghcr.io
+```
+
+For offline compute nodes, pre-pull containers on a login node:
+
+```bash
+apptainer pull --dir containers/ oras://ghcr.io/crchum-citadel/sdp-r:4.5.1
+# Repeat for all 5 containers
+```
+
+### VEP/PCGR download failures
+
+**Symptom**: VEP or PCGR steps fail trying to download reference data.
+
+**Fix**: Pre-stage VEP cache and PCGR data on a login node with internet access, then set `vep_data` and `pcgr_data` to the staged paths. Compute nodes on most HPC clusters have no internet.
+
+### SLURM account errors
+
+**Symptom**: `sbatch: error: invalid account` or similar.
+
+**Fix**: Edit `nextflow.config` and change the `clusterOptions` in the `slurm` profile to your allocation:
+
+```groovy
+clusterOptions = '--account=your-allocation'
+```
+
+### "All subjects in samplesheet already processed"
+
+**Symptom**: Pipeline exits with error saying all subjects are already processed.
+
+**Cause**: The incremental processing logic found all expected output files for every subject.
+
+**Fix**: Either (a) delete the output directory to reprocess, (b) remove already-processed subjects from the samplesheet, or (c) add new subjects that haven't been processed yet.
+
+### Expression merge requires 2+ samples
+
+**Symptom**: Warning `Found 1 TPM file(s) for group X. Need at least 2 files to merge. Skipping merge step.`
+
+**Cause**: cBioPortal expression files require at least 2 samples per group to produce a valid matrix.
+
+**Fix**: Add more subjects to the group, or accept that the expression file will not be generated for single-sample groups.
+
+### Memory or time errors
+
+The pipeline uses process labels to set resource limits (see `conf/base.config`):
+
+| Label | CPUs | Memory | Time |
+|---|---|---|---|
+| `process_single` | 1 | 6 GB | 4 h |
+| `process_low` | 2 | 12 GB | 4 h |
+| `process_medium` | 6 | 36 GB | 8 h |
+| `process_high` | 12 | 72 GB | 16 h |
+| `process_high_memory` | — | 200 GB | — |
+
+Processes with the `error_retry` label automatically retry up to 3 times. To increase resources for a specific process, add a custom config:
+
+```groovy
+// custom.config
+process {
+    withName: 'VCF2MAF' {
+        memory = '100.GB'
+        time   = '24.h'
+    }
+}
+```
+
+Then pass it with `-c custom.config`.
+
+### Missing input files
+
+**Symptom**: Warnings like `File not found for PATIENT1 (mutation (PAVE somatic)): /path/to/file`.
+
+**Cause**: The expected file does not exist in the subject's oncoanalyser output folder.
+
+**Fix**: Check the folder layout matches the [expected structure](#expected-folder-layout). Missing files are skipped — the pipeline processes whatever modalities are available.
+
+### Nextflow memory
+
+If Nextflow itself runs out of memory, set this in your shell profile:
+
+```bash
+export NXF_OPTS='-Xms1g -Xmx4g'
+```
+
+### Running in the background
+
+Use `screen`, `tmux`, or submit the Nextflow process itself as a SLURM job:
+
+```bash
+# Using screen
+screen -S nf-run
+nextflow run main.nf -profile slurm,apptainer -params-file params.yaml
+# Ctrl+A, D to detach; screen -r nf-run to reattach
 ```

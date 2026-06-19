@@ -11,10 +11,11 @@ def main():
 
     linking = pd.read_csv(linking_file, sep='\t', header=0, usecols=[0, 1])
     linking.columns = ['Anon_Id', 'Real_Id']
-    id_map = dict(zip(linking['Anon_Id'], linking['Real_Id']))
+    # Uppercase keys for case-insensitive matching
+    id_map = {k.upper(): v for k, v in zip(linking['Anon_Id'], linking['Real_Id'])}
 
     df = pd.read_csv(cna_file, sep='\t')
-    df['Sample_Id'] = df['Sample_Id'].map(id_map).fillna(df['Sample_Id'])
+    df['Sample_Id'] = df['Sample_Id'].str.upper().map(id_map).fillna(df['Sample_Id'])
     df.to_csv(cna_file, sep='\t', index=False)
 
 if __name__ == '__main__':

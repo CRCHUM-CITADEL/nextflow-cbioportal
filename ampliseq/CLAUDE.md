@@ -1,18 +1,69 @@
-# CLAUDE.md — ampliseq
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 Nextflow DSL2 pipeline converting Ampliseq VCFs + TSV exports + clinical files → cBioPortal-ready files. HPC-only (SLURM + Apptainer — **no Docker, no sudo**).
 
 ---
 
-## Layout
+## Commands
+
+```bash
+# Run tests (from ampliseq/ directory)
+nf-test test tests/modules/package_cbioportal.nf.test --profile test
+
+# Run locally with test data (skips vcf2maf)
+nextflow run main.nf -profile test,apptainer
+
+# Run with real data
+nextflow run main.nf -profile apptainer \
+  --input samplesheet.csv \
+  --outdir results/ \
+  --patient_file patient_file.txt \
+  --sample_file sample_file.txt \
+  --linking_file linking_file.txt \
+  --vcf2maf_container community.wave.seqera.io/library/vcf2maf_ensembl-vep:1b486a30e76e2908 \
+  --vep_data /path/to/vep_data/ \
+  --ref_fasta /path/to/hg19.fa \
+  --study_id my_study
+
+# Resume a failed/interrupted run
+nextflow run main.nf ... -resume
+```
+
+The `test` profile sets `skip_vcf2maf=true` and uses stub MAFs from `assets/`, avoiding the need for VEP data and reference FASTA.
+
+---
+
+## Workflow Architecture
+
+The main DAG in `workflows/ampliseq-cbioportal.nf` orchestrates 3 subworkflows and 2 standalone modules:
 
 ```
-workflows/ampliseq-cbioportal.nf    # Full DAG: per-sample → merge → deanon → clinical → meta
-modules/local/                       # One process per file (see Data Flow below)
-bin/                                 # Python scripts; also runnable standalone via run_pipeline.sh
-assets/samplesheet.csv               # Full test samplesheet (SAMPLE_001 + SAMPLE_002)
-assets/samplesheet_sample1.csv       # First-run input for incremental test (SAMPLE_001 only)
+ch_samplesheet
+  │
+  ├─ branch → existing (skip) / new_sample
+  │
+  ├─ PER_SAMPLE_FORMAT (subworkflow) ── new samples only
+  │    ├─ FORMAT_SV         (TSV → _sv.txt)
+  │    ├─ FORMAT_CNA        (TSV → _cna.txt)
+  │    ├─ VCF_TO_SEG        (CNV VCF → _seg.txt)
+  │    └─ VCF_TO_MAF or STUB_MAF → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → _mutations.txt
+  │
+  ├─ FILTER_LINKING (module) ── restrict linking file to samplesheet samples
+  │
+  ├─ MERGE_DEANON (subworkflow) ── merge all per-sample files + deanonymise
+  │    ├─ MERGE_{SV,CNA,MUTATIONS,SEG}
+  │    └─ DEANON_{MUTATIONS,SV,CNA,SEG}
+  │
+  ├─ STUDY_METADATA (subworkflow) ── clinical files + meta + case lists
+  │    ├─ CLINICAL_PATIENTS / CLINICAL_SAMPLES
+  │    └─ WRITE_CASE_LISTS / WRITE_META
+  │
+  └─ PACKAGE_CBIOPORTAL (module) ── tar.gz all outputs for transfer
 ```
+
+**Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (VEP v113, GRCh37/hg19) and stub MAFs. `params.filter_tsv_variants` chooses between filtering mutations to TSV coordinates or passing all MAF rows through.
 
 ---
 
@@ -43,6 +94,7 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 6. MERGE → DEANON → `data_mutations.txt`, `data_sv.txt`, `data_cna.txt`, `data_seg.txt`
 7. CLINICAL_PATIENTS / CLINICAL_SAMPLES → filtered to samplesheet patients/samples
 8. WRITE_CASE_LISTS + WRITE_META
+9. PACKAGE_CBIOPORTAL → `{study_id}.tar.gz`
 
 ---
 
@@ -50,17 +102,23 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 
 - CNA copy-number mapping: `0→-2, 1→-1, 3→1, ≥4→2`; CN=2 is normal and dropped.
 - `data_cna.txt` is long format (`Hugo_Symbol, Sample_Id, Value`); `meta_cna.txt` uses `datatype: DISCRETE_LONG`.
-- vcf2maf container mounts `vep_data` as `/home/jbellavance/` inside the container.
 - All deanon scripts warn on unmatched IDs but leave them unchanged.
-- `filter_tsv_variants=true` (default): mutations filtered to TSV coordinates. `false`: all MAF rows pass through.
 - `vcf_to_seg.py` sets `num.mark=1` (ampliseq VCFs carry no probe-count).
 - `meta_seg.txt`: `datatype: SEG`, `show_profile_in_analysis_tab: false`.
+
+## Container Labels
+
+Two process labels control container assignment in `nextflow.config`:
+- `python` → `params.python_sif` (local Apptainer image built from `containers/python-ampliseq.def`)
+- `vcf2maf` → `params.vcf2maf_container` (Wave-built image with vcf2maf + ensembl-vep)
+
+The vcf2maf container mounts `vep_data` as `/home/jbellavance/` inside the container.
 
 ---
 
 ## Incremental Runs
 
-A subject is skipped if all four per-sample files exist under `{outdir}/samples/{sample_id}/`:
+A sample is skipped if all four per-sample files exist under `{outdir}/samples/{sample_id}/`:
 `{id}_sv.txt`, `{id}_cna.txt`, `{id}_seg.txt`, `{id}_mutations.txt`
 
 Merge/deanon/clinical steps always re-run over all samples combined. Use the same `--outdir` across runs.

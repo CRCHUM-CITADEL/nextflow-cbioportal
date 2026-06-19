@@ -1,8 +1,9 @@
-# CRCHUM-CITADEL/nextflow-sante-precision: Documentation
+# oncoanalyser → cBioPortal: Documentation
 
-The CRCHUM-CITADEL/nextflow-sante-precision documentation is split into the following pages:
+Nextflow DSL2 pipeline that converts [nf-core/oncoanalyser](https://github.com/nf-core/oncoanalyser) WGS/WTS output and clinical CSVs into [cBioPortal](https://www.cbioportal.org/)-compatible import packages. Designed for HPC environments (SLURM + Apptainer).
 
-- [Usage](usage.md)
-  - An overview of how the pipeline works, how to run it and a description of all of the different command-line flags.
-- [Output](output.md)
-  - An overview of the different results produced by the pipeline and how to interpret them.
+## Documentation
+
+- **[Quick Start](../README.md)** — Clone, configure, and run the pipeline in minutes.
+- **[User's Guide](usage.md)** — Full guide covering prerequisites, input preparation, configuration, running both modes, and troubleshooting.
+- **[Output Reference](output.md)** — Every output file explained, with cBioPortal import instructions.

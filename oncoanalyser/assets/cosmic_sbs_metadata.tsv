@@ -1,0 +1,102 @@
+sbs_id	category	etiology	main_effect
+SBS1	Aging	Spontaneous deamination of 5-methylcytosine (clock-like)	All cancer types
+SBS2	APOBEC	Activity of APOBEC3A/APOBEC3B cytidine deaminases	Breast, cervical, bladder, head and neck, lung
+SBS3	HR deficiency	Defective homologous recombination DNA repair (BRCA1/BRCA2)	Breast, ovarian, pancreatic
+SBS4	Tobacco	Tobacco smoking (benzo[a]pyrene and other PAHs)	Lung, head and neck, liver
+SBS5	Clock-like	Unknown (clock-like, correlates with age)	All cancer types
+SBS6	MMR deficiency	Defective DNA mismatch repair (MSI)	Colorectal, uterine, stomach
+SBS7a	UV	Ultraviolet light exposure	Skin melanoma, head and neck (lip)
+SBS7b	UV	Ultraviolet light exposure	Skin melanoma
+SBS7c	UV	Ultraviolet light exposure	Skin melanoma
+SBS7d	UV	Ultraviolet light exposure	Skin melanoma
+SBS8	Unknown	Unknown (possible late replication errors)	Breast, medulloblastoma, lymphoid
+SBS9	AID activity	Polymerase eta somatic hypermutation activity	Lymphoid malignancies
+SBS10a	POLE deficiency	POLE exonuclease domain mutations (polymerase epsilon)	Colorectal, uterine
+SBS10b	POLE deficiency	POLE exonuclease domain mutations (polymerase epsilon)	Colorectal, uterine
+SBS10c	POLE deficiency	Defective POLE proofreading (polymerase epsilon)	Colorectal, uterine
+SBS10d	POLE deficiency	Defective POLE proofreading (polymerase epsilon)	Colorectal, uterine
+SBS11	Chemotherapy	Temozolomide (alkylating agent) chemotherapy	Glioblastoma, melanoma
+SBS12	Unknown	Unknown	Liver
+SBS13	APOBEC	Activity of APOBEC3A/APOBEC3B cytidine deaminases	Breast, cervical, bladder, head and neck, lung
+SBS14	MMR deficiency	Simultaneous POLE mutation and MMR deficiency	Colorectal, uterine
+SBS15	MMR deficiency	Defective DNA mismatch repair	Colorectal, uterine, stomach
+SBS16	Unknown	Unknown (possible alcohol-associated damage)	Liver
+SBS17a	Unknown	Unknown (possible 5-fluorouracil or ROS damage)	Stomach, oesophageal
+SBS17b	Unknown	Unknown (possible 5-fluorouracil or ROS damage)	Stomach, oesophageal, breast
+SBS18	ROS	Reactive oxygen species (damage to guanine by 8-oxo-dG)	Neuroblastoma, breast, stomach, colorectal
+SBS19	Unknown	Unknown	Pilocytic astrocytoma
+SBS20	MMR deficiency	Concurrent POLD1 mutation and MMR deficiency	Colorectal, uterine
+SBS21	MMR deficiency	Defective DNA mismatch repair (MSI)	Colorectal, uterine, stomach
+SBS22a	Carcinogen	Aristolochic acid exposure	Urothelial, liver (Balkan/Asian endemic nephropathy)
+SBS22b	Carcinogen	Aristolochic acid exposure (secondary component)	Urothelial, liver
+SBS22c	Carcinogen	Aristolochic acid exposure (tertiary component)	Urothelial, liver
+SBS23	Unknown	Unknown	Liver
+SBS24	Carcinogen	Aflatoxin B1 exposure	Liver (sub-Saharan Africa, Southeast Asia)
+SBS25	Chemotherapy	Chemotherapy treatment (unknown agent)	Hodgkin lymphoma
+SBS26	MMR deficiency	Defective DNA mismatch repair (MSI)	Colorectal, uterine, stomach
+SBS27	Artefact	Possible sequencing artefact	Not applicable
+SBS28	Unknown	Unknown	Stomach
+SBS29	Carcinogen	Tobacco chewing	Oral cavity
+SBS30	BER deficiency	Defective DNA base excision repair (NTHL1 mutations)	Breast, colorectal
+SBS31	Chemotherapy	Platinum chemotherapy	Ovarian, breast
+SBS32	Chemotherapy	Prior azathioprine treatment	Kidney
+SBS33	Unknown	Unknown	Various
+SBS34	Unknown	Unknown	Various
+SBS35	Chemotherapy	Platinum chemotherapy	Ovarian, pancreatic
+SBS36	BER deficiency	Defective DNA base excision repair (MUTYH mutations)	Colorectal
+SBS37	Unknown	Unknown	Various
+SBS38	Unknown	Unknown (possible indirect UV damage)	Skin melanoma
+SBS39	Unknown	Unknown (possible HR-related)	Various
+SBS40a	Clock-like	Unknown (clock-like, correlates with age)	Various (ubiquitous)
+SBS40b	Clock-like	Unknown (clock-like, correlates with age)	Kidney, various
+SBS40c	Clock-like	Unknown (clock-like, correlates with age)	Kidney, various
+SBS41	Unknown	Unknown	Various
+SBS42	Carcinogen	Haloalkane exposure (occupational)	Various
+SBS43	Artefact	Possible sequencing artefact	Not applicable
+SBS44	MMR deficiency	Defective DNA mismatch repair (MSI)	Colorectal, uterine, stomach
+SBS45	Artefact	Possible sequencing artefact (8-oxo-dG during library prep)	Not applicable
+SBS46	Artefact	Possible sequencing artefact	Not applicable
+SBS47	Artefact	Possible sequencing artefact	Not applicable
+SBS48	Artefact	Possible sequencing artefact	Not applicable
+SBS49	Artefact	Possible sequencing artefact	Not applicable
+SBS50	Artefact	Possible sequencing artefact	Not applicable
+SBS51	Artefact	Possible sequencing artefact	Not applicable
+SBS52	Artefact	Possible sequencing artefact	Not applicable
+SBS53	Artefact	Possible sequencing artefact	Not applicable
+SBS54	Artefact	Possible sequencing artefact (related to germline contamination)	Not applicable
+SBS55	Artefact	Possible sequencing artefact	Not applicable
+SBS56	Artefact	Possible sequencing artefact	Not applicable
+SBS57	Artefact	Possible sequencing artefact	Not applicable
+SBS58	Artefact	Possible sequencing artefact	Not applicable
+SBS59	Artefact	Possible sequencing artefact	Not applicable
+SBS60	Artefact	Possible sequencing artefact	Not applicable
+SBS84	AID activity	Aberrant AID activity (activation-induced cytidine deaminase)	Lymphoid malignancies
+SBS85	AID activity	Aberrant AID activity (activation-induced cytidine deaminase)	Lymphoid malignancies
+SBS86	Chemotherapy	Unknown chemotherapy treatment	Acute lymphoblastic leukaemia
+SBS87	Chemotherapy	Thiopurine chemotherapy	Acute lymphoblastic leukaemia
+SBS88	Microbiome	Colibactin exposure (pks+ E. coli)	Colorectal
+SBS89	Unknown	Unknown	Various
+SBS90	Chemotherapy	Duocarmycin exposure (antibody-drug conjugate)	Breast, oesophageal (metastatic)
+SBS91	Unknown	Unknown (found in normal cerebral cortex and oesophagus)	CNS, oesophageal
+SBS92	Tobacco	Tobacco smoking (novel component)	Lung
+SBS93	Unknown	Unknown	Various
+SBS94	Unknown	Unknown	Various
+SBS95	Artefact	Possible sequencing artefact	Not applicable
+SBS96	Unknown	Unknown	Various
+SBS97	Unknown	Unknown	Various
+SBS98	Unknown	Unknown	Various
+SBS99	Unknown	Unknown	Various
+SBS100	Unknown	Unknown	Various
+SBS101	Unknown	Unknown	Various
+SBS102	Unknown	Unknown	Various
+SBS103	Unknown	Unknown	Various
+SBS104	Unknown	Unknown	Various
+SBS105	Unknown	Unknown	Various
+SBS106	Unknown	Unknown	Various
+SBS107	Unknown	Unknown	Various
+SBS108	Unknown	Unknown	Various
+SBS109	Unknown	Unknown	Various
+SBS110	Unknown	Unknown	Various
+SBS111	Unknown	Unknown	Various
+SBS112	Unknown	Unknown	Various
+SBS113	Unknown	Unknown (possible adducted adenine mutagenesis)	Various

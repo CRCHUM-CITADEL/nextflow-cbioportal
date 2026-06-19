@@ -24,6 +24,7 @@ def main():
     sv_df["_end"]   = sv_df["End"].astype(int)
     is_inversion = sv_df["_end"] < sv_df["_start"]
 
+    sv_class = sv_df["Variant Subtype"].where(~is_inversion, "INVERSION")
     out = pd.DataFrame({
         "Sample_Id":             sample_id,
         "SV_Status":             "Somatic",
@@ -31,7 +32,8 @@ def main():
         "Site1_Chromosome":      sv_df["Chr"],
         "Site1_Region":          sv_df["Start"],
         "Site2_Hugo_Symbol":     sv_df["Breakend Genes"],
-        "Class":                 sv_df["Variant Subtype"].where(~is_inversion, "INVERSION"),
+        "Class":                 sv_class,
+        "Event_Info":            "RNA-Seq " + sv_class + " : " + sv_df["Genes"].values + "-" + sv_df["Breakend Genes"].values,
         "Tumor_Variant_Count":   sv_df["Supporting Reads"],
         "SV_Length":             (sv_df["_start"] - sv_df["_end"]).where(
                                      is_inversion,

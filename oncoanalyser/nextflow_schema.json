@@ -181,6 +181,12 @@
         },
         "project_description": {
             "type": "string"
+        },
+        "cosmic_data" : {
+            "type": "string"
+        },
+        "signatures_etiology": {
+            "type": "string"
         }
     }
 }

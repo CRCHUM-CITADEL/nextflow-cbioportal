@@ -1,0 +1,59 @@
+nextflow_process {
+
+    name "Test ISOFOX_FUSION_TO_CBIOPORTAL module"
+    script "modules/local/isofox_fusion_to_cbioportal/main.nf"
+    process "ISOFOX_FUSION_TO_CBIOPORTAL"
+    tag "module"
+    tag "isofox_fusion"
+
+    test("Two subjects — isofox_fusion.data_sv.txt files are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sv_rna_fusion'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/isofox/T1-T-RNA.isf.pass_fusions.csv')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sv_rna_fusion'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/isofox/T2-T-RNA.isf.pass_fusions.csv')
+                    ]
+                )
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sv.size() == 2
+
+            def names = process.out.sv.collect { meta, f -> f.toString().split('/').last() }.sort()
+            assert names == ['T1.isofox_fusion.data_sv.txt', 'T2.isofox_fusion.data_sv.txt']
+
+            // Verify cBioPortal SV format columns
+            def t1_path = process.out.sv.collect { meta, f -> f }.find { it.toString().endsWith('T1.isofox_fusion.data_sv.txt') }
+            def header = path(t1_path.toString()).readLines()[0]
+            assert header.contains('Sample_Id')
+            assert header.contains('SV_Status')
+            assert header.contains('Site1_Hugo_Symbol')
+            assert header.contains('RNA_Support')
+            assert header.contains('Class')
+
+            // Verify RNA-specific fields
+            def t1_lines = path(t1_path.toString()).readLines()
+            assert t1_lines.size() > 1
+            assert t1_lines[1].contains('SOMATIC')
+            assert t1_lines[1].contains('FUSION')
+            assert t1_lines[1].contains('Yes')   // RNA_Support
+
+            snapshot(
+                process.out.sv.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }
+            ).match()
+        }
+    }
+}

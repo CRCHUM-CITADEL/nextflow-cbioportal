@@ -1,5 +1,6 @@
 process PROCESS_ML_MUTATION {
     publishDir "${params.outdir}/${group}/machine_learning/processed", mode: 'copy'
+    label "process_medium"
 
     container params.container_r
 

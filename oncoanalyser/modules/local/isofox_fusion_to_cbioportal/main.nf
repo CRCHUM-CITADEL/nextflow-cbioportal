@@ -7,7 +7,7 @@ process ISOFOX_FUSION_TO_CBIOPORTAL {
     publishDir "${params.outdir}/${meta.group}/${meta.subject}", mode: 'copy'
 
     input:
-        tuple val(meta), path(fusion_tsv)
+        tuple val(meta), path(fusion_csv)
 
     output:
         tuple val(meta), path("${meta.sample}.isofox_fusion.data_sv.txt"), emit: sv
@@ -18,8 +18,13 @@ process ISOFOX_FUSION_TO_CBIOPORTAL {
     script:
     """
     Rscript ${projectDir}/bin/gen_isofox_fusion_to_cbioportal.R \\
-        --input  ${fusion_tsv} \\
+        --input  ${fusion_csv} \\
         --sample ${meta.sample} \\
         --output ${meta.sample}.isofox_fusion.data_sv.txt
+    """
+
+    stub:
+    """
+    touch ${meta.sample}.isofox_fusion.data_sv.txt
     """
 }

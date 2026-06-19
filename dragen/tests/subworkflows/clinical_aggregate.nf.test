@@ -1,0 +1,76 @@
+nextflow_workflow {
+
+    name "Test CLINICAL_AGGREGATE subworkflow"
+    script "subworkflows/local/clinical_aggregate/main.nf"
+    workflow "CLINICAL_AGGREGATE"
+    tag "subworkflow"
+    tag "clinical"
+
+    test("All seven file types — clinical output files are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                // Each tuple: (meta with group/pipeline/extraction_date, csv_file)
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', pipeline: 'patient',            extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/01_patient.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'diagnosis',          extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/02_diagnosis.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'treatment',          extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/03_treatment.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'surgeries',          extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/04_surgeries.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'systemic_treatment', extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/05_systemic_treatment.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'specimen',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/06_specimen.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'radio_therapy',      extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/08_radio_therapy.csv')
+                    ]
+                )
+                // id_linking_file
+                input[1] = file('${projectDir}/assets/test_data/clinical/id_linking_file.tsv')
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            assert path("${params.outdir}/TEST/data_clinical_sample.txt").exists()
+            assert path("${params.outdir}/TEST/data_clinical_patient.txt").exists()
+            assert path("${params.outdir}/TEST/cancer_type.txt").exists()
+
+            // Verify clinical sample file format
+            def sample_header = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()[0]
+            assert sample_header.startsWith('#')
+
+            // Verify meta files are created
+            assert path("${params.outdir}/TEST/meta_clinical_sample.txt").exists()
+            assert path("${params.outdir}/TEST/meta_clinical_patient.txt").exists()
+
+            snapshot(
+                path("${params.outdir}/TEST/data_clinical_sample.txt"),
+                path("${params.outdir}/TEST/data_clinical_patient.txt"),
+                path("${params.outdir}/TEST/cancer_type.txt")
+            ).match()
+        }
+    }
+}

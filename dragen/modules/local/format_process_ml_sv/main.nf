@@ -15,4 +15,9 @@ process FORMAT_PROCESS_ML_SV {
     """
     ml_format_sv_processor.R $results_sv $known_fusions $cosmic_data
     """
+
+    stub:
+    """
+    touch filtered_fusions_matrix.tsv
+    """
 }

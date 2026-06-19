@@ -9,8 +9,8 @@ include { FILTER_GERMLINE_DNA  } from '../../../modules/local/filter_germline_dn
 
 workflow GENOMIC_MUTATIONS {
     take:
-        ger_dna_vcf // tuple (meta, sage.germline.vcf.gz) — SAGE germline VCF
-        som_dna_vcf // tuple (meta, sage.somatic.vcf.gz)  — SAGE somatic VCF
+        ger_dna_vcf // tuple (meta, pave.germline.vcf.gz) — pave germline VCF
+        som_dna_vcf // tuple (meta, pave.somatic.vcf.gz)  — pave somatic VCF
         som_rna_vcf // tuple (meta, sage.append.vcf.gz)   — SAGE RNA-append VCF
         fasta
         vep_data
@@ -71,8 +71,6 @@ workflow GENOMIC_MUTATIONS {
             .join(
                 ger_dna_tsv.map { meta, file -> return tuple(meta.subject, meta, file) } 
             )
-
-        som_dna_maf_tsv.view()
 
         cbioportal_genomic_mutation_files = CONVERT_CPSR_TO_MAF(som_dna_maf_tsv)
 

@@ -1,0 +1,15 @@
+{
+    "Two subjects \u2014 SV data_sv.txt files are produced from fusion candidates": {
+        "content": [
+            [
+                "T1-1RT.data_sv.txt:md5,ab45776d2ff22d5ba66975a51f2ad981",
+                "T2-1RT.data_sv.txt:md5,7cf7804fdb0bd171baf687302881329a"
+            ]
+        ],
+        "timestamp": "2026-04-11T09:06:30.412365033",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

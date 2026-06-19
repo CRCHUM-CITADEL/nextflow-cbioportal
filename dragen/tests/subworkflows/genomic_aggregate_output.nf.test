@@ -1,0 +1,113 @@
+nextflow_workflow {
+
+    name "Test GENOMIC_AGGREGATE_OUTPUT subworkflow"
+    script "subworkflows/local/genomic_aggregate_output/main.nf"
+    workflow "GENOMIC_AGGREGATE_OUTPUT"
+    tag "subworkflow"
+    tag "genomic_aggregate"
+
+    test("Two subjects — group-level merged files, case lists, and meta files produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                // collectFile with storeDir does NOT auto-create subdirectories.
+                // In the real pipeline, upstream publishDir creates output/TEST/ first.
+                // In this subworkflow test we pre-create it.
+                file("${params.outdir}/TEST").mkdirs()
+
+                // SEG files (one per subject) — collectFile merges them into group-level data_cna_hg38.seg
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1.1DT'],
+                        file('${projectDir}/assets/test_data/precomputed/T1.1DT_data_cna_hg38.seg')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2.1DT'],
+                        file('${projectDir}/assets/test_data/precomputed/T2.1DT_data_cna_hg38.seg')
+                    ]
+                )
+                // CNA long files — merges into data_cna_long.txt
+                input[1] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1.1DT'],
+                        file('${projectDir}/assets/test_data/precomputed/T1.1DT_data_cna_long.txt')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2.1DT'],
+                        file('${projectDir}/assets/test_data/precomputed/T2.1DT_data_cna_long.txt')
+                    ]
+                )
+                // SV files — merges into data_sv.txt
+                input[2] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1RT'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1RT.data_sv.txt')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2-1RT'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-1RT.data_sv.txt')
+                    ]
+                )
+                // TPM files — MERGE_EXPRESSION_FILES_TO_CBIOPORTAL requires >= 2 files per group
+                input[3] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1RT'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1RT.tpm.tsv')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2-1RT'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-1RT.tpm.tsv')
+                    ]
+                )
+                // MAF files — collectFile with skip:2 merges (skips #version + header on all but first)
+                input[4] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1.1DT'],
+                        file('${projectDir}/assets/test_data/precomputed/T1.somatic_rna_germline.maf')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2.1DT'],
+                        file('${projectDir}/assets/test_data/precomputed/T2.somatic_rna_germline.maf')
+                    ]
+                )
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            // Group-level merged genomic files
+            assert path("${params.outdir}/TEST/data_cna_hg38.seg").exists()
+            assert path("${params.outdir}/TEST/data_sv.txt").exists()
+            assert path("${params.outdir}/TEST/data_cna_long.txt").exists()
+            assert path("${params.outdir}/TEST/data_mutations_dna_rna_germline.txt").exists()
+            assert path("${params.outdir}/TEST/data_expression.txt").exists()
+
+            // Case lists
+            assert path("${params.outdir}/TEST/case_lists/cases_cnv.txt").exists()
+            assert path("${params.outdir}/TEST/case_lists/cases_sequenced.txt").exists()
+
+            // Meta files
+            assert path("${params.outdir}/TEST/meta_cna_hg38.txt").exists()
+            assert path("${params.outdir}/TEST/meta_cna_long.txt").exists()
+            assert path("${params.outdir}/TEST/meta_sv.txt").exists()
+            assert path("${params.outdir}/TEST/meta_expression.txt").exists()
+            assert path("${params.outdir}/TEST/meta_sequenced.txt").exists()
+
+            // Verify SEG merge: both samples present
+            def seg_lines = path("${params.outdir}/TEST/data_cna_hg38.seg").readLines()
+            assert seg_lines.any { it.startsWith('T1') }
+            assert seg_lines.any { it.startsWith('T2') }
+
+            // Verify case list format
+            def cnv_case_list = path("${params.outdir}/TEST/case_lists/cases_cnv.txt").readLines()
+            assert cnv_case_list.any { it.startsWith('cancer_study_identifier:') }
+            assert cnv_case_list.any { it.startsWith('case_list_ids:') }
+        }
+    }
+}

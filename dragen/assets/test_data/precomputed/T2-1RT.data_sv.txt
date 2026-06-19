@@ -1,0 +1,5 @@
+Sample_Id	SV_Status	Site1_Hugo_Symbol	Site1_Ensembl_Transcript_Id	Site1_Region_Number	Site1_Region	Site2_Hugo_Symbol	Site2_Ensembl_Transcript_Id	Site2_Region_Number	Site2_Region	Site2_Effect_On_Frame	NCBI_Build	Class	DNA_Support	RNA_Support	Tumor_Variant_Count	Connection_Type	Breakpoint_Type	Event_Info	Annotation	Site1_Chromosome	Site1_Position	Site2_Chromosome	Site2_Position	Tumor_Split_Read_Count	Tumor_Paired_End_Read_Count
+T2-1RT	SOMATIC	ERG	NA	NA	NA	TMPRSS2	NA	NA	NA	NA	GRCh38	SV	No	Yes	NA	5to3	PRECISE	RNA-seq Fusion: ERG-TMPRSS2	ERG - TMPRSS2 fusion	21	39874412	21	41523455	2	1
+T2-1RT	SOMATIC	RUNX1	NA	NA	NA	ERG	NA	NA	NA	NA	GRCh38	SV	No	Yes	NA	5to3	PRECISE	RNA-seq Fusion: RUNX1-ERG	RUNX1 - ERG fusion	21	36162345	21	39874412	3	3
+T2-1RT	SOMATIC	ETS2	NA	NA	NA	RUNX1	NA	NA	NA	NA	GRCh38	SV	No	Yes	NA	5to3	PRECISE	RNA-seq Fusion: ETS2-RUNX1	ETS2 - RUNX1 fusion	21	39315421	21	36162345	1	2
+T2-1RT	SOMATIC	SON	NA	NA	NA	ERG	NA	NA	NA	NA	GRCh38	SV	No	Yes	NA	5to3	PRECISE	RNA-seq Fusion: SON-ERG	SON - ERG fusion	21	34680112	21	39874412	1	4

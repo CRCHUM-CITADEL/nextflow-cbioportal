@@ -65,22 +65,26 @@ The pipeline resolves files from each subject's `folder` using this layout:
 ```
 <folder>/
 ├── pave/
-│   ├── <subject>-T.pave.somatic.vcf.gz       ← somatic DNA mutations
-│   └── <subject>-T.pave.germline.vcf.gz      ← germline DNA mutations
+│   ├── <subject>-T.pave.somatic.vcf.gz           ← somatic DNA mutations
+│   └── <subject>-T.pave.germline.vcf.gz          ← germline DNA mutations
 ├── sage_append/
 │   └── somatic/
-│       └── <subject>-T.sage.append.vcf.gz    ← RNA-supported somatic mutations
+│       └── <subject>-T.sage.append.vcf.gz        ← RNA-supported somatic mutations
 ├── esvee/
-│   └── <subject>-T.esvee.unfiltered.vcf.gz   ← structural variants
+│   └── <subject>-T.esvee.unfiltered.vcf.gz       ← somatic structural variants (tumor only)
 ├── purple/
-│   ├── <subject>-T.purple.cnv.somatic.tsv    ← somatic copy-number segments
-│   └── <subject>-T.purple.cnv.gene.tsv       ← gene-level copy numbers
-└── isofox/
-    └── <subject>-T-RNA.isf.gene_data.csv     ← gene expression (Isofox)
+│   ├── <subject>-T.purple.cnv.somatic.tsv        ← somatic copy-number segments
+│   └── <subject>-T.purple.cnv.gene.tsv           ← gene-level copy numbers
+├── isofox/
+│   ├── <subject>-T-RNA.isf.gene_data.csv         ← gene expression (Isofox)
+│   └── <subject>-T-RNA.isf.pass_fusions.csv      ← RNA-seq gene fusions (Isofox)
+└── sigs/
+    ├── <subject>-T.sig.allocation.tsv             ← SBS signature contributions (percent per signature)
+    └── <subject>-T.sig.snv_counts.csv             ← trinucleotide SNV counts (BucketName, <sample> columns)
 ```
 
 > [!NOTE]
-> Missing or empty files are silently skipped — each modality is optional.
+> Missing or empty files are silently skipped — each modality is optional. DNA SVs and RNA fusions are both written to the group-level `data_sv.txt`; they share the same column schema and are distinguished by the `DNA_Support` / `RNA_Support` flags and `Class` (`DELETION`/`DUPLICATION`/`INVERSION`/`TRANSLOCATION` for DNA, `FUSION` for RNA).
 
 ### Clinical mode (`--mode clinical`)
 
@@ -163,10 +167,15 @@ Tests use [nf-test](https://www.nf-test.com/) (binary at `./nf-test`):
 
 ```bash
 # Run all locally-testable tests
-./nf-test test tests/clinical.nf.test tests/subworkflows/ --profile test,apptainer
+./nf-test test tests/clinical.nf.test tests/subworkflows/ tests/modules/ --profile test,apptainer
 
 # Run a single subworkflow test
 ./nf-test test tests/subworkflows/genomic_cnv.nf.test --profile test,apptainer
+
+# Run module tests
+./nf-test test tests/modules/isofox_fusion_to_cbioportal.nf.test --profile test,apptainer
+./nf-test test tests/modules/sigs_to_cbioportal.nf.test --profile test,apptainer
+./nf-test test tests/modules/sigs_counts_to_cbioportal.nf.test --profile test,apptainer
 
 # Update snapshots after intentional output change
 ./nf-test test tests/subworkflows/genomic_cnv.nf.test --profile test,apptainer --update-snapshot

@@ -1,0 +1,47 @@
+nextflow_process {
+
+    name "Test PACKAGE_CBIOPORTAL module"
+    script "modules/local/package_cbioportal/main.nf"
+    process "PACKAGE_CBIOPORTAL"
+    tag "module"
+    tag "package"
+    // Use stub run — the Python container is not pre-built in this repo
+    options "-stub-run"
+
+    test("Stub: produces a named tar.gz for the given study_id") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                def testDir = file("${params.outdir}/test_inputs")
+                testDir.mkdirs()
+
+                def dataFile = file("${params.outdir}/test_inputs/data_mutations.txt")
+                dataFile.text = 'Hugo_Symbol\tSample_Id'
+
+                def metaFile = file("${params.outdir}/test_inputs/meta_study.txt")
+                metaFile.text = 'cancer_study_identifier: test_study'
+
+                def caseListsDir = file("${params.outdir}/test_inputs/case_lists")
+                caseListsDir.mkdirs()
+                def casesFile = file("${params.outdir}/test_inputs/case_lists/cases_sequenced.txt")
+                casesFile.text = 'cancer_study_identifier: test_study'
+
+                input[0] = 'test_study'
+                input[1] = [dataFile]
+                input[2] = [metaFile]
+                input[3] = caseListsDir
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out[0].size() == 1
+            assert process.out[0][0].toString().endsWith('test_study.tar.gz')
+        }
+    }
+}

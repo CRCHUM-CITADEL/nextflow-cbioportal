@@ -2,7 +2,7 @@ include { ESVEE_SV_TO_CBIOPORTAL } from '../../../modules/local/esvee_sv_to_cbio
 
 workflow GENOMIC_SV {
     take:
-        esvee_vcf           // tuple (meta, esvee.unfiltered.vcf.gz) — DNA structural variants
+        esvee_vcf           // tuple (meta, *-T.esvee.unfiltered.vcf.gz) — tumor only
         ensembl_annotations // path — used by ESVEE for gene-coordinate annotation
 
     main:

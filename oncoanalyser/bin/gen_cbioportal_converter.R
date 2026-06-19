@@ -257,11 +257,9 @@ discrete_long <- data.table(
   Value = gene_data$discrete_cna
 )
 
-# Split into NA and non-NA, deduplicate non-NA only, then combine
-na_rows <- discrete_long[is.na(Entrez_Gene_Id)]
-non_na_rows <- discrete_long[!is.na(Entrez_Gene_Id)]
-non_na_rows <- non_na_rows[!duplicated(non_na_rows, by = c("Sample_Id", "Entrez_Gene_Id"))]
-discrete_long <- rbind(na_rows, non_na_rows)
+# Remove rows with NA Entrez_Gene_Id, then deduplicate keeping first occurrence
+discrete_long <- discrete_long[!is.na(Entrez_Gene_Id)]
+discrete_long <- discrete_long[!duplicated(discrete_long, by = c("Sample_Id", "Entrez_Gene_Id"))]
 
 # Write segment file
 seg_file <- file.path(opt$output_dir, paste0(opt$sample_id,"_data_cna_hg38.seg"))

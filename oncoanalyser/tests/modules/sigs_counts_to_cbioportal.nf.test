@@ -1,0 +1,63 @@
+nextflow_process {
+
+    name "Test SIGS_COUNTS_TO_CBIOPORTAL module"
+    script "modules/local/sigs_counts_to_cbioportal/main.nf"
+    process "SIGS_COUNTS_TO_CBIOPORTAL"
+    tag "module"
+    tag "sigs"
+
+    test("Two subjects — data_mutational_signatures_counts_SBS.txt files are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sigs_counts'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/sigs/T1-T.sig.snv_counts.csv')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sigs_counts'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/sigs/T2-T.sig.snv_counts.csv')
+                    ]
+                )
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sigs_counts.size() == 2
+
+            def names = process.out.sigs_counts.collect { meta, f -> f.toString().split('/').last() }.sort()
+            assert names == ['T1.data_mutational_signatures_counts_SBS.txt', 'T2.data_mutational_signatures_counts_SBS.txt']
+
+            // Verify cBioPortal GENERIC_ASSAY format columns (ENTITY_STABLE_ID, NAME — no CATEGORY, no DESCRIPTION)
+            def t1_path = process.out.sigs_counts.collect { meta, f -> f }.find { it.toString().endsWith('T1.data_mutational_signatures_counts_SBS.txt') }
+            def header = path(t1_path.toString()).readLines()[0]
+            assert header.contains('ENTITY_STABLE_ID')
+            assert header.contains('NAME')
+            assert !header.contains('CATEGORY')
+            assert !header.contains('DESCRIPTION')
+            assert header.contains('T1')
+
+            // Verify ENTITY_STABLE_ID uses mutational_signatures_matrix_ format
+            def t1_lines = path(t1_path.toString()).readLines()
+            assert t1_lines.size() > 1
+            def entity_ids = t1_lines[1..-1].collect { it.split('\t')[0] }
+            assert entity_ids.any { it.startsWith('mutational_signatures_matrix_') }
+            assert entity_ids.contains('mutational_signatures_matrix_A_C-A_A')
+
+            // Verify NAME uses A[C>A]A format
+            def name_vals = t1_lines[1..-1].collect { it.split('\t')[1] }
+            assert name_vals.contains('A[C>A]A')
+
+            snapshot(
+                process.out.sigs_counts.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }
+            ).match()
+        }
+    }
+}

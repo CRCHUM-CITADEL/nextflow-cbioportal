@@ -7,10 +7,10 @@ process GENERATE_META_FILE {
     val text
 
     output:
-    path "meta_${label}.txt"
+    tuple val(group), path("meta_${label}.txt")
 
     script:
-    def group_lower = group.toLowerCase()
+    def group_lower = group.toLowerCase().replace('-', '_')
     """
 sed "s/add_text/${group_lower}/g" << EOF > identified_text.txt
 ${text}

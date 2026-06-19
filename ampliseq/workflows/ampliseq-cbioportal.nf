@@ -4,10 +4,12 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { PER_SAMPLE_FORMAT } from '../subworkflows/local/per_sample_format/main'
-include { MERGE_DEANON      } from '../subworkflows/local/merge_deanon/main'
-include { STUDY_METADATA    } from '../subworkflows/local/study_metadata/main'
-include { FILTER_LINKING    } from '../modules/local/filter_linking/main'
+include { PER_SAMPLE_FORMAT  } from '../subworkflows/local/per_sample_format/main'
+include { MERGE_DEANON       } from '../subworkflows/local/merge_deanon/main'
+include { STUDY_METADATA     } from '../subworkflows/local/study_metadata/main'
+include { FILTER_LINKING     } from '../modules/local/filter_linking/main'
+include { BUILD_ANON_LINKING } from '../modules/local/build_anon_linking/main'
+include { PACKAGE_CBIOPORTAL } from '../modules/local/package_cbioportal/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -87,22 +89,25 @@ workflow AMPLISEQ_CBIOPORTAL {
     // -------------------------------------------------------------------------
     ch_linking = Channel.value(file(params.linking_file))
 
-    ch_samplesheet_ids = ch_samplesheet
-        .map { row -> row.sample_id }
-        .collectFile(name: 'samplesheet_ids.txt', newLine: true)
+    // Collect subject_id→sample_id pairs (subject_id uppercased to match linking file)
+    ch_samplesheet_pairs = ch_samplesheet
+        .map { row -> "${row.subject_id.toUpperCase()}\t${row.sample_id}" }
+        .collectFile(name: 'samplesheet_pairs.txt', newLine: true)
 
-    FILTER_LINKING(ch_samplesheet_ids, ch_linking)
+    FILTER_LINKING(ch_samplesheet_pairs, ch_linking)
     ch_filtered_linking = FILTER_LINKING.out
 
+    ch_output_linking = ch_filtered_linking
+
     // -------------------------------------------------------------------------
-    // Collect: merge new + existing outputs, then deanonymise
+    // Collect: merge new + existing outputs, then remap sample IDs
     // -------------------------------------------------------------------------
     MERGE_DEANON(
         PER_SAMPLE_FORMAT.out.sv.mix(ch_existing_sv).collect(),
         PER_SAMPLE_FORMAT.out.cna.mix(ch_existing_cna).collect(),
         PER_SAMPLE_FORMAT.out.mutations.mix(ch_existing_mutations).collect(),
         PER_SAMPLE_FORMAT.out.seg.mix(ch_existing_seg).collect(),
-        ch_filtered_linking
+        ch_output_linking
     )
 
     // -------------------------------------------------------------------------
@@ -112,7 +117,26 @@ workflow AMPLISEQ_CBIOPORTAL {
         Channel.fromPath(params.patient_file),
         Channel.fromPath(params.sample_file),
         ch_filtered_linking,
+        ch_output_linking,
         params.study_id
+    )
+
+    // -------------------------------------------------------------------------
+    // Package all cBioPortal files into a tar.gz for sharing between instances
+    // -------------------------------------------------------------------------
+    all_data_files = MERGE_DEANON.out.mutations
+        .mix(MERGE_DEANON.out.sv)
+        .mix(MERGE_DEANON.out.cna)
+        .mix(MERGE_DEANON.out.seg)
+        .mix(STUDY_METADATA.out.clinical_patient)
+        .mix(STUDY_METADATA.out.clinical_sample)
+        .collect()
+
+    PACKAGE_CBIOPORTAL(
+        params.study_id,
+        all_data_files,
+        STUDY_METADATA.out.meta_files,
+        STUDY_METADATA.out.case_lists
     )
 }
 

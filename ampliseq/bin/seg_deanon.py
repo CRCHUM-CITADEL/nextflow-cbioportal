@@ -18,15 +18,16 @@ def main():
 
     linking = pd.read_csv(linking_file, sep='\t', header=0, usecols=[0, 1])
     linking.columns = ['Anon_Id', 'Real_Id']
-    id_map = dict(zip(linking['Anon_Id'], linking['Real_Id']))
+    # Uppercase keys for case-insensitive matching
+    id_map = {k.upper(): v for k, v in zip(linking['Anon_Id'], linking['Real_Id'])}
 
     df = pd.read_csv(seg_file, sep='\t')
 
-    unmatched = set(df['ID']) - set(id_map)
+    unmatched = set(df['ID'].str.upper()) - set(id_map)
     for uid in sorted(unmatched):
         print(f"WARNING: no linking entry for ID '{uid}', leaving unchanged", file=sys.stderr)
 
-    df['ID'] = df['ID'].map(id_map).fillna(df['ID'])
+    df['ID'] = df['ID'].str.upper().map(id_map).fillna(df['ID'])
     df.to_csv(seg_file, sep='\t', index=False)
 
 

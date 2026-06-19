@@ -1,0 +1,19 @@
+{
+    "Two subjects \u2014 DBS contribution and counts files are produced": {
+        "content": [
+            [
+                "T1.data_mutational_signatures_contribution_DBS.txt:md5,bace495ceb07705db0f8a9c48add77ba",
+                "T2.data_mutational_signatures_contribution_DBS.txt:md5,aec3811ef86c46ee430434cbced62bdd"
+            ],
+            [
+                "T1.data_mutational_signatures_counts_DBS.txt:md5,73d0820bc03c821017e8cc47e436d54c",
+                "T2.data_mutational_signatures_counts_DBS.txt:md5,94f39935a477625604d6d15874595148"
+            ]
+        ],
+        "timestamp": "2026-06-01T17:20:05.918552123",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

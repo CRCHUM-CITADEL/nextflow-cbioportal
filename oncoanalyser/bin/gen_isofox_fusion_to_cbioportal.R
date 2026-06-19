@@ -56,7 +56,7 @@ if (nrow(fusions) == 0) {
         Site2_Chromosome = character(), Site2_Position = integer(),
         Tumor_Split_Read_Count = integer(), Tumor_Paired_End_Read_Count = integer()
     )
-    write.table(empty, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
+    write.table(empty, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
     cat("Done!\n")
     quit(status = 0)
 }
@@ -77,7 +77,8 @@ pos2_col  <- pick_col(cols, c("OtherPosition", "PosDown", "JunctionPositionDown"
 split_col  <- Filter(function(c) c %in% cols,
                      c("JunctionReadCount", "SpliceReadCount", "SplitFragmentCount", "junction_read_count"))[1]
 discord_col <- Filter(function(c) c %in% cols,
-                      c("DiscordantFragmentCount", "discordant_fragment_count", "DiscordantReads"))[1]
+                      c("DiscordantFragments", "DiscordantFragmentCount",
+                        "discordant_fragment_count", "DiscordantReads"))[1]
 
 cat("Using columns: 5'gene=", gene1_col, ", 5'chr=", chr1_col, ", 5'pos=", pos1_col, "\n")
 cat("              3'gene=", gene2_col, ", 3'chr=", chr2_col, ", 3'pos=", pos2_col, "\n")
@@ -118,7 +119,13 @@ result <- data.table(
 result <- unique(result, by = c("Site1_Chromosome", "Site1_Position",
                                 "Site2_Chromosome", "Site2_Position"))
 
+# Filter out rows with empty or NA Hugo symbols at either site
+result <- result[
+    !is.na(Site1_Hugo_Symbol) & Site1_Hugo_Symbol != "" &
+    !is.na(Site2_Hugo_Symbol) & Site2_Hugo_Symbol != ""
+]
+
 cat("Writing fusion SV output:", opt$output, "\n")
 cat("Total records:", nrow(result), "\n")
-write.table(result, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "")
+write.table(result, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
 cat("Done!\n")

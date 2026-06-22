@@ -1,0 +1,82 @@
+##fileformat=VCFv4.1
+##reference=hg19
+##GENOOX_VCF_TYPE=GNX_FROM_ILLUMINA_FUSION
+##ALT=<ID=CNV,Description="Copy number variable region">
+##ALT=<ID=DEL,Description="Deletion">
+##ALT=<ID=DEL:ME:ALU,Description="Deletion of ALU element">
+##ALT=<ID=DEL:ME:L1,Description="Deletion of L1 element">
+##ALT=<ID=DUP,Description="Duplication">
+##ALT=<ID=DUP:TANDEM,Description="Tandem Duplication">
+##ALT=<ID=ExprControl,Description="Expression of the Control House keeping Gene Transcript">
+##ALT=<ID=Fusion,Description="Fusion between two different Gene Transcripts">
+##ALT=<ID=GeneExpression,Description="Expression of the Target Gene Transcript">
+##ALT=<ID=INS,Description="Insertion of novel sequence">
+##ALT=<ID=INS:ME:ALU,Description="Insertion of ALU element">
+##ALT=<ID=INS:ME:L1,Description="Insertion of L1 element">
+##ALT=<ID=INV,Description="Inversion">
+##ALT=<ID=RNAExonTiles,Description="Gene Level result summary from the RNA Exon tiling assays">
+##ALT=<ID=RNAExonVariant,Description="Expression of the Target Gene Transcript">
+##ALT=<ID=RNA_Hotspot,Description="Expression of a Target region spanning Hotspot mutation">
+##contig=<ID=chr1,length=249250621,assembly=hg19>
+##contig=<ID=chr2,length=243199373,assembly=hg19>
+##contig=<ID=chr3,length=198022430,assembly=hg19>
+##contig=<ID=chr4,length=191154276,assembly=hg19>
+##contig=<ID=chr5,length=180915260,assembly=hg19>
+##contig=<ID=chr6,length=171115067,assembly=hg19>
+##contig=<ID=chr7,length=159138663,assembly=hg19>
+##contig=<ID=chr8,length=146364022,assembly=hg19>
+##contig=<ID=chr9,length=141213431,assembly=hg19>
+##contig=<ID=chr10,length=135534747,assembly=hg19>
+##contig=<ID=chr11,length=135006516,assembly=hg19>
+##contig=<ID=chr12,length=133851895,assembly=hg19>
+##contig=<ID=chr13,length=115169878,assembly=hg19>
+##contig=<ID=chr14,length=107349540,assembly=hg19>
+##contig=<ID=chr15,length=102531392,assembly=hg19>
+##contig=<ID=chr16,length=90354753,assembly=hg19>
+##contig=<ID=chr17,length=81195210,assembly=hg19>
+##contig=<ID=chr18,length=78077248,assembly=hg19>
+##contig=<ID=chr19,length=59128983,assembly=hg19>
+##contig=<ID=chr20,length=63025520,assembly=hg19>
+##contig=<ID=chr21,length=48129895,assembly=hg19>
+##contig=<ID=chr22,length=51304566,assembly=hg19>
+##contig=<ID=chrX,length=155270560,assembly=hg19>
+##contig=<ID=chrY,length=59373566,assembly=hg19>
+##contig=<ID=chrM,length=16569,assembly=hg19>
+##INFO=<ID=5P_3P_ASSAYS,Number=1,Type=Float,Description="Relative expression of 3p to 5p markers expression of the driver gene">
+##INFO=<ID=ANNOTATION,Number=1,Type=String,Description="Public Annotation like Cosmic or NCBI id for the Fusions">
+##INFO=<ID=EXON_NUM,Number=1,Type=Integer,Description="Number of the closest Exon">
+##INFO=<ID=EXPR_CONTROL_COUNT,Number=1,Type=Integer,Description="Sum of the counts of all the Expression Control targets in the panel">
+##INFO=<ID=FAIL_REASON,Number=1,Type=String,Description="Reason for the FAIL call of the target">
+##INFO=<ID=FUNCTION,Number=1,Type=String,Description="Describes the function of the exon tiling amplicons for the gene">
+##INFO=<ID=FUSION_DRIVER_GENE,Number=1,Type=String,Description="Name of the Driver Gene">
+##INFO=<ID=GENE_NAME,Number=1,Type=String,Description="Name of the Gene">
+##INFO=<ID=IMBALANCE_PVAL,Number=1,Type=Float,Description="p-value for the expression imbalance between the 3p and 5p markers of the driver gene based on the exon tiling assays">
+##INFO=<ID=IMBALANCE_SCORE,Number=1,Type=Float,Description="Relative expression of 3p and 5p markers expression of the driver gene based on the exon tiling assays">
+##INFO=<ID=ISOFORMS_COUNT,Number=.,Type=String,Description="Count of the primary isoform out of all isoforms involving the specific driver gene">
+##INFO=<ID=NOCALL_REASON,Number=1,Type=String,Description="Reason for the NOCALL call of the target">
+##INFO=<ID=NORM_COUNT,Number=1,Type=Float,Description="Normalized Read Counts of the Target">
+##INFO=<ID=NORM_COUNT_TO_HK,Number=1,Type=Float,Description="Read Counts of the Target normalized to the Geometric mean of House keeping counts.">
+##INFO=<ID=NORM_COUNT_WITHIN_GENE,Number=1,Type=Float,Description="Normalized read count of this assay to all the other assays for the same gene">
+##INFO=<ID=NUM_ISOFORMS_DETECTED,Number=1,Type=Integer,Description="Count of the targeted fusion isoforms involving the specific driver gene that are detected as present in the sample">
+##INFO=<ID=Non-Targeted,Number=0,Type=Flag,Description="Indicates if this is a non-targeted fusion not present in the original list of targets">
+##INFO=<ID=RATIO_TO_WILD_TYPE,Number=1,Type=Float,Description="Ratio between read count of this assay and oormalized count of wild type assay">
+##INFO=<ID=READ_COUNT,Number=.,Type=String,Description="Number of reads aligned to the Target">
+##INFO=<ID=RPM,Number=.,Type=Float,Description="Reads per million for the Target">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=THREE_PRIME_POS,Number=1,Type=Integer,Description="Genomic coordiante for three prime target for End ratio targets">
+##INFO=<ID=WILD_TYPE_ASSAY,Number=1,Type=Integer,Description="Indicates if this assay is designed to amplify wild type transcript">
+##INFO=<ID=FUNC,Number=.,Type=String,Description="Functional Annotations">
+##INFO=<ID=MYV,Number=1,Type=Integer,Description="MyVariant label id, 1 for IMPORTANT, 2 for IGNORE">
+##INFO=<ID=CLSF,Number=.,Type=String,Description="User Classification">
+##INFO=<ID=SPLIT_READS,Number=.,Type=String,Description="Split Reads Evidence Count for Alt">
+##INFO=<ID=DISCORDANT_PAIRS,Number=.,Type=String,Description="Discordant Pairs Evidence Count for Alt">
+##INFO=<ID=REF_COUNT,Number=.,Type=Integer,Description="Reference Evidence Count">
+##FILTER=<ID=FAIL,Description="Filter is marked as FAIL when the target fails one or more filters, the filter reason is described in one of the attributes">
+##FILTER=<ID=NOCALL,Description="Filter is marked as NOCALL and the nocall reason is described in one of the attributes">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality, the Phred-scaled marginal (or unconditional) probability of the called genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	23bm004967_1000
+chr12	53586114	ITGB7-MYC-53586114-128751238_1	.	.]chr8:128751238]	.	PASS	SVTYPE=FUSION;GENE_NAME=ITGB7;FUSION_DRIVER_GENE=MYC;REF_COUNT=0;SPLIT_READS=33;DISCORDANT_PAIRS=0	GT:GQ	./.:.
+chr8	128751238	ITGB7-MYC-53586114-128751238_2	.	]chr12:53586114].	.	PASS	SVTYPE=FUSION;GENE_NAME=ITGB7;FUSION_DRIVER_GENE=MYC;REF_COUNT=0;SPLIT_READS=33;DISCORDANT_PAIRS=0	GT:GQ	./.:.
+chr12	53586114	ITGB7-HMBS-53586114-118960927_1	.	.]chr11:118960927]	.	PASS	SVTYPE=FUSION;GENE_NAME=ITGB7;FUSION_DRIVER_GENE=HMBS;REF_COUNT=0;SPLIT_READS=9;DISCORDANT_PAIRS=0	GT:GQ	./.:.
+chr11	118960927	ITGB7-HMBS-53586114-118960927_2	.	]chr12:53586114].	.	PASS	SVTYPE=FUSION;GENE_NAME=ITGB7;FUSION_DRIVER_GENE=HMBS;REF_COUNT=0;SPLIT_READS=9;DISCORDANT_PAIRS=0	GT:GQ	./.:.

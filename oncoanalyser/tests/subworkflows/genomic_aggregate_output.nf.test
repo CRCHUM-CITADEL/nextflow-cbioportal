@@ -98,6 +98,7 @@ nextflow_workflow {
             // Case lists
             assert path("${params.outdir}/TEST/case_lists/cases_cnv.txt").exists()
             assert path("${params.outdir}/TEST/case_lists/cases_sequenced.txt").exists()
+            assert path("${params.outdir}/TEST/case_lists/cases_sv.txt").exists()
 
             // Meta files
             assert path("${params.outdir}/TEST/meta_cna_hg38.txt").exists()

@@ -221,8 +221,13 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
                 .collect()
                 .map { it.sort(false).join('\t') }
 
-            case_name_all = channel.of("cnv", "sequenced")
-            case_sample_lists = cnv_sample_list.concat(mutation_sample_list)
+            sv_sample_list = sv_results
+                .map {meta, filepath -> meta.sample}
+                .collect()
+                .map { it.sort(false).join('\t') }
+
+            case_name_all = channel.of("cnv", "sequenced", "sv")
+            case_sample_lists = cnv_sample_list.concat(mutation_sample_list).concat(sv_sample_list)
             all_groups_cases = all_groups.combine(case_name_all).map{all_groups, case_name_all -> all_groups }
 
             GENERATE_CASE_LIST(

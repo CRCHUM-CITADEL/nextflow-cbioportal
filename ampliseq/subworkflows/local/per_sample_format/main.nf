@@ -13,7 +13,8 @@ workflow PER_SAMPLE_FORMAT {
     ch_vcf_input // channel: tuple(meta, sample_folder)
 
     main:
-    FORMAT_SV(ch_tsv)
+    ch_sv_input = ch_tsv.join(ch_vcf_input)  // → tuple(meta, tsv, sample_folder)
+    FORMAT_SV(ch_sv_input)
     FORMAT_CNA(ch_tsv)
     ch_sv = FORMAT_SV.out
     ch_cna = FORMAT_CNA.out

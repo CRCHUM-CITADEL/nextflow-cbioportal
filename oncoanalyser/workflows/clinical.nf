@@ -61,7 +61,7 @@ workflow CLINICAL {
             GENERATE_CLINICAL_TEMPLATE(
                 group,
                 sample_lines,
-                params.oncotree_code
+                params.icd_code ?: ""
             )
 
             GENERATE_CANCER_TYPE_FILE(
@@ -69,30 +69,25 @@ workflow CLINICAL {
                 params.oncotree_code
             )
 
-            // Generate meta files for clinical sample, clinical patient, and cancer type
+            // Generate meta files for clinical sample and cancer type
             meta_text = Channel.of(
                 """cancer_study_identifier: add_text
 genetic_alteration_type: CLINICAL
 datatype: SAMPLE_ATTRIBUTES
 data_filename: data_clinical_sample.txt
                 """,
-                """cancer_study_identifier: add_text
-genetic_alteration_type: CLINICAL
-datatype: PATIENT_ATTRIBUTES
-data_filename: data_clinical_patient.txt
-                """,
                 """genetic_alteration_type: CANCER_TYPE
 datatype: CANCER_TYPE
 data_filename: cancer_type.txt
                 """)
 
-            file_names = Channel.of("clinical_sample", "clinical_patient", "cancer_type")
+            file_names = Channel.of("clinical_sample", "cancer_type")
 
             all_groups = channel.of(group)
-            all_groups_times_three = all_groups.combine(file_names).map { g, name -> g }
+            all_groups_times_two = all_groups.combine(file_names).map { g, name -> g }
 
             GENERATE_META_FILE(
-                all_groups_times_three,
+                all_groups_times_two,
                 file_names,
                 meta_text
             )

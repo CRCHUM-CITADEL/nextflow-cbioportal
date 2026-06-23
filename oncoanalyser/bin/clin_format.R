@@ -22,7 +22,11 @@ option_list <- list(
   make_option(c("-o", "--output"), type="character", default="data_clinical_sample.txt",
               help="Output file path [default= %default]", metavar="FILE"),
   make_option(c("-m", "--mode"), type="character", default="sample",
-              help="Between 'sample' or 'patient' mode.")
+              help="Between 'sample' or 'patient' mode."),
+  make_option(c("-c", "--cancer_type"), type="character", default=NULL,
+              help="OncoTree cancer type code matching type_of_cancer_id in cancer_type.txt [OPTIONAL]", metavar="STRING"),
+  make_option(c("-x", "--icd_code"), type="character", default=NULL,
+              help="ICD-O code (e.g., C24). Overrides cancer_type_code from diagnosis CSV [OPTIONAL]", metavar="STRING")
 )
 
 opt_parser <- OptionParser(option_list=option_list,
@@ -116,6 +120,10 @@ m$overall_survival_months <- round(m$overall_survival_months, 3)
 m$disease_free_survival_status=NA
 m$disease_free_months=NA
 m$sample_type="Primary"
+m$cancer_type = ifelse(is.null(opt$cancer_type) || opt$cancer_type == "", NA, opt$cancer_type)
+if (!is.null(opt$icd_code) && opt$icd_code != "") {
+  m$cancer_type_code = opt$icd_code
+}
 m$cancer_type_details="NA"
 m$tumour_site="NA"
 
@@ -134,11 +142,11 @@ if(opt$mode=="patient") {
 				"PATIENT_ID	SEX	AGE	TUMOR_SITE	TUMOR_GRADE	TUMOR_HISTOLOGICAL_TYPE	OS_MONTHS	OS_STATUS	DFS_STATUS	DFS_MONTHS"), con = opt$output)
 	write.table(m[,c("patient","sex_at_birth","age_at_diagnosis_years","tumour_site","clinical_stage_group","tumour_histological_type","overall_survival_months","is_deceased","disease_free_survival_status","disease_free_months")], file = opt$output, sep = "\t", row.names = FALSE, col.names=F, quote = FALSE, append = TRUE)
 } else if(opt$mode=="sample") {
-	writeLines(c("#Patient Identifier	Sample Identifier	Sample Type	Cancer Type	Cancer Code",
-        "#Identifier to uniquely specify a patient.	A unique sample identifier.	The type of sample (i.e., normal, primary, met, recurrence).	Cancer Type Details.	Cancer Type Code.",
-				"#STRING	STRING	STRING	STRING	STRING",
-				"#1	1	1	1	1",
-	   		"PATIENT_ID	SAMPLE_ID	SAMPLE_TYPE	CANCER_TYPE_DETAILS	CANCER_TYPE_CODE"), con = opt$output)
+	writeLines(c("#Patient Identifier	Sample Identifier	Sample Type	Cancer Type	Cancer Type Details	Cancer Code",
+        "#Identifier to uniquely specify a patient.	A unique sample identifier.	The type of sample (i.e., normal, primary, met, recurrence).	Cancer Type.	Cancer Type Details.	Cancer Type Code.",
+				"#STRING	STRING	STRING	STRING	STRING	STRING",
+				"#1	1	1	1	1	1",
+	   		"PATIENT_ID	SAMPLE_ID	SAMPLE_TYPE	CANCER_TYPE	CANCER_TYPE_DETAILS	CANCER_TYPE_CODE"), con = opt$output)
 	# here we asssume patient_id and sample_id are the same. might not be the case
-	write.table(m[,c("patient", "sample", "sample_type","cancer_type_details","cancer_type_code")], file = opt$output, sep = "\t", row.names = FALSE, col.names=F, quote = FALSE, append = TRUE)
+	write.table(m[,c("patient", "sample", "sample_type","cancer_type","cancer_type_details","cancer_type_code")], file = opt$output, sep = "\t", row.names = FALSE, col.names=F, quote = FALSE, append = TRUE)
 }

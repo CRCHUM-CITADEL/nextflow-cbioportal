@@ -10,6 +10,10 @@ inputs:
   tags:
     description: "Tags to pass as argument for nf-test --tag parameter"
     required: false
+  working_directory:
+    description: "Pipeline subdirectory to discover tests from (e.g., 'oncoanalyser')"
+    required: false
+    default: "."
 outputs:
   shard:
     description: "Array of shard numbers"
@@ -27,6 +31,7 @@ runs:
     - name: Get number of shards
       id: shards
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
       run: |
         # Run nf-test with dynamic parameter
         nftest_output=$(nf-test test \

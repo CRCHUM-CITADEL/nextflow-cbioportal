@@ -71,7 +71,9 @@ workflow PIPELINE_INITIALISATION {
     //
     if (mode == 'clinical'){
 
-        samplesheet_list = Channel.fromList(samplesheetToList(clinical_input, "assets/schema_clinical_input.json"))
+        samplesheet_list = clinical_input
+            ? Channel.fromList(samplesheetToList(clinical_input, "assets/schema_clinical_input.json"))
+            : Channel.empty()
 
     } else if (mode == 'genomic'){
         if (!params.ensembl_annotations){
@@ -197,7 +199,7 @@ def validateInputParameters() {
     }
 
     if (params.mode == "clinical" && !params.clinical_samplesheet){
-        error("ERROR: Could not find clinical filesheet. Not running any tests. Check input in nextflow.config")
+        log.warn "No clinical samplesheet provided. Template clinical files will be generated from the linking file."
     }
 
     if (params.mode == "clinical") {
@@ -208,7 +210,7 @@ def validateInputParameters() {
         def clinical_linking_file = file(params.id_linking_file)
 
         if (!clinical_linking_file.exists()) {
-            error("ERROR: Genome reference file does not exist: ${params.id_linking_file}")
+            error("ERROR: Linking file does not exist: ${params.id_linking_file}")
         }
 
     }

@@ -436,7 +436,7 @@ reference_genome: hg38
 
         // ── Subject → tumor sample linking file ───────────────────────────────
 
-        ch_samples
+        ch_linking_file = ch_samples
             .map    { meta -> tuple(meta.group, "${meta.subject}\t${meta.sample}") }
             .unique()
             .groupTuple()
@@ -457,6 +457,9 @@ reference_genome: hg38
                 sort:     true,
                 newLine:  true,
             )
+
+    emit:
+        linking_file = ch_linking_file  // channel<tuple(group, file)> — subject→sample linking file per group
 }
 
 /*

@@ -204,7 +204,7 @@ def validateInputParameters() {
         log.warn "No clinical samplesheet provided. Template clinical files will be generated from the linking file."
     }
 
-    if (params.mode in ["clinical", "both"]) {
+    if (params.mode == "clinical") {
         if (!params.id_linking_file) {
             error("ERROR: id_linking_file parameter is required for clinical mode")
         }

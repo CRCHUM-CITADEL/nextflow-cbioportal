@@ -46,10 +46,7 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    // NFCORE_CITADEL_TEST (
-    //     PIPELINE_INITIALISATION.out.samplesheet
-    // )
-    if (params.mode == 'genomic'){
+    if (params.mode in ['genomic', 'both']){
 
         ch_vep_data    = params.vep_data    ? Channel.fromPath(params.vep_data)    : Channel.empty()
         ch_pcgr_data   = params.pcgr_data   ? Channel.fromPath(params.pcgr_data)   : Channel.empty()
@@ -61,7 +58,7 @@ workflow {
         needs_pcgr_download = !params.pcgr_data
 
         GENOMIC (
-            PIPELINE_INITIALISATION.out.samplesheet,
+            PIPELINE_INITIALISATION.out.genomic_samplesheet,
             params.ensembl_annotations,
             params.ensembl_annotations_expr,
             ch_vep_data,
@@ -73,9 +70,10 @@ workflow {
             params.chimer_data,
         )
     }
-    else if (params.mode == 'clinical'){
+
+    if (params.mode in ['clinical', 'both']){
         CLINICAL(
-            PIPELINE_INITIALISATION.out.samplesheet,
+            PIPELINE_INITIALISATION.out.clinical_samplesheet,
             params.id_linking_file,
         )
     }

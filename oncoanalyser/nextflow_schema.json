@@ -43,8 +43,8 @@
                 },
                 "mode": {
                     "type": "string",
-                    "description": "The pipeline mode you'd like to run. Either 'clinical' or 'genomic'",
-                    "enum": ["clinical", "genomic"],
+                    "description": "The pipeline mode you'd like to run. Either 'clinical', 'genomic', or 'both'",
+                    "enum": ["clinical", "genomic", "both"],
                     "fa_icon": "fas fa-folder-open"
                 }
             }
@@ -80,20 +80,6 @@
         }
     ],
     "properties": {
-        "genome": {
-            "type": "string"
-        },
-        "igenomes_base": {
-            "type": "string",
-            "default": "s3://ngi-igenomes/igenomes/"
-        },
-        "igenomes_ignore": {
-            "type": "boolean"
-        },
-        "publish_dir_mode": {
-            "type": "string",
-            "default": "copy"
-        },
         "email": {
             "type": "string",
             "default": "justin.bellavance.chum@ssss.gouv.qc.ca"
@@ -131,17 +117,16 @@
         "config_profile_url": {
             "type": "string"
         },
-        "fasta": {
-            "type": "string"
-        },
         "ensembl_annotations": {
             "type": "string",
             "format": "file-path",
+            "description": "BioMart TSV for PURPLE CNV gene-to-Entrez mapping and ESVEE breakpoint gene annotation.",
             "pattern": "^\\S+\\.tsv"
         },
         "ensembl_annotations_expr": {
             "type": "string",
             "format": "file-path",
+            "description": "BioMart TSV for Isofox expression Ensembl-to-Entrez ID mapping.",
             "pattern": "^\\S+\\.tsv"
         },
         "container_pcgr": {
@@ -156,12 +141,16 @@
         "container_vcf2maf": {
             "type": "string"
         },
+        "container_sigprofiler": {
+            "type": "string"
+        },
         "input_dir": {
             "type": "string"
         },
         "genome_reference": {
             "type": "string",
             "format": "file-path",
+            "description": "Genome reference FASTA (GRCh38) — required for vcf2maf.",
             "pattern": "^\\S+\\.(fa|fasta)$"
         },
         "vep_params": {
@@ -174,19 +163,48 @@
             "type": "string"
         },
         "id_linking_file": {
-            "type": "string"
+            "type": "string",
+            "description": "Path to ID linking file for clinical data."
+        },
+        "oncotree_code": {
+            "type": "string",
+            "description": "OncoTree cancer type code (e.g., 'CHOL'). Used in cancer_type.txt and CANCER_TYPE column."
+        },
+        "icd_code": {
+            "type": "string",
+            "description": "Optional ICD-O code (e.g., 'C24'). Overrides cancer_type_code from diagnosis CSV."
         },
         "project_name": {
-            "type": "string"
+            "type": "string",
+            "description": "Project name used for the name value of meta_study.txt."
         },
         "project_description": {
-            "type": "string"
+            "type": "string",
+            "description": "Project description used for the desc value of meta_study.txt."
         },
-        "cosmic_data" : {
-            "type": "string"
+        "cosmic_data": {
+            "type": "string",
+            "description": "Path to COSMIC fusion TSV for ML SV processing."
         },
-        "signatures_etiology": {
-            "type": "string"
+        "chimer_data": {
+            "type": "string",
+            "description": "Path to ChimerKB Excel file for ML SV processing."
+        },
+        "cosmic_reference": {
+            "type": "string",
+            "description": "Path to COSMIC v3.6 mutational signature reference ZIP."
+        },
+        "sbs_metadata": {
+            "type": "string",
+            "description": "Path to COSMIC SBS metadata TSV."
+        },
+        "dbs_metadata": {
+            "type": "string",
+            "description": "Path to COSMIC DBS metadata TSV."
+        },
+        "id_metadata": {
+            "type": "string",
+            "description": "Path to COSMIC ID (indel) metadata TSV."
         }
     }
 }

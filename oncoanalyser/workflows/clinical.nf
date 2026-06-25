@@ -45,7 +45,9 @@ workflow CLINICAL {
             log.info "No clinical samplesheet provided. Generating template clinical files from linking file."
 
             // Read subject_id\tsample_id lines from the linking file
-            ch_linking = Channel.fromPath(id_linking_file)
+            // In "both" mode, id_linking_file is a channel (from GENOMIC output); in "clinical" mode it's a string path
+            ch_linking_path = (id_linking_file instanceof String) ? Channel.fromPath(id_linking_file) : id_linking_file
+            ch_linking = ch_linking_path
                 .splitCsv(header: true, sep: '\t')
                 .map { row -> [subject: row.subject_id, sample: row.sample_id] }
 

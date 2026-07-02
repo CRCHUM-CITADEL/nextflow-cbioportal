@@ -45,11 +45,12 @@ ch_samplesheet
   ├─ branch → existing (skip) / new_sample
   │
   ├─ PER_SAMPLE_FORMAT (subworkflow) ── new samples only
-  │    ├─ FORMAT_SV         (TSV → _sv.txt)
+  │    ├─ FORMAT_SV         (star-fusion VCF → _sv.txt, fallback: TSV → _sv.txt)
   │    ├─ FORMAT_CNA        (TSV → _cna.txt)
   │    ├─ VCF_TO_SEG        (CNV VCF → _seg.txt)
   │    └─ VCF_TO_MAF or STUB_MAF → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → _mutations.txt
   │
+  ├─ BUILD_ANON_LINKING (module) ── build anonymization linking file (when params.anonymize)
   ├─ FILTER_LINKING (module) ── restrict linking file to samplesheet samples
   │
   ├─ MERGE_DEANON (subworkflow) ── merge all per-sample files + deanonymise
@@ -58,12 +59,13 @@ ch_samplesheet
   │
   ├─ STUDY_METADATA (subworkflow) ── clinical files + meta + case lists
   │    ├─ CLINICAL_PATIENTS / CLINICAL_SAMPLES
+  │    ├─ ANONYMIZE_CLINICAL (ANON_PATIENT / ANON_SAMPLE, when params.anonymize)
   │    └─ WRITE_CASE_LISTS / WRITE_META
   │
   └─ PACKAGE_CBIOPORTAL (module) ── tar.gz all outputs for transfer
 ```
 
-**Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (VEP v113, GRCh37/hg19) and stub MAFs. `params.filter_tsv_variants` chooses between filtering mutations to TSV coordinates or passing all MAF rows through.
+**Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (VEP v113, GRCh37/hg19) and stub MAFs. `params.filter_tsv_variants` chooses between filtering mutations to TSV coordinates or passing all MAF rows through. `params.anonymize` enables clinical data anonymization via BUILD_ANON_LINKING and ANONYMIZE_CLINICAL.
 
 ---
 
@@ -72,6 +74,7 @@ ch_samplesheet
 - `analysis_*_export.tsv` — columns: `Chr, Start, End, Variant Type, Variant Subtype, Genes, Breakend Genes, Supporting Reads, Copy Number`
 - `*-basespace-pisces.final.vcf.gz` — somatic mutations VCF; filename prefix = `SAMPLE_ID`
 - `*-basespace-cnv.final.vcf` — CNV VCF; needs `CN` in FORMAT and `END` in INFO
+- `*-star-fusion.final.vcf` — (optional) fusion VCF; used by FORMAT_SV when present, otherwise TSV export is used
 
 **Linking file** (`linking_file.txt`): maps anonymized → real IDs.
 ```
@@ -87,7 +90,7 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 1. `analysis_*_export.tsv` → FORMAT_SV → `_sv.txt` (`Variant Subtype = FUSION`)
 2. `analysis_*_export.tsv` → FORMAT_CNA → `_cna.txt` (`DUPLICATION`/`DELETION`)
 3. VCF → VCF_TO_MAF (vcf2maf, VEP v113, GRCh37/hg19) → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → `_mutations.txt`
-4. `*-cnv.final.vcf` → VCF_TO_SEG → `_seg.txt` (PASS only; `seg.mean = log2(CN/2)`; CN=0 → −3.0)
+4. `*-cnv.final.vcf` → VCF_TO_SEG → `_seg.txt` (PASS only; `seg.mean` = raw CN; CN=2 rows dropped)
 
 **Downstream** (re-runs on every execution over all samples):
 5. FILTER_LINKING → linking filtered to samplesheet samples only
@@ -103,7 +106,7 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 - CNA copy-number mapping: `0→-2, 1→-1, 3→1, ≥4→2`; CN=2 is normal and dropped.
 - `data_cna.txt` is long format (`Hugo_Symbol, Sample_Id, Value`); `meta_cna.txt` uses `datatype: DISCRETE_LONG`.
 - All deanon scripts warn on unmatched IDs but leave them unchanged.
-- `vcf_to_seg.py` sets `num.mark=1` (ampliseq VCFs carry no probe-count).
+- `vcf_to_seg.py` sets `num.mark=1` (ampliseq VCFs carry no probe-count). `seg.mean` is raw copy number (not log2-transformed); CN=2 (normal) rows are dropped.
 - `meta_seg.txt`: `datatype: SEG`, `show_profile_in_analysis_tab: false`.
 
 ## Container Labels
@@ -112,7 +115,7 @@ Two process labels control container assignment in `nextflow.config`:
 - `python` → `params.python_sif` (local Apptainer image built from `containers/python-ampliseq.def`)
 - `vcf2maf` → `params.vcf2maf_container` (Wave-built image with vcf2maf + ensembl-vep)
 
-The vcf2maf container mounts `vep_data` as `/home/jbellavance/` inside the container.
+The standalone `bin/run_pipeline.sh` binds the data directory as `/home/jbellavance/` inside the vcf2maf container. The Nextflow pipeline passes `vep_data` directly via `--vep-data`.
 
 ---
 

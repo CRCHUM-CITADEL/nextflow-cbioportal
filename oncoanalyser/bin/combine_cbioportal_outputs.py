@@ -50,7 +50,6 @@ META_FILES = [
     "meta_sequenced.txt",
     "meta_clinical_sample.txt",
     "meta_clinical_patient.txt",
-    "meta_cancer_type.txt",
     "meta_mutational_signatures_contribution_SBS.txt",
     "meta_mutational_signatures_counts_SBS.txt",
     "meta_mutational_signatures_contribution_DBS.txt",
@@ -59,7 +58,7 @@ META_FILES = [
     "meta_mutational_signatures_counts_ID.txt",
 ]
 
-SINGLE_VALUE_FILES = ["cancer_type.txt"]
+SINGLE_VALUE_FILES = []
 
 CASE_LISTS = ["cases_cnv.txt", "cases_sequenced.txt", "cases_sv.txt"]
 
@@ -326,9 +325,35 @@ def _replace_study_id_in_file(path, new_study_id):
                 f.write(line)
 
 
+def _rewrite_meta_study(path, new_study_id):
+    """Rewrite meta_study.txt, replacing the old study ID in all fields."""
+    with open(path) as f:
+        lines = f.readlines()
+
+    old_study_id = None
+    for line in lines:
+        if line.startswith("cancer_study_identifier:"):
+            _, _, value = line.partition(":")
+            old_study_id = value.strip()
+            break
+
+    if not old_study_id or old_study_id == new_study_id:
+        return
+
+    with open(path, "w") as f:
+        for line in lines:
+            f.write(line.replace(old_study_id, new_study_id))
+
+
 def rewrite_study_id(out_dir, new_study_id):
     """Rewrite cancer_study_identifier in all meta and case list files."""
+    meta_study_path = os.path.join(out_dir, "meta_study.txt")
+    if os.path.isfile(meta_study_path):
+        _rewrite_meta_study(meta_study_path, new_study_id)
+
     for filename in META_FILES:
+        if filename == "meta_study.txt":
+            continue
         path = os.path.join(out_dir, filename)
         if os.path.isfile(path):
             _replace_study_id_in_file(path, new_study_id)

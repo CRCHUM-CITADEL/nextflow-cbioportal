@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Merge two cBioPortal output folders with the same study ID into one combined folder.
+"""Merge two cBioPortal output folders into one combined folder.
 
 Usage:
     combine_cbioportal_outputs.py --input_dir_1 DIR1 --input_dir_2 DIR2 --output_dir OUT
+    combine_cbioportal_outputs.py --input_dir_1 DIR1 --input_dir_2 DIR2 --output_dir OUT --study_id NEW_ID
 """
 
 import argparse
@@ -131,13 +132,20 @@ def collect_sample_ids(directory):
 # Validation
 # ---------------------------------------------------------------------------
 
-def validate_inputs(dir1, dir2):
-    """Validate both directories and return the shared cancer_study_identifier."""
+def validate_inputs(dir1, dir2, study_id_override=None):
+    """Validate both directories and return the cancer_study_identifier to use.
+
+    If study_id_override is provided, skip the mismatch check and return
+    the override value. Otherwise require both dirs to share the same ID.
+    """
     for d in (dir1, dir2):
         if not os.path.isdir(d):
             sys.exit(f"ERROR: directory does not exist: {d}")
         if not os.path.isfile(os.path.join(d, "meta_study.txt")):
             sys.exit(f"ERROR: meta_study.txt not found in {d}")
+
+    if study_id_override:
+        return study_id_override
 
     meta1 = parse_meta_file(os.path.join(dir1, "meta_study.txt"))
     meta2 = parse_meta_file(os.path.join(dir2, "meta_study.txt"))
@@ -290,6 +298,48 @@ def copy_if_exists(path1, path2, out_path):
     shutil.copy2(path1 or path2, out_path)
 
 
+def _replace_study_id_in_file(path, new_study_id):
+    """Rewrite cancer_study_identifier and stable_id prefix in a meta/case list file."""
+    with open(path) as f:
+        lines = f.readlines()
+
+    old_study_id = None
+    for line in lines:
+        if line.startswith("cancer_study_identifier:"):
+            _, _, value = line.partition(":")
+            old_study_id = value.strip()
+            break
+
+    with open(path, "w") as f:
+        for line in lines:
+            if line.startswith("cancer_study_identifier:"):
+                f.write(f"cancer_study_identifier: {new_study_id}\n")
+            elif line.startswith("stable_id:") and old_study_id:
+                _, _, value = line.partition(":")
+                value = value.strip()
+                if value.startswith(old_study_id):
+                    suffix = value[len(old_study_id):]
+                    f.write(f"stable_id: {new_study_id}{suffix}\n")
+                else:
+                    f.write(line)
+            else:
+                f.write(line)
+
+
+def rewrite_study_id(out_dir, new_study_id):
+    """Rewrite cancer_study_identifier in all meta and case list files."""
+    for filename in META_FILES:
+        path = os.path.join(out_dir, filename)
+        if os.path.isfile(path):
+            _replace_study_id_in_file(path, new_study_id)
+
+    case_dir = os.path.join(out_dir, "case_lists")
+    for filename in CASE_LISTS:
+        path = os.path.join(case_dir, filename)
+        if os.path.isfile(path):
+            _replace_study_id_in_file(path, new_study_id)
+
+
 def merge_case_list(path1, path2, out_path):
     """Merge two case list files by unioning sample IDs."""
     if path1 is None and path2 is None:
@@ -325,9 +375,9 @@ def merge_case_list(path1, path2, out_path):
 # Orchestration
 # ---------------------------------------------------------------------------
 
-def merge_folders(dir1, dir2, out_dir):
+def merge_folders(dir1, dir2, out_dir, study_id_override=None):
     """Merge two cBioPortal output folders into out_dir."""
-    study_id = validate_inputs(dir1, dir2)
+    study_id = validate_inputs(dir1, dir2, study_id_override)
     log(f"Study ID: {study_id}")
 
     samples1 = collect_sample_ids(dir1)
@@ -400,6 +450,11 @@ def merge_folders(dir1, dir2, out_dir):
             log(f"{action} case_lists/{filename}")
             merge_case_list(p1, p2, os.path.join(out_dir, "case_lists", filename))
 
+    # Rewrite study ID in all meta and case list files if overridden
+    if study_id_override:
+        log(f"Overriding study ID to '{study_id_override}' in all meta/case list files")
+        rewrite_study_id(out_dir, study_id_override)
+
     total = len(samples1) + len(samples2)
     log(f"Done. {total} samples merged into {out_dir}")
 
@@ -407,7 +462,7 @@ def merge_folders(dir1, dir2, out_dir):
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="Merge two cBioPortal output folders with the same study ID."
+        description="Merge two cBioPortal output folders into one."
     )
     parser.add_argument(
         "--input_dir_1", required=True, help="First cBioPortal output directory"
@@ -417,6 +472,13 @@ def parse_args():
     )
     parser.add_argument(
         "--output_dir", required=True, help="Output directory for merged result"
+    )
+    parser.add_argument(
+        "--study_id",
+        required=False,
+        default=None,
+        help="Override the cancer_study_identifier in all output files. "
+        "When set, input folders are not required to share the same study ID.",
     )
     return parser.parse_args()
 
@@ -431,7 +493,7 @@ def main():
     if os.path.exists(out_dir):
         sys.exit(f"ERROR: output directory already exists: {out_dir}")
 
-    merge_folders(dir1, dir2, out_dir)
+    merge_folders(dir1, dir2, out_dir, study_id_override=args.study_id)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ This pipeline converts nf-core/oncoanalyser WGS/WTS output and clinical
 CSVs into cBioPortal-compatible import packages. It runs on HPC clusters
 using SLURM and Apptainer (no Docker, no sudo).
 
-The pipeline has two independent modes:
+The pipeline has three modes:
 
   Genomic mode   Processes per-subject oncoanalyser output (mutations,
                  copy-number, structural variants, gene expression, RNA
@@ -19,6 +19,12 @@ The pipeline has two independent modes:
   Clinical mode  Transforms clinical CSVs (patient demographics, diagnoses,
                  treatments, specimens, etc.) into cBioPortal patient and
                  sample attribute files.
+
+  Both mode      Runs genomic and clinical pipelines in a single invocation.
+                 The genomic workflow runs first and generates a linking
+                 file that maps sample IDs to clinical patient IDs. The
+                 clinical workflow then runs automatically using that
+                 linking file, so --id_linking_file is not needed.
 
 Genomic mode processing steps:
 
@@ -198,6 +204,28 @@ ID LINKING FILE (optional)
 
   Pass via --id_linking_file path/to/linking.tsv.
 
+GENERATING A SAMPLESHEET
+
+  Two helper scripts can generate the genomic samplesheet automatically.
+
+  For oncoanalyser WGS/WTS output (directories ending in _WGTS):
+
+    python3 bin/generate_samplesheet.py /path/to/oncoanalyser_output \
+        -o samplesheet.csv
+
+    Scans the input directory for *_WGTS/ folders and produces a CSV
+    with columns: group, subject_id, sample_id, folder.
+
+  For DRAGEN DNA/RNA output (directories with dna/ and rna/ subfolders):
+
+    python3 create_samplesheet.py --input_dir /path/to/dragen_output
+
+    Expects a directory containing dna/ and rna/ subfolders with
+    standard DRAGEN output. Produces samplesheet.csv with columns:
+    group_id, subject_id, sample_id, sample_type, sequence_data,
+    info, filepath. Creates 3 rows per subject (DT somatic DNA,
+    DN germinal DNA, RT somatic RNA).
+
 
 Configuration reference
 -----------------------
@@ -209,7 +237,7 @@ CORE PARAMETERS
 
   Parameter              Required  Default                   Description
   ---------------------  --------  ------------------------  ----------------------
-  mode                   Yes       genomic                   genomic or clinical
+  mode                   Yes       genomic                   genomic, clinical, or both
   project_name           Yes       --                        Study name for meta_study.txt
   project_description    Yes       --                        Study description
   outdir                 No        output_<project>_<date>   Output directory
@@ -278,7 +306,7 @@ PROFILES
 
 GENOMIC MODE
 
-  module load nextflow/25.10.2 apptainer htslib
+  module load nextflow/25.10.2 apptainer/1.3.5 htslib/1.22.1
 
   nextflow run main.nf \
       -profile slurm,apptainer \
@@ -300,6 +328,25 @@ CLINICAL MODE
       --project_name "MY_STUDY" \
       --project_description "Description of my study" \
       --clinical_samplesheet clinical_samplesheet.csv
+
+BOTH MODE
+
+  Runs genomic and clinical pipelines together. The linking file is
+  generated automatically by the genomic workflow and passed to the
+  clinical workflow, so --id_linking_file is not needed.
+
+  nextflow run main.nf \
+      -profile slurm,apptainer \
+      --mode both \
+      --project_name "MY_STUDY" \
+      --project_description "Description of my study" \
+      --genomic_samplesheet samplesheet.csv \
+      --clinical_samplesheet clinical_samplesheet.csv \
+      --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
+      --ensembl_annotations_expr /path/to/biomart_grch38_ensembl_110.tsv \
+      --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
+      --vep_data /path/to/vep_cache \
+      --pcgr_data /path/to/pcgr_ref_data
 
 USING A PARAMS FILE
 

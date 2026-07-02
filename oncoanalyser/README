@@ -1,0 +1,43 @@
+oncoanalyser -> cBioPortal
+=========================
+
+Nextflow pipeline that converts oncoanalyser WGS/WTS output and clinical
+CSVs into cBioPortal-ready files.
+
+  oncoanalyser: https://github.com/nf-core/oncoanalyser
+  cBioPortal:   https://www.cbioportal.org/
+
+
+Quick start
+-----------
+
+  # 1. Clone
+  git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git
+  cd nextflow-cbioportal/oncoanalyser
+
+  # 2. Load modules
+  module load nextflow/25.10.2 apptainer htslib
+
+  # 3. Run (genomic mode)
+  nextflow run main.nf -profile slurm,apptainer \
+      --mode genomic \
+      --genomic_samplesheet samplesheet.csv
+
+  # 3. Run (clinical mode)
+  nextflow run main.nf -profile slurm,apptainer \
+      --mode clinical \
+      --clinical_samplesheet clinical_samplesheet.csv
+
+Use -params-file params.yaml to pass all parameters via a YAML file
+instead of the command line.
+
+
+Documentation
+-------------
+
+  docs/usage.txt   User's guide: prerequisites, input preparation,
+                   samplesheets, configuration, running modes,
+                   and troubleshooting.
+
+  docs/output.txt  Output reference: every output file explained,
+                   with cBioPortal import instructions.

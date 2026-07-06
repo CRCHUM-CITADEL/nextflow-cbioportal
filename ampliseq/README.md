@@ -10,6 +10,18 @@ Requires Nextflow >= 25.04.0.
 
 ### 1. Prepare input files
 
+#### Generating a samplesheet
+
+A helper script can automatically generate the samplesheet from a directory of sample folders:
+
+```bash
+python3 bin/generate_samplesheet.py /path/to/sample_data -o samplesheet.csv
+```
+
+The input directory can contain either cohort subdirectories (each with per-sample folders) or sample folders directly. Each sample folder must contain `*-basespace-pisces.final.vcf.gz` and `analysis_*_export.tsv`. The cohort subdirectory name becomes the `group` column, the `sample_id` is extracted from the VCF filename prefix (before `-basespace-`), and the `subject_id` is derived from the sample_id (part before the first `_`). Samples missing required files are skipped with warnings.
+
+#### Samplesheet format
+
 **Samplesheet** (`samplesheet.csv`):
 ```csv
 group,subject_id,sample_id,folder_location

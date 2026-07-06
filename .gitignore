@@ -1,5 +1,5 @@
-.nextflow*
-.nf-test
+*.nextflow*
+*.nf-test*
 .nf-test.log
 
 work

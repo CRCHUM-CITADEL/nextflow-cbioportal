@@ -42,14 +42,20 @@ container_sigprofiler  = "oras://ghcr.io/crchum-citadel/sdp-sigprofiler:1.1.3"
 
 ## Process Labels (`conf/base.config`)
 
+Default: 1 CPU, 1 GB, 4 min (all scaled by `task.attempt`). Global maxRetries = 1.
+
 | Label | CPUs | Memory | Time |
 |---|---|---|---|
-| `process_single` | 1 | 6 GB | 4 h |
-| `process_low` | 2 | 12 GB | 4 h |
-| `process_medium` | 6 | 36 GB | 8 h |
-| `process_high` | 12 | 72 GB | 16 h |
+| `process_single` | 1 | 1 GB | 4 min |
+| `process_low` | 1 (cpus commented out) | 2 GB | 4 min |
+| `process_medium` | 1 (cpus commented out) | 36 GB | 8 h |
+| `process_high` | 1 (cpus commented out) | 72 GB | 16 h |
+| `process_long` | — | — | 20 h |
+| `process_medium_memory` | 1 (cpus commented out) | 48 GB | 36 h |
 | `process_high_memory` | — | 200 GB | — |
-| `error_retry` | — | — | maxRetries 3 |
+| `process_gpu` | — | — | GPU accelerator when `-profile gpu` |
+| `error_retry` | — | — | maxRetries 2 |
+| `error_ignore` | — | — | errorStrategy ignore |
 
 ---
 
@@ -138,15 +144,21 @@ Three signature types (SBS, DBS, ID) are fitted against COSMIC v3.6 GRCh38 refer
 
 | Test file | Containers |
 |---|---|
+| `tests/clinical.nf.test` | R only |
+| `tests/clinical_template.nf.test` | R only |
+| `tests/incremental.nf.test` | R only |
 | `tests/subworkflows/genomic_cnv.nf.test` | R only |
 | `tests/subworkflows/genomic_sv.nf.test` | R only |
 | `tests/subworkflows/genomic_expression.nf.test` | R only |
 | `tests/subworkflows/genomic_aggregate_output.nf.test` | R only |
+| `tests/subworkflows/clinical_aggregate.nf.test` | R only |
 | `tests/subworkflows/genomic_ml.nf.test` | None (fully stubbed) |
 | `tests/subworkflows/genomic_mutations.nf.test` | PCGR + vcf2maf (CI only) |
 | `tests/modules/isofox_fusion_to_cbioportal.nf.test` | R only |
+| `tests/modules/package_cbioportal.nf.test` | None |
 | `tests/modules/sigprofiler_sbs.nf.test` | SigProfiler |
 | `tests/modules/sigprofiler_dbs.nf.test` | SigProfiler |
+| `tests/modules/sigprofiler_id.nf.test` | SigProfiler |
 | `tests/modules/sigs_counts_to_cbioportal.nf.test` | R only |
 
 **nf-test gotchas:**

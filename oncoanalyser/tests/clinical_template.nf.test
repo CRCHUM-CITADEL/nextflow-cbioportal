@@ -1,0 +1,32 @@
+nextflow_pipeline {
+
+    name "Test clinical template generation"
+    script "../main.nf"
+    tag "pipeline"
+    tag "clinical_template"
+
+    test("clinical template — no clinical samplesheet") {
+
+        config "tests/nextflow_clinical_template.config"
+        when {
+            params {
+                mode = 'clinical'
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            def stable_path = getAllFilesFromDir(params.outdir, ignoreFile: 'tests/.nftignore')
+
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot(
+                    workflow.trace.succeeded().size(),
+                    stable_name,
+                    stable_path
+                ).match() }
+            )
+        }
+    }
+}

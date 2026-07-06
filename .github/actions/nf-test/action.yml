@@ -22,6 +22,10 @@ inputs:
   tags:
     description: "Tags to pass as argument for nf-test --tag parameter"
     required: false
+  working_directory:
+    description: "Pipeline subdirectory to run tests from (e.g., 'oncoanalyser')"
+    required: false
+    default: "."
 
 runs:
   using: "composite"
@@ -30,9 +34,8 @@ runs:
       shell: bash
       run: |
         echo "inputs.nxf_version='${{ inputs.nxf_version }}'"
-        echo "inputs.version='${{ inputs.version }}'"
+        echo "inputs.working_directory='${{ inputs.working_directory }}'"
         echo "env.NXF_VER='${{ env.NXF_VER }}'"
-        echo "env.NXF_VERSION='${{ env.NXF_VERSION }}'"
         env | sort
 
     - name: Setup Nextflow
@@ -59,12 +62,13 @@ runs:
       uses: actions/cache@v4
       with:
         path: |
-          oncoanalyser/assets/vep
-          oncoanalyser/assets/pcgr
-        key: nf-ref-data-${{ hashFiles('oncoanalyser/modules/local/download_vep_test/main.nf', 'oncoanalyser/modules/local/download_pcgr/main.nf') }}
+          ${{ inputs.working_directory }}/assets/vep
+          ${{ inputs.working_directory }}/assets/pcgr
+        key: nf-ref-data-${{ inputs.working_directory }}-${{ hashFiles(format('{0}/modules/local/download_vep_test/main.nf', inputs.working_directory), format('{0}/modules/local/download_pcgr/main.nf', inputs.working_directory)) }}
 
     - name: Login to GHCR and run nf-test
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
       env:
         NFT_WORKDIR: ${{ env.NFT_WORKDIR }}
       run: |
@@ -85,10 +89,11 @@ runs:
     - name: Generate test summary
       if: always()
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
       run: |
         # Add header if it doesn't exist (using a token file to track this)
         if [ ! -f ".summary_header" ]; then
-          echo "# 🚀 nf-test results" >> $GITHUB_STEP_SUMMARY
+          echo "# nf-test results (${{ inputs.working_directory }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Status | Test Name | Profile | Shard |" >> $GITHUB_STEP_SUMMARY
           echo "|:------:|-----------|---------|-------|" >> $GITHUB_STEP_SUMMARY
@@ -99,18 +104,16 @@ runs:
           while IFS= read -r line; do
             if [[ $line =~ ^ok ]]; then
               test_name="${line#ok }"
-              # Remove the test number from the beginning
               test_name="${test_name#* }"
-              echo "| ✅ | ${test_name} | ${{ inputs.profile }} | ${{ inputs.shard }}/${{ inputs.total_shards }} |" >> $GITHUB_STEP_SUMMARY
+              echo "| :white_check_mark: | ${test_name} | ${{ inputs.profile }} | ${{ inputs.shard }}/${{ inputs.total_shards }} |" >> $GITHUB_STEP_SUMMARY
             elif [[ $line =~ ^not\ ok ]]; then
               test_name="${line#not ok }"
-              # Remove the test number from the beginning
               test_name="${test_name#* }"
-              echo "| ❌ | ${test_name} | ${{ inputs.profile }} | ${{ inputs.shard }}/${{ inputs.total_shards }} |" >> $GITHUB_STEP_SUMMARY
+              echo "| :x: | ${test_name} | ${{ inputs.profile }} | ${{ inputs.shard }}/${{ inputs.total_shards }} |" >> $GITHUB_STEP_SUMMARY
             fi
           done < test.tap
         else
-          echo "| ⚠️ | No test results found | ${{ inputs.profile }} | ${{ inputs.shard }}/${{ inputs.total_shards }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| :warning: | No test results found | ${{ inputs.profile }} | ${{ inputs.shard }}/${{ inputs.total_shards }} |" >> $GITHUB_STEP_SUMMARY
         fi
 
     - name: Clean up

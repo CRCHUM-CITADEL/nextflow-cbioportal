@@ -30,7 +30,7 @@ def main():
         "SV_Status":             "Somatic",
         "Site1_Hugo_Symbol":     sv_df["Genes"],
         "Site1_Chromosome":      sv_df["Chr"],
-        "Site1_Region":          sv_df["Start"],
+        "Site1_Position":          sv_df["Start"],
         "Site2_Hugo_Symbol":     sv_df["Breakend Genes"],
         "Class":                 sv_class,
         "Event_Info":            "RNA-Seq " + sv_class + " : " + sv_df["Genes"].values + "-" + sv_df["Breakend Genes"].values,

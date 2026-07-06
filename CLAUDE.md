@@ -12,13 +12,13 @@ This is a monorepo containing three independent Nextflow DSL2 pipelines that tra
 | `oncoanalyser/` | Oncoanalyser/DRAGEN output (WGS/WTS) + clinical CSVs | Genomic + clinical files + ML tables → cBioPortal |
 | `dragen/` | DRAGEN somatic/germline + clinical CSVs | Genomic + clinical files + ML tables → cBioPortal (sister pipeline to oncoanalyser) |
 
-Each pipeline is self-contained with its own `main.nf`, `nextflow.config`, `conf/`, `modules/local/`, `subworkflows/local/`, `bin/`, and `tests/`. **Consult the pipeline-specific `CLAUDE.md` when working inside a subdirectory.**
+Each pipeline is self-contained with its own `main.nf`, `nextflow.config`, `modules/local/`, `subworkflows/local/`, `bin/`, and `tests/`. **Consult the pipeline-specific `CLAUDE.md` when working inside a subdirectory.**
 
 ---
 
 ## Shared Architecture
 
-All pipelines follow nf-core DSL2 conventions:
+All pipelines follow nf-core DSL2 conventions. The canonical structure (used by oncoanalyser and dragen) is:
 
 ```
 <pipeline>/
@@ -37,7 +37,9 @@ All pipelines follow nf-core DSL2 conventions:
   tests/                    # nf-test definitions and snapshots
 ```
 
-Container images are ORAS-hosted at `ghcr.io/crchum-citadel/`. The `apptainer.cacheDir` points to `containers/` within each pipeline directory.
+**ampliseq differences:** no `conf/` directory (config is inline in `nextflow.config`), no `modules/nf-core/`, and test data lives directly under `assets/` (no `test_data/` subdirectory).
+
+Container images for oncoanalyser and dragen are ORAS-hosted at `ghcr.io/crchum-citadel/`. ampliseq uses a locally built `.sif` and Wave-hosted images. The `apptainer.cacheDir` points to `containers/` within each pipeline directory.
 
 ---
 
@@ -46,18 +48,27 @@ Container images are ORAS-hosted at `ghcr.io/crchum-citadel/`. The `apptainer.ca
 All commands are run from within the relevant pipeline subdirectory (e.g., `cd oncoanalyser/`).
 
 ```bash
-# Run tests
+# Run tests (oncoanalyser — has clinical, clinical_template, incremental tests)
+nf-test test tests/clinical.nf.test --profile test,apptainer
+
+# Run tests (dragen — has genomic and clinical tests)
 nf-test test tests/genomic.nf.test --profile test,apptainer
 nf-test test tests/clinical.nf.test --profile test,apptainer
+
+# Run tests (ampliseq — module-level tests)
+nf-test test tests/modules/package_cbioportal.nf.test --profile test,apptainer
 
 # Lint before committing
 pre-commit run --all-files
 
-# Run locally (no SLURM)
+# Run oncoanalyser/dragen locally (no SLURM)
 nextflow run main.nf -profile apptainer --mode genomic --genomic_samplesheet samplesheet.csv
 
-# Run on HPC
+# Run oncoanalyser/dragen on HPC
 nextflow run main.nf -profile slurm,apptainer --mode genomic --genomic_samplesheet samplesheet.csv
+
+# Run ampliseq (local executor only, no --mode param)
+nextflow run main.nf -profile apptainer --input samplesheet.csv
 
 # Install / update nf-core modules (oncoanalyser/dragen only)
 nf-core modules install <module_name>

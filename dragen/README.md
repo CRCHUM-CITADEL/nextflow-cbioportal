@@ -18,7 +18,7 @@ You will need to change parameters in the nextflow config in order to point to c
 
 | Field                    | Description                                                                                                                    |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| mode                     | Pipeline run mode. Options : ['clinical', 'genomic']                                                                           |
+| mode                     | Pipeline run mode. Options: `clinical`, `genomic`                                                                              |
 | genomic_samplesheet      | Input samplesheet for genomic pipeline. See section below.                                                                     |
 | ensembl_annotations_expr | Ensembl annotation .tsv file for expression subworkflow (tested with ensembl 110 with biomart)                                 |
 | ensembl_annotations      | Ensembl annotation .tsv file. (tested with 113 with biomart)                                                                   |
@@ -36,6 +36,22 @@ You will need to change parameters in the nextflow config in order to point to c
 ## Samplesheet
 
 You will need to create a samplesheet for this pipeline, which can differ between modes.
+
+### Generating a samplesheet
+
+A helper script can automatically generate the genomic samplesheet from DRAGEN output:
+
+```bash
+python3 create_samplesheet.py --input_dir /path/to/dragen_output
+```
+
+This expects a directory containing `dna/` and `rna/` subfolders with standard DRAGEN tumor pair output. It produces `samplesheet.csv` with columns: `group_id`, `subject_id`, `sample_id`, `sample_type`, `sequence_data`, `info`, `filepath`. Three rows are created per subject (DT somatic DNA, DN germinal DNA, RT somatic RNA).
+
+To run the script's built-in validation tests:
+
+```bash
+python3 create_samplesheet.py --test
+```
 
 ### Mode = 'genomic'
 
@@ -122,7 +138,7 @@ apptainer exec containers/sdp-nextflow_v25.10.2.sif nextflow run main.nf -profil
 ### Module load nextflow
 
 ```
-module load nextflow/25.10.2 apptainer htslib
+module load nextflow/25.10.2 apptainer/1.3.5 htslib/1.22.1
 ```
 
 ### Run nextflow

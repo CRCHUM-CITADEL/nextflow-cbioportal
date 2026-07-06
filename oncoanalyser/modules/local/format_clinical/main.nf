@@ -13,6 +13,8 @@ process FORMAT_CLINICAL {
         path "data_clinical_${meta.mode}.txt"
 
     script:
+    def cancer_type = params.oncotree_code ? params.oncotree_code.toLowerCase() : ""
+    def icd_arg = params.icd_code ? "--icd_code ${params.icd_code}" : ""
     """
     clin_format.R \
         --mode ${meta.mode} \
@@ -24,6 +26,8 @@ process FORMAT_CLINICAL {
         --specimen ${sample_list.specimen} \
         --radiotherapy ${sample_list.radio_therapy} \
         --linking_file ${linking_file} \
+        --cancer_type ${cancer_type} \
+        ${icd_arg} \
         --output data_clinical_${meta.mode}.txt
     """
 }

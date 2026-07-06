@@ -4,6 +4,9 @@
 Usage:
     combine_cbioportal_outputs.py --input_dir_1 DIR1 --input_dir_2 DIR2 --output_dir OUT
     combine_cbioportal_outputs.py --input_dir_1 DIR1 --input_dir_2 DIR2 --output_dir OUT --study_id NEW_ID
+
+    # In-place merge (output_dir == one of the input dirs):
+    combine_cbioportal_outputs.py --input_dir_1 ACCUMULATED --input_dir_2 NEW_BATCH --output_dir ACCUMULATED
 """
 
 import argparse
@@ -11,6 +14,7 @@ import csv
 import os
 import shutil
 import sys
+import tempfile
 
 
 # ---------------------------------------------------------------------------
@@ -401,7 +405,24 @@ def merge_case_list(path1, path2, out_path):
 # ---------------------------------------------------------------------------
 
 def merge_folders(dir1, dir2, out_dir, study_id_override=None):
-    """Merge two cBioPortal output folders into out_dir."""
+    """Merge two cBioPortal output folders into out_dir.
+
+    When out_dir is the same path as dir1 or dir2, an in-place merge is
+    performed: data is merged into a temporary directory, then the original
+    is replaced with the result.
+    """
+    in_place = os.path.normpath(out_dir) in (
+        os.path.normpath(dir1),
+        os.path.normpath(dir2),
+    )
+
+    if in_place:
+        actual_out = out_dir
+        out_dir = tempfile.mkdtemp(
+            prefix="cbio_merge_", dir=os.path.dirname(actual_out)
+        )
+        log(f"In-place merge detected — using temp directory: {out_dir}")
+
     study_id = validate_inputs(dir1, dir2, study_id_override)
     log(f"Study ID: {study_id}")
 
@@ -412,8 +433,8 @@ def merge_folders(dir1, dir2, out_dir, study_id_override=None):
     check_sample_overlap(samples1, samples2)
     log("No sample overlap detected")
 
-    os.makedirs(out_dir, exist_ok=False)
-    os.makedirs(os.path.join(out_dir, "case_lists"), exist_ok=False)
+    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(os.path.join(out_dir, "case_lists"), exist_ok=True)
 
     # Row-append files
     for filename, skip in ROW_APPEND_FILES:
@@ -480,6 +501,13 @@ def merge_folders(dir1, dir2, out_dir, study_id_override=None):
         log(f"Overriding study ID to '{study_id_override}' in all meta/case list files")
         rewrite_study_id(out_dir, study_id_override)
 
+    # Swap temp directory into place for in-place merges
+    if in_place:
+        shutil.rmtree(actual_out)
+        shutil.move(out_dir, actual_out)
+        out_dir = actual_out
+        log(f"Replaced {actual_out} with merged result")
+
     total = len(samples1) + len(samples2)
     log(f"Done. {total} samples merged into {out_dir}")
 
@@ -515,7 +543,12 @@ def main():
     dir2 = os.path.abspath(args.input_dir_2)
     out_dir = os.path.abspath(args.output_dir)
 
-    if os.path.exists(out_dir):
+    in_place = os.path.normpath(out_dir) in (
+        os.path.normpath(dir1),
+        os.path.normpath(dir2),
+    )
+
+    if os.path.exists(out_dir) and not in_place:
         sys.exit(f"ERROR: output directory already exists: {out_dir}")
 
     merge_folders(dir1, dir2, out_dir, study_id_override=args.study_id)

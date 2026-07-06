@@ -20,6 +20,7 @@ subworkflows/local/
 modules/local/                # One process per file
 bin/                          # R scripts (optparse, data.table, tidyverse)
 tests/subworkflows/           # nextflow_workflow tests (one per subworkflow)
+tests/modules/                # nextflow_process tests
 ```
 
 ---
@@ -51,6 +52,8 @@ container_vcf2maf = "oras://ghcr.io/crchum-citadel/vcf2maf_ensembl-vep:v1.6.22_2
 | `process_medium_memory` | 8 | 30 GB | 2 h |
 | `process_high_memory` | — | 200 GB | — |
 | `error_retry` | — | — | maxRetries 3 |
+| `error_ignore` | — | — | errorStrategy ignore |
+| `process_gpu` | — | — | GPU accelerator when `-profile gpu` |
 
 ---
 
@@ -67,7 +70,7 @@ container_vcf2maf = "oras://ghcr.io/crchum-citadel/vcf2maf_ensembl-vep:v1.6.22_2
 - Always add a `stub:` block to every new process (`-stub-run` is used in tests).
 - Use `params.container_*` variables — never hardcode image paths.
 - Output empty/missing values as `NA` (not `.`). Use `write.table(..., na = "NA")`.
-- `data_sv.txt` rows require Hugo symbols at both sites — filter out unannotated rows.
+- `data_sv.txt` rows may have `NA` Hugo symbols — the dragen fusion script (`gen_format_dragen_fusion.R`) does not filter unannotated rows (unlike oncoanalyser which does).
 - `ml_format_cnv.R` and `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`.
 
 ---
@@ -76,11 +79,24 @@ container_vcf2maf = "oras://ghcr.io/crchum-citadel/vcf2maf_ensembl-vep:v1.6.22_2
 
 ```bash
 # All locally-runnable tests
-./nf-test test tests/clinical.nf.test tests/subworkflows/ --profile test,apptainer
+./nf-test test tests/clinical.nf.test tests/genomic.nf.test tests/subworkflows/ tests/modules/ --profile test,apptainer
 
 # Single test + update snapshot
 ./nf-test test tests/subworkflows/genomic_cnv.nf.test --profile test,apptainer --update-snapshot
 ```
+
+| Test file | Type |
+|---|---|
+| `tests/clinical.nf.test` | Workflow |
+| `tests/genomic.nf.test` | Workflow |
+| `tests/subworkflows/genomic_cnv.nf.test` | Subworkflow |
+| `tests/subworkflows/genomic_sv.nf.test` | Subworkflow |
+| `tests/subworkflows/genomic_expression.nf.test` | Subworkflow |
+| `tests/subworkflows/genomic_aggregate_output.nf.test` | Subworkflow |
+| `tests/subworkflows/clinical_aggregate.nf.test` | Subworkflow |
+| `tests/subworkflows/genomic_ml.nf.test` | Subworkflow (stub) |
+| `tests/subworkflows/genomic_mutations.nf.test` | Subworkflow (CI only) |
+| `tests/modules/package_cbioportal.nf.test` | Module |
 
 **nf-test gotchas:**
 - Use `path(f.toString())` — channel file outputs are `String`, not `Path`.

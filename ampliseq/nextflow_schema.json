@@ -85,5 +85,53 @@
         {
             "$ref": "#/$defs/generic_options"
         }
-    ]
+    ],
+    "properties": {
+        "patient_file": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to the patient clinical file."
+        },
+        "sample_file": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to the sample clinical file."
+        },
+        "linking_file": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to the linking file mapping anonymized to real IDs."
+        },
+        "study_id": {
+            "type": "string",
+            "description": "cBioPortal study identifier used in case_lists output."
+        },
+        "python_sif": {
+            "type": "string",
+            "description": "Path to python-ampliseq Apptainer SIF image."
+        },
+        "skip_vcf2maf": {
+            "type": "boolean",
+            "default": false,
+            "description": "Skip VCF to MAF conversion and use stub MAFs instead."
+        },
+        "filter_tsv_variants": {
+            "type": "boolean",
+            "default": false,
+            "description": "When true, filter mutations by TSV coordinates; when false, pass all MAF mutations through."
+        },
+        "vcf2maf_container": {
+            "type": "string",
+            "description": "Container image for vcf2maf + ensembl-vep."
+        },
+        "vep_data": {
+            "type": "string",
+            "description": "Path to VEP cache data directory."
+        },
+        "ref_fasta": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to reference FASTA for VEP annotation (hg19)."
+        }
+    }
 }

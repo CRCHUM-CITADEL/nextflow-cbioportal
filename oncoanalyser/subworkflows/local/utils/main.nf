@@ -28,7 +28,7 @@ workflow PIPELINE_INITIALISATION {
     version           	// boolean: Display version and exit
     monochrome_logs   	// boolean: Do not use coloured log outputs
     nextflow_cli_args 	// array: List of positional nextflow CLI args
-    mode              	// string: pipeline mode [clinical, genomic]
+    mode              	// string: pipeline mode [clinical, genomic, both]
     outdir            	// string: The output directory where the results will be saved
     genomic_input     	// string: Path to input samplesheet
     clinical_input    	// string: Path to input samplesheet
@@ -69,13 +69,10 @@ workflow PIPELINE_INITIALISATION {
     //
     // Create channel from input file provided through params.input
     //
-    if (mode == 'clinical'){
+    ch_genomic_samplesheet  = Channel.empty()
+    ch_clinical_samplesheet = Channel.empty()
 
-        samplesheet_list = clinical_input
-            ? Channel.fromList(samplesheetToList(clinical_input, "assets/schema_clinical_input.json"))
-            : Channel.empty()
-
-    } else if (mode == 'genomic'){
+    if (mode in ['genomic', 'both']){
         if (!params.ensembl_annotations){
             error("ERROR: Missing ensembl_annotations file (tsv format). Check input in nextflow.config")
         }
@@ -84,9 +81,13 @@ workflow PIPELINE_INITIALISATION {
             error("ERROR: Missing ensembl_annotations_expr file (tsv format). Check input in nextflow.config")
         }
 
-        samplesheet_list = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))
-    } else {
-        error("ERROR: This should not be possible, the mode check should have caught this. Killing pipeline.")
+        ch_genomic_samplesheet = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))
+    }
+
+    if (mode in ['clinical', 'both']){
+        ch_clinical_samplesheet = clinical_input
+            ? Channel.fromList(samplesheetToList(clinical_input, "assets/schema_clinical_input.json"))
+            : Channel.empty()
     }
 
 	if (project_name == "" ) {
@@ -101,7 +102,8 @@ workflow PIPELINE_INITIALISATION {
 
 
     emit:
-    samplesheet = samplesheet_list
+    genomic_samplesheet  = ch_genomic_samplesheet
+    clinical_samplesheet = ch_clinical_samplesheet
 	name 		= project_name
 	description = project_description
     versions    = ch_versions
@@ -166,19 +168,19 @@ def validateInputParameters() {
 
     // check modes and input
     if (!params.mode){
-        error("ERROR: Pipeline mode not chosen in configuration file. Choices : 'genomic' or 'clinical'")
+        error("ERROR: Pipeline mode not chosen in configuration file. Choices : 'genomic', 'clinical', or 'both'")
     }
     params.mode = params.mode.toLowerCase()
-    if ( !params.mode in ['genomic','clinical'] ) {
-        error("Error: Invalid pipeline mode chosen. Choices : 'genomic' or 'clinical'")
+    if ( !params.mode in ['genomic','clinical','both'] ) {
+        error("Error: Invalid pipeline mode chosen. Choices : 'genomic', 'clinical', or 'both'")
     }
 
     // make sure there's input
-    if (params.mode == "genomic" && !params.genomic_samplesheet){
+    if (params.mode in ["genomic", "both"] && !params.genomic_samplesheet){
         error("ERROR: Could not find genomic samplesheet. Not running any tests. Check input in nextflow.config")
     }
 
-    if (params.mode == "genomic") {
+    if (params.mode in ["genomic", "both"]) {
         if (!params.genome_reference) {
             error("ERROR: genome_reference parameter is required for genomic mode")
         }
@@ -198,7 +200,7 @@ def validateInputParameters() {
 
     }
 
-    if (params.mode == "clinical" && !params.clinical_samplesheet){
+    if (params.mode in ["clinical", "both"] && !params.clinical_samplesheet){
         log.warn "No clinical samplesheet provided. Template clinical files will be generated from the linking file."
     }
 

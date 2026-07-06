@@ -1,0 +1,138 @@
+Output Reference
+================
+
+This document describes every output file produced by the pipeline.
+All paths are relative to the output directory (--outdir).
+
+
+Genomic mode
+------------
+
+PER-SUBJECT FILES
+
+  Intermediate files for each subject are saved in <outdir>/<group>/<subject>/:
+
+  File                                                Description
+  --------------------------------------------------  ----------------------------
+  <sample>_data_cna_hg38.seg                          Copy-number segments (SEG).
+  <sample>_data_cna_long.txt                          Gene-level discrete CNAs.
+  <sample>.data_sv.txt                                DNA structural variants.
+  <sample>.isofox_fusion.data_sv.txt                  RNA gene fusions (Isofox).
+  <sample>.tpm.tsv                                    Gene expression in TPM.
+  <subject>.somatic_rna_germline.maf                  Merged mutation file (MAF).
+  <sample>.data_mutational_signatures_contribution_SBS.txt   SBS signature contributions.
+  <sample>.data_mutational_signatures_counts_SBS.txt         SBS trinucleotide counts.
+  <sample>.data_mutational_signatures_contribution_DBS.txt   DBS signature contributions.
+  <sample>.data_mutational_signatures_counts_DBS.txt         DBS dinucleotide counts.
+  <sample>.data_mutational_signatures_contribution_ID.txt    ID signature contributions.
+  <sample>.data_mutational_signatures_counts_ID.txt          ID classification counts.
+
+PER-GROUP AGGREGATED FILES
+
+  All per-subject files are merged into group-level cBioPortal data
+  files in <outdir>/<group>/:
+
+  Data files:
+
+    File                                               cBioPortal type
+    -------------------------------------------------  -------------------------
+    data_cna_hg38.seg                                  COPY_NUMBER_ALTERATION/SEG
+    data_cna_long.txt                                  COPY_NUMBER_ALTERATION/
+                                                       DISCRETE_LONG
+    data_sv.txt                                        STRUCTURAL_VARIANT/SV
+    data_expression.txt                                MRNA_EXPRESSION/CONTINUOUS
+    data_mutations_dna_rna_germline.txt                MUTATION_EXTENDED/MAF
+    data_mutational_signatures_contribution_SBS.txt    GENERIC_ASSAY/
+                                                       MUTATIONAL_SIGNATURE
+    data_mutational_signatures_counts_SBS.txt          GENERIC_ASSAY/
+                                                       MUTATIONAL_SIGNATURE
+    data_mutational_signatures_contribution_DBS.txt    (same)
+    data_mutational_signatures_counts_DBS.txt          (same)
+    data_mutational_signatures_contribution_ID.txt     (same)
+    data_mutational_signatures_counts_ID.txt           (same)
+
+  Meta files:
+
+    Each data file has a corresponding meta file required by cBioPortal:
+
+    meta_study.txt, meta_cna_hg38.txt, meta_cna_long.txt, meta_sv.txt,
+    meta_expression.txt, meta_sequenced.txt,
+    meta_mutational_signatures_contribution_SBS.txt,
+    meta_mutational_signatures_counts_SBS.txt,
+    meta_mutational_signatures_contribution_DBS.txt,
+    meta_mutational_signatures_counts_DBS.txt,
+    meta_mutational_signatures_contribution_ID.txt,
+    meta_mutational_signatures_counts_ID.txt
+
+  Case lists (in <outdir>/<group>/case_lists/):
+
+    cases_cnv.txt          Samples with copy-number data
+    cases_sequenced.txt    Samples with mutation data
+
+  Utility files:
+
+    util_linking_file.txt  TSV mapping subject_id to sample_id
+
+  ML feature tables:
+
+    ML-formatted versions of CNV, expression, mutations, and SVs
+    (with COSMIC/ChimerDB fusion annotations) for downstream analysis.
+
+  Package:
+
+    <group>.tar.gz         All cBioPortal files packaged for import.
+
+
+Clinical mode
+-------------
+
+Clinical mode outputs are saved in <outdir>/<group>/:
+
+  File                         Description
+  ---------------------------  ----------------------------
+  data_clinical_patient.txt    Patient attributes (one row per patient)
+  data_clinical_sample.txt     Sample attributes (one row per sample)
+  cancer_type.txt              Cancer type definition
+  meta_clinical_patient.txt    Metadata for patient attributes
+  meta_clinical_sample.txt     Metadata for sample attributes
+  meta_cancer_type.txt         Metadata for cancer type
+
+
+Pipeline info
+-------------
+
+Nextflow execution reports are saved in <outdir>/pipeline_info/:
+
+  File                                    Description
+  --------------------------------------  ----------------------------
+  execution_report_<timestamp>.html       Task-level metrics (CPU, mem, time)
+  execution_timeline_<timestamp>.html     Visual timeline of all tasks
+  execution_trace_<timestamp>.txt         Tab-separated trace for debugging
+  pipeline_dag_<timestamp>.html           Workflow DAG
+  software_versions.yml                   Tool versions
+  params.json                             Parameters used
+  samplesheet.valid.csv                   Validated samplesheet
+
+
+Importing into cBioPortal
+-------------------------
+
+The pipeline produces a <group>.tar.gz archive. To import:
+
+  1. Extract the archive:
+
+       tar -xzf COHORT1.tar.gz
+
+  2. Validate the study:
+
+       python importer/validateData.py -s COHORT1/ -n
+
+  3. Import the study:
+
+       python importer/metaImport.py -s COHORT1/ -u http://localhost:8080 -o
+
+     Or using the newer importer:
+
+       python importer/cbioportalImporter.py -s COHORT1/ -u http://localhost:8080
+
+  See: https://docs.cbioportal.org/file-formats/

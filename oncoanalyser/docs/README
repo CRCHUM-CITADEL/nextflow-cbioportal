@@ -1,0 +1,19 @@
+oncoanalyser -> cBioPortal: Documentation
+=========================================
+
+Nextflow DSL2 pipeline that converts nf-core/oncoanalyser WGS/WTS output
+and clinical CSVs into cBioPortal-compatible import packages. Designed for
+HPC environments (SLURM + Apptainer).
+
+
+Documentation
+-------------
+
+  ../README        Quick start: clone, load modules, and run in 3 commands.
+
+  usage.txt        User's guide: prerequisites, input preparation,
+                   samplesheets, configuration, running modes,
+                   and troubleshooting.
+
+  output.txt       Output reference: every output file explained,
+                   with cBioPortal import instructions.

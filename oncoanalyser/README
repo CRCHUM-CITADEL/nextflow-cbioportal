@@ -1,0 +1,73 @@
+oncoanalyser -> cBioPortal
+=========================
+
+Nextflow pipeline that converts oncoanalyser WGS/WTS output and clinical
+CSVs into cBioPortal-ready files.
+
+  oncoanalyser: https://github.com/nf-core/oncoanalyser
+  cBioPortal:   https://www.cbioportal.org/
+
+
+Quick start
+-----------
+
+  # 1. Clone
+  git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git
+  cd nextflow-cbioportal/oncoanalyser
+
+  # 2. Load modules
+  module load nextflow/25.10.2 apptainer/1.3.5 htslib/1.22.1
+
+  # 3a. Run (genomic mode)
+  nextflow run main.nf -profile slurm,apptainer \
+      --mode genomic \
+      --genomic_samplesheet samplesheet.csv
+
+  # 3b. Run (clinical mode)
+  nextflow run main.nf -profile slurm,apptainer \
+      --mode clinical \
+      --clinical_samplesheet clinical_samplesheet.csv
+
+  # 3c. Run (both mode — genomic + clinical in one run)
+  nextflow run main.nf -profile slurm,apptainer \
+      --mode both \
+      --genomic_samplesheet samplesheet.csv \
+      --clinical_samplesheet clinical_samplesheet.csv
+
+  In "both" mode, the genomic workflow runs first and produces a
+  linking file that maps sample IDs to clinical patient IDs. The
+  clinical workflow then runs automatically using that linking file,
+  so you do not need to provide --id_linking_file separately.
+
+Use -params-file params.yaml to pass all parameters via a YAML file
+instead of the command line.
+
+
+Generating a samplesheet
+-------------------------
+
+  For oncoanalyser WGS/WTS output directories:
+
+    python3 bin/generate_samplesheet.py /path/to/oncoanalyser_output \
+        -o samplesheet.csv
+
+  Scans for *_WGTS/ folders and produces a CSV with columns:
+  group, subject_id, sample_id, folder.
+
+  For DRAGEN DNA/RNA output directories (dna/ + rna/ subfolders):
+
+    python3 create_samplesheet.py --input_dir /path/to/dragen_output
+
+  Produces samplesheet.csv with columns: group_id, subject_id,
+  sample_id, sample_type, sequence_data, info, filepath.
+
+
+Documentation
+-------------
+
+  docs/usage.txt   User's guide: prerequisites, input preparation,
+                   samplesheets, configuration, running modes,
+                   and troubleshooting.
+
+  docs/output.txt  Output reference: every output file explained,
+                   with cBioPortal import instructions.

@@ -32,7 +32,7 @@ workflow PIPELINE_INITIALISATION {
     outdir            	// string: The output directory where the results will be saved
     genomic_input     	// string: Path to input samplesheet
     clinical_input    	// string: Path to input samplesheet
-    project_name      	// string: String of project name to be in the metadata
+    study_id          	// string: Study identifier for metadata and top-level output folder
 	project_description // string : String of project description to be put in metadata
 
     main:
@@ -90,9 +90,9 @@ workflow PIPELINE_INITIALISATION {
             : Channel.empty()
     }
 
-	if (project_name == "" ) {
-		warning("WARNING : project name not set. 'test_name' will be used.")
-		project_name = "test_name"
+	if (study_id == "" ) {
+		warning("WARNING : study_id not set. 'test_name' will be used.")
+		study_id = "test_name"
 	}
 
 	if (project_description == "") {
@@ -104,7 +104,7 @@ workflow PIPELINE_INITIALISATION {
     emit:
     genomic_samplesheet  = ch_genomic_samplesheet
     clinical_samplesheet = ch_clinical_samplesheet
-	name 		= project_name
+	name 		= study_id
 	description = project_description
     versions    = ch_versions
 }

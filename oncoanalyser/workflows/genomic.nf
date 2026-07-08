@@ -61,7 +61,7 @@ workflow GENOMIC {
         ch_samples = samplesheet_list
             .map { rec ->
                 [
-                    group  : "${rec[0].group}",
+                    group  : "${params.study_id}",
                     subject: "${rec[0].subject}",
                     sample : "${rec[0].sample}",
                     folder : "${rec[0].folder}",
@@ -407,7 +407,7 @@ workflow GENOMIC {
 
         meta_text = """type_of_cancer: add_text
 cancer_study_identifier: add_text
-name: ${params.project_name}
+name: ${params.study_id}
 description: ${params.project_description}
 add_global_case_list: true
 reference_genome: hg38

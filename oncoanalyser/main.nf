@@ -39,7 +39,7 @@ workflow {
         params.outdir,
         params.genomic_samplesheet,
         params.clinical_samplesheet,
-        params.project_name,
+        params.study_id,
         params.project_description,
     )
 

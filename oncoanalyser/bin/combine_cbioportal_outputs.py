@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """Merge two cBioPortal output folders into one combined folder.
 
+Inputs and output can be directories or .tar.gz archives containing the
+same cBioPortal folder structure.  Archives are auto-extracted/created.
+
 Usage:
     combine_cbioportal_outputs.py --input_dir_1 DIR1 --input_dir_2 DIR2 --output_dir OUT
     combine_cbioportal_outputs.py --input_dir_1 DIR1 --input_dir_2 DIR2 --output_dir OUT --study_id NEW_ID
+
+    # Inputs and/or output as .tar.gz:
+    combine_cbioportal_outputs.py --input_dir_1 batch1.tar.gz --input_dir_2 batch2.tar.gz --output_dir merged.tar.gz
 
     # In-place merge (output_dir == one of the input dirs):
     combine_cbioportal_outputs.py --input_dir_1 ACCUMULATED --input_dir_2 NEW_BATCH --output_dir ACCUMULATED
@@ -14,6 +20,7 @@ import csv
 import os
 import shutil
 import sys
+import tarfile
 import tempfile
 
 
@@ -80,6 +87,38 @@ def resolve(directory, filename):
     """Return the full path if the file exists, else None."""
     path = os.path.join(directory, filename)
     return path if os.path.isfile(path) else None
+
+
+def is_tarball(path):
+    """Return True if path looks like a .tar.gz archive."""
+    return path.endswith(".tar.gz") or path.endswith(".tgz")
+
+
+def extract_tarball(tarball_path):
+    """Extract a .tar.gz archive and return (content_dir, tmpdir_root).
+
+    content_dir is the directory containing cBioPortal files (descends into
+    a single top-level directory if there is one).  tmpdir_root is the
+    extraction root that should be cleaned up.
+    """
+    tmpdir = tempfile.mkdtemp(prefix="cbio_tar_")
+    log(f"Extracting {tarball_path} → {tmpdir}")
+    with tarfile.open(tarball_path, "r:gz") as tf:
+        tf.extractall(tmpdir, filter="data")
+    # If there is exactly one top-level directory, descend into it
+    entries = os.listdir(tmpdir)
+    if len(entries) == 1:
+        candidate = os.path.join(tmpdir, entries[0])
+        if os.path.isdir(candidate):
+            return candidate, tmpdir
+    return tmpdir, tmpdir
+
+
+def create_tarball(source_dir, tarball_path):
+    """Create a .tar.gz archive from a directory."""
+    log(f"Creating archive {tarball_path}")
+    with tarfile.open(tarball_path, "w:gz") as tf:
+        tf.add(source_dir, arcname=os.path.basename(tarball_path).replace(".tar.gz", "").replace(".tgz", ""))
 
 
 def parse_meta_file(path):
@@ -518,13 +557,13 @@ def parse_args():
         description="Merge two cBioPortal output folders into one."
     )
     parser.add_argument(
-        "--input_dir_1", required=True, help="First cBioPortal output directory"
+        "--input_dir_1", required=True, help="First cBioPortal output directory or .tar.gz archive"
     )
     parser.add_argument(
-        "--input_dir_2", required=True, help="Second cBioPortal output directory"
+        "--input_dir_2", required=True, help="Second cBioPortal output directory or .tar.gz archive"
     )
     parser.add_argument(
-        "--output_dir", required=True, help="Output directory for merged result"
+        "--output_dir", required=True, help="Output directory or .tar.gz archive for merged result"
     )
     parser.add_argument(
         "--study_id",
@@ -539,19 +578,54 @@ def parse_args():
 def main():
     args = parse_args()
 
-    dir1 = os.path.abspath(args.input_dir_1)
-    dir2 = os.path.abspath(args.input_dir_2)
-    out_dir = os.path.abspath(args.output_dir)
+    input1 = os.path.abspath(args.input_dir_1)
+    input2 = os.path.abspath(args.input_dir_2)
+    output = os.path.abspath(args.output_dir)
 
-    in_place = os.path.normpath(out_dir) in (
-        os.path.normpath(dir1),
-        os.path.normpath(dir2),
-    )
+    # Extract tar.gz inputs to temp directories
+    tmp_dirs = []
+    if is_tarball(input1):
+        if not os.path.isfile(input1):
+            sys.exit(f"ERROR: archive not found: {input1}")
+        dir1, tmproot1 = extract_tarball(input1)
+        tmp_dirs.append(tmproot1)
+    else:
+        dir1 = input1
 
-    if os.path.exists(out_dir) and not in_place:
-        sys.exit(f"ERROR: output directory already exists: {out_dir}")
+    if is_tarball(input2):
+        if not os.path.isfile(input2):
+            sys.exit(f"ERROR: archive not found: {input2}")
+        dir2, tmproot2 = extract_tarball(input2)
+        tmp_dirs.append(tmproot2)
+    else:
+        dir2 = input2
 
-    merge_folders(dir1, dir2, out_dir, study_id_override=args.study_id)
+    tar_output = is_tarball(output)
+    if tar_output:
+        out_dir = tempfile.mkdtemp(prefix="cbio_out_")
+        tmp_dirs.append(out_dir)
+        if os.path.exists(output):
+            sys.exit(f"ERROR: output archive already exists: {output}")
+    else:
+        out_dir = output
+
+    try:
+        in_place = os.path.normpath(out_dir) in (
+            os.path.normpath(dir1),
+            os.path.normpath(dir2),
+        )
+
+        if os.path.exists(out_dir) and not in_place and not tar_output:
+            sys.exit(f"ERROR: output directory already exists: {out_dir}")
+
+        merge_folders(dir1, dir2, out_dir, study_id_override=args.study_id)
+
+        if tar_output:
+            create_tarball(out_dir, output)
+    finally:
+        for d in tmp_dirs:
+            if os.path.isdir(d):
+                shutil.rmtree(d, ignore_errors=True)
 
 
 if __name__ == "__main__":

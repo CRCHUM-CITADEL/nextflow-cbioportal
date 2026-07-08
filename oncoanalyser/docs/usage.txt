@@ -238,7 +238,7 @@ CORE PARAMETERS
   Parameter              Required  Default                   Description
   ---------------------  --------  ------------------------  ----------------------
   mode                   Yes       genomic                   genomic, clinical, or both
-  project_name           Yes       --                        Study name for meta_study.txt
+  study_id               Yes       --                        Study identifier for meta_study.txt and output folder
   project_description    Yes       --                        Study description
   outdir                 No        output_<project>_<date>   Output directory
 
@@ -311,7 +311,7 @@ GENOMIC MODE
   nextflow run main.nf \
       -profile slurm,apptainer \
       --mode genomic \
-      --project_name "MY_STUDY" \
+      --study_id "MY_STUDY" \
       --project_description "Description of my study" \
       --genomic_samplesheet samplesheet.csv \
       --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
@@ -325,7 +325,7 @@ CLINICAL MODE
   nextflow run main.nf \
       -profile slurm,apptainer \
       --mode clinical \
-      --project_name "MY_STUDY" \
+      --study_id "MY_STUDY" \
       --project_description "Description of my study" \
       --clinical_samplesheet clinical_samplesheet.csv
 
@@ -338,7 +338,7 @@ BOTH MODE
   nextflow run main.nf \
       -profile slurm,apptainer \
       --mode both \
-      --project_name "MY_STUDY" \
+      --study_id "MY_STUDY" \
       --project_description "Description of my study" \
       --genomic_samplesheet samplesheet.csv \
       --clinical_samplesheet clinical_samplesheet.csv \
@@ -355,7 +355,7 @@ USING A PARAMS FILE
 
     # params.yaml
     mode: "genomic"
-    project_name: "MY_STUDY"
+    study_id: "MY_STUDY"
     project_description: "Description of my study"
     genomic_samplesheet: "/data/samplesheet.csv"
     ensembl_annotations: "/path/to/biomart_grch38_ensembl_113.tsv"

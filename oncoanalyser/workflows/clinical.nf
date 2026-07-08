@@ -28,7 +28,7 @@ workflow CLINICAL {
             // ── Full clinical processing from clinical CSVs ──────────────────
             ch_file_list = file_list
                 .map { row ->
-                    def group = row[0].group
+                    def group = params.study_id
                     def sub_file = row[0].file
                     def file = sub_file.startsWith("/") ? sub_file : "${projectDir}/${sub_file}"
                     def pipeline = row[0].pipeline
@@ -57,8 +57,8 @@ workflow CLINICAL {
                 .collect()
                 .map { lines -> lines.join('\n') }
 
-            // Use project name as the group
-            group = params.project_name
+            // Use study_id as the group
+            group = params.study_id
 
             GENERATE_CLINICAL_TEMPLATE(
                 group,

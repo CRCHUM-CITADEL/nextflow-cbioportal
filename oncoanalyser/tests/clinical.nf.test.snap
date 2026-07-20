@@ -1,33 +1,28 @@
 {
     "clinical": {
         "content": [
-            13,
+            4,
             {
                 "Workflow": {
                     "CRCHUM-CITADEL/nextflow-sante-precision": "v1.3.2dev"
                 }
             },
             [
-                "TEST",
-                "TEST/cancer_type.txt",
-                "TEST/data_clinical_patient.txt",
-                "TEST/data_clinical_sample.txt",
-                "TEST/meta_cancer_type.txt",
-                "TEST/meta_clinical_patient.txt",
-                "TEST/meta_clinical_sample.txt",
+                "data_clinical_patient.txt",
+                "data_clinical_sample.txt",
+                "meta_clinical_patient.txt",
+                "meta_clinical_sample.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
             [
-                "cancer_type.txt:md5,6a290e3beac292cb5371ffaa0d91d56d",
-                "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
-                "data_clinical_sample.txt:md5,3d583e2e796180d8f2d0898cb8debc49",
-                "meta_cancer_type.txt:md5,8e4f0dfb0b04a36d2c0bd71807d8e96b",
-                "meta_clinical_patient.txt:md5,db4e12d00e844523c08f6b37fd57865f",
-                "meta_clinical_sample.txt:md5,28084eb9555ebab829df83fe97a1cdbe"
+                "data_clinical_patient.txt:md5,64727bef85879630cfa76d27d5eb6d35",
+                "data_clinical_sample.txt:md5,aecb82ef5e8b3b5c638bdb4b741d9cc9",
+                "meta_clinical_patient.txt:md5,a50f23209b906b23ebcdd2f226f03049",
+                "meta_clinical_sample.txt:md5,9d38f37b3d957eb384558b485ca41298"
             ]
         ],
-        "timestamp": "2026-06-19T14:48:19.565148878",
+        "timestamp": "2026-07-20T14:44:46.933235598",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "25.10.4"

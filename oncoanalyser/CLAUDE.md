@@ -1,169 +1,29 @@
 # CLAUDE.md — oncoanalyser
 
-Nextflow DSL2 pipeline converting oncoanalyser WGS/WTS output + clinical CSVs → cBioPortal-ready files. HPC-only (SLURM + Apptainer — **no Docker, no sudo**).
+Oncoanalyser WGS/WTS + clinical CSVs → cBioPortal. HPC-only (SLURM + Apptainer).
 
----
+## Key Rules
 
-## Layout
-
-```
-workflows/genomic.nf          # CNV, SV (DNA+RNA fusions), expression, mutations, sigs, ML
-workflows/clinical.nf         # Clinical CSV processing
-subworkflows/local/
-  genomic_cnv/                # Purple TSVs → SEG + CNA long
-  genomic_sv/                 # ESVEE tumor VCF → data_sv.txt (DNA SVs only)
-  genomic_expression/         # Isofox CSV → TPM TSV
-  genomic_mutations/          # PAVE VCFs → MAF via VEP + vcf2maf + PCGR
-  genomic_ml/                 # ML tables (COSMIC/ChimerDB fusions)
-  genomic_aggregate_output/   # collectFile merge → group-level cBioPortal files
-  clinical_aggregate/
-modules/local/                # One process per file
-bin/                          # R scripts (optparse, data.table, tidyverse)
-tests/subworkflows/           # nextflow_workflow tests
-tests/modules/                # nextflow_process tests
-```
-
----
-
-## Containers
-
-```
-container_r            = "oras://ghcr.io/crchum-citadel/sdp-r:4.5.1"
-container_python       = "oras://ghcr.io/crchum-citadel/sdp-python:3.12"
-container_pcgr         = "oras://ghcr.io/sigven/pcgr:2.1.2.singularity"
-container_vcf2maf      = "oras://ghcr.io/crchum-citadel/vcf2maf_ensembl-vep:v1.6.22_2"
-container_sigprofiler  = "oras://ghcr.io/crchum-citadel/sdp-sigprofiler:1.1.3"
-```
-- Always `-profile apptainer`. Never Docker.
-- R scripts → `container_r`; Python scripts → `container_python`; SigProfiler scripts → `container_sigprofiler`.
-- `apptainer build` creates `.sif`; Nextflow expects `.img` — symlink after building.
-
----
+- R scripts → `container_r`; Python → `container_python`; SigProfiler → `container_sigprofiler`
+- `data_sv.txt` rows require Hugo symbols at both sites — filter unannotated rows
+- SV classification (`gen_esvee_sv_to_cbioportal.R`): BND ALT strand → `(+,-)` DEL, `(-,+)` DUP, `(+,+)/(−,−)` INV, diff chr TRANSLOC. DNA SVs: `DNA_Support=Yes, RNA_Support=No`
+- RNA fusions (`gen_isofox_fusion_to_cbioportal.R`): `Class=FUSION, DNA_Support=No, RNA_Support=Yes`. Both merge into `data_sv.txt`
+- `ml_format_cnv.R` / `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`
+- No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes
+- VEP/PCGR data must be pre-staged
 
 ## Process Labels (`conf/base.config`)
 
-Default: 1 CPU, 1 GB, 4 min (all scaled by `task.attempt`). Global maxRetries = 1.
-
-| Label | CPUs | Memory | Time |
-|---|---|---|---|
-| `process_single` | 1 | 1 GB | 4 min |
-| `process_low` | 1 (cpus commented out) | 2 GB | 4 min |
-| `process_medium` | 1 (cpus commented out) | 36 GB | 8 h |
-| `process_high` | 1 (cpus commented out) | 72 GB | 16 h |
-| `process_long` | — | — | 20 h |
-| `process_medium_memory` | 1 (cpus commented out) | 48 GB | 36 h |
-| `process_high_memory` | — | 200 GB | — |
-| `process_gpu` | — | — | GPU accelerator when `-profile gpu` |
-| `error_retry` | — | — | maxRetries 2 |
-| `error_ignore` | — | — | errorStrategy ignore |
-
----
-
-## HPC Constraints
-
-- No internet on compute nodes — set `NXF_OFFLINE=true`; pre-pull containers on login nodes.
-- SLURM account: `def-chasse`.
-- VEP/PCGR data must be pre-staged.
-
----
-
-## Modules & R Scripts — Key Rules
-
-- Always add a `stub:` block to every new process.
-- Use `params.container_*` — never hardcode image paths.
-- Output missing values as `NA`. Use `write.table(..., na = "NA")`.
-- `data_sv.txt` rows require Hugo symbols at both sites — filter unannotated rows.
-- **SV classification** (`gen_esvee_sv_to_cbioportal.R`): BND ALT strand → `(+,-)` DELETION, `(-,+)` DUPLICATION, `(+,+)/(−,−)` INVERSION, diff chr TRANSLOCATION. DNA SVs: `DNA_Support=Yes, RNA_Support=No`.
-- **RNA fusions** (`gen_isofox_fusion_to_cbioportal.R`): reads `*.isf.pass_fusions.csv`; auto-detects columns across Isofox versions. `Class=FUSION, DNA_Support=No, RNA_Support=Yes`. Both merge into `data_sv.txt`.
-- `ml_format_cnv.R` / `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`.
-
----
+Default: 1 CPU, 1 GB, 4 min (scaled by `task.attempt`). See `conf/base.config` for full table.
 
 ## Mutational Signatures
 
-Three signature types (SBS, DBS, ID) are fitted against COSMIC v3.6 GRCh38 reference (`assets/COSMIC_Human_v3.6.zip`), producing 6 cBioPortal GENERIC_ASSAY data files per group. Metadata files in `assets/` provide `category`, `etiology`, `main_effect` for NAME/DESCRIPTION columns.
-
-### SBS — Single Base Substitutions (101 signatures)
-
-**Container:** `container_sigprofiler` (SigProfilerAssignment + pandas + scipy + pysam)
-
-**Contribution** (`data_mutational_signatures_contribution_SBS.txt`):
-- Input: `{subject}-T.sig.snv_counts.csv` (96-channel trinucleotide counts)
-- Script: `bin/run_sigprofiler_sbs.py` → `SigProfilerAssignment.Analyzer.cosmic_fit(context_type="96")`
-- Metadata: `assets/cosmic_sbs_metadata.tsv`
-- Columns: `ENTITY_STABLE_ID` (`mutational_signatures_contribution_{SBS_ID}`), `NAME`, `DESCRIPTION`, `{sample}`
-- Merge: `gen_merge_sigs_to_cbioportal.R` (R, outer join by ENTITY_STABLE_ID)
-
-**Counts** (`data_mutational_signatures_counts_SBS.txt`):
-- Input: same `sig.snv_counts.csv`
-- Script: `bin/gen_sigs_counts_to_cbioportal.R` (context transform: `C>A_ACA` → `A[C>A]A`)
-- Columns: `ENTITY_STABLE_ID` (`mutational_signatures_matrix_{5'}_{from}-{to}_{3'}`), `NAME`, `{sample}`
-- Merge: `gen_merge_sigs_counts_to_cbioportal.R`
-
-### DBS — Doublet Base Substitutions (22 signatures)
-
-**Contribution** (`data_mutational_signatures_contribution_DBS.txt`):
-- Input: `{subject}-T.pave.somatic.vcf.gz` (extracts adjacent SNV pairs + 2bp MNVs → 78-channel DBS matrix)
-- Script: `bin/run_sigprofiler_dbs.py` → `Analyzer.cosmic_fit(context_type="DINUC")`
-- Metadata: `assets/cosmic_dbs_metadata.tsv`
-- Strand normalization to 10 canonical ref dinucleotides (AC, AT, CC, CG, CT, GC, TA, TC, TG, TT)
-
-**Counts** (`data_mutational_signatures_counts_DBS.txt`):
-- Same script produces both contribution and counts
-- `ENTITY_STABLE_ID` = `mutational_signatures_matrix_{ref}-{alt}`, `NAME` = `AC>CA` format
-
-### ID — Indels (17 signatures)
-
-**Contribution** (`data_mutational_signatures_contribution_ID.txt`):
-- Input: `{subject}-T.pave.somatic.vcf.gz` (extracts indels → 83-channel ID matrix via pysam + reference FASTA)
-- Script: `bin/run_sigprofiler_id.py` → `Analyzer.cosmic_fit(context_type="ID")`
-- Metadata: `assets/cosmic_id_metadata.tsv`
-- 83-channel classification: 1bp C/T del/ins at homopolymers (24) + 2-5bp repeat-mediated del/ins (48) + 2-5bp microhomology del (11)
-
-**Counts** (`data_mutational_signatures_counts_ID.txt`):
-- Same script produces both contribution and counts
-- `ENTITY_STABLE_ID` = `mutational_signatures_matrix_{size}_{type}_{base}_{count}`, `NAME` = `1:Del:C:0` format
-
-### Common
-
-- All meta files use `generic_assay_type: MUTATIONAL_SIGNATURE`, `datatype: LIMIT-VALUE`, `pivot_threshold_value: 0.0`.
-- Merge modules reuse `gen_merge_sigs_to_cbioportal.R` / `gen_merge_sigs_counts_to_cbioportal.R` with different output filenames.
-- Zero-mutation edge case: scripts write header-only files; <50 mutations: stderr warning but continues.
-
----
+See `docs/mutational_signatures.md` for detailed SBS/DBS/ID documentation.
 
 ## Testing
 
-```bash
-# All locally-runnable tests
-./nf-test test tests/clinical.nf.test tests/subworkflows/ tests/modules/ --profile test,apptainer
-
-# Single test + update snapshot
-./nf-test test tests/subworkflows/genomic_sv.nf.test --profile test,apptainer --update-snapshot
-```
-
-| Test file | Containers |
-|---|---|
-| `tests/clinical.nf.test` | R only |
-| `tests/clinical_template.nf.test` | R only |
-| `tests/incremental.nf.test` | R only |
-| `tests/subworkflows/genomic_cnv.nf.test` | R only |
-| `tests/subworkflows/genomic_sv.nf.test` | R only |
-| `tests/subworkflows/genomic_expression.nf.test` | R only |
-| `tests/subworkflows/genomic_aggregate_output.nf.test` | R only |
-| `tests/subworkflows/clinical_aggregate.nf.test` | R only |
-| `tests/subworkflows/genomic_ml.nf.test` | None (fully stubbed) |
-| `tests/subworkflows/genomic_mutations.nf.test` | PCGR + vcf2maf (CI only) |
-| `tests/modules/isofox_fusion_to_cbioportal.nf.test` | R only |
-| `tests/modules/package_cbioportal.nf.test` | None |
-| `tests/modules/sigprofiler_sbs.nf.test` | SigProfiler |
-| `tests/modules/sigprofiler_dbs.nf.test` | SigProfiler |
-| `tests/modules/sigprofiler_id.nf.test` | SigProfiler |
-| `tests/modules/sigs_counts_to_cbioportal.nf.test` | R only |
-
-**nf-test gotchas:**
-- Use `path(f.toString())` — channel file outputs are `String`, not `Path`.
-- Sort snapshots: `.sort { it.toString().split('/').last() }`.
-- `collectFile` with `storeDir` won't create directories — call `file("${params.outdir}/GROUP").mkdirs()` in test setup.
-- `genomic_ml` uses `options "-stub-run"` to skip the `DOWNLOAD_KNOWN_FUSIONS` curl call.
-- Module tests use `nextflow_process {}` blocks; snapshots live in `tests/modules/*.snap`.
+nf-test gotchas:
+- Use `path(f.toString())` — channel file outputs are `String`, not `Path`
+- Sort snapshots: `.sort { it.toString().split('/').last() }`
+- `collectFile` with `storeDir` won't create dirs — call `file("${params.outdir}/GROUP").mkdirs()` in test setup
+- `genomic_ml` uses `options "-stub-run"` to skip `DOWNLOAD_KNOWN_FUSIONS`

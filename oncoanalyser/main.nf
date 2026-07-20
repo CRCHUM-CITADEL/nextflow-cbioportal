@@ -74,7 +74,7 @@ workflow {
     if (params.mode == 'clinical'){
         CLINICAL(
             PIPELINE_INITIALISATION.out.clinical_samplesheet,
-            params.id_linking_file,
+            params.sample_registrations,
         )
     }
 

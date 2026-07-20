@@ -12,6 +12,7 @@ include { GENOMIC_ML                   } from '../subworkflows/local/genomic_ml'
 include { GENOMIC_AGGREGATE_OUTPUT     } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE           } from '../modules/local/generate_meta_file'
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
+include { MERGE_SAMPLE_SV              } from '../modules/local/merge_sample_sv'
 include { SIGPROFILER_SBS               } from '../modules/local/sigprofiler_sbs'
 include { SIGPROFILER_DBS              } from '../modules/local/sigprofiler_dbs'
 include { SIGPROFILER_ID               } from '../modules/local/sigprofiler_id'
@@ -345,10 +346,22 @@ workflow GENOMIC {
                 .filter { meta, files -> meta.pipeline == 'cnv' }
                 .map { meta, files -> [meta, files.longfile] })
 
-        all_sv = GENOMIC_SV.out.sv_out
+        // Group all SV files (fresh + cached) by sample, then merge into one per-sample file
+        ch_sv_all_raw = GENOMIC_SV.out.sv_out
             .mix(ISOFOX_FUSION_TO_CBIOPORTAL.out.sv)
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv' })
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv_rna_fusion' })
+
+        ch_sv_per_sample = ch_sv_all_raw
+            .map { meta, file -> [meta.sample, meta, file] }
+            .groupTuple()
+            .map { sample, metas, files ->
+                [metas[0], files instanceof List ? files : [files]]
+            }
+
+        MERGE_SAMPLE_SV(ch_sv_per_sample)
+
+        all_sv = MERGE_SAMPLE_SV.out.sv
 
         all_expression = GENOMIC_EXPRESSION.out.out
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'expression' })

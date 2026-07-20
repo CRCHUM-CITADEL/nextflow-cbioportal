@@ -24,7 +24,7 @@ The pipeline has three modes:
                  The genomic workflow runs first and generates a linking
                  file that maps sample IDs to clinical patient IDs. The
                  clinical workflow then runs automatically using that
-                 linking file, so --id_linking_file is not needed.
+                 linking file, so --sample_registrations is not needed.
 
 Genomic mode processing steps:
 
@@ -177,32 +177,40 @@ CLINICAL SAMPLESHEET
   extraction_date  Yes       Date data was extracted (YYYY-MM-DD)
   info             No        Additional information
 
-  Supported filetypes:
+  Supported filetypes (ARGO/ICGC-ARGO format):
 
-    patient, diagnosis, treatment, surgeries, systemic_treatment,
-    specimen, radio_therapy
+    donors, primary_diagnoses, treatments, surgeries, systemic_therapies,
+    specimens, radiations, follow_ups, sample_registrations, biomarkers
+
+  Dates in clinical CSVs are stored as day/month intervals relative to
+  diagnosis (day 0): {"day_interval": N, "month_interval": M}
 
   Example:
 
     group_id,filetype,filepath,extraction_date,info
-    COHORT1,patient,/data/clinical/01_patient.csv,2025-05-20,
-    COHORT1,diagnosis,/data/clinical/02_diagnosis.csv,2025-05-20,
-    COHORT1,treatment,/data/clinical/03_treatment.csv,2025-05-20,
-    COHORT1,surgeries,/data/clinical/04_surgeries.csv,2025-05-20,
-    COHORT1,systemic_treatment,/data/clinical/05_systemic_treatment.csv,2025-05-20,
-    COHORT1,specimen,/data/clinical/06_specimen.csv,2025-05-20,
-    COHORT1,radio_therapy,/data/clinical/08_radio_therapy.csv,2025-05-20,
+    COHORT1,donors,/data/clinical/donors.csv,2025-05-20,
+    COHORT1,primary_diagnoses,/data/clinical/primary_diagnoses.csv,2025-05-20,
+    COHORT1,treatments,/data/clinical/treatments.csv,2025-05-20,
+    COHORT1,surgeries,/data/clinical/surgeries.csv,2025-05-20,
+    COHORT1,systemic_therapies,/data/clinical/systemic_therapies.csv,2025-05-20,
+    COHORT1,specimens,/data/clinical/specimens.csv,2025-05-20,
+    COHORT1,radiations,/data/clinical/radiations.csv,2025-05-20,
+    COHORT1,follow_ups,/data/clinical/follow_ups.csv,2025-05-20,
+    COHORT1,sample_registrations,/data/clinical/sample_registrations.csv,2025-05-20,
+    COHORT1,biomarkers,/data/clinical/biomarkers.csv,2025-05-20,
 
-ID LINKING FILE (optional)
+SAMPLE REGISTRATIONS FILE (optional, template mode only)
 
-  A TSV file mapping genomic sample IDs to clinical patient IDs. Used
-  when genomic and clinical data use different identifier schemes.
+  A sample_registrations.csv used to generate minimal clinical files when
+  no clinical_samplesheet is provided. The pipeline filters rows where
+  tumour_normal_designation=Tumour and sample_type=Total DNA to derive
+  the patient → sample mapping.
 
-    genomic_id	clinical_id
-    SAMPLE1	PATIENT_001
-    SAMPLE2	PATIENT_002
+    program_id,sample_type,...,submitter_donor_id,submitter_sample_id,tumour_normal_designation
+    PROG,Total DNA,...,PATIENT1,SAMPLE1,Tumour
+    PROG,Total DNA,...,PATIENT2,SAMPLE2,Tumour
 
-  Pass via --id_linking_file path/to/linking.tsv.
+  Pass via --sample_registrations path/to/sample_registrations.csv.
 
 GENERATING A SAMPLESHEET
 
@@ -265,7 +273,7 @@ CLINICAL INPUT PARAMETERS
   Parameter              Required  Default   Description
   ---------------------  --------  --------  ----------------------------
   clinical_samplesheet   Yes       --        Path to clinical samplesheet CSV
-  id_linking_file        No        (empty)   TSV mapping genomic to clinical IDs
+  sample_registrations   No        (empty)   sample_registrations.csv for template mode
 
 CONTAINER PARAMETERS
 
@@ -333,7 +341,7 @@ BOTH MODE
 
   Runs genomic and clinical pipelines together. The linking file is
   generated automatically by the genomic workflow and passed to the
-  clinical workflow, so --id_linking_file is not needed.
+  clinical workflow, so --sample_registrations is not needed.
 
   nextflow run main.nf \
       -profile slurm,apptainer \

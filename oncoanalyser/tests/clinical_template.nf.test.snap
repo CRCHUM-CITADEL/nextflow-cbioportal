@@ -1,24 +1,19 @@
 {
     "clinical template \u2014 no clinical samplesheet": {
         "content": [
-            4,
+            2,
             [
-                "MoHQ-CM-1",
-                "MoHQ-CM-1/cancer_type.txt",
-                "MoHQ-CM-1/data_clinical_sample.txt",
-                "MoHQ-CM-1/meta_cancer_type.txt",
-                "MoHQ-CM-1/meta_clinical_sample.txt",
+                "data_clinical_sample.txt",
+                "meta_clinical_sample.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
             [
-                "cancer_type.txt:md5,6a290e3beac292cb5371ffaa0d91d56d",
-                "data_clinical_sample.txt:md5,3a3c23c91513eb490aef2e7ed09ba4c1",
-                "meta_cancer_type.txt:md5,b5c2c0a8c1e31dbdafd84c0f71173143",
-                "meta_clinical_sample.txt:md5,d5cf4e0eb314bbd68b16d37380db0f5a"
+                "data_clinical_sample.txt:md5,78404331baa0c7ffa76ccc41c2872164",
+                "meta_clinical_sample.txt:md5,7fb57611daa466db10e82d9cbe17537d"
             ]
         ],
-        "timestamp": "2026-06-19T16:42:10.200711218",
+        "timestamp": "2026-07-20T11:11:22.161470431",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "25.10.4"

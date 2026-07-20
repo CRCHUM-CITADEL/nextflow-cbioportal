@@ -1,0 +1,2 @@
+greatest_dimension_tumour,greatest_dimension_tumour_not_available,lymphovascular_invasion,margin_types_involved,margin_types_not_assessed,margin_types_not_involved,perineural_invasion,program_id,residual_tumour_classification,submitter_donor_id,submitter_treatment_id,surgery_location,surgery_reference_database,surgery_reference_identifier,surgery_site,surgery_type,tumour_focality,tumour_length,tumour_length_not_available,tumour_width,tumour_width_not_available
+,False,,,,,,TEST,,T1,T1-TR,Primary,SNOMED,71273005,C22.0,partial hepatectomy (procedure),,,False,,False

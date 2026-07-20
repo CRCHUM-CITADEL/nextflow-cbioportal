@@ -162,13 +162,13 @@
         "pcgr_data": {
             "type": "string"
         },
-        "id_linking_file": {
+        "sample_registrations": {
             "type": "string",
-            "description": "Path to ID linking file for clinical data."
+            "description": "Path to sample_registrations.csv for template clinical output (used when no clinical_samplesheet is provided)."
         },
         "oncotree_code": {
             "type": "string",
-            "description": "OncoTree cancer type code (e.g., 'CHOL'). Used in cancer_type.txt and CANCER_TYPE column."
+            "description": "OncoTree cancer type code (e.g., 'CHOL'). Used in CANCER_TYPE column of data_clinical_sample.txt."
         },
         "icd_code": {
             "type": "string",

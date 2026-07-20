@@ -92,10 +92,8 @@ Clinical mode outputs are saved in <outdir>/<group>/:
   ---------------------------  ----------------------------
   data_clinical_patient.txt    Patient attributes (one row per patient)
   data_clinical_sample.txt     Sample attributes (one row per sample)
-  cancer_type.txt              Cancer type definition
   meta_clinical_patient.txt    Metadata for patient attributes
   meta_clinical_sample.txt     Metadata for sample attributes
-  meta_cancer_type.txt         Metadata for cancer type
 
 
 Pipeline info

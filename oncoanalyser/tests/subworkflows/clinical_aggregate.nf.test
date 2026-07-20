@@ -57,6 +57,7 @@ nextflow_workflow {
                         file('${projectDir}/assets/test_data/clinical/biomarkers.csv')
                     ]
                 )
+                input[1] = Channel.value("")
                 """
             }
         }
@@ -79,6 +80,84 @@ nextflow_workflow {
                 path("${params.outdir}/TEST/data_clinical_sample.txt"),
                 path("${params.outdir}/TEST/data_clinical_patient.txt")
             ).match()
+        }
+    }
+
+    test("Genomic subject filtering — only subjects in genomic linking file appear in output") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', pipeline: 'donors',               extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/donors.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'primary_diagnoses',    extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/primary_diagnoses.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'treatments',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/treatments.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'surgeries',            extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/surgeries.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'systemic_therapies',   extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/systemic_therapies.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'specimens',            extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/specimens.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'radiations',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/radiations.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'follow_ups',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/follow_ups.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'sample_registrations', extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'biomarkers',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/biomarkers.csv')
+                    ]
+                )
+                input[1] = Channel.value('${projectDir}/assets/test_data/samplesheet/test_genomic_subjects.tsv')
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            assert path("${params.outdir}/TEST/data_clinical_sample.txt").exists()
+            assert path("${params.outdir}/TEST/data_clinical_patient.txt").exists()
+
+            // cBioPortal format: 4 comment lines (#), 1 column header, then data rows.
+            // Only T1 should appear (T2 filtered out because not in genomic subjects).
+            def patient_lines = path("${params.outdir}/TEST/data_clinical_patient.txt").readLines()
+                .findAll { !it.startsWith('#') && it.trim() }
+            // patient_lines[0] is the column header (PATIENT_ID\t...), patient_lines[1] is the data row
+            assert patient_lines.size() == 2 : "Expected column header + 1 patient data row (T1 only), got ${patient_lines.size()} non-comment lines"
+            assert patient_lines[1].startsWith('T1') : "Expected T1 data row, got: ${patient_lines[1]}"
+
+            def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
+                .findAll { !it.startsWith('#') && it.trim() }
+            assert sample_lines.size() == 2 : "Expected column header + 1 sample data row (T1 only), got ${sample_lines.size()} non-comment lines"
+            // Row is PATIENT_ID\tSAMPLE_ID\t... — check SAMPLE_ID is remapped to genomic convention
+            def sample_id = sample_lines[1].split('\t')[1]
+            assert sample_id == 'T1-T' : "Expected SAMPLE_ID=T1-T (remapped), got: ${sample_id}"
         }
     }
 }

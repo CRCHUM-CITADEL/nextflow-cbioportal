@@ -20,6 +20,7 @@ process FORMAT_CLINICAL {
     def radiations_arg        = sample_list.radiations        ? "--radiations ${sample_list.radiations}"               : ""
     def follow_ups_arg        = sample_list.follow_ups        ? "--follow_ups ${sample_list.follow_ups}"               : ""
     def biomarkers_arg        = sample_list.biomarkers        ? "--biomarkers ${sample_list.biomarkers}"               : ""
+    def genomic_subjects_arg  = sample_list.genomic_subjects  ? "--genomic_subjects ${sample_list.genomic_subjects}"  : ""
     """
     clin_format.R \
         --mode ${meta.mode} \
@@ -33,6 +34,7 @@ process FORMAT_CLINICAL {
         ${radiations_arg} \
         ${follow_ups_arg} \
         ${biomarkers_arg} \
+        ${genomic_subjects_arg} \
         --cancer_type ${cancer_type} \
         ${icd_arg} \
         --output data_clinical_${meta.mode}.txt

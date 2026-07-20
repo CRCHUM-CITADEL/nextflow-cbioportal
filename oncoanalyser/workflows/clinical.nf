@@ -19,6 +19,7 @@ workflow CLINICAL {
     take:
         file_list            // clinical samplesheet rows (may be empty channel)
         sample_registrations // path or channel: sample_registrations.csv (template mode only)
+        genomic_subjects     // val: path to genomic subjects TSV (both mode), or "" to skip filtering
 
     main:
         ch_versions = Channel.empty()
@@ -35,7 +36,7 @@ workflow CLINICAL {
                     return tuple([group: group, pipeline: pipeline, extraction_date: extraction_date], file)
                 }
 
-            CLINICAL_AGGREGATE(ch_file_list)
+            CLINICAL_AGGREGATE(ch_file_list, genomic_subjects)
         } else {
             // ── Template fallback: generate minimal clinical files from sample_registrations ──
             log.info "No clinical samplesheet provided. Generating template clinical files from sample_registrations."

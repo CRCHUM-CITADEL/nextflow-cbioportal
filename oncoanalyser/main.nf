@@ -75,6 +75,7 @@ workflow {
         CLINICAL(
             PIPELINE_INITIALISATION.out.clinical_samplesheet,
             params.sample_registrations,
+            Channel.value(""),   // no genomic filter in clinical-only mode
         )
     }
 
@@ -84,9 +85,15 @@ workflow {
             .map { group, f -> f }
             .first()
 
+        // Pass the linking file path as a string so FORMAT_CLINICAL can filter to genomic subjects
+        ch_genomic_subjects = GENOMIC.out.linking_file
+            .map { group, f -> f.toString() }
+            .first()
+
         CLINICAL(
             PIPELINE_INITIALISATION.out.clinical_samplesheet,
             ch_linking_file,
+            ch_genomic_subjects,
         )
     }
 

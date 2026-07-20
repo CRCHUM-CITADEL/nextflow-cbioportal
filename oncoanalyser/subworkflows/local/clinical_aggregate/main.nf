@@ -3,7 +3,8 @@ include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
 
 workflow CLINICAL_AGGREGATE {
     take:
-        filelist  // channel: [meta(group, pipeline, extraction_date), csv_path]
+        filelist          // channel: [meta(group, pipeline, extraction_date), csv_path]
+        genomic_subjects  // val: path to genomic subjects TSV, or "" to skip filtering
 
     main:
 
@@ -14,6 +15,11 @@ workflow CLINICAL_AGGREGATE {
             .groupTuple()
             .map { group, data_list ->
                 tuple(group, data_list.collectEntries())
+            }
+            .combine(genomic_subjects)
+            .map { group, csv_map, gs ->
+                if (gs) csv_map.genomic_subjects = gs
+                tuple(group, csv_map)
             }
 
         all_groups = csvs.map { group, csv_map -> group }.unique()

@@ -23,6 +23,8 @@ option_list <- list(
               help="follow-ups CSV [OPTIONAL]", metavar="FILE"),
   make_option("--biomarkers", type="character", default=NULL,
               help="biomarkers CSV [OPTIONAL]", metavar="FILE"),
+  make_option("--genomic_subjects", type="character", default=NULL,
+              help="TSV with subject_id and sample_id columns from genomic pipeline; filters output to these subjects only [OPTIONAL]", metavar="FILE"),
   make_option(c("-o", "--output"), type="character", default="data_clinical_sample.txt",
               help="Output file path [default= %default]", metavar="FILE"),
   make_option(c("-m", "--mode"), type="character", default="sample",
@@ -50,7 +52,8 @@ if (is.null(opt$sample_registrations)) stop("Error: --sample_registrations argum
 required_files <- c(opt$donors, opt$primary_diagnoses, opt$specimens, opt$sample_registrations)
 optional_files <- c(opt$treatments, opt$surgeries, opt$systemic_therapies,
                     opt$radiations, opt$follow_ups, opt$biomarkers)
-for (f in c(required_files, optional_files[!sapply(optional_files, is.null)])) {
+all_optional <- c(optional_files, opt$genomic_subjects)
+for (f in c(required_files, all_optional[!sapply(all_optional, is.null)])) {
   if (!file.exists(f)) stop(paste("Error: File does not exist:", f))
 }
 
@@ -65,6 +68,7 @@ cat(sprintf("Systemic therapies:   %s\n", ifelse(is.null(opt$systemic_therapies)
 cat(sprintf("Radiations:           %s\n", ifelse(is.null(opt$radiations),        "NULL", opt$radiations)))
 cat(sprintf("Follow-ups:           %s\n", ifelse(is.null(opt$follow_ups),        "NULL", opt$follow_ups)))
 cat(sprintf("Biomarkers:           %s\n", ifelse(is.null(opt$biomarkers),        "NULL", opt$biomarkers)))
+cat(sprintf("Genomic subjects:     %s\n", ifelse(is.null(opt$genomic_subjects),  "NULL", opt$genomic_subjects)))
 cat(sprintf("Output:               %s\n", opt$output))
 cat(sprintf("Mode:                 %s\n", opt$mode))
 cat("==================\n\n")
@@ -142,6 +146,20 @@ if (all(c("submitter_primary_diagnosis_id.x", "submitter_primary_diagnosis_id.y"
   m <- m[(m$submitter_primary_diagnosis_id.x == m$submitter_primary_diagnosis_id.y) |
            is.na(m$submitter_primary_diagnosis_id.x), ]
   m <- subset(m, select=-c(submitter_primary_diagnosis_id.x, submitter_primary_diagnosis_id.y))
+}
+
+# ── Filter to genomic subjects (optional) ────────────────────────────────────
+# When the genomic pipeline provides a linking file (subject_id TAB sample_id),
+# restrict output to those subjects and adopt the genomic sample_id convention.
+# Clinical submitter_sample_id values (e.g. MoHQ-CM-1-100-76994-1DT) differ from
+# the genomic sample_id (e.g. MoHQ-CM-1-100-T); the linking file is authoritative.
+if (!is.null(opt$genomic_subjects)) {
+  cat("Reading genomic subjects for filtering...\n")
+  genomic <- read.table(opt$genomic_subjects, header=TRUE, sep="\t", stringsAsFactors=FALSE)
+  m <- m[m$patient %in% genomic$subject_id, ]
+  if (nrow(m) == 0) stop("Error: No clinical subjects match the genomic subjects file.")
+  sample_map <- setNames(genomic$sample_id, genomic$subject_id)
+  m$sample   <- sample_map[m$patient]
 }
 
 # ── Treatments (primary treatment only, optional) ─────────────────────────────

@@ -74,11 +74,14 @@ chr2_col  <- pick_col(cols, c("OtherChromosome", "ChrDown", "3pChromosome", "chr
 pos2_col  <- pick_col(cols, c("OtherPosition", "PosDown", "JunctionPositionDown", "pos_down", "PosB"))
 
 # Auto-detect read count columns
-split_col  <- Filter(function(c) c %in% cols,
-                     c("JunctionReadCount", "SpliceReadCount", "SplitFragmentCount", "junction_read_count"))[1]
+split_col   <- Filter(function(c) c %in% cols,
+                      c("SplitFragments", "JunctionReadCount", "SpliceReadCount",
+                        "SplitFragmentCount", "junction_read_count"))[1]
 discord_col <- Filter(function(c) c %in% cols,
-                      c("DiscordantFragments", "DiscordantFragmentCount",
+                      c("DiscordantPairs", "DiscordantFragments", "DiscordantFragmentCount",
                         "discordant_fragment_count", "DiscordantReads"))[1]
+total_col   <- Filter(function(c) c %in% cols,
+                      c("TotalFragments", "total_fragments"))[1]
 
 cat("Using columns: 5'gene=", gene1_col, ", 5'chr=", chr1_col, ", 5'pos=", pos1_col, "\n")
 cat("              3'gene=", gene2_col, ", 3'chr=", chr2_col, ", 3'pos=", pos2_col, "\n")
@@ -99,8 +102,11 @@ result <- data.table(
     Class                       = "FUSION",
     DNA_Support                 = "No",
     RNA_Support                 = "Yes",
-    Tumor_Variant_Count         = if (length(split_col) > 0 && !is.na(split_col))
-                                        fusions[[split_col]] else NA_integer_,
+    Tumor_Variant_Count         = if (length(total_col) > 0 && !is.na(total_col))
+                                        fusions[[total_col]]
+                                    else if (length(split_col) > 0 && !is.na(split_col))
+                                        fusions[[split_col]]
+                                    else NA_integer_,
     Connection_Type             = "5to3",
     Breakpoint_Type             = "PRECISE",
     Event_Info                  = paste0("RNA-seq Fusion: ", fusions[[gene1_col]], "--", fusions[[gene2_col]]),

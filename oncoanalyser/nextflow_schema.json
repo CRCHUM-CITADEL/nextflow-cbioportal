@@ -166,15 +166,7 @@
             "type": "string",
             "description": "Path to sample_registrations.csv for template clinical output (used when no clinical_samplesheet is provided)."
         },
-        "oncotree_code": {
-            "type": "string",
-            "description": "OncoTree cancer type code (e.g., 'CHOL'). Used in CANCER_TYPE column of data_clinical_sample.txt."
-        },
-        "icd_code": {
-            "type": "string",
-            "description": "Optional ICD-O code (e.g., 'C24'). Overrides cancer_type_code from diagnosis CSV."
-        },
-        "study_id": {
+"study_id": {
             "type": "string",
             "description": "Study identifier used for meta_study.txt name and the top-level output folder for all files."
         },

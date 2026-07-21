@@ -28,11 +28,7 @@ option_list <- list(
   make_option(c("-o", "--output"), type="character", default="data_clinical_sample.txt",
               help="Output file path [default= %default]", metavar="FILE"),
   make_option(c("-m", "--mode"), type="character", default="sample",
-              help="Between 'sample' or 'patient' mode."),
-  make_option(c("-c", "--cancer_type"), type="character", default=NULL,
-              help="OncoTree cancer type code for CANCER_TYPE column [OPTIONAL]", metavar="STRING"),
-  make_option(c("-x", "--icd_code"), type="character", default=NULL,
-              help="ICD-O code (e.g., C24). Overrides cancer_type_code from diagnosis CSV [OPTIONAL]", metavar="STRING")
+              help="Between 'sample' or 'patient' mode.")
 )
 
 opt_parser <- OptionParser(
@@ -350,13 +346,6 @@ if ("specimen_type" %in% names(m)) {
   m$sample_type_mapped <- "Primary"
 }
 
-# Cancer type from params (overrides per-row value if set)
-m$cancer_type         <- ifelse(is.null(opt$cancer_type) || opt$cancer_type == "", NA, opt$cancer_type)
-m$cancer_type_details <- NA_character_
-if (!is.null(opt$icd_code) && opt$icd_code != "") {
-  m$cancer_type_code <- opt$icd_code
-}
-
 m[m == ""] <- NA
 
 cat(paste("Writing", opt$mode, "mode output...\n"))
@@ -456,8 +445,6 @@ if (opt$mode == "patient") {
     list("SAMPLE_TYPE",              "sample_type_mapped",                 "Sample Type",                "The type of sample (e.g., Primary, Metastasis, Recurrence).",                 "STRING", "1"),
     list("SPECIMEN_TISSUE_SOURCE",   "specimen_tissue_source",             "Specimen Tissue Source",     "Tissue source of the specimen.",                                              "STRING", "1"),
     list("ANALYTE_TYPE",             "analyte_type",                       "Analyte Type",               "Type of analyte extracted from the specimen (e.g., Total DNA).",             "STRING", "1"),
-    list("CANCER_TYPE",              "cancer_type",                        "Cancer Type",                "Cancer Type.",                                                                "STRING", "3000"),
-    list("CANCER_TYPE_DETAILS",      "cancer_type_details",                "Cancer Type Details",        "Cancer Type Details.",                                                        "STRING", "2000"),
     list("CANCER_TYPE_CODE",         "cancer_type_code",                   "Cancer Code",                "ICD-O-3 topography cancer code.",                                             "STRING", "1"),
     list("PRIMARY_SITE",             "primary_site",                       "Primary Site",               "Primary site of the tumor.",                                                  "STRING", "1"),
     list("TUMOR_TISSUE_SITE",        "specimen_anatomic_location",         "Tumor Tissue Site",          "Anatomic location of the specimen.",                                          "STRING", "1"),

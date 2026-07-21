@@ -62,8 +62,7 @@ workflow CLINICAL {
 
             GENERATE_CLINICAL_TEMPLATE(
                 group,
-                sample_lines,
-                params.icd_code ?: ""
+                sample_lines
             )
 
             // Generate meta file for clinical sample

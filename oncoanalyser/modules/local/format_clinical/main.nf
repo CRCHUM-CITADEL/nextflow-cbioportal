@@ -12,8 +12,6 @@ process FORMAT_CLINICAL {
         path "data_clinical_${meta.mode}.txt"
 
     script:
-    def cancer_type           = params.oncotree_code ? params.oncotree_code.toLowerCase() : ""
-    def icd_arg               = params.icd_code ? "--icd_code ${params.icd_code}" : ""
     def treatments_arg        = sample_list.treatments        ? "--treatments ${sample_list.treatments}"               : ""
     def surgeries_arg         = sample_list.surgeries         ? "--surgeries ${sample_list.surgeries}"                 : ""
     def systemic_arg          = sample_list.systemic_therapies ? "--systemic_therapies ${sample_list.systemic_therapies}" : ""
@@ -35,8 +33,6 @@ process FORMAT_CLINICAL {
         ${follow_ups_arg} \
         ${biomarkers_arg} \
         ${genomic_subjects_arg} \
-        --cancer_type ${cancer_type} \
-        ${icd_arg} \
         --output data_clinical_${meta.mode}.txt
     """
 }

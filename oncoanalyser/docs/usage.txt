@@ -214,7 +214,7 @@ SAMPLE REGISTRATIONS FILE (optional, template mode only)
 
 GENERATING A SAMPLESHEET
 
-  Two helper scripts can generate the genomic samplesheet automatically.
+GENOMIC SAMPLESHEET
 
   For oncoanalyser WGS/WTS output (directories ending in _WGTS):
 
@@ -233,6 +233,49 @@ GENERATING A SAMPLESHEET
     group_id, subject_id, sample_id, sample_type, sequence_data,
     info, filepath. Creates 3 rows per subject (DT somatic DNA,
     DN germinal DNA, RT somatic RNA).
+
+CLINICAL SAMPLESHEET
+
+  Use generate_clinical_samplesheet.py to build the clinical samplesheet
+  from a directory of ARGO/ICGC-ARGO CSV files:
+
+    python3 bin/generate_clinical_samplesheet.py /path/to/clinical_dir \
+        -o clinical_samplesheet.csv \
+        -d 2025-05-20 \
+        --study_id MY_COHORT
+
+  Options:
+
+    input_dir          Directory containing clinical CSV files.
+    -o / --output      Output path (default: clinical_samplesheet.csv).
+    -d / --date        Extraction date in YYYY-MM-DD format (default: today).
+    --study_id         Value written to the group_id column (default: empty).
+    --relative-to DIR  Write file paths relative to DIR instead of absolute.
+                       Use this when the samplesheet will be kept next to
+                       the pipeline directory (set DIR to the project root).
+
+  The script matches files by name stem to the 10 supported filetypes:
+
+    donors.csv              primary_diagnoses.csv   treatments.csv
+    surgeries.csv           systemic_therapies.csv  specimens.csv
+    radiations.csv          follow_ups.csv          sample_registrations.csv
+    biomarkers.csv
+
+  Unrecognised CSV files are skipped with a warning. Only files that
+  are present in the directory are included; you do not need all 10.
+
+  Example — writing relative paths for a samplesheet stored in the
+  project directory alongside the pipeline:
+
+    python3 bin/generate_clinical_samplesheet.py /data/argo_extract \
+        -o clinical_samplesheet.csv \
+        -d 2025-08-01 \
+        --study_id COHORT2025 \
+        --relative-to /path/to/nextflow-cbioportal/oncoanalyser
+
+  To verify the generated samplesheet works end-to-end, run:
+
+    python3 -m pytest tests/test_generate_clinical_samplesheet.py -v
 
 
 Configuration reference

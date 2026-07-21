@@ -65,6 +65,19 @@ Generating a genomic samplesheet
 Generating a clinical samplesheet
 ----------------------------------
 
+  Use the helper script to generate the samplesheet automatically:
+
+    python3 bin/generate_clinical_samplesheet.py /path/to/clinical_dir \
+        -o clinical_samplesheet.csv \
+        -d 2025-05-20 \
+        --study_id MY_COHORT
+
+  Scans the directory for recognised ARGO/ICGC-ARGO CSV files
+  (donors.csv, primary_diagnoses.csv, etc.) and produces a samplesheet
+  with one row per file. Unrecognised CSV files are ignored with a
+  warning. Paths in the output are absolute by default; use
+  --relative-to /path/to/projectDir to write relative paths instead.
+
   The clinical samplesheet is a CSV that lists one row per clinical
   data file. Each row points to a CSV in ARGO/ICGC-ARGO format.
 

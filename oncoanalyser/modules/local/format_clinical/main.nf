@@ -6,26 +6,37 @@ process FORMAT_CLINICAL {
     tag { meta.mode + meta.group }
 
     input:
-        tuple val(meta), val(sample_list)
+        tuple val(meta),
+              path(donors),
+              path(primary_diagnoses),
+              path(specimens),
+              path(sample_registrations),
+              path(treatments),
+              path(surgeries),
+              path(systemic_therapies),
+              path(radiations),
+              path(follow_ups),
+              path(biomarkers),
+              path(genomic_subjects)
 
     output:
         path "data_clinical_${meta.mode}.txt"
 
     script:
-    def treatments_arg        = sample_list.treatments        ? "--treatments ${sample_list.treatments}"               : ""
-    def surgeries_arg         = sample_list.surgeries         ? "--surgeries ${sample_list.surgeries}"                 : ""
-    def systemic_arg          = sample_list.systemic_therapies ? "--systemic_therapies ${sample_list.systemic_therapies}" : ""
-    def radiations_arg        = sample_list.radiations        ? "--radiations ${sample_list.radiations}"               : ""
-    def follow_ups_arg        = sample_list.follow_ups        ? "--follow_ups ${sample_list.follow_ups}"               : ""
-    def biomarkers_arg        = sample_list.biomarkers        ? "--biomarkers ${sample_list.biomarkers}"               : ""
-    def genomic_subjects_arg  = sample_list.genomic_subjects  ? "--genomic_subjects ${sample_list.genomic_subjects}"  : ""
+    def treatments_arg        = treatments         ? "--treatments ${treatments}"                      : ""
+    def surgeries_arg         = surgeries          ? "--surgeries ${surgeries}"                        : ""
+    def systemic_arg          = systemic_therapies ? "--systemic_therapies ${systemic_therapies}"      : ""
+    def radiations_arg        = radiations         ? "--radiations ${radiations}"                      : ""
+    def follow_ups_arg        = follow_ups         ? "--follow_ups ${follow_ups}"                      : ""
+    def biomarkers_arg        = biomarkers         ? "--biomarkers ${biomarkers}"                      : ""
+    def genomic_subjects_arg  = genomic_subjects   ? "--genomic_subjects ${genomic_subjects}"          : ""
     """
     clin_format.R \
         --mode ${meta.mode} \
-        --donors ${sample_list.donors} \
-        --primary_diagnoses ${sample_list.primary_diagnoses} \
-        --specimens ${sample_list.specimens} \
-        --sample_registrations ${sample_list.sample_registrations} \
+        --donors ${donors} \
+        --primary_diagnoses ${primary_diagnoses} \
+        --specimens ${specimens} \
+        --sample_registrations ${sample_registrations} \
         ${treatments_arg} \
         ${surgeries_arg} \
         ${systemic_arg} \
@@ -34,5 +45,10 @@ process FORMAT_CLINICAL {
         ${biomarkers_arg} \
         ${genomic_subjects_arg} \
         --output data_clinical_${meta.mode}.txt
+    """
+
+    stub:
+    """
+    touch data_clinical_${meta.mode}.txt
     """
 }

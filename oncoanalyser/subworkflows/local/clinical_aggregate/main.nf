@@ -29,7 +29,20 @@ workflow CLINICAL_AGGREGATE {
         mode_ch
             .combine(csvs)
             .map { mode, group, csv_map ->
-                return tuple([group: group, mode: mode], csv_map)
+                return tuple(
+                    [group: group, mode: mode],
+                    csv_map.donors               ? file(csv_map.donors)               : [],
+                    csv_map.primary_diagnoses    ? file(csv_map.primary_diagnoses)    : [],
+                    csv_map.specimens            ? file(csv_map.specimens)            : [],
+                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
+                    csv_map.treatments           ? file(csv_map.treatments)           : [],
+                    csv_map.surgeries            ? file(csv_map.surgeries)            : [],
+                    csv_map.systemic_therapies   ? file(csv_map.systemic_therapies)   : [],
+                    csv_map.radiations           ? file(csv_map.radiations)           : [],
+                    csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
+                    csv_map.biomarkers           ? file(csv_map.biomarkers)           : [],
+                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : []
+                )
             }
             .set { ch_formatted_input }
 

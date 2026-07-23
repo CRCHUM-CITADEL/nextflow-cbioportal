@@ -15,9 +15,10 @@ process MERGE_SAMPLE_SV {
 
     script:
     def files = sv_files instanceof List ? sv_files : [sv_files]
+    def data_cmds = files.collect { f -> "tail -n +2 ${f}" }.join('; ')
     """
     head -n 1 ${files[0]} > "${meta.sample}.data_sv.txt"
-    ${files.collect { "tail -n +2 ${it} >> '${meta.sample}.data_sv.txt'" }.join('\n')}
+    { ${data_cmds}; } | awk '!seen[\$0]++' >> "${meta.sample}.data_sv.txt"
     """
 
     stub:

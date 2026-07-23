@@ -418,7 +418,7 @@ workflow GENOMIC {
 
         all_groups = ch_samples.map { meta -> meta.group }.unique()
 
-        meta_text = """type_of_cancer: add_text
+        meta_text = """type_of_cancer: ${params.cancer_type}
 cancer_study_identifier: add_text
 name: ${params.study_id}
 description: ${params.project_description}

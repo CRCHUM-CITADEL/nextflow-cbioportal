@@ -89,7 +89,7 @@ clean_json_array <- function(x) {
 cat("Reading sample registrations...\n")
 reg  <- read.csv(opt$sample_registrations, header=TRUE)
 link <- reg[reg$tumour_normal_designation == "Tumour" &
-            reg$sample_type %in% c("Total DNA", "Total RNA") &
+            reg$sample_type == "Total DNA" &
             reg$specimen_tissue_source == "Solid tissue" &
             grepl("-\\d+[DR]T$", reg$submitter_sample_id), ]
 link$patient <- link$submitter_donor_id
@@ -407,7 +407,6 @@ if (opt$mode == "patient") {
     list("TUMOUR_NORMAL_DESIGNATION","tumour_normal_designation",          "Tumour/Normal Designation",   "Whether the sample is from tumour or normal tissue.",                  "STRING", "1"),
     list("SAMPLE_TYPE",              "sample_type_mapped",                 "Sample Type",                 "The type of sample (e.g., Primary, Metastasis, Recurrence).",         "STRING", "1"),
     list("SPECIMEN_TISSUE_SOURCE",   "specimen_tissue_source",             "Specimen Tissue Source",      "Tissue source of the specimen.",                                       "STRING", "1"),
-    list("ANALYTE_TYPE",             "analyte_type",                       "Analyte Type",                "Type of analyte extracted from the specimen (e.g., Total DNA).",      "STRING", "1"),
     list("CANCER_TYPE_CODE",         "cancer_type_code",                   "Cancer Code",                 "ICD-O-3 topography cancer code.",                                      "STRING", "1"),
     list("PRIMARY_SITE",             "primary_site",                       "Primary Site",                "Primary site of the tumor.",                                           "STRING", "1"),
     list("LATERALITY",               "laterality",                         "Laterality",                  "Laterality of the primary tumor.",                                     "STRING", "1"),

@@ -2,9 +2,9 @@
     "All file types \u2014 clinical output files are produced": {
         "content": [
             "data_clinical_sample.txt:md5,2b4914b7cc4e197f18cadc0b9ced0a57",
-            "data_clinical_patient.txt:md5,474173901e4145c3eac0d7e8e4fe38b0"
+            "data_clinical_patient.txt:md5,fe3558717937303322311c9862842c6c"
         ],
-        "timestamp": "2026-07-27T12:31:01.284249899",
+        "timestamp": "2026-07-27T13:14:28.824355777",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "25.10.4"

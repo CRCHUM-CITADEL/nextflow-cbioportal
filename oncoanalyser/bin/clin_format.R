@@ -305,7 +305,17 @@ m$dfs_status <- NA_character_
 m$dfs_months <- NA_real_
 if (length(first_relapse_days) > 0) {
   has_relapse <- m$patient %in% names(first_relapse_days)
-  m$dfs_status[has_relapse] <- "1:RECURRED/PROGRESSED"
+  # Default; refined below if relapse_type distinguishes recurrence from progression
+  m$dfs_status[has_relapse] <- "1:Recurred/Progressed"
+  if (length(first_relapse_type) > 0) {
+    has_type <- has_relapse & m$patient %in% names(first_relapse_type)
+    rtype <- first_relapse_type[m$patient[has_type]]
+    m$dfs_status[has_type] <- ifelse(
+      grepl("progression", rtype, ignore.case=TRUE), "1:Progressed",
+      ifelse(grepl("recurrence|recurred", rtype, ignore.case=TRUE), "1:Recurred",
+             "1:Recurred/Progressed")
+    )
+  }
   m$dfs_months[has_relapse] <- round(
     as.numeric(first_relapse_days[m$patient[has_relapse]]) / 30.4375, 3
   )
@@ -313,7 +323,7 @@ if (length(first_relapse_days) > 0) {
 if (length(last_fu_days) > 0) {
   no_relapse_with_fu <- !m$patient %in% names(first_relapse_days) &
                         m$patient %in% names(last_fu_days)
-  m$dfs_status[no_relapse_with_fu] <- "0:DISEASEFREE"
+  m$dfs_status[no_relapse_with_fu] <- "0:DiseaseFree"
   m$dfs_months[no_relapse_with_fu] <- round(
     as.numeric(last_fu_days[m$patient[no_relapse_with_fu]]) / 30.4375, 3
   )

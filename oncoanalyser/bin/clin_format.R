@@ -88,13 +88,17 @@ clean_json_array <- function(x) {
 # ── Sample linking ────────────────────────────────────────────────────────────
 cat("Reading sample registrations...\n")
 reg  <- read.csv(opt$sample_registrations, header=TRUE)
-link <- reg[reg$tumour_normal_designation == "Tumour" & reg$sample_type == "Total DNA" & reg$specimen_tissue_source == "Solid tissue", ]
+link <- reg[reg$tumour_normal_designation == "Tumour" &
+            reg$sample_type %in% c("Total DNA", "Total RNA") &
+            reg$specimen_tissue_source == "Solid tissue" &
+            grepl("-\\d+[DR]T$", reg$submitter_sample_id), ]
 link$patient <- link$submitter_donor_id
 link$sample  <- link$submitter_sample_id
 # Rename sample_type to analyte_type to avoid column name conflict downstream
 names(link)[names(link) == "sample_type"] <- "analyte_type"
 link <- link[, intersect(c("patient", "sample", "specimen_type", "specimen_tissue_source",
-                             "analyte_type", "tumour_normal_designation"), names(link))]
+                             "analyte_type", "tumour_normal_designation",
+                             "submitter_specimen_id"), names(link))]
 
 # ── Donors ────────────────────────────────────────────────────────────────────
 cat("Reading donors...\n")
@@ -124,8 +128,7 @@ diag <- diag[!duplicated(diag$patient), ]
 # ── Specimens ──────────────────────────────────────────────────────────────────
 cat("Reading specimens...\n")
 spec <- read.csv(opt$specimens, header=TRUE)
-spec$patient <- spec$submitter_donor_id
-spec <- spec[, intersect(c("patient", "tumour_histological_type", "tumour_grade",
+spec <- spec[, intersect(c("submitter_specimen_id", "tumour_histological_type", "tumour_grade",
                               "tumour_grading_system", "specimen_anatomic_location",
                               "specimen_laterality", "specimen_processing", "specimen_storage",
                               "percent_tumour_cells_range",
@@ -133,10 +136,10 @@ spec <- spec[, intersect(c("patient", "tumour_histological_type", "tumour_grade"
                               "submitter_primary_diagnosis_id",
                               "submitter_treatment_id"), names(spec))]
 
-# ── Merge: link → donors → diagnoses → specimens ──────────────────────────────
-m <- merge(link,  donors, by="patient", all.x=TRUE)
+# ── Merge: link ← spec (by specimen ID), then → donors → diagnoses ───────────
+m <- merge(link,  spec,   by="submitter_specimen_id", all.x=TRUE)
+m <- merge(m,     donors, by="patient", all.x=TRUE)
 m <- merge(m,     diag,   by="patient", all.x=TRUE)
-m <- merge(m,     spec,   by="patient", all.x=TRUE)
 # Keep only rows where the specimen's diagnosis ID matches the patient's primary diagnosis ID
 if (all(c("submitter_primary_diagnosis_id.x", "submitter_primary_diagnosis_id.y") %in% names(m))) {
   m <- m[(m$submitter_primary_diagnosis_id.x == m$submitter_primary_diagnosis_id.y) |

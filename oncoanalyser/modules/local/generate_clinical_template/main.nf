@@ -1,5 +1,5 @@
 process GENERATE_CLINICAL_TEMPLATE {
-    publishDir "${params.outdir}/${group}", mode: 'copy'
+    publishDir { "${params.outdir}/${group}" }, mode: 'copy'
 
     input:
     val group

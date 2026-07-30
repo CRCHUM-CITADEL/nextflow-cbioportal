@@ -1,5 +1,5 @@
 process FORMAT_ML_MUTATION {
-    publishDir "${params.outdir}/${group}/machine_learning/formatted", mode: 'copy'
+    publishDir { "${params.outdir}/${group}/machine_learning/formatted" }, mode: 'copy'
 
     container params.container_r
     label "process_medium_memory"

@@ -1,5 +1,7 @@
-include { FORMAT_CLINICAL } from '../../../modules/local/format_clinical'
-include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
+include { FORMAT_CLINICAL }                          from '../../../modules/local/format_clinical'
+include { GENERATE_META_FILE }                       from '../../../modules/local/generate_meta_file'
+include { GENERATE_META_FILE as GENERATE_META_FILE_TIMELINE } from '../../../modules/local/generate_meta_file'
+include { GENERATE_TIMELINE }                        from '../../../modules/local/generate_timeline'
 
 workflow CLINICAL_AGGREGATE {
     take:
@@ -41,7 +43,10 @@ workflow CLINICAL_AGGREGATE {
                     csv_map.radiations           ? file(csv_map.radiations)           : [],
                     csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
                     csv_map.biomarkers           ? file(csv_map.biomarkers)           : [],
-                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : []
+                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
+                    file(params.mohccn_primary_site_map),
+                    file(params.mohccn_specimen_tissue_source_map),
+                    file(params.mohccn_treatment_intent_map)
                 )
             }
             .set { ch_formatted_input }
@@ -67,6 +72,49 @@ data_filename: data_clinical_patient.txt
             all_groups_times_two,
             file_names,
             meta_text
+        )
+
+        // ── Timeline files ────────────────────────────────────────────────────
+        csvs
+            .map { group, csv_map ->
+                tuple(
+                    [group: group],
+                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
+                    csv_map.treatments           ? file(csv_map.treatments)           : [],
+                    csv_map.surgeries            ? file(csv_map.surgeries)            : [],
+                    csv_map.systemic_therapies   ? file(csv_map.systemic_therapies)   : [],
+                    csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
+                    csv_map.specimens            ? file(csv_map.specimens)            : [],
+                    csv_map.biomarkers           ? file(csv_map.biomarkers)           : []
+                )
+            }
+            .set { ch_timeline_input }
+
+        GENERATE_TIMELINE(ch_timeline_input)
+
+        // Generate one meta file per timeline data file that was produced
+        GENERATE_TIMELINE.out.ch_timeline
+            .transpose()
+            .map { group, f ->
+                def label  = "timeline_" + f.getName().replace("data_timeline_", "").replace(".txt", "")
+                def tl_txt = """cancer_study_identifier: add_text
+genetic_alteration_type: CLINICAL
+datatype: TIMELINE
+data_filename: ${f.getName()}
+"""
+                tuple(group, label, tl_txt)
+            }
+            .multiMap { g, l, t ->
+                groups: g
+                labels: l
+                texts:  t
+            }
+            .set { ch_timeline_meta }
+
+        GENERATE_META_FILE_TIMELINE(
+            ch_timeline_meta.groups,
+            ch_timeline_meta.labels,
+            ch_timeline_meta.texts
         )
 
     emit:

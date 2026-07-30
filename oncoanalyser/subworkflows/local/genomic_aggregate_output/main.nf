@@ -228,7 +228,7 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
 
             case_name_all = channel.of("cnv", "sequenced", "sv")
             case_sample_lists = cnv_sample_list.concat(mutation_sample_list).concat(sv_sample_list)
-            all_groups_cases = all_groups.combine(case_name_all).map{all_groups, case_name_all -> all_groups }
+            all_groups_cases = all_groups.combine(case_name_all).map { g, _c -> g }
 
             GENERATE_CASE_LIST(
                 all_groups_cases,
@@ -363,7 +363,7 @@ generic_entity_meta_properties: NAME
 
         meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs, meta_text_counts, meta_text_sigs_dbs, meta_text_counts_dbs, meta_text_sigs_id, meta_text_counts_id)
         file_name_all = channel.of("cna_hg38", "cna_long", "sv", "expression", "sequenced", "mutational_signatures_contribution_SBS", "mutational_signatures_counts_SBS", "mutational_signatures_contribution_DBS", "mutational_signatures_counts_DBS", "mutational_signatures_contribution_ID", "mutational_signatures_counts_ID")
-        all_groups_meta = all_groups.combine(file_name_all).map{all_groups, file_name_all -> all_groups }
+        all_groups_meta = all_groups.combine(file_name_all).map { g, _f -> g }
 
         GENERATE_META_FILE(
             all_groups_meta,

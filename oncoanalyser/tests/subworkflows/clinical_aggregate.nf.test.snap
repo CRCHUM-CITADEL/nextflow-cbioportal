@@ -1,13 +1,18 @@
 {
     "All file types \u2014 clinical output files are produced": {
         "content": [
-            "data_clinical_sample.txt:md5,2b4914b7cc4e197f18cadc0b9ced0a57",
-            "data_clinical_patient.txt:md5,fe3558717937303322311c9862842c6c"
+            "data_clinical_sample.txt:md5,1baca69cffbc31e60e7587702e453d34",
+            "data_clinical_patient.txt:md5,fe3558717937303322311c9862842c6c",
+            "data_timeline_surgery.txt:md5,27b5f4c3b83e634c34454717f3fd5a61",
+            "data_timeline_treatment.txt:md5,487185954b38551dbd4aebaaa668d090",
+            "data_timeline_status.txt:md5,c063b44bb36fd4043ca26bc2cd446f3e",
+            "data_timeline_specimen.txt:md5,1adbaf99912d9736ab5e617a8f76cd74",
+            "data_timeline_lab_test.txt:md5,ef8dbc0e395bfe38d5c591c848b17d28"
         ],
-        "timestamp": "2026-07-27T13:14:28.824355777",
+        "timestamp": "2026-07-30T16:06:46.505730859",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "25.10.4"
+            "nextflow": "26.04.6"
         }
     }
 }

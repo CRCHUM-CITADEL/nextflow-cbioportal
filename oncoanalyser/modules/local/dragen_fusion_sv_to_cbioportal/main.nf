@@ -1,5 +1,5 @@
 process DRAGEN_FUSION_SV_TO_CBIOPORTAL {
-    publishDir "${params.outdir}/${meta.group}/${meta.subject}", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy'
 
     tag { meta.sample }
 

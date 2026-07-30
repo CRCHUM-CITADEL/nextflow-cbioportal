@@ -1,5 +1,5 @@
 process INTEGRATE_RNA_VARIANTS {
-    publishDir "${params.outdir}/${dna_meta.group}/${dna_meta.subject}", mode: 'copy'
+    publishDir { "${params.outdir}/${dna_meta.group}/${dna_meta.subject}" }, mode: 'copy'
     tag { subject_id }
     
 

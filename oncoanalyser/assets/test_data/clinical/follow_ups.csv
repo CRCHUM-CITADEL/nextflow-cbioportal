@@ -1,3 +1,5 @@
 anatomic_site_progression_or_recurrence,date_of_followup,date_of_relapse,disease_status_at_followup,method_of_progression_status,program_id,relapse_type,submitter_donor_id,submitter_follow_up_id,submitter_primary_diagnosis_id,submitter_treatment_id
-,"{""day_interval"": 1826, ""month_interval"": 60}",,No evidence of disease,,TEST,,T1,T1-FU,T1-DX,T1-TR
-,"{""day_interval"": 900, ""month_interval"": 29}","{""day_interval"": 850, ""month_interval"": 27}",Relapse or recurrence,"[""Imaging (procedure)""]",TEST,Distant recurrence/metastasis,T2,T2-FU,T2-DX,T2-TR
+,"{""day_interval"": 730, ""month_interval"": 24}",,No evidence of disease,,TEST,,T1,T1-FU1,T1-DX,T1-TR
+,"{""day_interval"": 1826, ""month_interval"": 60}",,No evidence of disease,,TEST,,T1,T1-FU2,T1-DX,T1-TR
+,"{""day_interval"": 600, ""month_interval"": 19}",,No evidence of disease,,TEST,,T2,T2-FU1,T2-DX,T2-TR
+,"{""day_interval"": 900, ""month_interval"": 29}","{""day_interval"": 850, ""month_interval"": 27}",Relapse or recurrence,"[""Imaging (procedure)""]",TEST,Distant recurrence/metastasis,T2,T2-FU2,T2-DX,T2-TR

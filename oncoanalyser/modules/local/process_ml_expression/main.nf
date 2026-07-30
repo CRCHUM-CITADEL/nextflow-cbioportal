@@ -1,5 +1,5 @@
 process PROCESS_ML_EXPRESSION {
-    publishDir "${params.outdir}/${group}/machine_learning/processed/", mode: 'copy'
+    publishDir { "${params.outdir}/${group}/machine_learning/processed/" }, mode: 'copy'
 
     container params.container_r
 

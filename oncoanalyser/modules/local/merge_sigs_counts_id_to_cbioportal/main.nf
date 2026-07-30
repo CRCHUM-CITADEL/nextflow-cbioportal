@@ -1,5 +1,5 @@
 process MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL {
-    publishDir "${params.outdir}/${meta.group}", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.group}" }, mode: 'copy'
 
     container params.container_r
 

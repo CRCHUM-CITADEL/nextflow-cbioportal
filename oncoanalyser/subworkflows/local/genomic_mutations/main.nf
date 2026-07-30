@@ -43,7 +43,7 @@ workflow GENOMIC_MUTATIONS {
                 ger_dna_vcf.map { meta, vcf -> tuple(meta.subject, meta) }
             )
             .map { subject, som_meta, som_vcf, ger_meta ->
-                def meta = [*:som_meta, germinal_sample: ger_meta.sample]
+                def meta = som_meta + [germinal_sample: ger_meta.sample]
                 return tuple(meta, som_vcf)
             }
 

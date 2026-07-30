@@ -25,6 +25,12 @@ option_list <- list(
               help="biomarkers CSV [OPTIONAL]", metavar="FILE"),
   make_option("--genomic_subjects", type="character", default=NULL,
               help="TSV with subject_id and sample_id columns from genomic pipeline; filters output to these subjects only [OPTIONAL]", metavar="FILE"),
+  make_option("--primary_site_map", type="character", default=NULL,
+              help="MOHCCN primary site mapping CSV [OPTIONAL]", metavar="FILE"),
+  make_option("--specimen_tissue_source_map", type="character", default=NULL,
+              help="MOHCCN specimen tissue source mapping CSV [OPTIONAL]", metavar="FILE"),
+  make_option("--treatment_intent_map", type="character", default=NULL,
+              help="MOHCCN treatment intent mapping CSV [OPTIONAL]", metavar="FILE"),
   make_option(c("-o", "--output"), type="character", default="data_clinical_sample.txt",
               help="Output file path [default= %default]", metavar="FILE"),
   make_option(c("-m", "--mode"), type="character", default="sample",
@@ -83,6 +89,27 @@ clean_json_array <- function(x) {
   x <- gsub('\\[|\\]', '', x)
   x <- gsub('"', '', x)
   trimws(x)
+}
+
+# Read MOHCCN mapping CSV → named vector: plain-text value → ontology/ICD-O code.
+# Skips empty rows (primary_site.csv has 900+ trailing empty rows).
+# Reads only first 3 cols (treatment_intent.csv has 26 cols due to trailing commas).
+read_mohccn_map <- function(filepath) {
+  if (is.null(filepath) || !file.exists(filepath)) return(NULL)
+  raw <- read.csv(filepath, header=FALSE, skip=1, stringsAsFactors=FALSE, fill=TRUE)
+  raw <- raw[, 1:3, drop=FALSE]
+  colnames(raw) <- c("full_str", "value", "code")
+  raw <- raw[nchar(trimws(raw$value)) > 0, ]
+  setNames(raw$code, raw$value)
+}
+
+# Look up values in a MOHCCN map; returns NA_character_ where there is no match or empty code.
+apply_mohccn_map <- function(values, map) {
+  if (is.null(map)) return(rep(NA_character_, length(values)))
+  result <- map[as.character(values)]
+  result[is.na(result) | result == ""] <- NA_character_
+  names(result) <- NULL
+  result
 }
 
 # ── Sample linking ────────────────────────────────────────────────────────────
@@ -361,6 +388,19 @@ if ("specimen_type" %in% names(m)) {
 
 m[m == ""] <- NA
 
+# ── MOHCCN ontology code lookups ──────────────────────────────────────────────
+ps_map  <- read_mohccn_map(opt$primary_site_map)
+sts_map <- read_mohccn_map(opt$specimen_tissue_source_map)
+ti_map  <- read_mohccn_map(opt$treatment_intent_map)
+
+m$primary_site_code           <- apply_mohccn_map(m$primary_site,           ps_map)
+m$specimen_tissue_source_code <- apply_mohccn_map(m$specimen_tissue_source, sts_map)
+if ("treatment_intent" %in% names(m)) {
+  m$treatment_intent_code <- apply_mohccn_map(m$treatment_intent, ti_map)
+} else {
+  m$treatment_intent_code <- NA_character_
+}
+
 cat(paste("Writing", opt$mode, "mode output...\n"))
 
 # ── Column definition helper ───────────────────────────────────────────────────
@@ -416,9 +456,11 @@ if (opt$mode == "patient") {
     list("SAMPLE_ID",                "sample",                             "Sample Identifier",           "A unique sample identifier.",                                          "STRING", "1"),
     list("TUMOUR_NORMAL_DESIGNATION","tumour_normal_designation",          "Tumour/Normal Designation",   "Whether the sample is from tumour or normal tissue.",                  "STRING", "1"),
     list("SAMPLE_TYPE",              "sample_type_mapped",                 "Sample Type",                 "The type of sample (e.g., Primary, Metastasis, Recurrence).",         "STRING", "1"),
-    list("SPECIMEN_TISSUE_SOURCE",   "specimen_tissue_source",             "Specimen Tissue Source",      "Tissue source of the specimen.",                                       "STRING", "1"),
-    list("CANCER_TYPE_CODE",         "cancer_type_code",                   "Cancer Code",                 "ICD-O-3 topography cancer code.",                                      "STRING", "1"),
-    list("PRIMARY_SITE",             "primary_site",                       "Primary Site",                "Primary site of the tumor.",                                           "STRING", "1"),
+    list("SPECIMEN_TISSUE_SOURCE",      "specimen_tissue_source",             "Specimen Tissue Source",      "Tissue source of the specimen.",                                       "STRING", "1"),
+    list("SPECIMEN_TISSUE_SOURCE_CODE","specimen_tissue_source_code",        "Specimen Tissue Source Code", "Ontology code for the specimen tissue source.",                        "STRING", "1"),
+    list("CANCER_TYPE_CODE",           "cancer_type_code",                   "Cancer Code",                 "ICD-O-3 topography cancer code.",                                      "STRING", "1"),
+    list("PRIMARY_SITE",               "primary_site",                       "Primary Site",                "Primary site of the tumor.",                                           "STRING", "1"),
+    list("PRIMARY_SITE_CODE",          "primary_site_code",                  "Primary Site Code",           "ICD-O topography code for the primary site.",                          "STRING", "1"),
     list("LATERALITY",               "laterality",                         "Laterality",                  "Laterality of the primary tumor.",                                     "STRING", "1"),
     list("BASIS_OF_DIAGNOSIS",       "basis_of_diagnosis",                 "Basis of Diagnosis",          "Basis on which the primary diagnosis was made.",                       "STRING", "1"),
     list("CLINICAL_STAGE",           "clinical_stage_group",               "Clinical Stage",              "Clinical stage group of the tumor.",                                   "STRING", "1"),
@@ -439,7 +481,8 @@ if (opt$mode == "patient") {
     list("TUMOR_GRADING_SYSTEM",     "tumour_grading_system",              "Tumor Grading System",        "System used for tumor grading.",                                       "STRING", "1"),
     list("TUMOR_CELLS_RANGE",        "percent_tumour_cells_range",         "Tumor Cells Range",           "Percentage range of tumor cells in the specimen.",                    "STRING", "1"),
     list("TREATMENT_TYPE",           "treatment_type_str",                 "Treatment Type",              "Type of primary treatment received.",                                  "STRING", "1"),
-    list("TREATMENT_INTENT",         "treatment_intent",                   "Treatment Intent",            "Intent of the primary treatment (e.g., Curative, Palliative).",       "STRING", "1"),
+    list("TREATMENT_INTENT",          "treatment_intent",                   "Treatment Intent",            "Intent of the primary treatment (e.g., Curative, Palliative).",       "STRING", "1"),
+    list("TREATMENT_INTENT_CODE",    "treatment_intent_code",              "Treatment Intent Code",       "Ontology code for the treatment intent.",                              "STRING", "1"),
     list("TREATMENT_RESPONSE",       "response_to_treatment",              "Treatment Response",          "Patient response to treatment.",                                        "STRING", "1"),
     list("TREATMENT_STATUS",         "status_of_treatment",                "Treatment Status",            "Current status of the treatment.",                                     "STRING", "1"),
     list("SURGERY_TYPE",             "surgery_type",                       "Surgery Type",                "Type of surgical procedure performed.",                                 "STRING", "1"),

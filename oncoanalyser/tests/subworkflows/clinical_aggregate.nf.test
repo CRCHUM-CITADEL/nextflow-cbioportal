@@ -76,9 +76,28 @@ nextflow_workflow {
             assert path("${params.outdir}/TEST/meta_clinical_sample.txt").exists()
             assert path("${params.outdir}/TEST/meta_clinical_patient.txt").exists()
 
+            // Verify timeline data files are created
+            assert path("${params.outdir}/TEST/data_timeline_surgery.txt").exists()
+            assert path("${params.outdir}/TEST/data_timeline_treatment.txt").exists()
+            assert path("${params.outdir}/TEST/data_timeline_status.txt").exists()
+            assert path("${params.outdir}/TEST/data_timeline_specimen.txt").exists()
+            assert path("${params.outdir}/TEST/data_timeline_lab_test.txt").exists()
+
+            // Verify timeline meta files are created
+            assert path("${params.outdir}/TEST/meta_timeline_surgery.txt").exists()
+            assert path("${params.outdir}/TEST/meta_timeline_treatment.txt").exists()
+            assert path("${params.outdir}/TEST/meta_timeline_status.txt").exists()
+            assert path("${params.outdir}/TEST/meta_timeline_specimen.txt").exists()
+            assert path("${params.outdir}/TEST/meta_timeline_lab_test.txt").exists()
+
             snapshot(
                 path("${params.outdir}/TEST/data_clinical_sample.txt"),
-                path("${params.outdir}/TEST/data_clinical_patient.txt")
+                path("${params.outdir}/TEST/data_clinical_patient.txt"),
+                path("${params.outdir}/TEST/data_timeline_surgery.txt"),
+                path("${params.outdir}/TEST/data_timeline_treatment.txt"),
+                path("${params.outdir}/TEST/data_timeline_status.txt"),
+                path("${params.outdir}/TEST/data_timeline_specimen.txt"),
+                path("${params.outdir}/TEST/data_timeline_lab_test.txt")
             ).match()
         }
     }

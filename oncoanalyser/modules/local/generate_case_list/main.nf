@@ -1,5 +1,5 @@
 process GENERATE_CASE_LIST {
-    publishDir "${params.outdir}/${group}/case_lists", mode: 'copy'
+    publishDir { "${params.outdir}/${group}/case_lists" }, mode: 'copy'
 
     input:
     val group

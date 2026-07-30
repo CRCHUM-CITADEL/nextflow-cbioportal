@@ -2,7 +2,7 @@ process MERGE_SAMPLE_SV {
     tag "${meta.sample}"
     label 'process_single'
 
-    publishDir "${params.outdir}/${meta.group}/${meta.subject}", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy'
 
     input:
         tuple val(meta), path(sv_files)

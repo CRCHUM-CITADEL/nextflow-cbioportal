@@ -19,6 +19,8 @@ option_list <- list(
               help="biomarkers CSV [OPTIONAL]",            metavar="FILE"),
   make_option("--genomic_subjects",           type="character", default=NULL,
               help="TSV with subject_id and sample_id columns; filters output to genomic subjects [OPTIONAL]", metavar="FILE"),
+  make_option("--primary_site_map",           type="character", default=NULL,
+              help="MOHCCN primary site mapping CSV (text → ICD-O code) [OPTIONAL]",  metavar="FILE"),
   make_option("--specimen_tissue_source_map", type="character", default=NULL,
               help="MOHCCN specimen tissue source mapping CSV [OPTIONAL]", metavar="FILE"),
   make_option("--treatment_intent_map",       type="character", default=NULL,
@@ -60,7 +62,7 @@ apply_mohccn_map <- function(values, map) {
 cat("=== Parameters ===\n")
 for (nm in c("sample_registrations", "treatments", "surgeries",
              "systemic_therapies", "follow_ups", "specimens", "biomarkers",
-             "genomic_subjects", "specimen_tissue_source_map", "treatment_intent_map")) {
+             "genomic_subjects", "primary_site_map", "specimen_tissue_source_map", "treatment_intent_map")) {
   cat(sprintf("%-22s %s\n", paste0(nm, ":"), ifelse(is.null(opt[[nm]]), "NULL", opt[[nm]])))
 }
 cat("==================\n\n")
@@ -101,11 +103,14 @@ if (!is.null(opt$sample_registrations)) {
     reg$specimen_tissue_source   == "Solid tissue" &
     grepl("-\\d+[DR]T$", reg$submitter_sample_id), ]
   valid_patients <- unique(tumour_reg$submitter_donor_id)
-  if ("specimen_type" %in% names(reg)) {
-    spec_type_map <- setNames(reg$specimen_type, reg$submitter_specimen_id)
+  # Deduplicate by specimen_id — multiple sequencing types (DNA, RNA) per specimen produce
+  # duplicate rows; take the first entry so the named-vector lookup stays unambiguous.
+  reg_dedup <- reg[!duplicated(reg$submitter_specimen_id), ]
+  if ("specimen_type" %in% names(reg_dedup)) {
+    spec_type_map <- setNames(reg_dedup$specimen_type, reg_dedup$submitter_specimen_id)
   }
-  if ("specimen_tissue_source" %in% names(reg)) {
-    spec_tissue_source_map <- setNames(reg$specimen_tissue_source, reg$submitter_specimen_id)
+  if ("specimen_tissue_source" %in% names(reg_dedup)) {
+    spec_tissue_source_map <- setNames(reg_dedup$specimen_tissue_source, reg_dedup$submitter_specimen_id)
   }
 }
 
@@ -116,13 +121,51 @@ if (!is.null(opt$genomic_subjects)) {
   valid_patients <- genomic$subject_id
 }
 
-# Load MOHCCN mapping tables
-sts_map <- read_mohccn_map(opt$specimen_tissue_source_map)
-ti_map  <- read_mohccn_map(opt$treatment_intent_map)
+# Load MOHCCN mapping tables.
+# ps_map is REVERSED (ICD-O code → label) since surgery_site / specimen_anatomic_location
+# are already ICD-O codes in the data; we add a human-readable label column.
+ps_map_raw <- read_mohccn_map(opt$primary_site_map)   # label → code
+ps_map     <- if (!is.null(ps_map_raw)) setNames(names(ps_map_raw), ps_map_raw) else NULL
+sts_map    <- read_mohccn_map(opt$specimen_tissue_source_map)
+ti_map     <- read_mohccn_map(opt$treatment_intent_map)
+
+# Apply reversed primary-site map: ICD-O code (possibly with sub-code like "C22.0")
+# → human-readable label. Strips the decimal suffix before lookup ("C22.0" → "C22").
+apply_ps_label <- function(codes, reversed_map) {
+  if (is.null(reversed_map)) return(rep(NA_character_, length(codes)))
+  prefixes <- sub("\\..*", "", trimws(as.character(codes)))
+  result   <- reversed_map[prefixes]
+  result[is.na(result) | result == ""] <- NA_character_
+  unname(result)
+}
 
 # Helper: filter to valid patients when the set is non-empty
 filter_patients <- function(df, id_col = "submitter_donor_id") {
   if (length(valid_patients) > 0) df[df[[id_col]] %in% valid_patients, ] else df
+}
+
+# Derive cBioPortal SAMPLE_TYPE from the nearest follow-up disease status.
+# Colors: Recurrence/Progression → orange; Metastasis → red; otherwise → black.
+get_sample_type <- function(donor_id, specimen_day, fu_df) {
+  if (is.null(fu_df) || nrow(fu_df) == 0) return(NA_character_)
+  patient_fu <- fu_df[fu_df$submitter_donor_id == donor_id & !is.na(fu_df$start_day), ]
+  if (nrow(patient_fu) == 0) return(NA_character_)
+  nearest <- patient_fu[which.min(abs(patient_fu$start_day - specimen_day)), ]
+  status  <- nearest$disease_status_at_followup
+  if (is.na(status) || nchar(trimws(as.character(status))) == 0) return(NA_character_)
+  if (grepl("metastatic|metastasis", status, ignore.case = TRUE)) return("Metastasis")
+  if (grepl("relapse|recurrence|recurred|progression|progressed", status, ignore.case = TRUE)) return("Recurrence")
+  return("Primary")
+}
+
+# ── Pre-read follow-ups (used in both section c STATUS and section d SPECIMEN) ─────────
+fu_data <- NULL
+if (!is.null(opt$follow_ups)) {
+  cat("Reading follow-ups...\n")
+  fu_raw           <- read.csv(opt$follow_ups, header = TRUE, stringsAsFactors = FALSE)
+  fu_raw$start_day <- sapply(fu_raw$date_of_followup, parse_day_interval)
+  fu_data          <- fu_raw[!is.na(fu_raw$start_day), ]
+  fu_data          <- filter_patients(fu_data)
 }
 
 # ── (a) Surgery + (b) Systemic treatment timelines (both sourced from treatments.csv) ──
@@ -161,9 +204,10 @@ if (!is.null(opt$treatments)) {
       if ("surgery_site" %in% names(surg_df)) surg_df$SITE   <- surg_df$surgery_site
     }
 
+    surg_df$SITE_LABEL           <- apply_ps_label(surg_df$SITE, ps_map)
     surg_df$TREATMENT_INTENT_CODE <- apply_mohccn_map(surg_df$TREATMENT_INTENT, ti_map)
-    surg_out <- surg_df[, c("PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE", "SUBTYPE", "SITE",
-                            "TREATMENT_INTENT", "TREATMENT_INTENT_CODE")]
+    surg_out <- surg_df[, c("PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE", "SUBTYPE",
+                            "SITE", "SITE_LABEL", "TREATMENT_INTENT", "TREATMENT_INTENT_CODE")]
     write_timeline(surg_out, "data_timeline_surgery.txt")
   }
 
@@ -214,24 +258,16 @@ if (!is.null(opt$treatments)) {
 }
 
 # ── (c) Status timeline (follow-up visits) ────────────────────────────────────
-if (!is.null(opt$follow_ups)) {
-  cat("Reading follow-ups...\n")
-  fu <- read.csv(opt$follow_ups, header = TRUE, stringsAsFactors = FALSE)
-  fu$start_day <- sapply(fu$date_of_followup, parse_day_interval)
-  fu <- fu[!is.na(fu$start_day), ]
-  fu <- filter_patients(fu)
-
-  if (nrow(fu) > 0) {
-    status_out <- data.frame(
-      PATIENT_ID = fu$submitter_donor_id,
-      START_DATE = fu$start_day,
-      STOP_DATE  = "",
-      EVENT_TYPE = "STATUS",
-      STATUS     = if ("disease_status_at_followup" %in% names(fu)) fu$disease_status_at_followup else NA_character_,
-      stringsAsFactors = FALSE
-    )
-    write_timeline(status_out, "data_timeline_status.txt")
-  }
+if (!is.null(fu_data) && nrow(fu_data) > 0) {
+  status_out <- data.frame(
+    PATIENT_ID = fu_data$submitter_donor_id,
+    START_DATE = fu_data$start_day,
+    STOP_DATE  = "",
+    EVENT_TYPE = "STATUS",
+    STATUS     = if ("disease_status_at_followup" %in% names(fu_data)) fu_data$disease_status_at_followup else NA_character_,
+    stringsAsFactors = FALSE
+  )
+  write_timeline(status_out, "data_timeline_status.txt")
 }
 
 # ── (d) Specimen timeline ──────────────────────────────────────────────────────
@@ -255,13 +291,22 @@ if (!is.null(opt$specimens)) {
       rep(NA_character_, nrow(spec))
     }
 
+    spec_site_vals <- if ("specimen_anatomic_location" %in% names(spec)) spec$specimen_anatomic_location else NA_character_
+
+    sample_type_vals <- mapply(get_sample_type,
+      spec$submitter_donor_id, spec$start_day,
+      MoreArgs = list(fu_df = fu_data),
+      USE.NAMES = FALSE)
+
     spec_out <- data.frame(
       PATIENT_ID                  = spec$submitter_donor_id,
       START_DATE                  = spec$start_day,
       STOP_DATE                   = "",
       EVENT_TYPE                  = "SPECIMEN",
-      SPECIMEN_SITE               = if ("specimen_anatomic_location" %in% names(spec)) spec$specimen_anatomic_location else NA_character_,
+      SPECIMEN_SITE               = spec_site_vals,
+      SPECIMEN_SITE_LABEL         = apply_ps_label(spec_site_vals, ps_map),
       SPECIMEN_TYPE               = spec_type_vals,
+      SAMPLE_TYPE                 = sample_type_vals,
       SPECIMEN_TISSUE_SOURCE      = spec_tissue_source_vals,
       SPECIMEN_TISSUE_SOURCE_CODE = apply_mohccn_map(spec_tissue_source_vals, sts_map),
       stringsAsFactors = FALSE

@@ -15,6 +15,7 @@ process GENERATE_TIMELINE {
               path(specimens),
               path(biomarkers),
               path(genomic_subjects),
+              path(primary_site_map),
               path(specimen_tissue_source_map),
               path(treatment_intent_map)
 
@@ -30,6 +31,7 @@ process GENERATE_TIMELINE {
     def specimens_arg             = specimens                ? "--specimens ${specimens}"                                : ""
     def biomarkers_arg            = biomarkers               ? "--biomarkers ${biomarkers}"                             : ""
     def genomic_subjects_arg      = genomic_subjects         ? "--genomic_subjects ${genomic_subjects}"                 : ""
+    def primary_site_map_arg      = "--primary_site_map ${primary_site_map}"
     def specimen_source_map_arg   = "--specimen_tissue_source_map ${specimen_tissue_source_map}"
     def treatment_intent_map_arg  = "--treatment_intent_map ${treatment_intent_map}"
     """
@@ -42,6 +44,7 @@ process GENERATE_TIMELINE {
         ${specimens_arg} \
         ${biomarkers_arg} \
         ${genomic_subjects_arg} \
+        ${primary_site_map_arg} \
         ${specimen_source_map_arg} \
         ${treatment_intent_map_arg}
     """

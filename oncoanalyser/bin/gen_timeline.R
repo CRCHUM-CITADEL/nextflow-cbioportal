@@ -16,7 +16,13 @@ option_list <- list(
   make_option("--specimens",            type="character", default=NULL,
               help="specimens CSV [OPTIONAL]",             metavar="FILE"),
   make_option("--biomarkers",           type="character", default=NULL,
-              help="biomarkers CSV [OPTIONAL]",            metavar="FILE")
+              help="biomarkers CSV [OPTIONAL]",            metavar="FILE"),
+  make_option("--genomic_subjects",           type="character", default=NULL,
+              help="TSV with subject_id and sample_id columns; filters output to genomic subjects [OPTIONAL]", metavar="FILE"),
+  make_option("--specimen_tissue_source_map", type="character", default=NULL,
+              help="MOHCCN specimen tissue source mapping CSV [OPTIONAL]", metavar="FILE"),
+  make_option("--treatment_intent_map",       type="character", default=NULL,
+              help="MOHCCN treatment intent mapping CSV [OPTIONAL]",       metavar="FILE")
 )
 
 opt_parser <- OptionParser(
@@ -33,9 +39,28 @@ for (f in Filter(Negate(is.null), opt[names(opt) != "help"])) {
   }
 }
 
+# Read MOHCCN mapping CSV → named vector: plain-text value → ontology/ICD-O code.
+# Skips empty rows; reads only first 3 cols (treatment_intent.csv has trailing commas).
+read_mohccn_map <- function(filepath) {
+  if (is.null(filepath) || !file.exists(filepath)) return(NULL)
+  raw <- read.csv(filepath, header=FALSE, skip=1, stringsAsFactors=FALSE, fill=TRUE)
+  raw <- raw[, 1:3, drop=FALSE]
+  raw <- raw[nchar(trimws(raw[[2]])) > 0, ]
+  setNames(trimws(raw[[3]]), trimws(raw[[2]]))
+}
+
+# Look up values in a MOHCCN map; returns NA_character_ where there is no match or empty code.
+apply_mohccn_map <- function(values, map) {
+  if (is.null(map)) return(rep(NA_character_, length(values)))
+  result <- map[as.character(values)]
+  result[is.na(result) | result == ""] <- NA_character_
+  unname(result)
+}
+
 cat("=== Parameters ===\n")
 for (nm in c("sample_registrations", "treatments", "surgeries",
-             "systemic_therapies", "follow_ups", "specimens", "biomarkers")) {
+             "systemic_therapies", "follow_ups", "specimens", "biomarkers",
+             "genomic_subjects", "specimen_tissue_source_map", "treatment_intent_map")) {
   cat(sprintf("%-22s %s\n", paste0(nm, ":"), ifelse(is.null(opt[[nm]]), "NULL", opt[[nm]])))
 }
 cat("==================\n\n")
@@ -62,9 +87,10 @@ write_timeline <- function(df, filename) {
   cat(sprintf("Wrote %d row(s) to %s\n", nrow(df), filename))
 }
 
-# ── Valid patient IDs + specimen type map from sample registrations ────────────
-valid_patients <- character(0)
-spec_type_map  <- character(0)   # submitter_specimen_id -> specimen_type
+# ── Valid patient IDs + specimen maps from sample registrations ────────────────
+valid_patients         <- character(0)
+spec_type_map          <- character(0)   # submitter_specimen_id -> specimen_type
+spec_tissue_source_map <- character(0)   # submitter_specimen_id -> specimen_tissue_source
 
 if (!is.null(opt$sample_registrations)) {
   cat("Reading sample registrations...\n")
@@ -78,7 +104,21 @@ if (!is.null(opt$sample_registrations)) {
   if ("specimen_type" %in% names(reg)) {
     spec_type_map <- setNames(reg$specimen_type, reg$submitter_specimen_id)
   }
+  if ("specimen_tissue_source" %in% names(reg)) {
+    spec_tissue_source_map <- setNames(reg$specimen_tissue_source, reg$submitter_specimen_id)
+  }
 }
+
+# When a genomic linking file is provided, restrict to those subjects (same as clin_format.R)
+if (!is.null(opt$genomic_subjects)) {
+  cat("Reading genomic subjects for filtering...\n")
+  genomic        <- read.table(opt$genomic_subjects, header=TRUE, sep="\t", stringsAsFactors=FALSE)
+  valid_patients <- genomic$subject_id
+}
+
+# Load MOHCCN mapping tables
+sts_map <- read_mohccn_map(opt$specimen_tissue_source_map)
+ti_map  <- read_mohccn_map(opt$treatment_intent_map)
 
 # Helper: filter to valid patients when the set is non-empty
 filter_patients <- function(df, id_col = "submitter_donor_id") {
@@ -101,13 +141,14 @@ if (!is.null(opt$treatments)) {
 
   if (nrow(surg_treat) > 0) {
     surg_df <- data.frame(
-      PATIENT_ID = surg_treat$submitter_donor_id,
-      START_DATE = surg_treat$start_day,
-      STOP_DATE  = surg_treat$stop_day,
-      EVENT_TYPE = "SURGERY",
-      tx_id      = surg_treat$submitter_treatment_id,
-      SUBTYPE    = NA_character_,
-      SITE       = NA_character_,
+      PATIENT_ID       = surg_treat$submitter_donor_id,
+      START_DATE       = surg_treat$start_day,
+      STOP_DATE        = surg_treat$stop_day,
+      EVENT_TYPE       = "SURGERY",
+      tx_id            = surg_treat$submitter_treatment_id,
+      SUBTYPE          = NA_character_,
+      SITE             = NA_character_,
+      TREATMENT_INTENT = if ("treatment_intent" %in% names(surg_treat)) surg_treat$treatment_intent else NA_character_,
       stringsAsFactors = FALSE
     )
 
@@ -120,7 +161,9 @@ if (!is.null(opt$treatments)) {
       if ("surgery_site" %in% names(surg_df)) surg_df$SITE   <- surg_df$surgery_site
     }
 
-    surg_out <- surg_df[, c("PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE", "SUBTYPE", "SITE")]
+    surg_df$TREATMENT_INTENT_CODE <- apply_mohccn_map(surg_df$TREATMENT_INTENT, ti_map)
+    surg_out <- surg_df[, c("PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE", "SUBTYPE", "SITE",
+                            "TREATMENT_INTENT", "TREATMENT_INTENT_CODE")]
     write_timeline(surg_out, "data_timeline_surgery.txt")
   }
 
@@ -129,10 +172,11 @@ if (!is.null(opt$treatments)) {
 
   if (nrow(syst_treat) > 0) {
     tx_base <- data.frame(
-      PATIENT_ID = syst_treat$submitter_donor_id,
-      START_DATE = syst_treat$start_day,
-      STOP_DATE  = syst_treat$stop_day,
-      tx_id      = syst_treat$submitter_treatment_id,
+      PATIENT_ID       = syst_treat$submitter_donor_id,
+      START_DATE       = syst_treat$start_day,
+      STOP_DATE        = syst_treat$stop_day,
+      tx_id            = syst_treat$submitter_treatment_id,
+      TREATMENT_INTENT = if ("treatment_intent" %in% names(syst_treat)) syst_treat$treatment_intent else NA_character_,
       stringsAsFactors = FALSE
     )
 
@@ -142,22 +186,26 @@ if (!is.null(opt$treatments)) {
       syst_sub <- syst[, intersect(c("submitter_treatment_id", "drug_name", "systemic_therapy_type"), names(syst)), drop = FALSE]
       merged <- merge(tx_base, syst_sub, by.x = "tx_id", by.y = "submitter_treatment_id", all.x = TRUE)
       syst_out <- data.frame(
-        PATIENT_ID     = merged$PATIENT_ID,
-        START_DATE     = merged$START_DATE,
-        STOP_DATE      = merged$STOP_DATE,
-        EVENT_TYPE     = "TREATMENT",
-        TREATMENT_TYPE = if ("systemic_therapy_type" %in% names(merged)) merged$systemic_therapy_type else NA_character_,
-        AGENT          = if ("drug_name"             %in% names(merged)) merged$drug_name             else NA_character_,
+        PATIENT_ID            = merged$PATIENT_ID,
+        START_DATE            = merged$START_DATE,
+        STOP_DATE             = merged$STOP_DATE,
+        EVENT_TYPE            = "TREATMENT",
+        TREATMENT_TYPE        = if ("systemic_therapy_type" %in% names(merged)) merged$systemic_therapy_type else NA_character_,
+        AGENT                 = if ("drug_name"             %in% names(merged)) merged$drug_name             else NA_character_,
+        TREATMENT_INTENT      = merged$TREATMENT_INTENT,
+        TREATMENT_INTENT_CODE = apply_mohccn_map(merged$TREATMENT_INTENT, ti_map),
         stringsAsFactors = FALSE
       )
     } else {
       syst_out <- data.frame(
-        PATIENT_ID     = tx_base$PATIENT_ID,
-        START_DATE     = tx_base$START_DATE,
-        STOP_DATE      = tx_base$STOP_DATE,
-        EVENT_TYPE     = "TREATMENT",
-        TREATMENT_TYPE = NA_character_,
-        AGENT          = NA_character_,
+        PATIENT_ID            = tx_base$PATIENT_ID,
+        START_DATE            = tx_base$START_DATE,
+        STOP_DATE             = tx_base$STOP_DATE,
+        EVENT_TYPE            = "TREATMENT",
+        TREATMENT_TYPE        = NA_character_,
+        AGENT                 = NA_character_,
+        TREATMENT_INTENT      = tx_base$TREATMENT_INTENT,
+        TREATMENT_INTENT_CODE = apply_mohccn_map(tx_base$TREATMENT_INTENT, ti_map),
         stringsAsFactors = FALSE
       )
     }
@@ -195,20 +243,27 @@ if (!is.null(opt$specimens)) {
   spec <- filter_patients(spec)
 
   if (nrow(spec) > 0) {
-    # Look up specimen_type from sample_registrations via submitter_specimen_id
+    # Look up specimen_type and specimen_tissue_source from sample_registrations
     spec_type_vals <- if (length(spec_type_map) > 0) {
       unname(spec_type_map[spec$submitter_specimen_id])
     } else {
       rep(NA_character_, nrow(spec))
     }
+    spec_tissue_source_vals <- if (length(spec_tissue_source_map) > 0) {
+      unname(spec_tissue_source_map[spec$submitter_specimen_id])
+    } else {
+      rep(NA_character_, nrow(spec))
+    }
 
     spec_out <- data.frame(
-      PATIENT_ID    = spec$submitter_donor_id,
-      START_DATE    = spec$start_day,
-      STOP_DATE     = "",
-      EVENT_TYPE    = "SPECIMEN",
-      SPECIMEN_SITE = if ("specimen_anatomic_location" %in% names(spec)) spec$specimen_anatomic_location else NA_character_,
-      SPECIMEN_TYPE = spec_type_vals,
+      PATIENT_ID                  = spec$submitter_donor_id,
+      START_DATE                  = spec$start_day,
+      STOP_DATE                   = "",
+      EVENT_TYPE                  = "SPECIMEN",
+      SPECIMEN_SITE               = if ("specimen_anatomic_location" %in% names(spec)) spec$specimen_anatomic_location else NA_character_,
+      SPECIMEN_TYPE               = spec_type_vals,
+      SPECIMEN_TISSUE_SOURCE      = spec_tissue_source_vals,
+      SPECIMEN_TISSUE_SOURCE_CODE = apply_mohccn_map(spec_tissue_source_vals, sts_map),
       stringsAsFactors = FALSE
     )
     write_timeline(spec_out, "data_timeline_specimen.txt")

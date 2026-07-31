@@ -177,6 +177,15 @@ nextflow_workflow {
             // Row is PATIENT_ID\tSAMPLE_ID\t... — check SAMPLE_ID is remapped to genomic convention
             def sample_id = sample_lines[1].split('\t')[1]
             assert sample_id == 'T1-T' : "Expected SAMPLE_ID=T1-T (remapped), got: ${sample_id}"
+
+            // Timeline files should also be filtered to T1 only
+            def tl_surgery_lines = path("${params.outdir}/TEST/data_timeline_surgery.txt").readLines()
+                .findAll { !it.startsWith('PATIENT_ID') && it.trim() }
+            assert tl_surgery_lines.every { it.startsWith('T1') } : "Surgery timeline contains non-T1 rows: ${tl_surgery_lines}"
+
+            def tl_specimen_lines = path("${params.outdir}/TEST/data_timeline_specimen.txt").readLines()
+                .findAll { !it.startsWith('PATIENT_ID') && it.trim() }
+            assert tl_specimen_lines.every { it.startsWith('T1') } : "Specimen timeline contains non-T1 rows: ${tl_specimen_lines}"
         }
     }
 }

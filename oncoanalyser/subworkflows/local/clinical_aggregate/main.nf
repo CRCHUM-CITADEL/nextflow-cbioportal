@@ -85,7 +85,10 @@ data_filename: data_clinical_patient.txt
                     csv_map.systemic_therapies   ? file(csv_map.systemic_therapies)   : [],
                     csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
                     csv_map.specimens            ? file(csv_map.specimens)            : [],
-                    csv_map.biomarkers           ? file(csv_map.biomarkers)           : []
+                    csv_map.biomarkers           ? file(csv_map.biomarkers)           : [],
+                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
+                    file(params.mohccn_specimen_tissue_source_map),
+                    file(params.mohccn_treatment_intent_map)
                 )
             }
             .set { ch_timeline_input }

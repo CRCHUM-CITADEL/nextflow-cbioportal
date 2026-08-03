@@ -82,12 +82,21 @@ clean_json_array <- function(x) {
   trimws(x)
 }
 
-# Write a timeline data frame to file; skip if empty
-write_timeline <- function(df, filename) {
-  if (is.null(df) || nrow(df) == 0) return(invisible(NULL))
-  write.table(df, filename, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
-  cat(sprintf("Wrote %d row(s) to %s\n", nrow(df), filename))
+# Bind data frames with different columns; missing columns filled with NA.
+rbind_fill <- function(df_list) {
+  df_list <- Filter(function(d) !is.null(d) && nrow(d) > 0, df_list)
+  if (length(df_list) == 0) return(NULL)
+  all_cols <- unique(unlist(lapply(df_list, names)))
+  aligned  <- lapply(df_list, function(d) {
+    missing <- setdiff(all_cols, names(d))
+    for (col in missing) d[[col]] <- NA
+    d[, all_cols, drop = FALSE]
+  })
+  do.call(rbind, aligned)
 }
+
+# Accumulator for all timeline parts
+timeline_parts <- list()
 
 # ── Valid patient IDs + specimen maps from sample registrations ────────────────
 valid_patients         <- character(0)
@@ -208,7 +217,8 @@ if (!is.null(opt$treatments)) {
     surg_df$TREATMENT_INTENT_CODE <- apply_mohccn_map(surg_df$TREATMENT_INTENT, ti_map)
     surg_out <- surg_df[, c("PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE", "SUBTYPE",
                             "SITE", "SITE_LABEL", "TREATMENT_INTENT", "TREATMENT_INTENT_CODE")]
-    write_timeline(surg_out, "data_timeline_surgery.txt")
+    surg_out$START_DATE[is.na(surg_out$START_DATE)] <- 0
+    timeline_parts[[length(timeline_parts) + 1]] <- surg_out
   }
 
   # ── (b) Systemic treatment timeline ──────────────────────────────────────────
@@ -253,7 +263,8 @@ if (!is.null(opt$treatments)) {
         stringsAsFactors = FALSE
       )
     }
-    write_timeline(syst_out, "data_timeline_treatment.txt")
+    syst_out$START_DATE[is.na(syst_out$START_DATE)] <- 0
+    timeline_parts[[length(timeline_parts) + 1]] <- syst_out
   }
 }
 
@@ -267,7 +278,8 @@ if (!is.null(fu_data) && nrow(fu_data) > 0) {
     STATUS     = if ("disease_status_at_followup" %in% names(fu_data)) fu_data$disease_status_at_followup else NA_character_,
     stringsAsFactors = FALSE
   )
-  write_timeline(status_out, "data_timeline_status.txt")
+  status_out$START_DATE[is.na(status_out$START_DATE)] <- 0
+  timeline_parts[[length(timeline_parts) + 1]] <- status_out
 }
 
 # ── (d) Specimen timeline ──────────────────────────────────────────────────────
@@ -311,7 +323,8 @@ if (!is.null(opt$specimens)) {
       SPECIMEN_TISSUE_SOURCE_CODE = apply_mohccn_map(spec_tissue_source_vals, sts_map),
       stringsAsFactors = FALSE
     )
-    write_timeline(spec_out, "data_timeline_specimen.txt")
+    spec_out$START_DATE[is.na(spec_out$START_DATE)] <- 0
+    timeline_parts[[length(timeline_parts) + 1]] <- spec_out
   }
 }
 
@@ -364,6 +377,20 @@ if (!is.null(opt$biomarkers)) {
     })
 
     lab_out <- do.call(rbind, Filter(Negate(is.null), lab_rows))
-    write_timeline(lab_out, "data_timeline_lab_test.txt")
+    lab_out$START_DATE[is.na(lab_out$START_DATE)] <- 0
+    timeline_parts[[length(timeline_parts) + 1]] <- lab_out
   }
+}
+
+# ── Write combined timeline file ─────────────────────────────────────────────
+combined <- rbind_fill(timeline_parts)
+if (!is.null(combined) && nrow(combined) > 0) {
+  # Put common columns first, then the rest alphabetically
+  common <- c("PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE")
+  rest   <- sort(setdiff(names(combined), common))
+  combined <- combined[, c(common, rest), drop = FALSE]
+  write.table(combined, "data_timeline.txt", sep = "\t", row.names = FALSE, quote = FALSE, na = "")
+  cat(sprintf("Wrote %d row(s) to data_timeline.txt\n", nrow(combined)))
+} else {
+  cat("No timeline data to write.\n")
 }

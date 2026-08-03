@@ -1,7 +1,7 @@
 {
     "clinical": {
         "content": [
-            10,
+            6,
             {
                 "Workflow": {
                     "CRCHUM-CITADEL/nextflow-sante-precision": "v1.3.2dev"
@@ -10,42 +10,26 @@
             [
                 "data_clinical_patient.txt",
                 "data_clinical_sample.txt",
-                "data_timeline_lab_test.txt",
-                "data_timeline_specimen.txt",
-                "data_timeline_status.txt",
-                "data_timeline_surgery.txt",
-                "data_timeline_treatment.txt",
+                "data_timeline.txt",
                 "meta_clinical_patient.txt",
                 "meta_clinical_sample.txt",
-                "meta_timeline_lab_test.txt",
-                "meta_timeline_specimen.txt",
-                "meta_timeline_status.txt",
-                "meta_timeline_surgery.txt",
-                "meta_timeline_treatment.txt",
+                "meta_timeline.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
             [
                 "data_clinical_patient.txt:md5,fe3558717937303322311c9862842c6c",
                 "data_clinical_sample.txt:md5,1baca69cffbc31e60e7587702e453d34",
-                "data_timeline_lab_test.txt:md5,ef8dbc0e395bfe38d5c591c848b17d28",
-                "data_timeline_specimen.txt:md5,1adbaf99912d9736ab5e617a8f76cd74",
-                "data_timeline_status.txt:md5,c063b44bb36fd4043ca26bc2cd446f3e",
-                "data_timeline_surgery.txt:md5,27b5f4c3b83e634c34454717f3fd5a61",
-                "data_timeline_treatment.txt:md5,487185954b38551dbd4aebaaa668d090",
+                "data_timeline.txt:md5,876f6dabd5feb15e1ee78c745e54869c",
                 "meta_clinical_patient.txt:md5,a50f23209b906b23ebcdd2f226f03049",
                 "meta_clinical_sample.txt:md5,9d38f37b3d957eb384558b485ca41298",
-                "meta_timeline_lab_test.txt:md5,644a45d03530818ac7fcf6aedc2a82e7",
-                "meta_timeline_specimen.txt:md5,50ab2c03eb37a90865f02ef57c41eabe",
-                "meta_timeline_status.txt:md5,98d51c3d35b856a7531d9a9ba1cd728f",
-                "meta_timeline_surgery.txt:md5,5f5ed736fa495874a36443e932497da3",
-                "meta_timeline_treatment.txt:md5,3f883f9fcd66c2821915130dd7533d16"
+                "meta_timeline.txt:md5,156fd8531c8a49b03b1d541ef2af267c"
             ]
         ],
-        "timestamp": "2026-07-30T16:19:30.403532988",
+        "timestamp": "2026-08-03T11:03:17.705792124",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "25.10.4"
         }
     }
 }

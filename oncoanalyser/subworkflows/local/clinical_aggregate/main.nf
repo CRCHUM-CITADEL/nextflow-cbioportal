@@ -96,29 +96,19 @@ data_filename: data_clinical_patient.txt
 
         GENERATE_TIMELINE(ch_timeline_input)
 
-        // Generate one meta file per timeline data file that was produced
+        // Generate meta file for the combined timeline data file
         GENERATE_TIMELINE.out.ch_timeline
-            .transpose()
-            .map { group, f ->
-                def label  = "timeline_" + f.getName().replace("data_timeline_", "").replace(".txt", "")
-                def tl_txt = """cancer_study_identifier: add_text
-genetic_alteration_type: CLINICAL
-datatype: TIMELINE
-data_filename: ${f.getName()}
-"""
-                tuple(group, label, tl_txt)
-            }
-            .multiMap { g, l, t ->
-                groups: g
-                labels: l
-                texts:  t
-            }
-            .set { ch_timeline_meta }
+            .map { group, f -> group }
+            .set { ch_timeline_groups }
 
         GENERATE_META_FILE_TIMELINE(
-            ch_timeline_meta.groups,
-            ch_timeline_meta.labels,
-            ch_timeline_meta.texts
+            ch_timeline_groups,
+            ch_timeline_groups.map { "timeline" },
+            ch_timeline_groups.map { """cancer_study_identifier: add_text
+genetic_alteration_type: CLINICAL
+datatype: TIMELINE
+data_filename: data_timeline.txt
+""" }
         )
 
     emit:

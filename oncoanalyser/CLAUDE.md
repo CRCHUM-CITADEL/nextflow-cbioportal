@@ -12,6 +12,36 @@ Oncoanalyser WGS/WTS + clinical CSVs → cBioPortal. HPC-only (SLURM + Apptainer
 - No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes
 - VEP/PCGR data must be pre-staged
 
+## Timeline Generation (`gen_timeline.R`)
+
+Generates a single combined `data_timeline.txt` from ARGO clinical CSVs. All event types are merged into one file, distinguished by EVENT_TYPE column:
+- `SURGERY` — surgical treatments (subtype, site, intent)
+- `TREATMENT` — systemic therapies (drug, type, intent)
+- `STATUS` — follow-up disease status
+- `SPECIMEN` — specimen collection (site, type, sample type)
+- `LAB_TEST` — biomarker results (PSA, ER/PR/HER2, CEA, etc.)
+
+Columns are the union of all event types; columns not applicable to a given EVENT_TYPE are empty. Common columns first (PATIENT_ID, START_DATE, STOP_DATE, EVENT_TYPE), then the rest alphabetically.
+
+Key behaviors:
+- **START_DATE defaults to 0 when missing** — any NA/empty date becomes day 0 (diagnosis day)
+- Filters patients from `sample_registrations` (Tumour + Total DNA + Solid tissue + regex `-\d+[DR]T$`)
+- When `genomic_subjects` TSV is provided (both mode), restricts timeline output to genomic subjects only
+- Nearest follow-up visit determines specimen SAMPLE_TYPE (Primary / Recurrence / Metastasis)
+
+## MOHCCN Mapping Tables
+
+Three mapping CSVs in `assets/` translate MOHCCN plain-text values to ontology/ICD-O codes:
+- `mohccn_*_primary_site.csv` — ICD-O topography codes (reversed: code → label for surgery/specimen site)
+- `mohccn_*_specimen_tissue_source.csv` — tissue source codes
+- `mohccn_*_treatment_intent.csv` — treatment intent codes
+
+Params: `mohccn_primary_site_map`, `mohccn_specimen_tissue_source_map`, `mohccn_treatment_intent_map`. Used by both `clin_format.R` and `gen_timeline.R`.
+
+## Incremental Processing
+
+The genomic workflow checks for pre-existing output files per subject. If all expected outputs (CNV, SV, expression, mutations) already exist, processing is skipped. This allows adding new subjects to the samplesheet and re-running without reprocessing the entire cohort. Delete a subject's output directory to force reprocessing.
+
 ## Process Labels (`conf/base.config`)
 
 Default: 1 CPU, 1 GB, 4 min (scaled by `task.attempt`). See `conf/base.config` for full table.

@@ -124,6 +124,18 @@ Generating a clinical samplesheet
   The minimum useful set is: donors, primary_diagnoses,
   sample_registrations.
 
+  When treatments, surgeries, systemic_therapies, follow_ups,
+  specimens, or biomarkers are provided, the pipeline also generates
+  a combined cBioPortal timeline file (data_timeline.txt) for
+  visualising clinical events on the patient timeline. All event
+  types (surgery, treatment, status, specimen, lab_test) are merged
+  into one file. Missing dates default to day 0 (diagnosis day).
+
+  MOHCCN mapping tables (bundled in assets/) translate plain-text
+  values to ontology/ICD-O codes in clinical and timeline output.
+  Override with: --mohccn_primary_site_map, --mohccn_specimen_tissue_source_map,
+  --mohccn_treatment_intent_map.
+
   See assets/test_data/clinical/ for example CSVs for each filetype.
 
 

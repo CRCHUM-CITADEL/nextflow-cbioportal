@@ -313,10 +313,13 @@ GENOMIC INPUT PARAMETERS
 
 CLINICAL INPUT PARAMETERS
 
-  Parameter              Required  Default   Description
-  ---------------------  --------  --------  ----------------------------
-  clinical_samplesheet   Yes       --        Path to clinical samplesheet CSV
-  sample_registrations   No        (empty)   sample_registrations.csv for template mode
+  Parameter                         Required  Default        Description
+  --------------------------------  --------  -----------    ----------------------------
+  clinical_samplesheet              Yes       --             Path to clinical samplesheet CSV
+  sample_registrations              No        (empty)        sample_registrations.csv for template mode
+  mohccn_primary_site_map           No        assets/ CSV    MOHCCN primary site mapping (ICD-O codes)
+  mohccn_specimen_tissue_source_map No        assets/ CSV    MOHCCN specimen tissue source mapping
+  mohccn_treatment_intent_map       No        assets/ CSV    MOHCCN treatment intent mapping
 
 CONTAINER PARAMETERS
 

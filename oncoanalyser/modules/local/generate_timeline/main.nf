@@ -20,7 +20,7 @@ process GENERATE_TIMELINE {
               path(treatment_intent_map)
 
     output:
-        tuple val(meta.group), path("data_timeline_*.txt", optional: true), emit: ch_timeline
+        tuple val(meta.group), path("data_timeline.txt", optional: true), emit: ch_timeline
 
     script:
     def sample_reg_arg            = sample_registrations    ? "--sample_registrations ${sample_registrations}"         : ""
@@ -51,10 +51,6 @@ process GENERATE_TIMELINE {
 
     stub:
     """
-    touch data_timeline_surgery.txt
-    touch data_timeline_treatment.txt
-    touch data_timeline_status.txt
-    touch data_timeline_specimen.txt
-    touch data_timeline_lab_test.txt
+    touch data_timeline.txt
     """
 }

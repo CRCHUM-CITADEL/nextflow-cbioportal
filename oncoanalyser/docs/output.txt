@@ -95,6 +95,32 @@ Clinical mode outputs are saved in <outdir>/<group>/:
   meta_clinical_patient.txt    Metadata for patient attributes
   meta_clinical_sample.txt     Metadata for sample attributes
 
+  Timeline (generated when source clinical data is available):
+
+  File                         Description
+  ---------------------------  ----------------------------
+  data_timeline.txt            Combined timeline with all event types
+  meta_timeline.txt            Metadata for the timeline file
+
+  All event types are merged into a single file, distinguished by the
+  EVENT_TYPE column: SURGERY, TREATMENT, STATUS, SPECIMEN, LAB_TEST.
+
+  Common columns: PATIENT_ID, START_DATE, STOP_DATE, EVENT_TYPE.
+  Event-specific columns (alphabetical): AGENT, RESULT,
+  SAMPLE_TYPE, SITE, SITE_LABEL, SPECIMEN_SITE, SPECIMEN_SITE_LABEL,
+  SPECIMEN_TISSUE_SOURCE, SPECIMEN_TISSUE_SOURCE_CODE, SPECIMEN_TYPE,
+  STATUS, SUBTYPE, TEST, TREATMENT_INTENT, TREATMENT_INTENT_CODE,
+  TREATMENT_TYPE. Columns not applicable to a given EVENT_TYPE are
+  empty.
+
+  START_DATE defaults to 0 (diagnosis day) when the source date is
+  missing.
+
+  MOHCCN code columns (SITE_LABEL, TREATMENT_INTENT_CODE,
+  SPECIMEN_TISSUE_SOURCE_CODE) are populated when the corresponding
+  mapping CSVs are provided via params. Missing mappings produce empty
+  values.
+
 
 Pipeline info
 -------------

@@ -3,16 +3,12 @@
         "content": [
             "data_clinical_sample.txt:md5,1baca69cffbc31e60e7587702e453d34",
             "data_clinical_patient.txt:md5,fe3558717937303322311c9862842c6c",
-            "data_timeline_surgery.txt:md5,81fb064841907373fa3c77f6f13aeda5",
-            "data_timeline_treatment.txt:md5,fa5bd4293715890d8716ee7b178e2361",
-            "data_timeline_status.txt:md5,c063b44bb36fd4043ca26bc2cd446f3e",
-            "data_timeline_specimen.txt:md5,dcfb72815df0af71566a96bad6f77004",
-            "data_timeline_lab_test.txt:md5,ef8dbc0e395bfe38d5c591c848b17d28"
+            "data_timeline.txt:md5,876f6dabd5feb15e1ee78c745e54869c"
         ],
-        "timestamp": "2026-07-31T16:48:57.876058758",
+        "timestamp": "2026-08-03T11:01:33.667904837",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.6"
+            "nextflow": "25.10.4"
         }
     }
 }

@@ -76,28 +76,14 @@ nextflow_workflow {
             assert path("${params.outdir}/TEST/meta_clinical_sample.txt").exists()
             assert path("${params.outdir}/TEST/meta_clinical_patient.txt").exists()
 
-            // Verify timeline data files are created
-            assert path("${params.outdir}/TEST/data_timeline_surgery.txt").exists()
-            assert path("${params.outdir}/TEST/data_timeline_treatment.txt").exists()
-            assert path("${params.outdir}/TEST/data_timeline_status.txt").exists()
-            assert path("${params.outdir}/TEST/data_timeline_specimen.txt").exists()
-            assert path("${params.outdir}/TEST/data_timeline_lab_test.txt").exists()
-
-            // Verify timeline meta files are created
-            assert path("${params.outdir}/TEST/meta_timeline_surgery.txt").exists()
-            assert path("${params.outdir}/TEST/meta_timeline_treatment.txt").exists()
-            assert path("${params.outdir}/TEST/meta_timeline_status.txt").exists()
-            assert path("${params.outdir}/TEST/meta_timeline_specimen.txt").exists()
-            assert path("${params.outdir}/TEST/meta_timeline_lab_test.txt").exists()
+            // Verify combined timeline data and meta files are created
+            assert path("${params.outdir}/TEST/data_timeline.txt").exists()
+            assert path("${params.outdir}/TEST/meta_timeline.txt").exists()
 
             snapshot(
                 path("${params.outdir}/TEST/data_clinical_sample.txt"),
                 path("${params.outdir}/TEST/data_clinical_patient.txt"),
-                path("${params.outdir}/TEST/data_timeline_surgery.txt"),
-                path("${params.outdir}/TEST/data_timeline_treatment.txt"),
-                path("${params.outdir}/TEST/data_timeline_status.txt"),
-                path("${params.outdir}/TEST/data_timeline_specimen.txt"),
-                path("${params.outdir}/TEST/data_timeline_lab_test.txt")
+                path("${params.outdir}/TEST/data_timeline.txt")
             ).match()
         }
     }
@@ -178,14 +164,10 @@ nextflow_workflow {
             def sample_id = sample_lines[1].split('\t')[1]
             assert sample_id == 'T1-T' : "Expected SAMPLE_ID=T1-T (remapped), got: ${sample_id}"
 
-            // Timeline files should also be filtered to T1 only
-            def tl_surgery_lines = path("${params.outdir}/TEST/data_timeline_surgery.txt").readLines()
+            // Timeline file should also be filtered to T1 only
+            def tl_lines = path("${params.outdir}/TEST/data_timeline.txt").readLines()
                 .findAll { !it.startsWith('PATIENT_ID') && it.trim() }
-            assert tl_surgery_lines.every { it.startsWith('T1') } : "Surgery timeline contains non-T1 rows: ${tl_surgery_lines}"
-
-            def tl_specimen_lines = path("${params.outdir}/TEST/data_timeline_specimen.txt").readLines()
-                .findAll { !it.startsWith('PATIENT_ID') && it.trim() }
-            assert tl_specimen_lines.every { it.startsWith('T1') } : "Specimen timeline contains non-T1 rows: ${tl_specimen_lines}"
+            assert tl_lines.every { it.startsWith('T1') } : "Timeline contains non-T1 rows: ${tl_lines}"
         }
     }
 }

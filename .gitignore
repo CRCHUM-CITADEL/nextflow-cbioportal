@@ -34,3 +34,7 @@ util_*.txt
 modified_code
 bin/new/
 test.*
+
+ampliseq/containers/python-ampliseq.sif
+ampliseq/test_results/
+oncoanalyser/pancan_pcawg_2020.tar.gz

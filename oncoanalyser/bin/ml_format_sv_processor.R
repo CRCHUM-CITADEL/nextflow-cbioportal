@@ -13,17 +13,17 @@ library(readxl)
 #' @param min_support_reads Minimum combined read count to trust the fusion
 #' @export
 process_fusion_data <- function(input_file, output_file, known_fusions, min_support_reads = 1) {
-  
+
   message("Reading raw fusion data...")
   data <- read_tsv(input_file, show_col_types = FALSE)
-  
+
   # 1. Capture ALL unique samples to prevent dropping patients
   all_samples <- tibble(Sample_Id = unique(data$Sample_Id))
   initial_sample_count <- nrow(all_samples)
-  
+
   # 2. Strict QC and Database Filtering
   message(sprintf("Filtering for RNA support and >= %d supporting reads...", min_support_reads))
-  
+
   valid_fusions_data <- data %>%
     mutate(Fusion = paste0(Site1_Hugo_Symbol, "-", Site2_Hugo_Symbol)) %>%
     # Convert read counts to numeric and handle potential NAs
@@ -39,28 +39,28 @@ process_fusion_data <- function(input_file, output_file, known_fusions, min_supp
     filter(Fusion %in% known_fusions) %>%
     mutate(Present = 1) %>%
     distinct(Sample_Id, Fusion, Present)
-  
+
   active_fusions_count <- length(unique(valid_fusions_data$Fusion))
-  
+
   # 3. Vectorized Matrix Creation
   message("Pivoting to feature matrix...")
   fusion_matrix <- valid_fusions_data %>%
     pivot_wider(names_from = Fusion, values_from = Present, values_fill = 0)
-  
+
   # 4. Guarantee all original samples are present
   final_matrix <- all_samples %>%
     left_join(fusion_matrix, by = "Sample_Id") %>%
     rename(sample_id = Sample_Id) # Standardize to sample_id for easier merging downstream
-  
+
   # Clean up sample names to match other modalities
   final_matrix$sample_id <- gsub("\\.", "-", final_matrix$sample_id)
-  
+
   # Convert NAs to 0
   final_matrix[is.na(final_matrix)] <- 0
-  
+
   # Save the optimized matrix
   write_tsv(final_matrix, output_file)
-  
+
   # Summary
   message("\n=== Fusion Processing Summary ===")
   message(sprintf("- Total samples processed: %d", initial_sample_count))
@@ -83,8 +83,8 @@ if (length(args) == 0) {
 }
 
 input_file <- args[1]
-known_fusions_file <- args[2] 
-cosmic_data_file <- args[3] 
+known_fusions_file <- args[2]
+cosmic_data_file <- args[3]
 # Allow user to override the read threshold via command line, default to 1
 min_reads <- if (length(args) >= 4) as.numeric(args[4]) else 1
 

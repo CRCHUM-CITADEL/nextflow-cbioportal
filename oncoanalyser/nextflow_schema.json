@@ -166,7 +166,7 @@
             "type": "string",
             "description": "Path to sample_registrations.csv for template clinical output (used when no clinical_samplesheet is provided)."
         },
-"study_id": {
+        "study_id": {
             "type": "string",
             "description": "Study identifier used for meta_study.txt name and the top-level output folder for all files."
         },

@@ -198,16 +198,16 @@ The test suite includes 8 tests: 1 pipeline-level clinical test and 7 subworkflo
 ./nf-test test tests/subworkflows/genomic_cnv.nf.test --profile test,apptainer --update-snapshot
 ```
 
-| Test | Description | Time |
-|------|-------------|------|
-| `clinical.nf.test` | Pipeline-level clinical mode | ~15s |
-| `clinical_aggregate.nf.test` | Clinical file aggregation | ~10s |
-| `genomic_cnv.nf.test` | CNV SEG + long files from DRAGEN VCF | ~10s |
-| `genomic_sv.nf.test` | SV files from fusion_candidates.final | ~10s |
-| `genomic_expression.nf.test` | TPM from Sailfish quant.genes.sf | ~10s |
-| `genomic_aggregate_output.nf.test` | Merged genomic files + meta/case-lists | ~10s |
-| `genomic_ml.nf.test` | ML tables (stub-run) | ~10s |
-| `genomic_mutations.nf.test` | VEP + PCGR + vcf2maf chain | ~200s |
+| Test                               | Description                            | Time  |
+| ---------------------------------- | -------------------------------------- | ----- |
+| `clinical.nf.test`                 | Pipeline-level clinical mode           | ~15s  |
+| `clinical_aggregate.nf.test`       | Clinical file aggregation              | ~10s  |
+| `genomic_cnv.nf.test`              | CNV SEG + long files from DRAGEN VCF   | ~10s  |
+| `genomic_sv.nf.test`               | SV files from fusion_candidates.final  | ~10s  |
+| `genomic_expression.nf.test`       | TPM from Sailfish quant.genes.sf       | ~10s  |
+| `genomic_aggregate_output.nf.test` | Merged genomic files + meta/case-lists | ~10s  |
+| `genomic_ml.nf.test`               | ML tables (stub-run)                   | ~10s  |
+| `genomic_mutations.nf.test`        | VEP + PCGR + vcf2maf chain             | ~200s |
 
 ### Other functionalities:
 

@@ -50,7 +50,7 @@ workflow GENOMIC {
         fasta                   // path — GRCh38 reference FASTA (for vcf2maf)
         cosmic_data             // channel<path> — COSMIC/ChimerKB fusion data for ML step
         chimer_data
-        
+
     main:
 
         ch_versions = channel.empty()

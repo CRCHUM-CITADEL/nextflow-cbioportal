@@ -1,7 +1,7 @@
 process INTEGRATE_RNA_VARIANTS {
     publishDir { "${params.outdir}/${dna_meta.group}/${dna_meta.subject}" }, mode: 'copy'
     tag { subject_id }
-    
+
 
     label "process_medium_memory"
     container params.container_r

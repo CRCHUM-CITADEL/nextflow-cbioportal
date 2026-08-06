@@ -2,11 +2,11 @@
 
 Monorepo of three independent Nextflow DSL2 pipelines that transform sequencing/clinical data into [cBioPortal](https://www.cbioportal.org/) format. All target HPC (SLURM + Apptainer — no Docker, no sudo).
 
-| Pipeline | Input | Purpose |
-|---|---|---|
-| `ampliseq/` | Ampliseq VCFs + TSV exports | Mutations, CNAs, SVs, clinical → cBioPortal |
-| `oncoanalyser/` | Oncoanalyser/DRAGEN output (WGS/WTS) + clinical CSVs | Genomic + clinical + ML → cBioPortal |
-| `dragen/` | DRAGEN somatic/germline + clinical CSVs | Sister pipeline to oncoanalyser |
+| Pipeline        | Input                                                | Purpose                                     |
+| --------------- | ---------------------------------------------------- | ------------------------------------------- |
+| `ampliseq/`     | Ampliseq VCFs + TSV exports                          | Mutations, CNAs, SVs, clinical → cBioPortal |
+| `oncoanalyser/` | Oncoanalyser/DRAGEN output (WGS/WTS) + clinical CSVs | Genomic + clinical + ML → cBioPortal        |
+| `dragen/`       | DRAGEN somatic/germline + clinical CSVs              | Sister pipeline to oncoanalyser             |
 
 Each pipeline is self-contained with its own `main.nf`, `nextflow.config`, `modules/`, `subworkflows/`, `bin/`, and `tests/`. Consult pipeline-specific `CLAUDE.md` when working inside a subdirectory.
 

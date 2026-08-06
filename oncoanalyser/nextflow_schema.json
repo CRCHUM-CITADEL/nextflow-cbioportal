@@ -197,6 +197,25 @@
         "id_metadata": {
             "type": "string",
             "description": "Path to COSMIC ID (indel) metadata TSV."
+        },
+        "cancer_type": {
+            "type": "string",
+            "description": "Cancer type abbreviation for cBioPortal (e.g. mixed, lung, brca)."
+        },
+        "mohccn_primary_site_map": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to MOHCCN primary site mapping CSV (ICD-O topography codes)."
+        },
+        "mohccn_specimen_tissue_source_map": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to MOHCCN specimen tissue source mapping CSV."
+        },
+        "mohccn_treatment_intent_map": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to MOHCCN treatment intent mapping CSV."
         }
     }
 }

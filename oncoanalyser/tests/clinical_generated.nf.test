@@ -29,10 +29,10 @@ nextflow_pipeline {
             assert path("${params.outdir}/TEST/meta_clinical_sample.txt").exists()
 
             // Output files are identical to those produced by the hand-written samplesheet
-            assert path("${params.outdir}/TEST/data_clinical_patient.txt").md5 == "64727bef85879630cfa76d27d5eb6d35"
-            assert path("${params.outdir}/TEST/data_clinical_sample.txt").md5  == "560a541b6e7c732fc80c16d975ab0b29"
-            assert path("${params.outdir}/TEST/meta_clinical_patient.txt").md5 == "a50f23209b906b23ebcdd2f226f03049"
-            assert path("${params.outdir}/TEST/meta_clinical_sample.txt").md5  == "9d38f37b3d957eb384558b485ca41298"
+            assert path("${params.outdir}/TEST/data_clinical_patient.txt").md5 == "fe3558717937303322311c9862842c6c"
+            assert path("${params.outdir}/TEST/data_clinical_sample.txt").md5  == "26458549311a601bfaa480ea2adc70f7"
+            assert path("${params.outdir}/TEST/meta_clinical_patient.txt").md5 == "db4e12d00e844523c08f6b37fd57865f"
+            assert path("${params.outdir}/TEST/meta_clinical_sample.txt").md5  == "28084eb9555ebab829df83fe97a1cdbe"
         }
     }
 }

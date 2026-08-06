@@ -118,7 +118,7 @@ reg  <- read.csv(opt$sample_registrations, header=TRUE)
 link <- reg[reg$tumour_normal_designation == "Tumour" &
             reg$sample_type == "Total DNA" &
             reg$specimen_tissue_source == "Solid tissue" &
-            grepl("-\\d+[DR]T$", reg$submitter_sample_id), ]
+            grepl("-\\d+[A-Z]*[DR]T$", reg$submitter_sample_id), ]
 link$patient <- link$submitter_donor_id
 link$sample  <- link$submitter_sample_id
 # Rename sample_type to analyte_type to avoid column name conflict downstream

@@ -25,7 +25,7 @@ Columns are the union of all event types; columns not applicable to a given EVEN
 
 Key behaviors:
 - **START_DATE defaults to 0 when missing** — any NA/empty date becomes day 0 (diagnosis day)
-- Filters patients from `sample_registrations` (Tumour + Total DNA + Solid tissue + regex `-\d+[DR]T$`)
+- Filters patients from `sample_registrations` (Tumour + Total DNA + Solid tissue + regex `-\d+[A-Z]*[DR]T$`)
 - When `genomic_subjects` TSV is provided (both mode), restricts timeline output to genomic subjects only
 - Nearest follow-up visit determines specimen SAMPLE_TYPE (Primary / Recurrence / Metastasis)
 

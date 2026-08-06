@@ -110,7 +110,7 @@ if (!is.null(opt$sample_registrations)) {
     reg$tumour_normal_designation == "Tumour" &
     reg$sample_type              == "Total DNA" &
     reg$specimen_tissue_source   == "Solid tissue" &
-    grepl("-\\d+[DR]T$", reg$submitter_sample_id), ]
+    grepl("-\\d+[A-Z]*[DR]T$", reg$submitter_sample_id), ]
   valid_patients <- unique(tumour_reg$submitter_donor_id)
   # Deduplicate by specimen_id — multiple sequencing types (DNA, RNA) per specimen produce
   # duplicate rows; take the first entry so the named-vector lookup stays unambiguous.

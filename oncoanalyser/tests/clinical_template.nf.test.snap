@@ -9,14 +9,14 @@
                 "pipeline_info/software_versions.yml"
             ],
             [
-                "data_clinical_sample.txt:md5,16747c9fe539aadafbf3d26245cc67ee",
+                "data_clinical_sample.txt:md5,ebf79e0e5e7bf3be3eda92d0baf82e60",
                 "meta_clinical_sample.txt:md5,7fb57611daa466db10e82d9cbe17537d"
             ]
         ],
-        "timestamp": "2026-07-21T08:55:33.298056547",
+        "timestamp": "2026-08-06T10:14:46.099906143",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "25.10.4"
+            "nextflow": "26.04.6"
         }
     }
 }

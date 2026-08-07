@@ -40,62 +40,70 @@ nextflow_workflow {
                 // SEG files: T1 from cache, T2 from new processing
                 input[0] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
-                        file('${projectDir}/assets/test_data/precomputed/T1_data_cna_hg38.seg')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT_data_cna_hg38.seg')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'cnv'],
-                        file('${projectDir}/assets/test_data/precomputed/T2_data_cna_hg38.seg')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T_data_cna_hg38.seg')
                     ]
                 )
 
                 // CNA long files
                 input[1] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
-                        file('${projectDir}/assets/test_data/precomputed/T1_data_cna_long.txt')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT_data_cna_long.txt')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'cnv'],
-                        file('${projectDir}/assets/test_data/precomputed/T2_data_cna_long.txt')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T_data_cna_long.txt')
                     ]
                 )
 
                 // SV files
                 input[2] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sv'],
-                        file('${projectDir}/assets/test_data/precomputed/T1.data_sv.txt')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT.data_sv.txt')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sv'],
-                        file('${projectDir}/assets/test_data/precomputed/T2.data_sv.txt')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T.data_sv.txt')
                     ]
                 )
 
                 // TPM files
                 input[3] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'expression'],
-                        file('${projectDir}/assets/test_data/precomputed/T1.tpm.tsv')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'expression'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT.tpm.tsv')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'expression'],
-                        file('${projectDir}/assets/test_data/precomputed/T2.tpm.tsv')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'expression'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T.tpm.tsv')
                     ]
                 )
 
                 // MAF files
                 input[4] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation'],
-                        file('${projectDir}/assets/test_data/precomputed/T1.somatic_rna_germline.maf')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'mutation'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT.somatic_rna_germline.maf')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'mutation'],
-                        file('${projectDir}/assets/test_data/precomputed/T2.somatic_rna_germline.maf')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'mutation'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T.somatic_rna_germline.maf')
                     ]
                 )
+
+                // Signature channels (empty — not tested here)
+                input[5]  = Channel.empty()  // sigs_results
+                input[6]  = Channel.empty()  // sigs_counts_results
+                input[7]  = Channel.empty()  // sigs_dbs_results
+                input[8]  = Channel.empty()  // sigs_counts_dbs_results
+                input[9]  = Channel.empty()  // sigs_id_results
+                input[10] = Channel.empty()  // sigs_counts_id_results
                 """
             }
         }
@@ -103,29 +111,29 @@ nextflow_workflow {
         then {
             assert workflow.success
 
-            // Merged SEG file should contain both T1 and T2 samples
+            // Merged SEG file should contain both T1-T and T2-T samples
             assert path("${params.outdir}/TEST/data_cna_hg38.seg").exists()
             def seg_lines = path("${params.outdir}/TEST/data_cna_hg38.seg").readLines()
-            assert seg_lines.any { it.startsWith('T1') }
-            assert seg_lines.any { it.startsWith('T2') }
+            assert seg_lines.any { it.startsWith('T1-1DT') }
+            assert seg_lines.any { it.startsWith('T2-T') }
 
             // Merged CNA long file should contain both samples
             assert path("${params.outdir}/TEST/data_cna_long.txt").exists()
             def long_content = path("${params.outdir}/TEST/data_cna_long.txt").text
-            assert long_content.contains('T1')
-            assert long_content.contains('T2')
+            assert long_content.contains('T1-1DT')
+            assert long_content.contains('T2-T')
 
             // Merged SV file should contain both samples
             assert path("${params.outdir}/TEST/data_sv.txt").exists()
             def sv_content = path("${params.outdir}/TEST/data_sv.txt").text
-            assert sv_content.contains('T1')
-            assert sv_content.contains('T2')
+            assert sv_content.contains('T1-1DT')
+            assert sv_content.contains('T2-T')
 
             // Merged mutations file should contain both samples
             assert path("${params.outdir}/TEST/data_mutations_dna_rna_germline.txt").exists()
             def mut_content = path("${params.outdir}/TEST/data_mutations_dna_rna_germline.txt").text
-            assert mut_content.contains('T1')
-            assert mut_content.contains('T2')
+            assert mut_content.contains('T1-1DT')
+            assert mut_content.contains('T2-T')
 
             // Expression file should contain both samples
             assert path("${params.outdir}/TEST/data_expression.txt").exists()
@@ -149,54 +157,62 @@ nextflow_workflow {
 
                 input[0] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
-                        file('${projectDir}/assets/test_data/precomputed/T1_data_cna_hg38.seg')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT_data_cna_hg38.seg')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'cnv'],
-                        file('${projectDir}/assets/test_data/precomputed/T2_data_cna_hg38.seg')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T_data_cna_hg38.seg')
                     ]
                 )
                 input[1] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
-                        file('${projectDir}/assets/test_data/precomputed/T1_data_cna_long.txt')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT_data_cna_long.txt')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'cnv'],
-                        file('${projectDir}/assets/test_data/precomputed/T2_data_cna_long.txt')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T_data_cna_long.txt')
                     ]
                 )
                 input[2] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sv'],
-                        file('${projectDir}/assets/test_data/precomputed/T1.data_sv.txt')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT.data_sv.txt')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sv'],
-                        file('${projectDir}/assets/test_data/precomputed/T2.data_sv.txt')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T.data_sv.txt')
                     ]
                 )
                 input[3] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'expression'],
-                        file('${projectDir}/assets/test_data/precomputed/T1.tpm.tsv')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'expression'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT.tpm.tsv')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'expression'],
-                        file('${projectDir}/assets/test_data/precomputed/T2.tpm.tsv')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'expression'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T.tpm.tsv')
                     ]
                 )
                 input[4] = Channel.of(
                     [
-                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation'],
-                        file('${projectDir}/assets/test_data/precomputed/T1.somatic_rna_germline.maf')
+                        [group: 'TEST', subject: 'T1', sample: 'T1-1DT', pipeline: 'mutation'],
+                        file('${projectDir}/assets/test_data/precomputed/T1-1DT.somatic_rna_germline.maf')
                     ],
                     [
-                        [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'mutation'],
-                        file('${projectDir}/assets/test_data/precomputed/T2.somatic_rna_germline.maf')
+                        [group: 'TEST', subject: 'T2', sample: 'T2-T', pipeline: 'mutation'],
+                        file('${projectDir}/assets/test_data/precomputed/T2-T.somatic_rna_germline.maf')
                     ]
                 )
+
+                // Signature channels (empty — not tested here)
+                input[5]  = Channel.empty()  // sigs_results
+                input[6]  = Channel.empty()  // sigs_counts_results
+                input[7]  = Channel.empty()  // sigs_dbs_results
+                input[8]  = Channel.empty()  // sigs_counts_dbs_results
+                input[9]  = Channel.empty()  // sigs_id_results
+                input[10] = Channel.empty()  // sigs_counts_id_results
                 """
             }
         }
@@ -206,14 +222,14 @@ nextflow_workflow {
 
             // Verify merged outputs contain both subjects
             def seg_lines = path("${params.outdir}/TEST/data_cna_hg38.seg").readLines()
-            assert seg_lines.findAll { it.startsWith('T1') }.size() > 0
-            assert seg_lines.findAll { it.startsWith('T2') }.size() > 0
+            assert seg_lines.findAll { it.startsWith('T1-1DT') }.size() > 0
+            assert seg_lines.findAll { it.startsWith('T2-T') }.size() > 0
 
             // Case lists should include both samples
             assert path("${params.outdir}/TEST/case_lists/cases_cnv.txt").exists()
             def cnv_case = path("${params.outdir}/TEST/case_lists/cases_cnv.txt").text
-            assert cnv_case.contains('T1')
-            assert cnv_case.contains('T2')
+            assert cnv_case.contains('T1-1DT')
+            assert cnv_case.contains('T2-T')
         }
     }
 }

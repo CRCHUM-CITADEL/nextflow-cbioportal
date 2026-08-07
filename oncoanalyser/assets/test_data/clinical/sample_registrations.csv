@@ -1,5 +1,6 @@
 program_id,sample_type,specimen_tissue_source,specimen_type,submitter_donor_id,submitter_sample_id,submitter_specimen_id,tumour_normal_designation
 TEST,Total DNA,Solid tissue,Primary tumour,T1,T1-1DT,T1-SP,Tumour
+TEST,Total DNA,Solid tissue,Primary tumour,T1,T1-2DT,T1-SP2,Tumour
 TEST,Total DNA,Whole blood,Normal,T1,T1-N,T1-SP-N,Normal
 TEST,Total RNA,Solid tissue,Primary tumour,T1,T1-1RT,T1-SP,Tumour
 TEST,Total DNA,Solid tissue,Primary tumour,T2,T2-2FDT,T2-SP,Tumour

@@ -101,8 +101,8 @@ workflow GENOMIC {
                     files.add([meta + [pipeline: 'expression'], tpm])
                 }
 
-                // Mutation file (uses subject for filename)
-                def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf", checkIfExists: false)
+                // Mutation file
+                def maf = file("${baseDir}/${meta.sample}.somatic_rna_germline.maf", checkIfExists: false)
                 if (maf.exists()) {
                     files.add([meta + [pipeline: 'mutation'], maf])
                 }
@@ -150,7 +150,7 @@ workflow GENOMIC {
                 def long_cnv = file("${baseDir}/${meta.sample}_data_cna_long.txt", checkIfExists: false)
                 def sv = file("${baseDir}/${meta.sample}.data_sv.txt", checkIfExists: false)
                 def tpm = file("${baseDir}/${meta.sample}.tpm.tsv", checkIfExists: false)
-                def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf", checkIfExists: false)
+                def maf = file("${baseDir}/${meta.sample}.somatic_rna_germline.maf", checkIfExists: false)
                 return seg.exists() && long_cnv.exists() && sv.exists() && tpm.exists() && maf.exists()
             }
             .map { meta -> meta.subject }
@@ -172,12 +172,12 @@ workflow GENOMIC {
                 log.info "Skipping already-processed subject: ${meta.subject}"
             }
 
-        // Error if all samples already processed
+        // Warn if all samples already processed
         ch_samples_to_run
             .collect()
             .filter { list ->
                 if (list.isEmpty()) {
-                    error "All subjects in samplesheet already processed. Nothing to run."
+                    log.warn "All subjects in samplesheet already processed. Skipping genomic processing."
                 }
                 return true
             }

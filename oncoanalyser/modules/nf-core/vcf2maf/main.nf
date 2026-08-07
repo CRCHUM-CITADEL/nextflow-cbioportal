@@ -28,7 +28,7 @@ process VCF2MAF {
     def VERSION       = '1.6.22' // WARN: Version information not provided by tool on CLI. Please update this string when bumping container versions.
     """
     if [ "$vep_cache" ]; then
-        VEP_CMD="--vep-path ${params.vep_path}" 
+        VEP_CMD="--vep-path ${params.vep_path}"
         VEP_VERSION=\$(echo -e "\\n    ensemblvep: \$( echo \$(vep --help 2>&1) | sed 's/^.*Versions:.*ensembl-vep : //;s/ .*\$//')")
     else
         VEP_CMD=""
@@ -40,27 +40,27 @@ process VCF2MAF {
     # Handle compressed VCF files
     if [[ $vcf == *.gz ]]; then
         tmp=\$(mktemp --suffix=.vcf)
-        rm -f "\$tmp" 
+        rm -f "\$tmp"
         gunzip -c "$vcf" > "\$tmp"
         INPUT_VCF="\$tmp"
     else
         INPUT_VCF="$vcf"
     fi
-    
+
     cat \$INPUT_VCF | grep "#" > tmp.${prefix}.somatic.vcf
     cat \$INPUT_VCF | grep PASS >> tmp.${prefix}.somatic.vcf
 
     ## TODO: is DN always first?
     TMP_NORMAL_ID=\$(grep "^#CHROM" \$INPUT_VCF | awk '{print \$10}')
     TMP_TUMOR_ID=\$(grep "^#CHROM" \$INPUT_VCF | awk '{print \$11}')
-    
+
     echo "normal then tumor ids:"
     echo \$TMP_NORMAL_ID
     echo \$TMP_TUMOR_ID
 
     echo "where is vep?"
     echo \$VEP_CMD
-    
+
     vcf2maf.pl \\
         $args \\
         --tumor-id \$TMP_TUMOR_ID \\

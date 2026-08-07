@@ -184,8 +184,13 @@ if (!is.null(opt$genomic_subjects)) {
   genomic <- read.table(opt$genomic_subjects, header=TRUE, sep="\t", stringsAsFactors=FALSE)
   m <- m[m$patient %in% genomic$subject_id, ]
   if (nrow(m) == 0) stop("Error: No clinical subjects match the genomic subjects file.")
-  sample_map <- setNames(genomic$sample_id, genomic$subject_id)
-  m$sample   <- sample_map[m$patient]
+  # Only remap sample IDs for patients with a single clinical sample.
+  # Multi-sample patients keep their clinical sample IDs to avoid duplicate SAMPLE_IDs.
+  sample_map    <- setNames(genomic$sample_id, genomic$subject_id)
+  sample_counts <- table(m$patient)
+  single        <- names(sample_counts[sample_counts == 1])
+  idx           <- m$patient %in% single
+  m$sample[idx] <- sample_map[m$patient[idx]]
 }
 
 # ── Treatments (primary treatment only, optional) ─────────────────────────────

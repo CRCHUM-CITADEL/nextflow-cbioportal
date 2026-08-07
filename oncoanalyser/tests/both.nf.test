@@ -1,0 +1,75 @@
+nextflow_pipeline {
+
+    name "Test both mode pipeline"
+    script "../main.nf"
+    tag "pipeline"
+    tag "both"
+
+    test("both mode — genomic + clinical combined output") {
+
+        config "tests/nextflow_both.config"
+
+        setup {
+            // Pre-stage precomputed genomic output files so the incremental processing
+            // detects them and skips actual genomic processing (avoids VEP/PCGR downloads).
+            def precomputed = "${projectDir}/assets/test_data/precomputed"
+            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
+                def dir = new File("${outputDir}/TEST/${subject}")
+                dir.mkdirs()
+                def fixtures = [
+                    "${sample}_data_cna_hg38.seg",
+                    "${sample}_data_cna_long.txt",
+                    "${sample}.data_sv.txt",
+                    "${sample}.tpm.tsv",
+                    "${sample}.somatic_rna_germline.maf",
+                    "${sample}.isofox_fusion.data_sv.txt",
+                ]
+                fixtures.each { name ->
+                    java.nio.file.Files.copy(
+                        new File("${precomputed}/${name}").toPath(),
+                        new File("${dir}/${name}").toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                    )
+                }
+            }
+        }
+
+        when {
+            params {
+                mode = 'both'
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            def stable_path = getAllFilesFromDir(params.outdir, ignoreFile: 'tests/.nftignore')
+
+            println "Test: Stable names: ${stable_name}"
+            println "Test: Output dir: ${params.outdir}"
+
+            // Verify linking file content — should have both T1 and T2
+            def linking = path("${params.outdir}/TEST/util_linking_file.txt").readLines()
+            def linking_subjects = linking.findAll { !it.startsWith('subject_id') }.collect { it.split('\t')[0] }.sort()
+
+            // Clinical sample file — T1 has 2 samples (multi-sample), T2 has 1
+            def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
+                .findAll { !it.startsWith('#') && it.trim() }
+            // sample_lines[0] is column header, rest are data rows
+            def data_rows = sample_lines.drop(1)
+
+            assertAll(
+                { assert workflow.success },
+                { assert linking_subjects == ['T1', 'T2'] : "Linking file should contain T1 and T2, got: ${linking_subjects}" },
+                { assert data_rows.size() == 3 : "Expected 3 sample rows (T1-1DT, T1-2DT, T2), got ${data_rows.size()}" },
+                { assert data_rows.count { it.startsWith('T1') } == 2 : "Expected 2 T1 rows (multi-sample)" },
+                { assert data_rows.count { it.startsWith('T2') } == 1 : "Expected 1 T2 row" },
+                { assert snapshot(
+                    workflow.trace.succeeded().size(),
+                    stable_name,
+                    stable_path
+                ).match() }
+            )
+        }
+    }
+}

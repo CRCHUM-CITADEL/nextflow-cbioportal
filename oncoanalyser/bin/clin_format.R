@@ -119,6 +119,10 @@ link <- reg[reg$tumour_normal_designation == "Tumour" &
             reg$sample_type == "Total DNA" &
             reg$specimen_tissue_source == "Solid tissue" &
             grepl("-\\d+[A-Z]*[DR]T$", reg$submitter_sample_id), ]
+# Deduplicate: when multiple samples share the same patient + specimen
+# (e.g. -1DT and -2DT for the same biopsy), keep the first by sample ID.
+link <- link[order(link$submitter_sample_id), ]
+link <- link[!duplicated(link[, c("submitter_donor_id", "submitter_specimen_id")]), ]
 link$patient <- link$submitter_donor_id
 link$sample  <- link$submitter_sample_id
 # Rename sample_type to analyte_type to avoid column name conflict downstream

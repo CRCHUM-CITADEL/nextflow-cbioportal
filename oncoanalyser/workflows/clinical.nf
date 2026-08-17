@@ -49,6 +49,9 @@ workflow CLINICAL {
             ch_linking = ch_linking_path
                 .splitCsv(header: true, sep: ',')
                 .filter { row -> row.tumour_normal_designation == "Tumour" && row.sample_type == "Total DNA" }
+                .toSortedList { a, b -> a.submitter_sample_id <=> b.submitter_sample_id }
+                .flatMap()
+                .unique { [it.submitter_donor_id, it.submitter_specimen_id] }
                 .map { row -> [subject: row.submitter_donor_id, sample: row.submitter_sample_id] }
 
             // Build newline-separated "subject\tsample" lines

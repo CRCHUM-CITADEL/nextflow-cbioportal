@@ -159,10 +159,10 @@ nextflow_workflow {
 
             def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
                 .findAll { !it.startsWith('#') && it.trim() }
-            // T1 has 2 DNA tumour samples (T1-1DT, T1-2DT); multi-sample patients keep clinical IDs
-            assert sample_lines.size() == 3 : "Expected column header + 2 sample data rows (T1 only), got ${sample_lines.size()} non-comment lines"
+            // T1 has 2 DNA tumour samples (T1-1DT, T1-2DT) sharing the same specimen;
+            // dedup keeps only T1-1DT (lowest DT number)
+            assert sample_lines.size() == 2 : "Expected column header + 1 sample data row (T1 only), got ${sample_lines.size()} non-comment lines"
             assert sample_lines[1].startsWith('T1') : "Expected T1 data row, got: ${sample_lines[1]}"
-            assert sample_lines[2].startsWith('T1') : "Expected T1 data row, got: ${sample_lines[2]}"
 
             // Timeline file should also be filtered to T1 only
             def tl_lines = path("${params.outdir}/TEST/data_timeline.txt").readLines()

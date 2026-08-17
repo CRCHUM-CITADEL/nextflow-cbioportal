@@ -52,7 +52,7 @@ nextflow_pipeline {
             def linking = path("${params.outdir}/TEST/util_linking_file.txt").readLines()
             def linking_subjects = linking.findAll { !it.startsWith('subject_id') }.collect { it.split('\t')[0] }.sort()
 
-            // Clinical sample file — T1 has 2 samples (multi-sample), T2 has 1
+            // Clinical sample file — T1 deduped to 1 sample (T1-1DT), T2 has 1
             def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
                 .findAll { !it.startsWith('#') && it.trim() }
             // sample_lines[0] is column header, rest are data rows
@@ -61,8 +61,8 @@ nextflow_pipeline {
             assertAll(
                 { assert workflow.success },
                 { assert linking_subjects == ['T1', 'T2'] : "Linking file should contain T1 and T2, got: ${linking_subjects}" },
-                { assert data_rows.size() == 3 : "Expected 3 sample rows (T1-1DT, T1-2DT, T2), got ${data_rows.size()}" },
-                { assert data_rows.count { it.startsWith('T1') } == 2 : "Expected 2 T1 rows (multi-sample)" },
+                { assert data_rows.size() == 2 : "Expected 2 sample rows (T1-1DT, T2), got ${data_rows.size()}" },
+                { assert data_rows.count { it.startsWith('T1') } == 1 : "Expected 1 T1 row (deduped)" },
                 { assert data_rows.count { it.startsWith('T2') } == 1 : "Expected 1 T2 row" },
                 { assert snapshot(
                     workflow.trace.succeeded().size(),

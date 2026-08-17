@@ -18,26 +18,30 @@ A helper script can automatically generate the samplesheet from a directory of s
 python3 bin/generate_samplesheet.py /path/to/sample_data -o samplesheet.csv
 ```
 
-The input directory can contain either cohort subdirectories (each with per-sample folders) or sample folders directly. Each sample folder must contain `*-basespace-pisces.final.vcf.gz` and `analysis_*_export.tsv`. The cohort subdirectory name becomes the `group` column, the `sample_id` is extracted from the VCF filename prefix (before `-basespace-`), and the `subject_id` is derived from the sample_id (part before the first `_`). Samples missing required files are skipped with warnings.
+The input directory can contain either cohort subdirectories (each with per-sample folders) or sample folders directly. Each sample folder must contain `*-basespace-pisces.final.vcf.gz` and `analysis_*_export.tsv`. The cohort subdirectory name becomes the `group` column, the `sample_id` is extracted from the VCF filename prefix (before `-basespace-`), and the `subject_id` is derived from the sample*id (part before the first `*`). Samples missing required files are skipped with warnings.
 
 #### Samplesheet format
 
 **Samplesheet** (`samplesheet.csv`):
+
 ```csv
 group,subject_id,sample_id,folder_location
 cohort_A,PATIENT_001,SAMPLE_001,path/to/samples/SAMPLE_001
 ```
 
 Each sample folder must contain:
+
 - `analysis_*_export.tsv` — structural variant / CNA export
 - `*-basespace-pisces.final.vcf.gz` — compressed VCF for mutation calling
 - `*-basespace-cnv.final.vcf` — CNV VCF for segmentation (`CN` FORMAT field required)
 
 **Linking file** (`linking_file.txt`, tab-separated) — maps anonymized → real IDs:
+
 ```
 sample_id	deanon_sample_id	deanon_patient_id
 SAMPLE_001	PATIENT_001	PATIENT_001
 ```
+
 One patient may have multiple rows (one per sample). `deanon_patient_id` is used to filter `data_clinical_patient.txt` to only patients whose samples are in the samplesheet.
 
 **Patient file** (tab-separated): `patient_id`, `age`, `sex`, `os_status`, `os_months`, `smoking_history`
@@ -61,16 +65,19 @@ nextflow run main.nf \
 ```
 
 Skip VCF → MAF conversion if MAFs already exist:
+
 ```bash
 nextflow run main.nf ... --skip_vcf2maf true
 ```
 
 Pass all mutations through without TSV-coordinate filtering:
+
 ```bash
 nextflow run main.nf ... --filter_tsv_variants false
 ```
 
 Resume a previous run:
+
 ```bash
 nextflow run main.nf ... -resume
 ```

@@ -71,7 +71,7 @@ def main():
                 print(f"WARNING: could not parse CN at {chrom}:{pos}, skipping", file=sys.stderr)
                 continue
 
-            ## Usually seg mean is this : 
+            ## Usually seg mean is this :
             # seg.mean = log2(CN/2); CN=0 → homozygous deletion sentinel
             # but we will just put the copy number for ampliseq data
             seg_mean = cn

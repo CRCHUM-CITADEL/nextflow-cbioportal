@@ -12,15 +12,15 @@ Pipeline was refactored to accept nf-core/oncoanalyser outputs instead of DRAGEN
 
 ## Source mapping
 
-| Modality | Old (DRAGEN) | New (oncoanalyser) |
-|---|---|---|
-| Mutations | `*.WGS_somatic-tumor_normal.hard-filtered.vcf.gz` | `sage/<tumor_id>.sage.vcf.gz` |
-| CNV (segments) | `*.WGS_somatic-tumor_normal.cnv.vcf.gz` | `purple/<tumor_id>.purple.cnv.somatic.tsv` |
-| CNV (genes) | derived from VCF + annotation | `purple/<tumor_id>.purple.cnv.gene.tsv` |
-| SV (DNA) | N/A | `esvee/<tumor_id>.esvee.somatic.vcf.gz` |
-| Fusions (RNA) | `*.fusion_candidates.final` | `isofox/<rna_id>.isofox.fusion.tsv` |
-| Expression | `*.quant.genes.sf` (Salmon) | `isofox/<rna_id>.isofox.exp.tsv` |
-| Germline | `*.WGS_germinal.hard-filtered.vcf.gz` → PCGR/CPSR | **Removed** |
+| Modality       | Old (DRAGEN)                                      | New (oncoanalyser)                         |
+| -------------- | ------------------------------------------------- | ------------------------------------------ |
+| Mutations      | `*.WGS_somatic-tumor_normal.hard-filtered.vcf.gz` | `sage/<tumor_id>.sage.vcf.gz`              |
+| CNV (segments) | `*.WGS_somatic-tumor_normal.cnv.vcf.gz`           | `purple/<tumor_id>.purple.cnv.somatic.tsv` |
+| CNV (genes)    | derived from VCF + annotation                     | `purple/<tumor_id>.purple.cnv.gene.tsv`    |
+| SV (DNA)       | N/A                                               | `esvee/<tumor_id>.esvee.somatic.vcf.gz`    |
+| Fusions (RNA)  | `*.fusion_candidates.final`                       | `isofox/<rna_id>.isofox.fusion.tsv`        |
+| Expression     | `*.quant.genes.sf` (Salmon)                       | `isofox/<rna_id>.isofox.exp.tsv`           |
+| Germline       | `*.WGS_germinal.hard-filtered.vcf.gz` → PCGR/CPSR | **Removed**                                |
 
 ## Samplesheet
 

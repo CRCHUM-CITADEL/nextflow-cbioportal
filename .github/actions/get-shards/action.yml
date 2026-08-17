@@ -33,16 +33,29 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       run: |
-        # Run nf-test with dynamic parameter
-        nftest_output=$(nf-test test \
-          $(if [ -n "${{ inputs.tags }}" ]; then echo "--tag ${{ inputs.tags }}"; fi) \
-          --dry-run \
-          --ci \
-          --changed-since HEAD^) || {
-            echo "nf-test command failed with exit code $?"
-            echo "Full output: $nftest_output"
+        # Run nf-test with dynamic parameter (retry up to 3 times for transient errors like HTTP 429)
+        max_retries=3
+        attempt=0
+        nftest_output=""
+        while [ $attempt -lt $max_retries ]; do
+          attempt=$((attempt + 1))
+          echo "nf-test dry-run attempt $attempt/$max_retries"
+          nftest_output=$(nf-test test \
+            $(if [ -n "${{ inputs.tags }}" ]; then echo "--tag ${{ inputs.tags }}"; fi) \
+            --dry-run \
+            --ci \
+            --changed-since HEAD^) && break
+          rc=$?
+          echo "nf-test command failed with exit code $rc"
+          echo "Full output: $nftest_output"
+          if [ $attempt -lt $max_retries ]; then
+            echo "Retrying in 15 seconds..."
+            sleep 15
+          else
+            echo "All $max_retries attempts failed."
             exit 1
-        }
+          fi
+        done
         echo "nf-test dry-run output: $nftest_output"
 
         # Default values for shard and total_shards

@@ -1,73 +1,194 @@
-oncoanalyser -> cBioPortal
-=========================
+# oncoanalyser -> cBioPortal
 
 Nextflow pipeline that converts oncoanalyser WGS/WTS output and clinical
 CSVs into cBioPortal-ready files.
 
-  oncoanalyser: https://github.com/nf-core/oncoanalyser
-  cBioPortal:   https://www.cbioportal.org/
+oncoanalyser: https://github.com/nf-core/oncoanalyser
+cBioPortal: https://www.cbioportal.org/
 
+## Quick start
 
-Quick start
------------
+# 1. Clone
 
-  # 1. Clone
-  git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git
-  cd nextflow-cbioportal/oncoanalyser
+git clone https://github.com/CRCHUM-CITADEL/nextflow-cbioportal.git
+cd nextflow-cbioportal/oncoanalyser
 
-  # 2. Load modules
-  module load nextflow/25.10.2 apptainer/1.3.5 htslib/1.22.1
+# 2. Load modules
 
-  # 3a. Run (genomic mode)
-  nextflow run main.nf -profile slurm,apptainer \
-      --mode genomic \
-      --genomic_samplesheet samplesheet.csv
+module load nextflow/25.10.2 apptainer/1.3.5 htslib/1.22.1
 
-  # 3b. Run (clinical mode)
-  nextflow run main.nf -profile slurm,apptainer \
-      --mode clinical \
-      --clinical_samplesheet clinical_samplesheet.csv
+# 3a. Run (genomic mode)
 
-  # 3c. Run (both mode — genomic + clinical in one run)
-  nextflow run main.nf -profile slurm,apptainer \
-      --mode both \
-      --genomic_samplesheet samplesheet.csv \
-      --clinical_samplesheet clinical_samplesheet.csv
+nextflow run main.nf -profile slurm,apptainer \
+ --mode genomic \
+ --genomic_samplesheet samplesheet.csv
 
-  In "both" mode, the genomic workflow runs first and produces a
-  linking file that maps sample IDs to clinical patient IDs. The
-  clinical workflow then runs automatically using that linking file,
-  so you do not need to provide --id_linking_file separately.
+# 3b. Run (clinical mode)
+
+nextflow run main.nf -profile slurm,apptainer \
+ --mode clinical \
+ --clinical_samplesheet clinical_samplesheet.csv
+
+# 3c. Run (both mode — genomic + clinical in one run)
+
+nextflow run main.nf -profile slurm,apptainer \
+ --mode both \
+ --genomic_samplesheet samplesheet.csv \
+ --clinical_samplesheet clinical_samplesheet.csv
+
+In "both" mode, the genomic workflow runs first and produces a
+linking file that maps sample IDs to clinical patient IDs. The
+clinical workflow then runs automatically using that linking file,
+so you do not need to provide --id_linking_file separately.
 
 Use -params-file params.yaml to pass all parameters via a YAML file
 instead of the command line.
 
+## Generating a genomic samplesheet
 
-Generating a samplesheet
--------------------------
-
-  For oncoanalyser WGS/WTS output directories:
+For oncoanalyser WGS/WTS output directories:
 
     python3 bin/generate_samplesheet.py /path/to/oncoanalyser_output \
         -o samplesheet.csv
 
-  Scans for *_WGTS/ folders and produces a CSV with columns:
-  group, subject_id, sample_id, folder.
+Scans for \*\_WGTS/ folders and produces a CSV with columns:
+group, subject_id, sample_id, folder.
 
-  For DRAGEN DNA/RNA output directories (dna/ + rna/ subfolders):
+For DRAGEN DNA/RNA output directories (dna/ + rna/ subfolders):
 
     python3 create_samplesheet.py --input_dir /path/to/dragen_output
 
-  Produces samplesheet.csv with columns: group_id, subject_id,
-  sample_id, sample_type, sequence_data, info, filepath.
+Produces samplesheet.csv with columns: group_id, subject_id,
+sample_id, sample_type, sequence_data, info, filepath.
 
+## Generating a clinical samplesheet
 
-Documentation
--------------
+Use the helper script to generate the samplesheet automatically:
 
-  docs/usage.txt   User's guide: prerequisites, input preparation,
-                   samplesheets, configuration, running modes,
-                   and troubleshooting.
+    python3 bin/generate_clinical_samplesheet.py /path/to/clinical_dir \
+        -o clinical_samplesheet.csv \
+        -d 2025-05-20 \
+        --study_id MY_COHORT
 
-  docs/output.txt  Output reference: every output file explained,
-                   with cBioPortal import instructions.
+Scans the directory for recognised ARGO/ICGC-ARGO CSV files
+(donors.csv, primary_diagnoses.csv, etc.) and produces a samplesheet
+with one row per file. Unrecognised CSV files are ignored with a
+warning. Paths in the output are absolute by default; use
+--relative-to /path/to/projectDir to write relative paths instead.
+
+The clinical samplesheet is a CSV that lists one row per clinical
+data file. Each row points to a CSV in ARGO/ICGC-ARGO format.
+
+Columns:
+
+    group_id         Study/cohort identifier (no spaces)
+    filetype         Data type — one of the 10 supported types below
+    filepath         Absolute or relative path to the clinical CSV file
+    extraction_date  Date data was exported (YYYY-MM-DD)
+    info             Optional free-text note (may be empty)
+
+Supported filetypes:
+
+    donors                  Patient demographics (sex, vital status, DOB)
+    primary_diagnoses        Cancer type, staging, site, date of diagnosis
+    treatments               Treatment summary (type, intent, start/end)
+    surgeries                Surgical treatment details
+    systemic_therapies       Chemotherapy / immunotherapy details
+    specimens                Tumour and normal specimen metadata
+    radiations               Radiation therapy details
+    follow_ups               Disease status and relapse at follow-up
+    sample_registrations     Sample → donor linkage (required for both mode)
+    biomarkers               Lab biomarker values (PSA, ER/PR/HER2, etc.)
+
+Clinical CSV format: ARGO/ICGC-ARGO. Dates are stored as JSON
+day/month intervals relative to diagnosis (day 0):
+{"day_interval": 76, "month_interval": 2}
+
+Example clinical samplesheet (clinical_samplesheet.csv):
+
+    group_id,filetype,filepath,extraction_date,info
+    COHORT1,donors,/data/clinical/donors.csv,2025-05-20,
+    COHORT1,primary_diagnoses,/data/clinical/primary_diagnoses.csv,2025-05-20,
+    COHORT1,treatments,/data/clinical/treatments.csv,2025-05-20,
+    COHORT1,surgeries,/data/clinical/surgeries.csv,2025-05-20,
+    COHORT1,systemic_therapies,/data/clinical/systemic_therapies.csv,2025-05-20,
+    COHORT1,specimens,/data/clinical/specimens.csv,2025-05-20,
+    COHORT1,radiations,/data/clinical/radiations.csv,2025-05-20,
+    COHORT1,follow_ups,/data/clinical/follow_ups.csv,2025-05-20,
+    COHORT1,sample_registrations,/data/clinical/sample_registrations.csv,2025-05-20,
+    COHORT1,biomarkers,/data/clinical/biomarkers.csv,2025-05-20,
+
+All 10 filetypes are optional. Include only the files you have.
+The minimum useful set is: donors, primary_diagnoses,
+sample_registrations.
+
+When treatments, surgeries, systemic_therapies, follow_ups,
+specimens, or biomarkers are provided, the pipeline also generates
+a combined cBioPortal timeline file (data_timeline.txt) for
+visualising clinical events on the patient timeline. All event
+types (surgery, treatment, status, specimen, lab_test) are merged
+into one file. Missing dates default to day 0 (diagnosis day).
+
+MOHCCN mapping tables (bundled in assets/) translate plain-text
+values to ontology/ICD-O codes in clinical and timeline output.
+Override with: --mohccn_primary_site_map, --mohccn_specimen_tissue_source_map,
+--mohccn_treatment_intent_map.
+
+See assets/test_data/clinical/ for example CSVs for each filetype.
+
+## "Both" mode — genomic + clinical in one run
+
+When --mode both is set, the genomic and clinical workflows run
+together in a single pipeline invocation. The key behaviour:
+
+1. The genomic workflow runs first and generates a linking file
+   (a TSV mapping each subject_id to its sample_id). This linking
+   file is produced automatically from the genomic samplesheet.
+
+2. The clinical workflow receives that linking file and uses it to
+   filter clinical output to only the subjects present in the
+   genomic data. You do NOT need to pass --sample_registrations
+   separately.
+
+3. If --clinical_samplesheet is provided, the full clinical
+   processing runs (patient + sample attribute files).
+
+4. If --clinical_samplesheet is omitted in both mode, the pipeline
+   falls back to template mode: it generates a minimal
+   data_clinical_sample.txt from the genomic linking file alone,
+   with patient and sample IDs derived from the samplesheet.
+
+Example command:
+
+    nextflow run main.nf \
+        -profile slurm,apptainer \
+        --mode both \
+        --study_id "MY_STUDY" \
+        --project_description "Description of my study" \
+        --genomic_samplesheet samplesheet.csv \
+        --clinical_samplesheet clinical_samplesheet.csv \
+        --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
+        --ensembl_annotations_expr /path/to/biomart_grch38_ensembl_110.tsv \
+        --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
+        --vep_data /path/to/vep_cache \
+        --pcgr_data /path/to/pcgr_ref_data
+
+Both mode without clinical data (template output only):
+
+    nextflow run main.nf \
+        -profile slurm,apptainer \
+        --mode both \
+        --study_id "MY_STUDY" \
+        --genomic_samplesheet samplesheet.csv \
+        --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
+        --ensembl_annotations_expr /path/to/biomart_grch38_ensembl_110.tsv \
+        --genome_reference /path/to/Homo_sapiens_assembly38.fasta
+
+## Documentation
+
+docs/usage.txt User's guide: prerequisites, input preparation,
+samplesheets, configuration, running modes,
+and troubleshooting.
+
+docs/output.txt Output reference: every output file explained,
+with cBioPortal import instructions.

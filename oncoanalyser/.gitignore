@@ -34,3 +34,4 @@ util_*.txt
 modified_code
 bin/new/
 test.*
+test_output/

@@ -1,4 +1,0 @@
-Hugo_Symbol	Entrez_Gene_Id	Sample_Id	Value
-PRDM15	100001	T2	0
-PFKL	100002	T2	2
-HUNK	100003	T2	-2

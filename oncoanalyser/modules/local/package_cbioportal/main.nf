@@ -1,6 +1,6 @@
 process PACKAGE_CBIOPORTAL {
     container params.container_r
-    publishDir "${params.outdir}", mode: 'copy'
+    publishDir { "${params.outdir}" }, mode: 'copy'
 
     input:
     tuple val(group), path(all_files)

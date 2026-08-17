@@ -4,7 +4,7 @@ process ISOFOX_EXPRESSION_TO_CBIOPORTAL {
 
     container params.container_r
 
-    publishDir "${params.outdir}/${meta.group}/${meta.subject}", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy'
 
     input:
         tuple val(meta), path(exp_tsv)

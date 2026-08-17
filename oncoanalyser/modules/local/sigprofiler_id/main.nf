@@ -4,7 +4,7 @@ process SIGPROFILER_ID {
 
     container params.container_sigprofiler
 
-    publishDir "${params.outdir}/${meta.group}/${meta.subject}", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy'
 
     input:
         tuple val(meta), path(somatic_vcf)

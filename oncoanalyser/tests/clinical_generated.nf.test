@@ -1,0 +1,38 @@
+nextflow_pipeline {
+
+    name "Test pipeline with generated clinical samplesheet"
+    script "../main.nf"
+    tag "pipeline"
+    tag "clinical"
+    tag "clinical_generated"
+
+    // Verifies that a samplesheet produced by generate_clinical_samplesheet.py
+    // is accepted by the pipeline and yields the same output as the
+    // hand-written test_clinical.csv.
+    test("generated samplesheet — same output as hand-written samplesheet") {
+
+        config "tests/nextflow_clinical_generated.config"
+        when {
+            params {
+                mode   = 'clinical'
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            // All expected clinical output files are present
+            assert path("${params.outdir}/TEST/data_clinical_patient.txt").exists()
+            assert path("${params.outdir}/TEST/data_clinical_sample.txt").exists()
+            assert path("${params.outdir}/TEST/meta_clinical_patient.txt").exists()
+            assert path("${params.outdir}/TEST/meta_clinical_sample.txt").exists()
+
+            // Output files are identical to those produced by the hand-written samplesheet
+            assert path("${params.outdir}/TEST/data_clinical_patient.txt").md5 == "fe3558717937303322311c9862842c6c"
+            assert path("${params.outdir}/TEST/data_clinical_sample.txt").md5  == "26458549311a601bfaa480ea2adc70f7"
+            assert path("${params.outdir}/TEST/meta_clinical_patient.txt").md5 == "db4e12d00e844523c08f6b37fd57865f"
+            assert path("${params.outdir}/TEST/meta_clinical_sample.txt").md5  == "28084eb9555ebab829df83fe97a1cdbe"
+        }
+    }
+}

@@ -44,10 +44,12 @@ workflow GENOMIC_ML {
             FORMAT_ML_MUTATION.out
         )
 
-        FORMAT_PROCESS_ML_SV(
-            cosmic_data,
-            chimer_data,
-            sv_result
-        )
+        if (cosmic_data) {
+            FORMAT_PROCESS_ML_SV(
+                cosmic_data,
+                chimer_data,
+                sv_result
+            )
+        }
 
 }

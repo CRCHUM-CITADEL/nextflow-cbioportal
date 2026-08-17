@@ -1,0 +1,3 @@
+actual_cumulative_drug_dose,actual_cumulative_drug_dose_not_available,days_per_cycle,days_per_cycle_not_available,drug_dose_units,drug_name,drug_reference_database,drug_reference_identifier,end_date,number_of_cycles,number_of_cycles_not_available,prescribed_cumulative_drug_dose,prescribed_cumulative_drug_dose_not_available,program_id,start_date,submitter_donor_id,submitter_treatment_id,systemic_therapy_type
+,False,,False,,carboplatin,PubChem,498142,2023-01-02,6,False,,False,TEST,2022-07-20,T2,T2-TR,Chemotherapy
+,False,,False,,paclitaxel,PubChem,33112,,6,False,,False,TEST,,T2,T2-TR,Chemotherapy

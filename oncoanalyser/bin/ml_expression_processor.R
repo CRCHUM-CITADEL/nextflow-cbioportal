@@ -9,10 +9,10 @@ library(tidyverse)
 standardize_expression <- function(expression_mat) {
   # Transpose, use highly optimized base scale(), then transpose back.
   scaled_mat <- scale(t(expression_mat))
-  
-  # Handle potential NaN values introduced if a gene had 0 variance 
-  scaled_mat[is.na(scaled_mat)] <- 0 
-  
+
+  # Handle potential NaN values introduced if a gene had 0 variance
+  scaled_mat[is.na(scaled_mat)] <- 0
+
   return(t(scaled_mat))
 }
 
@@ -29,7 +29,7 @@ process_expression_data <- function(input_file, min_tpm = 1, min_samples = 3) {
   expression_data <- read_tsv(input_file, show_col_types = FALSE)
 
   initial_genes <- nrow(expression_data)
-  initial_samples <- ncol(expression_data) - 1 
+  initial_samples <- ncol(expression_data) - 1
 
   message("Processing and normalizing...")
   expression_processed <- expression_data %>%
@@ -67,7 +67,7 @@ process_expression_data <- function(input_file, min_tpm = 1, min_samples = 3) {
   # 7. Format for ML Dataloaders (Samples as Rows, Genes as Columns)
   expression_final <- as.data.frame(round(t(expr_mat), 4)) %>%
     rownames_to_column("sample_id")
-    
+
   standardized_final <- as.data.frame(round(t(std_mat), 4)) %>%
     rownames_to_column("sample_id")
 

@@ -4,14 +4,12 @@ process ESVEE_SV_TO_CBIOPORTAL {
 
     container params.container_r
 
-    publishDir "${params.outdir}/${meta.group}/${meta.subject}", mode: 'copy'
-
     input:
         tuple val(meta), path(esvee_vcf_tumor)
         path ensembl_annotations
 
     output:
-        tuple val(meta), path("${meta.sample}.data_sv.txt"), emit: sv
+        tuple val(meta), path("${meta.sample}.esvee.data_sv.txt"), emit: sv
 
     when:
         task.ext.when == null || task.ext.when
@@ -22,11 +20,11 @@ process ESVEE_SV_TO_CBIOPORTAL {
         --input               ${esvee_vcf_tumor} \\
         --sample              ${meta.sample} \\
         --ensembl_annotations ${ensembl_annotations} \\
-        --output              ${meta.sample}.data_sv.txt
+        --output              ${meta.sample}.esvee.data_sv.txt
     """
 
     stub:
     """
-    touch ${meta.sample}.data_sv.txt
+    touch ${meta.sample}.esvee.data_sv.txt
     """
 }

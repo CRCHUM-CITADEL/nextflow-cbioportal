@@ -91,12 +91,12 @@ workflow PIPELINE_INITIALISATION {
     }
 
 	if (study_id == "" ) {
-		warning("WARNING : study_id not set. 'test_name' will be used.")
+		log.warn "study_id not set. 'test_name' will be used."
 		study_id = "test_name"
 	}
 
 	if (project_description == "") {
-		warning("WARNING : project description not set. 'test_description' will be used")
+		log.warn "project description not set. 'test_description' will be used"
 		project_description = 'test_description'
 	}
 
@@ -204,17 +204,11 @@ def validateInputParameters() {
         log.warn "No clinical samplesheet provided. Template clinical files will be generated from the linking file."
     }
 
-    if (params.mode == "clinical") {
-        if (!params.id_linking_file) {
-            error("ERROR: id_linking_file parameter is required for clinical mode")
+    if (params.mode == "clinical" && !params.clinical_samplesheet && params.sample_registrations) {
+        def regs_file = file(params.sample_registrations)
+        if (!regs_file.exists()) {
+            error("ERROR: sample_registrations file does not exist: ${params.sample_registrations}")
         }
-
-        def clinical_linking_file = file(params.id_linking_file)
-
-        if (!clinical_linking_file.exists()) {
-            error("ERROR: Linking file does not exist: ${params.id_linking_file}")
-        }
-
     }
 
 

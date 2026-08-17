@@ -12,6 +12,7 @@ include { GENOMIC_ML                   } from '../subworkflows/local/genomic_ml'
 include { GENOMIC_AGGREGATE_OUTPUT     } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE           } from '../modules/local/generate_meta_file'
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
+include { MERGE_SAMPLE_SV              } from '../modules/local/merge_sample_sv'
 include { SIGPROFILER_SBS               } from '../modules/local/sigprofiler_sbs'
 include { SIGPROFILER_DBS              } from '../modules/local/sigprofiler_dbs'
 include { SIGPROFILER_ID               } from '../modules/local/sigprofiler_id'
@@ -49,7 +50,7 @@ workflow GENOMIC {
         fasta                   // path — GRCh38 reference FASTA (for vcf2maf)
         cosmic_data             // channel<path> — COSMIC/ChimerKB fusion data for ML step
         chimer_data
-        
+
     main:
 
         ch_versions = channel.empty()
@@ -100,8 +101,8 @@ workflow GENOMIC {
                     files.add([meta + [pipeline: 'expression'], tpm])
                 }
 
-                // Mutation file (uses subject for filename)
-                def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf", checkIfExists: false)
+                // Mutation file
+                def maf = file("${baseDir}/${meta.sample}.somatic_rna_germline.maf", checkIfExists: false)
                 if (maf.exists()) {
                     files.add([meta + [pipeline: 'mutation'], maf])
                 }
@@ -149,7 +150,7 @@ workflow GENOMIC {
                 def long_cnv = file("${baseDir}/${meta.sample}_data_cna_long.txt", checkIfExists: false)
                 def sv = file("${baseDir}/${meta.sample}.data_sv.txt", checkIfExists: false)
                 def tpm = file("${baseDir}/${meta.sample}.tpm.tsv", checkIfExists: false)
-                def maf = file("${baseDir}/${meta.subject}.somatic_rna_germline.maf", checkIfExists: false)
+                def maf = file("${baseDir}/${meta.sample}.somatic_rna_germline.maf", checkIfExists: false)
                 return seg.exists() && long_cnv.exists() && sv.exists() && tpm.exists() && maf.exists()
             }
             .map { meta -> meta.subject }
@@ -171,12 +172,12 @@ workflow GENOMIC {
                 log.info "Skipping already-processed subject: ${meta.subject}"
             }
 
-        // Error if all samples already processed
+        // Warn if all samples already processed
         ch_samples_to_run
             .collect()
             .filter { list ->
                 if (list.isEmpty()) {
-                    error "All subjects in samplesheet already processed. Nothing to run."
+                    log.warn "All subjects in samplesheet already processed. Skipping genomic processing."
                 }
                 return true
             }
@@ -345,10 +346,22 @@ workflow GENOMIC {
                 .filter { meta, files -> meta.pipeline == 'cnv' }
                 .map { meta, files -> [meta, files.longfile] })
 
-        all_sv = GENOMIC_SV.out.sv_out
+        // Group all SV files (fresh + cached) by sample, then merge into one per-sample file
+        ch_sv_all_raw = GENOMIC_SV.out.sv_out
             .mix(ISOFOX_FUSION_TO_CBIOPORTAL.out.sv)
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv' })
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv_rna_fusion' })
+
+        ch_sv_per_sample = ch_sv_all_raw
+            .map { meta, file -> [meta.sample, meta, file] }
+            .groupTuple()
+            .map { sample, metas, files ->
+                [metas[0], files instanceof List ? files : [files]]
+            }
+
+        MERGE_SAMPLE_SV(ch_sv_per_sample)
+
+        all_sv = MERGE_SAMPLE_SV.out.sv
 
         all_expression = GENOMIC_EXPRESSION.out.out
             .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'expression' })
@@ -405,7 +418,7 @@ workflow GENOMIC {
 
         all_groups = ch_samples.map { meta -> meta.group }.unique()
 
-        meta_text = """type_of_cancer: add_text
+        meta_text = """type_of_cancer: ${params.cancer_type}
 cancer_study_identifier: add_text
 name: ${params.study_id}
 description: ${params.project_description}

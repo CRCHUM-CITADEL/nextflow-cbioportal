@@ -1,5 +1,5 @@
 process GENERATE_META_FILE {
-    publishDir "${params.outdir}/${group}", mode: 'copy'
+    publishDir { "${params.outdir}/${group}" }, mode: 'copy'
 
     input:
     val group

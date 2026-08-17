@@ -162,17 +162,9 @@
         "pcgr_data": {
             "type": "string"
         },
-        "id_linking_file": {
+        "sample_registrations": {
             "type": "string",
-            "description": "Path to ID linking file for clinical data."
-        },
-        "oncotree_code": {
-            "type": "string",
-            "description": "OncoTree cancer type code (e.g., 'CHOL'). Used in cancer_type.txt and CANCER_TYPE column."
-        },
-        "icd_code": {
-            "type": "string",
-            "description": "Optional ICD-O code (e.g., 'C24'). Overrides cancer_type_code from diagnosis CSV."
+            "description": "Path to sample_registrations.csv for template clinical output (used when no clinical_samplesheet is provided)."
         },
         "study_id": {
             "type": "string",
@@ -205,6 +197,25 @@
         "id_metadata": {
             "type": "string",
             "description": "Path to COSMIC ID (indel) metadata TSV."
+        },
+        "cancer_type": {
+            "type": "string",
+            "description": "Cancer type abbreviation for cBioPortal (e.g. mixed, lung, brca)."
+        },
+        "mohccn_primary_site_map": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to MOHCCN primary site mapping CSV (ICD-O topography codes)."
+        },
+        "mohccn_specimen_tissue_source_map": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to MOHCCN specimen tissue source mapping CSV."
+        },
+        "mohccn_treatment_intent_map": {
+            "type": "string",
+            "format": "file-path",
+            "description": "Path to MOHCCN treatment intent mapping CSV."
         }
     }
 }

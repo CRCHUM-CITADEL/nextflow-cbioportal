@@ -15,15 +15,18 @@
             },
             "filetype": {
                 "type": "string",
-                "errorMessage": "filetype must be provided and be one of 'patient', 'diagnosis', 'treatment', 'surgeries', 'systemic_treatment', 'specimen', 'radio_therapy'",
+                "errorMessage": "filetype must be one of 'donors', 'primary_diagnoses', 'treatments', 'surgeries', 'systemic_therapies', 'specimens', 'radiations', 'follow_ups', 'sample_registrations', 'biomarkers'",
                 "enum": [
-                    "patient",
-                    "diagnosis",
-                    "treatment",
+                    "donors",
+                    "primary_diagnoses",
+                    "treatments",
                     "surgeries",
-                    "systemic_treatment",
-                    "specimen",
-                    "radio_therapy"
+                    "systemic_therapies",
+                    "specimens",
+                    "radiations",
+                    "follow_ups",
+                    "sample_registrations",
+                    "biomarkers"
                 ],
                 "meta": "pipeline"
             },

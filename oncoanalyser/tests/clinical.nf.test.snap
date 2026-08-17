@@ -1,33 +1,32 @@
 {
     "clinical": {
         "content": [
-            13,
+            6,
             {
                 "Workflow": {
                     "CRCHUM-CITADEL/nextflow-sante-precision": "v1.3.2dev"
                 }
             },
             [
-                "TEST",
-                "TEST/cancer_type.txt",
-                "TEST/data_clinical_patient.txt",
-                "TEST/data_clinical_sample.txt",
-                "TEST/meta_cancer_type.txt",
-                "TEST/meta_clinical_patient.txt",
-                "TEST/meta_clinical_sample.txt",
+                "data_clinical_patient.txt",
+                "data_clinical_sample.txt",
+                "data_timeline.txt",
+                "meta_clinical_patient.txt",
+                "meta_clinical_sample.txt",
+                "meta_timeline.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
             [
-                "cancer_type.txt:md5,6a290e3beac292cb5371ffaa0d91d56d",
-                "data_clinical_patient.txt:md5,57d68bc157465f650542f3495992a0eb",
-                "data_clinical_sample.txt:md5,3d583e2e796180d8f2d0898cb8debc49",
-                "meta_cancer_type.txt:md5,8e4f0dfb0b04a36d2c0bd71807d8e96b",
-                "meta_clinical_patient.txt:md5,db4e12d00e844523c08f6b37fd57865f",
-                "meta_clinical_sample.txt:md5,28084eb9555ebab829df83fe97a1cdbe"
+                "data_clinical_patient.txt:md5,fe3558717937303322311c9862842c6c",
+                "data_clinical_sample.txt:md5,26458549311a601bfaa480ea2adc70f7",
+                "data_timeline.txt:md5,7a22430301d515d23fa074a7de0051cd",
+                "meta_clinical_patient.txt:md5,a50f23209b906b23ebcdd2f226f03049",
+                "meta_clinical_sample.txt:md5,9d38f37b3d957eb384558b485ca41298",
+                "meta_timeline.txt:md5,156fd8531c8a49b03b1d541ef2af267c"
             ]
         ],
-        "timestamp": "2026-06-19T14:48:19.565148878",
+        "timestamp": "2026-08-17T11:25:54.537344222",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "25.10.4"

@@ -6,7 +6,6 @@
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { CLINICAL_AGGREGATE } from '../subworkflows/local/clinical_aggregate'
 include { GENERATE_META_FILE } from '../modules/local/generate_meta_file'
-include { GENERATE_CANCER_TYPE_FILE } from '../modules/local/generate_cancer_type_file'
 include { GENERATE_CLINICAL_TEMPLATE } from '../modules/local/generate_clinical_template'
 
 /*
@@ -18,8 +17,9 @@ include { GENERATE_CLINICAL_TEMPLATE } from '../modules/local/generate_clinical_
 workflow CLINICAL {
 
     take:
-        file_list        // clinical samplesheet rows (may be empty channel)
-        id_linking_file
+        file_list            // clinical samplesheet rows (may be empty channel)
+        sample_registrations // path or channel: sample_registrations.csv (template mode only)
+        genomic_subjects     // val: path to genomic subjects TSV (both mode), or "" to skip filtering
 
     main:
         ch_versions = Channel.empty()
@@ -36,20 +36,23 @@ workflow CLINICAL {
                     return tuple([group: group, pipeline: pipeline, extraction_date: extraction_date], file)
                 }
 
-            CLINICAL_AGGREGATE(
-                ch_file_list,
-                id_linking_file
-            )
+            CLINICAL_AGGREGATE(ch_file_list, genomic_subjects)
         } else {
-            // ── Template fallback: generate minimal clinical files from the linking file ──
-            log.info "No clinical samplesheet provided. Generating template clinical files from linking file."
+            // ── Template fallback: generate minimal clinical files from sample_registrations ──
+            log.info "No clinical samplesheet provided. Generating template clinical files from sample_registrations."
 
-            // Read subject_id\tsample_id lines from the linking file
-            // In "both" mode, id_linking_file is a channel (from GENOMIC output); in "clinical" mode it's a string path
-            ch_linking_path = (id_linking_file instanceof String) ? Channel.fromPath(id_linking_file) : id_linking_file
+            // sample_registrations is a channel (from GENOMIC output) in "both" mode,
+            // or a string path in "clinical" mode
+            ch_linking_path = (sample_registrations instanceof CharSequence) ?
+                Channel.fromPath(sample_registrations) : sample_registrations
+
             ch_linking = ch_linking_path
-                .splitCsv(header: true, sep: '\t')
-                .map { row -> [subject: row.subject_id, sample: row.sample_id] }
+                .splitCsv(header: true, sep: ',')
+                .filter { row -> row.tumour_normal_designation == "Tumour" && row.sample_type == "Total DNA" }
+                .toSortedList { a, b -> a.submitter_sample_id <=> b.submitter_sample_id }
+                .flatMap()
+                .unique { [it.submitter_donor_id, it.submitter_specimen_id] }
+                .map { row -> [subject: row.submitter_donor_id, sample: row.submitter_sample_id] }
 
             // Build newline-separated "subject\tsample" lines
             sample_lines = ch_linking
@@ -62,34 +65,23 @@ workflow CLINICAL {
 
             GENERATE_CLINICAL_TEMPLATE(
                 group,
-                sample_lines,
-                params.icd_code ?: ""
+                sample_lines
             )
 
-            GENERATE_CANCER_TYPE_FILE(
-                channel.of(group),
-                params.oncotree_code
-            )
-
-            // Generate meta files for clinical sample and cancer type
+            // Generate meta file for clinical sample
             meta_text = Channel.of(
                 """cancer_study_identifier: add_text
 genetic_alteration_type: CLINICAL
 datatype: SAMPLE_ATTRIBUTES
 data_filename: data_clinical_sample.txt
-                """,
-                """genetic_alteration_type: CANCER_TYPE
-datatype: CANCER_TYPE
-data_filename: cancer_type.txt
                 """)
 
-            file_names = Channel.of("clinical_sample", "cancer_type")
+            file_names = Channel.of("clinical_sample")
 
             all_groups = channel.of(group)
-            all_groups_times_two = all_groups.combine(file_names).map { g, name -> g }
 
             GENERATE_META_FILE(
-                all_groups_times_two,
+                all_groups,
                 file_names,
                 meta_text
             )

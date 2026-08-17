@@ -1,42 +1,57 @@
-include { FORMAT_CLINICAL } from '../../../modules/local/format_clinical'
-include { ASSIGN_DATE } from '../../../modules/local/assign_date'
-include { GENERATE_META_FILE } from '../../../modules/local/generate_meta_file'
-include { GENERATE_CANCER_TYPE_FILE } from '../../../modules/local/generate_cancer_type_file'
+include { FORMAT_CLINICAL }                          from '../../../modules/local/format_clinical'
+include { GENERATE_META_FILE }                       from '../../../modules/local/generate_meta_file'
+include { GENERATE_META_FILE as GENERATE_META_FILE_TIMELINE } from '../../../modules/local/generate_meta_file'
+include { GENERATE_TIMELINE }                        from '../../../modules/local/generate_timeline'
 
 workflow CLINICAL_AGGREGATE {
     take:
-        filelist
-        id_linking_file
+        filelist          // channel: [meta(group, pipeline, extraction_date), csv_path]
+        genomic_subjects  // val: path to genomic subjects TSV, or "" to skip filtering
 
     main:
 
-        csvs_with_date = ASSIGN_DATE(
-                filelist
-            ).map { meta, csv ->
-                def group = meta.group
-                def pipeline = meta.pipeline
-                tuple(group, [(pipeline): csv])
-            }.groupTuple()
+        csvs = filelist
+            .map { meta, csv ->
+                tuple(meta.group, [(meta.pipeline): csv])
+            }
+            .groupTuple()
             .map { group, data_list ->
                 tuple(group, data_list.collectEntries())
             }
+            .combine(genomic_subjects)
+            .map { group, csv_map, gs ->
+                if (gs) csv_map.genomic_subjects = gs
+                tuple(group, csv_map)
+            }
 
-        all_groups = csvs_with_date.map {group, csv_map -> group}.unique()
+        all_groups = csvs.map { group, csv_map -> group }.unique()
 
         mode_ch = channel.of("sample", "patient")
 
         mode_ch
-            .combine(csvs_with_date)
+            .combine(csvs)
             .map { mode, group, csv_map ->
-                return tuple([group: group, mode: mode], csv_map)
+                return tuple(
+                    [group: group, mode: mode],
+                    csv_map.donors               ? file(csv_map.donors)               : [],
+                    csv_map.primary_diagnoses    ? file(csv_map.primary_diagnoses)    : [],
+                    csv_map.specimens            ? file(csv_map.specimens)            : [],
+                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
+                    csv_map.treatments           ? file(csv_map.treatments)           : [],
+                    csv_map.surgeries            ? file(csv_map.surgeries)            : [],
+                    csv_map.systemic_therapies   ? file(csv_map.systemic_therapies)   : [],
+                    csv_map.radiations           ? file(csv_map.radiations)           : [],
+                    csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
+                    csv_map.biomarkers           ? file(csv_map.biomarkers)           : [],
+                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
+                    file(params.mohccn_primary_site_map),
+                    file(params.mohccn_specimen_tissue_source_map),
+                    file(params.mohccn_treatment_intent_map)
+                )
             }
             .set { ch_formatted_input }
 
-
-        clinical_data = FORMAT_CLINICAL(
-            ch_formatted_input,
-            id_linking_file
-        )
+        FORMAT_CLINICAL(ch_formatted_input)
 
         meta_text = Channel.of("""cancer_study_identifier: add_text
 genetic_alteration_type: CLINICAL
@@ -47,27 +62,55 @@ data_filename: data_clinical_sample.txt
 genetic_alteration_type: CLINICAL
 datatype: PATIENT_ATTRIBUTES
 data_filename: data_clinical_patient.txt
-        """,
-        """genetic_alteration_type: CANCER_TYPE
-datatype: CANCER_TYPE
-data_filename: cancer_type.txt
         """)
 
-        file_names = Channel.of("clinical_sample", "clinical_patient", "cancer_type")
+        file_names = Channel.of("clinical_sample", "clinical_patient")
 
-        all_groups_times_three = all_groups.combine(file_names).map {all_groups, file_names -> return all_groups}
+        all_groups_times_two = all_groups.combine(file_names).map { g, f -> g }
 
         GENERATE_META_FILE(
-            all_groups_times_three,
+            all_groups_times_two,
             file_names,
             meta_text
         )
 
-        GENERATE_CANCER_TYPE_FILE(
-            all_groups,
-            params.oncotree_code
+        // ── Timeline files ────────────────────────────────────────────────────
+        csvs
+            .map { group, csv_map ->
+                tuple(
+                    [group: group],
+                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
+                    csv_map.treatments           ? file(csv_map.treatments)           : [],
+                    csv_map.surgeries            ? file(csv_map.surgeries)            : [],
+                    csv_map.systemic_therapies   ? file(csv_map.systemic_therapies)   : [],
+                    csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
+                    csv_map.specimens            ? file(csv_map.specimens)            : [],
+                    csv_map.biomarkers           ? file(csv_map.biomarkers)           : [],
+                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
+                    file(params.mohccn_primary_site_map),
+                    file(params.mohccn_specimen_tissue_source_map),
+                    file(params.mohccn_treatment_intent_map)
+                )
+            }
+            .set { ch_timeline_input }
+
+        GENERATE_TIMELINE(ch_timeline_input)
+
+        // Generate meta file for the combined timeline data file
+        GENERATE_TIMELINE.out.ch_timeline
+            .map { group, f -> group }
+            .set { ch_timeline_groups }
+
+        GENERATE_META_FILE_TIMELINE(
+            ch_timeline_groups,
+            ch_timeline_groups.map { "timeline" },
+            ch_timeline_groups.map { """cancer_study_identifier: add_text
+genetic_alteration_type: CLINICAL
+datatype: TIMELINE
+data_filename: data_timeline.txt
+""" }
         )
 
-        emit:
-            csvs_with_date
+    emit:
+        csvs
 }

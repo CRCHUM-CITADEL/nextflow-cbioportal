@@ -34,10 +34,10 @@ nextflow_workflow {
             assert workflow.out.sv_out.size() == 2
 
             def sv_names = workflow.out.sv_out.collect { meta, f -> f.toString().split('/').last() }.sort()
-            assert sv_names == ['T1.data_sv.txt', 'T2.data_sv.txt']
+            assert sv_names == ['T1.esvee.data_sv.txt', 'T2.esvee.data_sv.txt']
 
             // Verify cBioPortal SV format: expected columns in header
-            def sv_t1_path = workflow.out.sv_out.collect { meta, f -> f }.find { it.toString().endsWith('T1.data_sv.txt') }
+            def sv_t1_path = workflow.out.sv_out.collect { meta, f -> f }.find { it.toString().endsWith('T1.esvee.data_sv.txt') }
             def header = path(sv_t1_path.toString()).readLines()[0]
             assert header.contains('Sample_Id')
             assert header.contains('SV_Status')

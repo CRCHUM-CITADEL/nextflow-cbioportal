@@ -2,4 +2,5 @@ anatomic_site_progression_or_recurrence,date_of_followup,date_of_relapse,disease
 ,"{""day_interval"": 730, ""month_interval"": 24}",,No evidence of disease,,TEST,,T1,T1-FU1,T1-DX,T1-TR
 ,"{""day_interval"": 1826, ""month_interval"": 60}",,No evidence of disease,,TEST,,T1,T1-FU2,T1-DX,T1-TR
 ,"{""day_interval"": 600, ""month_interval"": 19}",,No evidence of disease,,TEST,,T2,T2-FU1,T2-DX,T2-TR
-,"{""day_interval"": 900, ""month_interval"": 29}","{""day_interval"": 850, ""month_interval"": 27}",Relapse or recurrence,"[""Imaging (procedure)""]",TEST,Distant recurrence/metastasis,T2,T2-FU2,T2-DX,T2-TR
+"[""C569""]","{""day_interval"": 900, ""month_interval"": 29}","{""day_interval"": 850, ""month_interval"": 27}",Relapse or recurrence,"[""Tumor marker measurement (procedure)""]",TEST,Biochemical progression,T2,T2-FU2,T2-DX,T2-TR
+"[""C220""]","{""day_interval"": 1100, ""month_interval"": 36}","{""day_interval"": 1050, ""month_interval"": 34}",Distant progression,"[""Imaging (procedure)""]",TEST,Distant recurrence/metastasis,T2,T2-FU3,T2-DX,T2-TR

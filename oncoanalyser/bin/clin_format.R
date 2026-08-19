@@ -103,6 +103,17 @@ read_mohccn_map <- function(filepath) {
   setNames(raw$code, raw$value)
 }
 
+# Apply reversed primary-site map: ICD-O code → human-readable label.
+# Extracts the parent code (C + 2 digits) before lookup, handling both
+# decimal format ("C22.0" → "C22") and concatenated MOHCCN format ("C220" → "C22").
+apply_ps_label <- function(codes, reversed_map) {
+  if (is.null(reversed_map)) return(rep(NA_character_, length(codes)))
+  prefixes <- sub("^(C\\d{2}).*", "\\1", trimws(as.character(codes)))
+  result   <- reversed_map[prefixes]
+  result[is.na(result) | result == ""] <- NA_character_
+  unname(result)
+}
+
 # Look up values in a MOHCCN map; returns NA_character_ where there is no match or empty code.
 apply_mohccn_map <- function(values, map) {
   if (is.null(map)) return(rep(NA_character_, length(values)))
@@ -404,12 +415,13 @@ if (length(first_relapse_type) > 0) {
 }
 if (length(first_relapse_site) > 0) {
   has_rsite <- m$patient %in% names(first_relapse_site)
-  m$relapse_site_val[has_rsite] <- first_relapse_site[m$patient[has_rsite]]
+  m$relapse_site_val[has_rsite] <- clean_json_array(first_relapse_site[m$patient[has_rsite]])
 }
+m$relapse_site_label <- NA_character_
 m$method_of_progression <- NA_character_
 if (length(last_method_of_progression) > 0) {
   has_method <- m$patient %in% names(last_method_of_progression)
-  m$method_of_progression[has_method] <- last_method_of_progression[m$patient[has_method]]
+  m$method_of_progression[has_method] <- clean_json_array(last_method_of_progression[m$patient[has_method]])
 }
 
 # Sample type: map ARGO specimen_type values to cBioPortal vocabulary
@@ -429,11 +441,13 @@ m[m == ""] <- NA
 
 # ── MOHCCN ontology code lookups ──────────────────────────────────────────────
 ps_map  <- read_mohccn_map(opt$primary_site_map)
+ps_map_rev <- if (!is.null(ps_map)) setNames(names(ps_map), ps_map) else NULL
 sts_map <- read_mohccn_map(opt$specimen_tissue_source_map)
 ti_map  <- read_mohccn_map(opt$treatment_intent_map)
 
 m$primary_site_code           <- apply_mohccn_map(m$primary_site,           ps_map)
 m$specimen_tissue_source_code <- apply_mohccn_map(m$specimen_tissue_source, sts_map)
+m$relapse_site_label          <- apply_ps_label(m$relapse_site_val, ps_map_rev)
 if ("treatment_intent" %in% names(m)) {
   m$treatment_intent_code <- apply_mohccn_map(m$treatment_intent, ti_map)
 } else {
@@ -482,7 +496,8 @@ if (opt$mode == "patient") {
     list("DFS_STATUS",                 "dfs_status",                     "Disease Free Status",         "Disease free status since initial treatment.",                         "STRING", "1"),
     list("DISEASE_STATUS_AT_FOLLOWUP", "disease_status_at_followup",     "Disease Status at Follow-up", "Patient disease status at the most recent follow-up.",                "STRING", "1"),
     list("RELAPSE_TYPE",               "relapse_type_val",               "Relapse Type",                "Type of disease relapse or recurrence.",                               "STRING", "1"),
-    list("RELAPSE_SITE",               "relapse_site_val",               "Relapse Site",                "Anatomic site of disease progression or recurrence.",                  "STRING", "1"),
+    list("RELAPSE_SITE",               "relapse_site_val",               "Relapse Site",                "Anatomic site of disease progression or recurrence (ICD-O code).",     "STRING", "1"),
+    list("RELAPSE_SITE_LABEL",         "relapse_site_label",             "Relapse Site Label",           "Human-readable label for the anatomic site of progression.",           "STRING", "1"),
     list("METHOD_OF_PROGRESSION_STATUS", "method_of_progression",        "Method of Progression Status", "Method used to assess disease progression status.",                    "STRING", "1")
   )
   m_patient <- m[!duplicated(m$patient), ]

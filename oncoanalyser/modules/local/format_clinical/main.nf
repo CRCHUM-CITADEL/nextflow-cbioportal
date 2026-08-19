@@ -23,7 +23,7 @@ process FORMAT_CLINICAL {
               path(treatment_intent_map)
 
     output:
-        path "data_clinical_${meta.mode}.txt"
+        tuple val(meta), path("data_clinical_${meta.mode}.txt")
 
     script:
     def treatments_arg        = treatments         ? "--treatments ${treatments}"                      : ""

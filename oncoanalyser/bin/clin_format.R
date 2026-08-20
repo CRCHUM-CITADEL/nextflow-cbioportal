@@ -103,6 +103,17 @@ read_mohccn_map <- function(filepath) {
   setNames(raw$code, raw$value)
 }
 
+# Apply reversed primary-site map: ICD-O code → human-readable label.
+# Extracts the parent code (C + 2 digits) before lookup, handling both
+# decimal format ("C22.0" → "C22") and concatenated MOHCCN format ("C220" → "C22").
+apply_ps_label <- function(codes, reversed_map) {
+  if (is.null(reversed_map)) return(rep(NA_character_, length(codes)))
+  prefixes <- sub("^(C\\d{2}).*", "\\1", trimws(as.character(codes)))
+  result   <- reversed_map[prefixes]
+  result[is.na(result) | result == ""] <- NA_character_
+  unname(result)
+}
+
 # Look up values in a MOHCCN map; returns NA_character_ where there is no match or empty code.
 apply_mohccn_map <- function(values, map) {
   if (is.null(map)) return(rep(NA_character_, length(values)))
@@ -266,11 +277,13 @@ if (!is.null(opt$radiations)) {
 }
 
 # ── Follow-ups (OS for living patients, DFS, last disease status) ─────────────
-last_fu_days          <- c()
-first_relapse_days    <- c()
-last_disease_status   <- c()
-first_relapse_type    <- c()
-first_relapse_site    <- c()
+last_fu_days              <- c()
+first_relapse_days        <- c()
+last_disease_status       <- c()
+first_relapse_type        <- c()
+first_relapse_site        <- c()
+last_visit_relapse_type   <- c()
+last_method_of_progression <- c()
 
 if (!is.null(opt$follow_ups)) {
   cat("Reading follow-ups...\n")
@@ -287,6 +300,12 @@ if (!is.null(opt$follow_ups)) {
     fu_last   <- fu_sorted[!duplicated(fu_sorted$patient, fromLast=TRUE), ]
     if ("disease_status_at_followup" %in% names(fu_last)) {
       last_disease_status <- setNames(fu_last$disease_status_at_followup, fu_last$patient)
+    }
+    if ("relapse_type" %in% names(fu_last)) {
+      last_visit_relapse_type <- setNames(fu_last$relapse_type, fu_last$patient)
+    }
+    if ("method_of_progression_status" %in% names(fu_last)) {
+      last_method_of_progression <- setNames(fu_last$method_of_progression_status, fu_last$patient)
     }
   }
 
@@ -336,32 +355,49 @@ if (any(living_idx) && length(last_fu_days) > 0) {
   m$os_months[living_idx][valid] <- round(as.numeric(fu_match[valid]) / 30.4375, 3)
 }
 
-# DFS: first relapse from follow_ups; disease-free from last follow-up if no relapse
+# DFS: based on last visit relapse_type — recurred unless empty or "Not available"
 m$dfs_status <- NA_character_
 m$dfs_months <- NA_real_
-if (length(first_relapse_days) > 0) {
-  has_relapse <- m$patient %in% names(first_relapse_days)
-  # Default; refined below if relapse_type distinguishes recurrence from progression
-  m$dfs_status[has_relapse] <- "1:Recurred/Progressed"
-  if (length(first_relapse_type) > 0) {
-    has_type <- has_relapse & m$patient %in% names(first_relapse_type)
-    rtype <- first_relapse_type[m$patient[has_type]]
-    m$dfs_status[has_type] <- ifelse(
-      grepl("progression", rtype, ignore.case=TRUE), "1:Progressed",
-      ifelse(grepl("recurrence|recurred", rtype, ignore.case=TRUE), "1:Recurred",
-             "1:Recurred/Progressed")
+if (length(last_visit_relapse_type) > 0) {
+  has_fu <- m$patient %in% names(last_visit_relapse_type)
+  rtype  <- last_visit_relapse_type[m$patient[has_fu]]
+  is_free <- is.na(rtype) | trimws(rtype) == "" | rtype == "Not available"
+
+  m$dfs_status[has_fu][is_free]  <- "0:DiseaseFree"
+  m$dfs_status[has_fu][!is_free] <- "1:Recurred/Progressed"
+
+  # DFS_MONTHS: disease-free → last follow-up date
+  if (length(last_fu_days) > 0) {
+    free_with_fu <- has_fu & m$dfs_status == "0:DiseaseFree" &
+                    m$patient %in% names(last_fu_days)
+    m$dfs_months[free_with_fu] <- round(
+      as.numeric(last_fu_days[m$patient[free_with_fu]]) / 30.4375, 3
     )
   }
-  m$dfs_months[has_relapse] <- round(
-    as.numeric(first_relapse_days[m$patient[has_relapse]]) / 30.4375, 3
-  )
-}
-if (length(last_fu_days) > 0) {
-  no_relapse_with_fu <- !m$patient %in% names(first_relapse_days) &
-                        m$patient %in% names(last_fu_days)
-  m$dfs_status[no_relapse_with_fu] <- "0:DiseaseFree"
-  m$dfs_months[no_relapse_with_fu] <- round(
-    as.numeric(last_fu_days[m$patient[no_relapse_with_fu]]) / 30.4375, 3
+  # DFS_MONTHS: recurred → first date_of_relapse, fallback to last follow-up date
+  recurred <- has_fu & m$dfs_status == "1:Recurred/Progressed"
+  if (length(first_relapse_days) > 0) {
+    has_relapse_date <- recurred & m$patient %in% names(first_relapse_days)
+    m$dfs_months[has_relapse_date] <- round(
+      as.numeric(first_relapse_days[m$patient[has_relapse_date]]) / 30.4375, 3
+    )
+    no_relapse_date <- recurred & !m$patient %in% names(first_relapse_days) &
+                       m$patient %in% names(last_fu_days)
+    m$dfs_months[no_relapse_date] <- round(
+      as.numeric(last_fu_days[m$patient[no_relapse_date]]) / 30.4375, 3
+    )
+  } else if (length(last_fu_days) > 0) {
+    recurred_with_fu <- recurred & m$patient %in% names(last_fu_days)
+    m$dfs_months[recurred_with_fu] <- round(
+      as.numeric(last_fu_days[m$patient[recurred_with_fu]]) / 30.4375, 3
+    )
+  }
+} else if (length(last_fu_days) > 0) {
+  # No relapse_type column at all but have follow-ups → all disease-free
+  has_fu <- m$patient %in% names(last_fu_days)
+  m$dfs_status[has_fu] <- "0:DiseaseFree"
+  m$dfs_months[has_fu] <- round(
+    as.numeric(last_fu_days[m$patient[has_fu]]) / 30.4375, 3
   )
 }
 
@@ -379,7 +415,13 @@ if (length(first_relapse_type) > 0) {
 }
 if (length(first_relapse_site) > 0) {
   has_rsite <- m$patient %in% names(first_relapse_site)
-  m$relapse_site_val[has_rsite] <- first_relapse_site[m$patient[has_rsite]]
+  m$relapse_site_val[has_rsite] <- clean_json_array(first_relapse_site[m$patient[has_rsite]])
+}
+m$relapse_site_label <- NA_character_
+m$method_of_progression <- NA_character_
+if (length(last_method_of_progression) > 0) {
+  has_method <- m$patient %in% names(last_method_of_progression)
+  m$method_of_progression[has_method] <- clean_json_array(last_method_of_progression[m$patient[has_method]])
 }
 
 # Sample type: map ARGO specimen_type values to cBioPortal vocabulary
@@ -399,11 +441,13 @@ m[m == ""] <- NA
 
 # ── MOHCCN ontology code lookups ──────────────────────────────────────────────
 ps_map  <- read_mohccn_map(opt$primary_site_map)
+ps_map_rev <- if (!is.null(ps_map)) setNames(names(ps_map), ps_map) else NULL
 sts_map <- read_mohccn_map(opt$specimen_tissue_source_map)
 ti_map  <- read_mohccn_map(opt$treatment_intent_map)
 
 m$primary_site_code           <- apply_mohccn_map(m$primary_site,           ps_map)
 m$specimen_tissue_source_code <- apply_mohccn_map(m$specimen_tissue_source, sts_map)
+m$relapse_site_label          <- apply_ps_label(m$relapse_site_val, ps_map_rev)
 if ("treatment_intent" %in% names(m)) {
   m$treatment_intent_code <- apply_mohccn_map(m$treatment_intent, ti_map)
 } else {
@@ -452,7 +496,9 @@ if (opt$mode == "patient") {
     list("DFS_STATUS",                 "dfs_status",                     "Disease Free Status",         "Disease free status since initial treatment.",                         "STRING", "1"),
     list("DISEASE_STATUS_AT_FOLLOWUP", "disease_status_at_followup",     "Disease Status at Follow-up", "Patient disease status at the most recent follow-up.",                "STRING", "1"),
     list("RELAPSE_TYPE",               "relapse_type_val",               "Relapse Type",                "Type of disease relapse or recurrence.",                               "STRING", "1"),
-    list("RELAPSE_SITE",               "relapse_site_val",               "Relapse Site",                "Anatomic site of disease progression or recurrence.",                  "STRING", "1")
+    list("RELAPSE_SITE",               "relapse_site_val",               "Relapse Site",                "Anatomic site of disease progression or recurrence (ICD-O code).",     "STRING", "1"),
+    list("RELAPSE_SITE_LABEL",         "relapse_site_label",             "Relapse Site Label",           "Human-readable label for the anatomic site of progression.",           "STRING", "1"),
+    list("METHOD_OF_PROGRESSION_STATUS", "method_of_progression",        "Method of Progression Status", "Method used to assess disease progression status.",                    "STRING", "1")
   )
   m_patient <- m[!duplicated(m$patient), ]
   write_cbio_table(m_patient, col_defs, opt$output)

@@ -138,11 +138,12 @@ ps_map     <- if (!is.null(ps_map_raw)) setNames(names(ps_map_raw), ps_map_raw) 
 sts_map    <- read_mohccn_map(opt$specimen_tissue_source_map)
 ti_map     <- read_mohccn_map(opt$treatment_intent_map)
 
-# Apply reversed primary-site map: ICD-O code (possibly with sub-code like "C22.0")
-# → human-readable label. Strips the decimal suffix before lookup ("C22.0" → "C22").
+# Apply reversed primary-site map: ICD-O code → human-readable label.
+# Extracts the parent code (C + 2 digits) before lookup, handling both
+# decimal format ("C22.0" → "C22") and concatenated MOHCCN format ("C220" → "C22").
 apply_ps_label <- function(codes, reversed_map) {
   if (is.null(reversed_map)) return(rep(NA_character_, length(codes)))
-  prefixes <- sub("\\..*", "", trimws(as.character(codes)))
+  prefixes <- sub("^(C\\d{2}).*", "\\1", trimws(as.character(codes)))
   result   <- reversed_map[prefixes]
   result[is.na(result) | result == ""] <- NA_character_
   unname(result)
@@ -270,12 +271,22 @@ if (!is.null(opt$treatments)) {
 
 # ── (c) Status timeline (follow-up visits) ────────────────────────────────────
 if (!is.null(fu_data) && nrow(fu_data) > 0) {
+  site_raw   <- if ("anatomic_site_progression_or_recurrence" %in% names(fu_data))
+    clean_json_array(fu_data$anatomic_site_progression_or_recurrence) else NA_character_
+  method_raw <- if ("method_of_progression_status" %in% names(fu_data))
+    clean_json_array(fu_data$method_of_progression_status) else NA_character_
+
   status_out <- data.frame(
-    PATIENT_ID = fu_data$submitter_donor_id,
-    START_DATE = fu_data$start_day,
-    STOP_DATE  = "",
-    EVENT_TYPE = "STATUS",
-    STATUS     = if ("disease_status_at_followup" %in% names(fu_data)) fu_data$disease_status_at_followup else NA_character_,
+    PATIENT_ID            = fu_data$submitter_donor_id,
+    START_DATE            = fu_data$start_day,
+    STOP_DATE             = "",
+    EVENT_TYPE            = "STATUS",
+    STATUS                = if ("disease_status_at_followup" %in% names(fu_data)) fu_data$disease_status_at_followup else NA_character_,
+    RELAPSE_TYPE          = if ("relapse_type" %in% names(fu_data)) fu_data$relapse_type else NA_character_,
+    RELAPSE_DATE          = sapply(fu_data$date_of_relapse, parse_day_interval, USE.NAMES = FALSE),
+    METHOD_OF_PROGRESSION = method_raw,
+    SITE                  = site_raw,
+    SITE_LABEL            = apply_ps_label(site_raw, ps_map),
     stringsAsFactors = FALSE
   )
   status_out$START_DATE[is.na(status_out$START_DATE)] <- 0

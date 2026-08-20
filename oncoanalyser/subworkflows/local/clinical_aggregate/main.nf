@@ -1,4 +1,5 @@
 include { FORMAT_CLINICAL }                          from '../../../modules/local/format_clinical'
+include { SPLIT_CLINICAL }                           from '../../../modules/local/split_clinical'
 include { GENERATE_META_FILE }                       from '../../../modules/local/generate_meta_file'
 include { GENERATE_META_FILE as GENERATE_META_FILE_TIMELINE } from '../../../modules/local/generate_meta_file'
 include { GENERATE_TIMELINE }                        from '../../../modules/local/generate_timeline'
@@ -52,6 +53,40 @@ workflow CLINICAL_AGGREGATE {
             .set { ch_formatted_input }
 
         FORMAT_CLINICAL(ch_formatted_input)
+
+        // ── Per-sample clinical split (both mode only) ───────────────────────
+        // Pair up group-level sample + patient files
+        ch_sample_file = FORMAT_CLINICAL.out
+            .filter { meta, f -> meta.mode == "sample" }
+            .map { meta, f -> tuple(meta.group, f) }
+
+        ch_patient_file = FORMAT_CLINICAL.out
+            .filter { meta, f -> meta.mode == "patient" }
+            .map { meta, f -> tuple(meta.group, f) }
+
+        ch_group_clinical = ch_sample_file.join(ch_patient_file)
+
+        // Parse linking file for per-sample tuples (empty channel in clinical-only mode)
+        ch_per_sample = genomic_subjects
+            .filter { it && it != "" }
+            .flatMap { gs_path ->
+                file(gs_path).readLines().drop(1).findAll { it.trim() }.collect { line ->
+                    def fields = line.split('\t')
+                    [fields[0], fields[1]]
+                }
+            }
+
+        ch_split_input = ch_per_sample
+            .combine(ch_group_clinical)
+            .map { subject, sample, group, clin_sample, clin_patient ->
+                tuple(
+                    [group: group, subject: subject, sample: sample],
+                    clin_sample,
+                    clin_patient
+                )
+            }
+
+        SPLIT_CLINICAL(ch_split_input)
 
         meta_text = Channel.of("""cancer_study_identifier: add_text
 genetic_alteration_type: CLINICAL

@@ -11,6 +11,7 @@ include { GENOMIC_MUTATIONS            } from '../subworkflows/local/genomic_mut
 include { GENOMIC_ML                   } from '../subworkflows/local/genomic_ml'
 include { GENOMIC_AGGREGATE_OUTPUT     } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE           } from '../modules/local/generate_meta_file'
+include { GENERATE_CANCER_TYPE        } from '../modules/local/generate_cancer_type'
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
 include { MERGE_SAMPLE_SV              } from '../modules/local/merge_sample_sv'
 include { SIGPROFILER_SBS               } from '../modules/local/sigprofiler_sbs'
@@ -428,6 +429,16 @@ reference_genome: hg38
 
         GENERATE_META_FILE(all_groups, "study", meta_text)
 
+        // ── Cancer type file (optional) ──────────────────────────────────────
+
+        ch_cancer_type = Channel.empty()
+        if (params.generate_cancer_type) {
+            GENERATE_CANCER_TYPE(all_groups)
+            ch_cancer_type = GENERATE_CANCER_TYPE.out.flatMap { group, ct, meta_ct ->
+                [tuple(group, ct), tuple(group, meta_ct)]
+            }
+        }
+
         // ── Package all cBioPortal files into a tar.gz per group ──────────────
 
         all_package_files = GENOMIC_AGGREGATE_OUTPUT.out.cnv
@@ -443,6 +454,7 @@ reference_genome: hg38
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
             .mix(GENERATE_META_FILE.out)
+            .mix(ch_cancer_type)
             .groupTuple()
 
         PACKAGE_CBIOPORTAL(all_package_files)

@@ -43,6 +43,9 @@ nextflow_pipeline {
 
         then {
             def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            // TEST.tar.gz is excluded from stable_path via tests/.nftignore: tar embeds
+            // per-file mtimes, so its md5 differs on every run. Its contents are
+            // asserted explicitly below instead.
             def stable_path = getAllFilesFromDir(params.outdir, ignoreFile: 'tests/.nftignore')
 
             println "Test: Stable names: ${stable_name}"
@@ -51,6 +54,13 @@ nextflow_pipeline {
             // Verify linking file content — should have both T1 and T2
             def linking = path("${params.outdir}/TEST/util_linking_file.txt").readLines()
             def linking_subjects = linking.findAll { !it.startsWith('subject_id') }.collect { it.split('\t')[0] }.sort()
+
+            // Study archive must mirror the study directory: genomic + clinical + timeline
+            def tarball = "${params.outdir}/TEST.tar.gz"
+            def tar_entries = ["tar", "-tzf", tarball].execute().text
+                .readLines()
+                .findAll { it && !it.endsWith('/') }
+                .collect { it.split('/').last() }
 
             // Clinical sample file — T1 deduped to 1 sample (T1-1DT), T2 has 1
             def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
@@ -64,6 +74,12 @@ nextflow_pipeline {
                 { assert data_rows.size() == 2 : "Expected 2 sample rows (T1-1DT, T2), got ${data_rows.size()}" },
                 { assert data_rows.count { it.startsWith('T1') } == 1 : "Expected 1 T1 row (deduped)" },
                 { assert data_rows.count { it.startsWith('T2') } == 1 : "Expected 1 T2 row" },
+                { assert tar_entries.contains('data_clinical_sample.txt') : "Archive missing data_clinical_sample.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('data_clinical_patient.txt') : "Archive missing data_clinical_patient.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('data_timeline.txt') : "Archive missing data_timeline.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('meta_timeline.txt') : "Archive missing meta_timeline.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('util_linking_file.txt') : "Archive missing util_linking_file.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('cases_sequenced.txt') : "Archive missing case lists, got: ${tar_entries}" },
                 { assert snapshot(
                     workflow.trace.succeeded().size(),
                     stable_name,

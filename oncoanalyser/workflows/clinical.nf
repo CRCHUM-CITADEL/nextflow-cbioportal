@@ -37,6 +37,8 @@ workflow CLINICAL {
                 }
 
             CLINICAL_AGGREGATE(ch_file_list, genomic_subjects)
+
+            ch_package_files = CLINICAL_AGGREGATE.out.package_files
         } else {
             // ── Template fallback: generate minimal clinical files from sample_registrations ──
             log.info "No clinical samplesheet provided. Generating template clinical files from sample_registrations."
@@ -85,6 +87,9 @@ data_filename: data_clinical_sample.txt
                 file_names,
                 meta_text
             )
+
+            ch_package_files = GENERATE_CLINICAL_TEMPLATE.out
+                .mix(GENERATE_META_FILE.out)
         }
 
         //
@@ -98,4 +103,6 @@ data_filename: data_clinical_sample.txt
                 newLine: true
             )
 
+    emit:
+        package_files = ch_package_files  // channel<tuple(group, file)> — files to put in the study archive
 }

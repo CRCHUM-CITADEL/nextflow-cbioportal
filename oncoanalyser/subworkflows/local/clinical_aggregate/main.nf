@@ -146,6 +146,17 @@ data_filename: data_timeline.txt
 """ }
         )
 
+        // ── Files that make up the clinical part of the study package ────────
+        // SPLIT_CLINICAL output is deliberately excluded: per-subject slices are
+        // not loadable by cBioPortal.
+
+        ch_package_files = FORMAT_CLINICAL.out
+            .map { meta, f -> tuple(meta.group, f) }
+            .mix(GENERATE_META_FILE.out)
+            .mix(GENERATE_TIMELINE.out.ch_timeline.filter { _group, f -> f })
+            .mix(GENERATE_META_FILE_TIMELINE.out)
+
     emit:
         csvs
+        package_files = ch_package_files
 }

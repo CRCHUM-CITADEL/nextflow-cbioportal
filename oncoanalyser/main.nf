@@ -17,6 +17,7 @@ include { GENOMIC   } from './workflows/genomic.nf'
 include { CLINICAL  } from './workflows/clinical.nf'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils'
+include { PACKAGE_CBIOPORTAL      } from './modules/local/package_cbioportal'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -97,6 +98,23 @@ workflow {
         )
     }
 
+    //
+    // MODULE: Package the study files into <study>.tar.gz
+    //
+    // Packaging lives here rather than inside GENOMIC so that in "both" mode the
+    // archive matches the study directory: genomic + clinical + timeline + linking file.
+    // Only genomic/both produce a per-group study directory — in clinical-only mode the
+    // files are published flat into outdir, so there is nothing to package.
+    //
+    if (params.mode in ['genomic', 'both']) {
+        ch_package_files = GENOMIC.out.package_files
+
+        if (params.mode == 'both') {
+            ch_package_files = ch_package_files.mix(CLINICAL.out.package_files)
+        }
+
+        PACKAGE_CBIOPORTAL(ch_package_files.groupTuple())
+    }
 
     //
     // SUBWORKFLOW: Run completion tasks

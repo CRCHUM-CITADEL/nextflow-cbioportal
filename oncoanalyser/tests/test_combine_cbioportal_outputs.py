@@ -375,6 +375,53 @@ def test_case_lists_are_discovered_not_hardcoded(tmp_path):
     assert "case_list_ids: S1\tS2" in sequenced
 
 
+def case_list_ids(path):
+    """Return the sample IDs of a case list, as cBioPortal would parse them."""
+    line = [ln for ln in path.read_text().splitlines() if ln.startswith("case_list_ids:")]
+    assert len(line) == 1, f"expected exactly one case_list_ids line, got {len(line)}"
+    return line[0].partition(":")[2].strip("\n").lstrip(" ").split("\t")
+
+
+def test_case_list_empty_side_contributes_no_blank_id(tmp_path):
+    """A batch with no samples for a category must not inject an empty ID."""
+    d1 = make_study(tmp_path, "b1", [("P1", "S1")])
+    d2 = make_study(tmp_path, "b2", [("P2", "S2")])
+    write_case_list(d1 / "case_lists" / "cases_cnv.txt", "b1", "cnv", [])
+    out, _ = merge(tmp_path, d1, d2)
+
+    ids = case_list_ids(out / "case_lists" / "cases_cnv.txt")
+    assert ids == ["S2"]
+    assert "" not in ids
+
+
+def test_case_list_ids_are_deduplicated(tmp_path):
+    """A sample listed twice in one input appears once after merging."""
+    d1 = make_study(tmp_path, "b1", [("P1", "S1")])
+    d2 = make_study(tmp_path, "b2", [("P2", "S2")])
+    write_case_list(d1 / "case_lists" / "cases_sequenced.txt", "b1", "sequenced", ["S1", "S1"])
+    out, _ = merge(tmp_path, d1, d2)
+
+    assert case_list_ids(out / "case_lists" / "cases_sequenced.txt") == ["S1", "S2"]
+
+
+def test_case_list_without_trailing_newline_is_not_corrupted(tmp_path):
+    """A case list whose final line lacks a newline must not merge into the ID line."""
+    d1 = make_study(tmp_path, "b1", [("P1", "S1")])
+    d2 = make_study(tmp_path, "b2", [("P2", "S2")])
+    path = d1 / "case_lists" / "cases_sequenced.txt"
+    path.write_text(
+        "cancer_study_identifier: b1\n"
+        "stable_id: b1_sequenced\n"
+        "case_list_ids: S1\n"
+        "case_list_description: ADD TEXT"  # no trailing newline
+    )
+    out, _ = merge(tmp_path, d1, d2)
+
+    merged = out / "case_lists" / "cases_sequenced.txt"
+    assert "case_list_description: ADD TEXT\ncase_list_ids:" in merged.read_text()
+    assert case_list_ids(merged) == ["S1", "S2"]
+
+
 def test_subject_dirs_unioned(tmp_path):
     d1 = make_study(tmp_path, "b1", [("P1", "S1")])
     d2 = make_study(tmp_path, "b2", [("P2", "S2")])

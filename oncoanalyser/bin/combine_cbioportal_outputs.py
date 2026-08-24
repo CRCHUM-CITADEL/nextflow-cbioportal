@@ -541,7 +541,9 @@ def merge_case_list(path1, path2, out_path):
             for line in f:
                 if line.startswith("case_list_ids:"):
                     _, _, ids_str = line.partition(":")
-                    sample_ids = set(ids_str.strip().split("\t"))
+                    # Drop blanks: an empty or whitespace-only ID list would
+                    # otherwise contribute an empty sample ID to the union.
+                    sample_ids = {s.strip() for s in ids_str.split("\t") if s.strip()}
                 else:
                     metadata_lines.append(line)
         return metadata_lines, sample_ids
@@ -553,7 +555,9 @@ def merge_case_list(path1, path2, out_path):
 
     with open(out_path, "w") as out:
         for line in meta_lines:
-            out.write(line)
+            # Guard against an input whose final line lacks a newline, which
+            # would otherwise run straight into the case_list_ids line.
+            out.write(line if line.endswith("\n") else line + "\n")
         out.write("case_list_ids: " + "\t".join(merged_ids) + "\n")
 
 

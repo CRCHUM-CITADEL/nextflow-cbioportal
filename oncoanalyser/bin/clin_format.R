@@ -124,16 +124,30 @@ apply_mohccn_map <- function(values, map) {
 }
 
 # ── Sample linking ────────────────────────────────────────────────────────────
+# A registration is a usable cBioPortal sample when it is Total DNA and either a
+# solid-tissue tumour or a buffy-coat germline normal. Sample IDs must carry the
+# MoHQ analyte/designation suffix (-1DT/-2FRT for tumour, -1DN/-1RN for normal);
+# other suffixes are registry bookkeeping rows, not sequenced samples.
+is_cbio_sample <- function(reg) {
+  reg$sample_type == "Total DNA" & (
+    (reg$tumour_normal_designation == "Tumour" &
+     reg$specimen_tissue_source    == "Solid tissue" &
+     grepl("-\\d+[A-Z]*[DR]T$", reg$submitter_sample_id)) |
+    (reg$tumour_normal_designation == "Normal" &
+     reg$specimen_tissue_source    == "Buffy coat" &
+     grepl("-\\d+[A-Z]*[DR]N$", reg$submitter_sample_id))
+  )
+}
+
 cat("Reading sample registrations...\n")
 reg  <- read.csv(opt$sample_registrations, header=TRUE)
-link <- reg[reg$tumour_normal_designation == "Tumour" &
-            reg$sample_type == "Total DNA" &
-            reg$specimen_tissue_source == "Solid tissue" &
-            grepl("-\\d+[A-Z]*[DR]T$", reg$submitter_sample_id), ]
-# Deduplicate: when multiple samples share the same patient + specimen
-# (e.g. -1DT and -2DT for the same biopsy), keep the first by sample ID.
-link <- link[order(link$submitter_sample_id), ]
-link <- link[!duplicated(link[, c("submitter_donor_id", "submitter_specimen_id")]), ]
+link <- reg[is_cbio_sample(reg), ]
+# Deduplicate: when multiple samples share the same patient + specimen + designation
+# (e.g. -1DT and -2DT for the same biopsy), keep the first by sample ID. Tumour rows
+# sort first so a normal can never displace the tumour for a shared specimen ID.
+link <- link[order(link$tumour_normal_designation != "Tumour", link$submitter_sample_id), ]
+link <- link[!duplicated(link[, c("submitter_donor_id", "submitter_specimen_id",
+                                  "tumour_normal_designation")]), ]
 link$patient <- link$submitter_donor_id
 link$sample  <- link$submitter_sample_id
 # Rename sample_type to analyte_type to avoid column name conflict downstream
@@ -199,12 +213,16 @@ if (!is.null(opt$genomic_subjects)) {
   genomic <- read.table(opt$genomic_subjects, header=TRUE, sep="\t", stringsAsFactors=FALSE)
   m <- m[m$patient %in% genomic$subject_id, ]
   if (nrow(m) == 0) stop("Error: No clinical subjects match the genomic subjects file.")
-  # Only remap sample IDs for patients with a single clinical sample.
+  # Only remap sample IDs for patients with a single clinical TUMOUR sample.
   # Multi-sample patients keep their clinical sample IDs to avoid duplicate SAMPLE_IDs.
+  # Normal (buffy coat) rows are never remapped and are excluded from the count --
+  # the linking file maps a subject to its tumour sample only, and counting normals
+  # would make every patient look multi-sample and suppress the remap entirely.
   sample_map    <- setNames(genomic$sample_id, genomic$subject_id)
-  sample_counts <- table(m$patient)
+  tumour_idx    <- m$tumour_normal_designation == "Tumour"
+  sample_counts <- table(m$patient[tumour_idx])
   single        <- names(sample_counts[sample_counts == 1])
-  idx           <- m$patient %in% single
+  idx           <- tumour_idx & m$patient %in% single
   m$sample[idx] <- sample_map[m$patient[idx]]
 }
 
@@ -500,7 +518,9 @@ if (opt$mode == "patient") {
     list("RELAPSE_SITE_LABEL",         "relapse_site_label",             "Relapse Site Label",           "Human-readable label for the anatomic site of progression.",           "STRING", "1"),
     list("METHOD_OF_PROGRESSION_STATUS", "method_of_progression",        "Method of Progression Status", "Method used to assess disease progression status.",                    "STRING", "1")
   )
-  m_patient <- m[!duplicated(m$patient), ]
+  # Prefer the tumour row per patient so the choice does not depend on merge order.
+  m_patient <- m[order(m$patient, m$tumour_normal_designation != "Tumour"), ]
+  m_patient <- m_patient[!duplicated(m_patient$patient), ]
   write_cbio_table(m_patient, col_defs, opt$output)
 
 } else if (opt$mode == "sample") {

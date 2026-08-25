@@ -27,7 +27,10 @@ Columns are the union of all event types; columns not applicable to a given EVEN
 Key behaviors:
 
 - **START_DATE defaults to 0 when missing** — any NA/empty date becomes day 0 (diagnosis day)
-- Filters patients from `sample_registrations` (Tumour + Total DNA + Solid tissue + regex `-\d+[A-Z]*[DR]T$`)
+- Filters patients from `sample_registrations`: `Total DNA` rows that are either
+  `Tumour` + `Solid tissue` matching `-\d+[A-Z]*[DR]T$`, or `Normal` + `Buffy coat`
+  matching `-\d+[A-Z]*[DR]N$`. `clin_format.R` applies the identical rule, so buffy
+  coat germline samples become rows in `data_clinical_sample.txt` alongside the tumour
 - When `genomic_subjects` TSV is provided (both mode), restricts timeline output to genomic subjects only
 - Nearest follow-up visit determines specimen SAMPLE_TYPE (Primary / Recurrence / Metastasis)
 
@@ -44,6 +47,43 @@ Params: `mohccn_primary_site_map`, `mohccn_specimen_tissue_source_map`, `mohccn_
 ## Incremental Processing
 
 The genomic workflow checks for pre-existing output files per subject. If all expected outputs (CNV, SV, expression, mutations) already exist, processing is skipped. This allows adding new subjects to the samplesheet and re-running without reprocessing the entire cohort. Delete a subject's output directory to force reprocessing.
+
+## Combining Two Runs (`bin/combine_cbioportal_outputs.py`)
+
+Standalone CLI utility (not called by the pipeline) that merges two study folders or
+`.tar.gz` archives — used to add a batch of samples to an already-loaded study.
+
+Merge strategy per file category:
+
+- row-append — `data_cna_hg38.seg`, `data_cna_long.txt`, `data_sv.txt`, `util_linking_file.txt`
+  (the linking file has no trailing newline, so a separator is inserted)
+- 2-line header — `data_mutations_dna_rna_germline.txt` (`#version 2.4` + column header)
+- wide matrix — `data_expression.txt`, the six `data_mutational_signatures_*` files
+- union-append — `data_timeline.txt`; its column set varies with the event types a batch
+  contained, so columns are unioned in `gen_timeline.R` order (4 common, then alphabetical)
+- clinical — `data_clinical_{sample,patient}.txt`; `clin_format.R` drops columns whose source
+  data is absent, so columns are unioned and the 4 `#` metadata rows rebuilt per column
+- headerless dedupe — `cancer_type.txt`
+- discovered by glob — `meta_*.txt` and `case_lists/*.txt`, so new files are never silently lost
+- union-copied — per-subject folders, keeping the merged folder usable for incremental resume
+
+`machine_learning/` is deliberately **not** merged (log2/standardised tables are
+cohort-normalised) — regenerate it over the combined cohort. Anything else is reported as
+unhandled; `--strict` makes that a non-zero exit. Add new outputs to a dispatch table in the
+script and cover them in `tests/test_combine_cbioportal_outputs.py`.
+
+Overlapping sample IDs are a hard error. Patient rows are appended without deduplication.
+
+## Study Archive
+
+`PACKAGE_CBIOPORTAL` is invoked from `main.nf` (not from `workflows/genomic.nf`) so that in
+`both` mode `<study>.tar.gz` mirrors the loadable part of the study directory — genomic +
+clinical + timeline + `util_linking_file.txt` + case lists. `GENOMIC` and `CLINICAL` each
+emit `package_files`; `main.nf` mixes them and calls the module once. Clinical-only mode
+produces no archive (it has no `study_id`/group directory).
+
+The archive's md5 is not reproducible (tar embeds per-file mtimes), so `*.tar.gz` is listed
+in `tests/.nftignore` — assert on its contents, not its checksum.
 
 ## Process Labels (`conf/base.config`)
 

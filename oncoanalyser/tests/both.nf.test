@@ -62,18 +62,26 @@ nextflow_pipeline {
                 .findAll { it && !it.endsWith('/') }
                 .collect { it.split('/').last() }
 
-            // Clinical sample file — T1 deduped to 1 sample (T1-1DT), T2 has 1
+            // Clinical sample file — T1's two DNA tumour registrations dedupe to one
+            // (T1-1DT) plus its buffy coat normal (T1-1DN); T2 has one tumour, remapped
+            // to the genomic sample ID (T2-T) by the linking file.
             def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
                 .findAll { !it.startsWith('#') && it.trim() }
             // sample_lines[0] is column header, rest are data rows
-            def data_rows = sample_lines.drop(1)
+            def data_rows   = sample_lines.drop(1)
+            def sample_cols = sample_lines[0].split('\t') as List
+            def sample_ids  = data_rows.collect { it.split('\t', -1)[sample_cols.indexOf('SAMPLE_ID')] }
 
             assertAll(
                 { assert workflow.success },
                 { assert linking_subjects == ['T1', 'T2'] : "Linking file should contain T1 and T2, got: ${linking_subjects}" },
-                { assert data_rows.size() == 2 : "Expected 2 sample rows (T1-1DT, T2), got ${data_rows.size()}" },
-                { assert data_rows.count { it.startsWith('T1') } == 1 : "Expected 1 T1 row (deduped)" },
+                { assert data_rows.size() == 3 : "Expected 3 sample rows (T1-1DT, T1-1DN, T2-T), got ${data_rows.size()}" },
+                { assert data_rows.count { it.startsWith('T1') } == 2 : "Expected 2 T1 rows (deduped tumour + buffy coat normal)" },
                 { assert data_rows.count { it.startsWith('T2') } == 1 : "Expected 1 T2 row" },
+                // The tumour SAMPLE_IDs must still adopt the genomic IDs from
+                // util_linking_file.txt (T2-T, not the clinical T2-2FDT), otherwise the
+                // clinical table matches no sample in data_mutations / data_cna_long.
+                { assert sample_ids.sort() == ['T1-1DN', 'T1-1DT', 'T2-T'] : "Unexpected SAMPLE_IDs: ${sample_ids}" },
                 { assert tar_entries.contains('data_clinical_sample.txt') : "Archive missing data_clinical_sample.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('data_clinical_patient.txt') : "Archive missing data_clinical_patient.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('data_timeline.txt') : "Archive missing data_timeline.txt, got: ${tar_entries}" },

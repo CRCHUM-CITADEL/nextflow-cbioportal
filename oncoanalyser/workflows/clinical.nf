@@ -50,15 +50,20 @@ workflow CLINICAL {
 
             ch_linking = ch_linking_path
                 .splitCsv(header: true, sep: ',')
-                .filter { row -> row.tumour_normal_designation == "Tumour" && row.sample_type == "Total DNA" }
+                .filter { row -> row.sample_type == "Total DNA" &&
+                    (row.tumour_normal_designation == "Tumour" ||
+                     (row.tumour_normal_designation == "Normal" &&
+                      row.specimen_tissue_source == "Buffy coat")) }
                 .toSortedList { a, b -> a.submitter_sample_id <=> b.submitter_sample_id }
                 .flatMap()
                 .unique { [it.submitter_donor_id, it.submitter_specimen_id] }
-                .map { row -> [subject: row.submitter_donor_id, sample: row.submitter_sample_id] }
+                .map { row -> [subject     : row.submitter_donor_id,
+                               sample      : row.submitter_sample_id,
+                               sample_type : row.tumour_normal_designation == "Normal" ? "Normal" : "Primary"] }
 
-            // Build newline-separated "subject\tsample" lines
+            // Build newline-separated "subject\tsample\tsample_type" lines
             sample_lines = ch_linking
-                .map { meta -> "${meta.subject}\t${meta.sample}" }
+                .map { meta -> "${meta.subject}\t${meta.sample}\t${meta.sample_type}" }
                 .collect()
                 .map { lines -> lines.join('\n') }
 

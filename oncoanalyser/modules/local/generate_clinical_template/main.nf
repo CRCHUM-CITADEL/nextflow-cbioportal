@@ -3,7 +3,7 @@ process GENERATE_CLINICAL_TEMPLATE {
 
     input:
     val group
-    val sample_lines   // newline-separated "subject\tsample" lines
+    val sample_lines   // newline-separated "subject\tsample\tsample_type" lines
 
     output:
     tuple val(group), path("data_clinical_sample.txt")
@@ -16,9 +16,9 @@ process GENERATE_CLINICAL_TEMPLATE {
     printf '#1\\t1\\t1\\n' >> data_clinical_sample.txt
     printf 'PATIENT_ID\\tSAMPLE_ID\\tSAMPLE_TYPE\\n' >> data_clinical_sample.txt
 
-    echo '${sample_lines}' | while IFS=\$'\\t' read -r patient sample; do
+    echo '${sample_lines}' | while IFS=\$'\\t' read -r patient sample sample_type; do
         [ -z "\$patient" ] && continue
-        printf '%s\\t%s\\tPrimary\\n' "\$patient" "\$sample" >> data_clinical_sample.txt
+        printf '%s\\t%s\\t%s\\n' "\$patient" "\$sample" "\${sample_type:-Primary}" >> data_clinical_sample.txt
     done
     """
 }

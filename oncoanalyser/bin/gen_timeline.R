@@ -106,18 +106,15 @@ spec_tissue_source_map <- character(0)   # submitter_specimen_id -> specimen_tis
 if (!is.null(opt$sample_registrations)) {
   cat("Reading sample registrations...\n")
   reg <- read.csv(opt$sample_registrations, header = TRUE, stringsAsFactors = FALSE)
-  # Same eligibility rule as clin_format.R: Total DNA rows that are either a
-  # solid-tissue tumour or a buffy-coat germline normal, with the matching MoHQ
-  # sample-ID suffix (-1DT/-2FRT for tumour, -1DN/-1RN for normal).
+  # Same eligibility rule as clin_format.R: Total DNA solid-tissue tumour rows
+  # carrying the MoHQ analyte/designation suffix (-1DT/-2FRT). Germline normals do
+  # not make a patient eligible, but every event of an eligible patient is kept
+  # below regardless of which specimen or diagnosis it is attached to.
   sample_reg <- reg[
-    reg$sample_type == "Total DNA" & (
-      (reg$tumour_normal_designation == "Tumour" &
-       reg$specimen_tissue_source    == "Solid tissue" &
-       grepl("-\\d+[A-Z]*[DR]T$", reg$submitter_sample_id)) |
-      (reg$tumour_normal_designation == "Normal" &
-       reg$specimen_tissue_source    == "Buffy coat" &
-       grepl("-\\d+[A-Z]*[DR]N$", reg$submitter_sample_id))
-    ), ]
+    reg$sample_type               == "Total DNA" &
+    reg$tumour_normal_designation == "Tumour" &
+    reg$specimen_tissue_source    == "Solid tissue" &
+    grepl("-\\d+[A-Z]*[DR]T$", reg$submitter_sample_id), ]
   valid_patients <- unique(sample_reg$submitter_donor_id)
   # Deduplicate by specimen_id — multiple sequencing types (DNA, RNA) per specimen produce
   # duplicate rows; take the first entry so the named-vector lookup stays unambiguous.

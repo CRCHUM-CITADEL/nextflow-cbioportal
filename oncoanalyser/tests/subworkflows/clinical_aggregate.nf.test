@@ -80,10 +80,9 @@ nextflow_workflow {
             assert path("${params.outdir}/TEST/data_timeline.txt").exists()
             assert path("${params.outdir}/TEST/meta_timeline.txt").exists()
 
-            // ── Buffy coat germline normals are first-class samples ──
-            // The fixture registers one Buffy coat normal (T1-1DN, kept) and one
-            // Whole blood normal (T2-1DN, still excluded), so this covers both the
-            // tissue-source predicate and the -DN sample-ID suffix.
+            // ── Only tumour samples become sample rows ──
+            // The fixture registers a Buffy coat normal (T1-1DN) and a Whole blood
+            // normal (T2-1DN); neither belongs in data_clinical_sample.txt.
             def sample_rows = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
                 .findAll { !it.startsWith('#') && it.trim() }
             def sample_cols = sample_rows[0].split('\t') as List
@@ -92,20 +91,33 @@ nextflow_workflow {
                 [(f[sample_cols.indexOf('SAMPLE_ID')]), [sample_cols, f].transpose().collectEntries()]
             }
 
-            assert rows_by_id.containsKey('T1-1DN') : "Buffy coat normal T1-1DN missing: ${rows_by_id.keySet()}"
-            assert !rows_by_id.containsKey('T2-1DN') : "Whole blood normal T2-1DN should stay excluded"
-            assert rows_by_id.containsKey('T1-1DT') && rows_by_id.containsKey('T2-2FDT') : "Tumour samples changed: ${rows_by_id.keySet()}"
+            assert !rows_by_id.containsKey('T1-1DN') : "Buffy coat normal T1-1DN should be excluded"
+            assert !rows_by_id.containsKey('T2-1DN') : "Whole blood normal T2-1DN should be excluded"
+            assert rows_by_id.keySet().sort() == ['T1-1DT', 'T2-2FDT'] : "Unexpected SAMPLE_IDs: ${rows_by_id.keySet()}"
+            assert rows_by_id.values().every { it['TUMOUR_NORMAL_DESIGNATION'] == 'Tumour' } :
+                "Non-tumour row in data_clinical_sample.txt: ${rows_by_id}"
 
-            def normal = rows_by_id['T1-1DN']
-            assert normal['PATIENT_ID']                  == 'T1'
-            assert normal['TUMOUR_NORMAL_DESIGNATION']   == 'Normal'
-            assert normal['SAMPLE_TYPE']                 == 'Normal'
-            assert normal['SPECIMEN_TISSUE_SOURCE']      == 'Buffy coat'
-            assert normal['SPECIMEN_TISSUE_SOURCE_CODE'] == 'NCIt: C84507'
-            // The normal's specimen (T1-SP-N) has no row in specimens.csv
-            assert normal['TUMOR_TISSUE_SITE'] == 'NA' : "Expected NA for specimen-sourced column, got ${normal['TUMOR_TISSUE_SITE']}"
+            // ── Multiple primary diagnoses: the sequenced specimen decides ──
+            // T1 has two diagnoses (T1-DX Liver, T1-DX2 Pancreas); its sequenced
+            // specimen T1-SP points at the second one, so the sample row must carry
+            // T1-DX2 even though T1-DX comes first in primary_diagnoses.csv.
+            def t1_tumour = rows_by_id['T1-1DT']
+            assert t1_tumour['PRIMARY_SITE']      == 'Pancreas'   : "Wrong diagnosis picked: ${t1_tumour['PRIMARY_SITE']}"
+            assert t1_tumour['PRIMARY_SITE_CODE'] == 'C25'
+            assert t1_tumour['CANCER_TYPE_CODE']  == 'C25.0'
+            assert t1_tumour['CLINICAL_STAGE']    == 'Stage IV'
 
-            // One patient row per patient, unaffected by the extra sample rows
+            // T2 has a single diagnosis, reached through its own specimen link
+            def t2_tumour = rows_by_id['T2-2FDT']
+            assert t2_tumour['PRIMARY_SITE']     == 'Ovary'
+            assert t2_tumour['CANCER_TYPE_CODE'] == 'C56'
+
+            // T1's treatment/surgery hangs off T1-DX -- the diagnosis that was NOT
+            // sequenced -- and is still reported on the sample row
+            assert t1_tumour['TREATMENT_TYPE'] == 'Surgery'
+            assert t1_tumour['SURGERY_TYPE']   == 'partial hepatectomy (procedure)'
+
+            // Patient-level data is kept in full for both patients
             def patient_rows = path("${params.outdir}/TEST/data_clinical_patient.txt").readLines()
                 .findAll { !it.startsWith('#') && it.trim() }
             assert patient_rows.drop(1).collect { it.split('\t')[0] } == ['T1', 'T2']
@@ -120,6 +132,15 @@ nextflow_workflow {
             assert t1_spec.every { it['SPECIMEN_TISSUE_SOURCE'] == 'Solid tissue' &&
                                    it['SPECIMEN_TYPE'] == 'Primary tumour' } :
                 "Normal registration leaked into the SPECIMEN event: ${t1_spec}"
+
+            // Every patient-level event type is still emitted, including T1's SURGERY,
+            // which is attached to the diagnosis that was not sequenced
+            def tl_events = tl_rows.drop(1)
+                .collect { [tl_cols, it.split('\t', -1) as List].transpose().collectEntries() }
+            assert tl_events.collect { it['EVENT_TYPE'] }.unique().sort() ==
+                ['LAB_TEST', 'SPECIMEN', 'STATUS', 'SURGERY', 'TREATMENT']
+            assert tl_events.any { it['EVENT_TYPE'] == 'SURGERY' && it['PATIENT_ID'] == 'T1' } :
+                "T1 SURGERY event lost"
 
             snapshot(
                 path("${params.outdir}/TEST/data_clinical_sample.txt"),
@@ -201,17 +222,16 @@ nextflow_workflow {
             def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
                 .findAll { !it.startsWith('#') && it.trim() }
             // T1 has 2 DNA tumour samples (T1-1DT, T1-2DT) sharing the same specimen;
-            // dedup keeps only T1-1DT (lowest DT number). Plus the T1-1DN buffy coat normal.
-            assert sample_lines.size() == 3 : "Expected column header + 2 sample data rows (T1 tumour + normal), got ${sample_lines.size()} non-comment lines"
+            // dedup keeps only T1-1DT (lowest DT number). The T1-1DN buffy coat normal
+            // is not a sample row.
+            assert sample_lines.size() == 2 : "Expected column header + 1 sample data row (T1 tumour), got ${sample_lines.size()} non-comment lines"
             assert sample_lines.drop(1).every { it.startsWith('T1') } : "Expected T1 data rows, got: ${sample_lines.drop(1)}"
 
-            // Regression: the sample-ID remap counts TUMOUR rows only. If normals were
-            // counted, T1 would look multi-sample and the tumour would keep its clinical
-            // ID (T1-1DT) instead of adopting the genomic one (T1-WGS) -- leaving the
-            // clinical table matching no sample in the genomic data files.
+            // A patient with a single clinical sample adopts the genomic sample ID, so
+            // the clinical table matches the sample names in the genomic data files.
             def sc_cols = sample_lines[0].split('\t') as List
             def ids     = sample_lines.drop(1).collect { it.split('\t', -1)[sc_cols.indexOf('SAMPLE_ID')] }
-            assert ids.sort() == ['T1-1DN', 'T1-WGS'] : "Expected the tumour remapped to T1-WGS and the normal to keep T1-1DN, got: ${ids}"
+            assert ids.sort() == ['T1-WGS'] : "Expected the tumour remapped to T1-WGS, got: ${ids}"
 
             // Timeline file should also be filtered to T1 only
             def tl_lines = path("${params.outdir}/TEST/data_timeline.txt").readLines()

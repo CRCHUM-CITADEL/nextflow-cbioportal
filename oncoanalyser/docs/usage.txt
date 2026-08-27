@@ -203,11 +203,9 @@ SAMPLE REGISTRATIONS FILE (optional, template mode only)
 
   A sample_registrations.csv used to generate minimal clinical files when
   no clinical_samplesheet is provided. The pipeline keeps sample_type=Total DNA
-  rows that are either tumour_normal_designation=Tumour, or
-  tumour_normal_designation=Normal with specimen_tissue_source=Buffy coat, to
-  derive the patient → sample mapping. Buffy coat germline samples are emitted
-  with SAMPLE_TYPE=Normal; other normal tissue sources (e.g. Whole blood) are
-  excluded.
+  rows with tumour_normal_designation=Tumour to derive the patient → sample
+  mapping. Germline normals (Buffy coat, Whole blood, ...) are patient-level
+  context only and are never emitted as samples.
 
     program_id,sample_type,specimen_tissue_source,...,submitter_donor_id,submitter_sample_id,tumour_normal_designation
     PROG,Total DNA,Solid tissue,...,PATIENT1,PATIENT1-1DT,Tumour

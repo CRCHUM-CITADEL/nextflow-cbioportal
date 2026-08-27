@@ -27,12 +27,23 @@ Columns are the union of all event types; columns not applicable to a given EVEN
 Key behaviors:
 
 - **START_DATE defaults to 0 when missing** — any NA/empty date becomes day 0 (diagnosis day)
-- Filters patients from `sample_registrations`: `Total DNA` rows that are either
-  `Tumour` + `Solid tissue` matching `-\d+[A-Z]*[DR]T$`, or `Normal` + `Buffy coat`
-  matching `-\d+[A-Z]*[DR]N$`. `clin_format.R` applies the identical rule, so buffy
-  coat germline samples become rows in `data_clinical_sample.txt` alongside the tumour
+- Filters patients from `sample_registrations`: `Total DNA` + `Tumour` + `Solid tissue`
+  rows matching `-\d+[A-Z]*[DR]T$`. `clin_format.R` applies the identical rule, so
+  germline normals (buffy coat included) never become rows in `data_clinical_sample.txt`
+  and a donor with no sequenced tumour drops out of every clinical output
+- Every event of an eligible patient is kept, whichever specimen, treatment or diagnosis
+  it hangs off — timeline events are only ever filtered by patient
 - When `genomic_subjects` TSV is provided (both mode), restricts timeline output to genomic subjects only
 - Nearest follow-up visit determines specimen SAMPLE_TYPE (Primary / Recurrence / Metastasis)
+
+## Primary Diagnosis Selection (`clin_format.R`)
+
+A donor may have several primary diagnoses. Each sample row takes the diagnosis of its own
+sequenced specimen (`specimens.csv` → `submitter_primary_diagnosis_id`), so the germline
+normal's diagnosis can never win; when the specimen carries no usable link the patient's
+first diagnosis is used. Every other clinical table (treatments, surgeries, systemic
+therapies, radiations, follow-ups, biomarkers) is merged by patient alone — patient-level
+information is kept even when it is attached to a different diagnosis or specimen.
 
 ## MOHCCN Mapping Tables
 

@@ -18,7 +18,6 @@ include { SIGPROFILER_SBS               } from '../modules/local/sigprofiler_sbs
 include { SIGPROFILER_DBS              } from '../modules/local/sigprofiler_dbs'
 include { SIGPROFILER_ID               } from '../modules/local/sigprofiler_id'
 include { SIGS_COUNTS_TO_CBIOPORTAL    } from '../modules/local/sigs_counts_to_cbioportal'
-include { PACKAGE_CBIOPORTAL           } from '../modules/local/package_cbioportal'
 
 
 // Resolve an oncoanalyser output file path; log a warning and return null if absent.
@@ -439,26 +438,6 @@ reference_genome: hg38
             }
         }
 
-        // ── Package all cBioPortal files into a tar.gz per group ──────────────
-
-        all_package_files = GENOMIC_AGGREGATE_OUTPUT.out.cnv
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.cnv_seg)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sv)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.expression)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.mutation)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_dbs)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_dbs)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_id)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
-            .mix(GENERATE_META_FILE.out)
-            .mix(ch_cancer_type)
-            .groupTuple()
-
-        PACKAGE_CBIOPORTAL(all_package_files)
-
         // ── Subject → tumor sample linking file ───────────────────────────────
 
         ch_linking_file = ch_samples
@@ -473,6 +452,27 @@ reference_genome: hg38
                 return tuple(group, output_file)
             }
 
+        // ── Files that make up the cBioPortal study package ───────────────────
+        // Packaging itself happens in main.nf, so that in "both" mode the archive
+        // also picks up the clinical and timeline files produced by CLINICAL.
+
+        all_package_files = GENOMIC_AGGREGATE_OUTPUT.out.cnv
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.cnv_seg)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sv)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.expression)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.mutation)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_dbs)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_dbs)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_id)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_id)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
+            .mix(GENERATE_META_FILE.out)
+            .mix(ch_cancer_type)
+            .mix(ch_linking_file)
+
         // ── Software versions ─────────────────────────────────────────────────
 
         softwareVersionsToYAML(ch_versions)
@@ -484,7 +484,8 @@ reference_genome: hg38
             )
 
     emit:
-        linking_file = ch_linking_file  // channel<tuple(group, file)> — subject→sample linking file per group
+        linking_file  = ch_linking_file     // channel<tuple(group, file)> — subject→sample linking file per group
+        package_files = all_package_files   // channel<tuple(group, file)> — files to put in the study archive
 }
 
 /*

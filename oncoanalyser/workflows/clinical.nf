@@ -37,6 +37,8 @@ workflow CLINICAL {
                 }
 
             CLINICAL_AGGREGATE(ch_file_list, genomic_subjects)
+
+            ch_package_files = CLINICAL_AGGREGATE.out.package_files
         } else {
             // ── Template fallback: generate minimal clinical files from sample_registrations ──
             log.info "No clinical samplesheet provided. Generating template clinical files from sample_registrations."
@@ -48,15 +50,20 @@ workflow CLINICAL {
 
             ch_linking = ch_linking_path
                 .splitCsv(header: true, sep: ',')
-                .filter { row -> row.tumour_normal_designation == "Tumour" && row.sample_type == "Total DNA" }
+                .filter { row -> row.sample_type == "Total DNA" &&
+                    (row.tumour_normal_designation == "Tumour" ||
+                     (row.tumour_normal_designation == "Normal" &&
+                      row.specimen_tissue_source == "Buffy coat")) }
                 .toSortedList { a, b -> a.submitter_sample_id <=> b.submitter_sample_id }
                 .flatMap()
                 .unique { [it.submitter_donor_id, it.submitter_specimen_id] }
-                .map { row -> [subject: row.submitter_donor_id, sample: row.submitter_sample_id] }
+                .map { row -> [subject     : row.submitter_donor_id,
+                               sample      : row.submitter_sample_id,
+                               sample_type : row.tumour_normal_designation == "Normal" ? "Normal" : "Primary"] }
 
-            // Build newline-separated "subject\tsample" lines
+            // Build newline-separated "subject\tsample\tsample_type" lines
             sample_lines = ch_linking
-                .map { meta -> "${meta.subject}\t${meta.sample}" }
+                .map { meta -> "${meta.subject}\t${meta.sample}\t${meta.sample_type}" }
                 .collect()
                 .map { lines -> lines.join('\n') }
 
@@ -85,6 +92,9 @@ data_filename: data_clinical_sample.txt
                 file_names,
                 meta_text
             )
+
+            ch_package_files = GENERATE_CLINICAL_TEMPLATE.out
+                .mix(GENERATE_META_FILE.out)
         }
 
         //
@@ -98,4 +108,6 @@ data_filename: data_clinical_sample.txt
                 newLine: true
             )
 
+    emit:
+        package_files = ch_package_files  // channel<tuple(group, file)> — files to put in the study archive
 }

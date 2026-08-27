@@ -68,6 +68,7 @@ PER-GROUP AGGREGATED FILES
 
     cases_cnv.txt          Samples with copy-number data
     cases_sequenced.txt    Samples with mutation data
+    cases_sv.txt           Samples with structural-variant data
 
   Utility files:
 
@@ -78,9 +79,21 @@ PER-GROUP AGGREGATED FILES
     ML-formatted versions of CNV, expression, mutations, and SVs
     (with COSMIC/ChimerDB fusion annotations) for downstream analysis.
 
+  Cancer type (only when --generate_cancer_type is set):
+
+    cancer_type.txt        One headerless row: type id, name, colour, parent
+    meta_cancer_type.txt   Metadata for the cancer type file
+
   Package:
 
     <group>.tar.gz         All cBioPortal files packaged for import.
+
+    The archive mirrors the loadable part of <outdir>/<group>/: data files,
+    meta files, case_lists/, util_linking_file.txt and — in "both" mode —
+    the clinical and timeline files. Per-subject folders and
+    machine_learning/ are intentionally left out; cBioPortal does not read
+    them. Only genomic and both modes produce an archive: clinical-only
+    mode publishes its files flat into <outdir> with no study folder.
 
 
 Clinical mode
@@ -160,3 +173,41 @@ The pipeline produces a <group>.tar.gz archive. To import:
        python importer/cbioportalImporter.py -s COHORT1/ -u http://localhost:8080
 
   See: https://docs.cbioportal.org/file-formats/
+
+
+Combining two runs
+------------------
+
+bin/combine_cbioportal_outputs.py merges two study folders (or two
+.tar.gz archives) into one — for adding a new batch of samples to a study
+that is already loaded.
+
+  bin/combine_cbioportal_outputs.py \
+      --input_dir_1 results_batch1/COHORT1 \
+      --input_dir_2 results_batch2/COHORT1 \
+      --output_dir  results_merged/COHORT1 \
+      --strict
+
+  Options:
+
+    --study_id ID   Rewrite cancer_study_identifier in every meta and case
+                    list file. Also lifts the requirement that both inputs
+                    share the same study ID.
+    --strict        Exit non-zero if either input holds a file no merge
+                    strategy handles, instead of only warning.
+
+  Setting --output_dir to one of the inputs merges in place, so a study
+  folder can be accumulated batch by batch.
+
+  Sample IDs must not overlap between the two inputs; that is a hard error.
+  Patient rows are appended as-is and never deduplicated, so a patient that
+  contributed samples to both batches keeps one row per batch.
+
+  machine_learning/ is NOT merged: expression_processed_log2.tsv and
+  expression_processed_standardized.tsv are normalised across the cohort,
+  so appending rows would give wrong values. Regenerate those tables by
+  re-running the pipeline over the combined cohort.
+
+  Prefer the study DIRECTORY over the .tar.gz as input — the directory also
+  carries the per-subject folders, which the merged folder needs to stay
+  usable as an incremental-resume target.

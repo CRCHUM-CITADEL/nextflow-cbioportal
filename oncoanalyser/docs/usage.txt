@@ -202,13 +202,17 @@ CLINICAL SAMPLESHEET
 SAMPLE REGISTRATIONS FILE (optional, template mode only)
 
   A sample_registrations.csv used to generate minimal clinical files when
-  no clinical_samplesheet is provided. The pipeline filters rows where
-  tumour_normal_designation=Tumour and sample_type=Total DNA to derive
-  the patient → sample mapping.
+  no clinical_samplesheet is provided. The pipeline keeps sample_type=Total DNA
+  rows that are either tumour_normal_designation=Tumour, or
+  tumour_normal_designation=Normal with specimen_tissue_source=Buffy coat, to
+  derive the patient → sample mapping. Buffy coat germline samples are emitted
+  with SAMPLE_TYPE=Normal; other normal tissue sources (e.g. Whole blood) are
+  excluded.
 
-    program_id,sample_type,...,submitter_donor_id,submitter_sample_id,tumour_normal_designation
-    PROG,Total DNA,...,PATIENT1,SAMPLE1,Tumour
-    PROG,Total DNA,...,PATIENT2,SAMPLE2,Tumour
+    program_id,sample_type,specimen_tissue_source,...,submitter_donor_id,submitter_sample_id,tumour_normal_designation
+    PROG,Total DNA,Solid tissue,...,PATIENT1,PATIENT1-1DT,Tumour
+    PROG,Total DNA,Buffy coat,...,PATIENT1,PATIENT1-1DN,Normal
+    PROG,Total DNA,Solid tissue,...,PATIENT2,PATIENT2-1DT,Tumour
 
   Pass via --sample_registrations path/to/sample_registrations.csv.
 

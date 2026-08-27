@@ -14,7 +14,9 @@ process MERGE_SAMPLE_SV {
         task.ext.when == null || task.ext.when
 
     script:
-    def files = sv_files instanceof List ? sv_files : [sv_files]
+    // Sort by name: the input channel's order varies between runs, which would
+    // otherwise make this file (and the group-level data_sv.txt) non-reproducible.
+    def files = (sv_files instanceof List ? sv_files : [sv_files]).sort { it.name }
     def data_cmds = files.collect { f -> "tail -n +2 ${f}" }.join('; ')
     """
     head -n 1 ${files[0]} > "tmp_sv_merge.txt"

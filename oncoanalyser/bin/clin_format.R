@@ -124,31 +124,26 @@ apply_mohccn_map <- function(values, map) {
 }
 
 # ── Sample linking ────────────────────────────────────────────────────────────
-# A registration is a usable cBioPortal sample when it is Total DNA and either a
-# solid-tissue tumour or a buffy-coat germline normal. Sample IDs must carry the
-# MoHQ analyte/designation suffix (-1DT/-2FRT for tumour, -1DN/-1RN for normal);
-# other suffixes are registry bookkeeping rows, not sequenced samples.
+# A registration is a usable cBioPortal sample when it is a Total DNA solid-tissue
+# tumour whose sample ID carries the MoHQ analyte/designation suffix (-1DT/-2FRT);
+# other suffixes are registry bookkeeping rows, not sequenced samples. Germline
+# normals (buffy coat and any other tissue source) are patient-level context only
+# and never become rows in data_clinical_sample.txt.
 is_cbio_sample <- function(reg) {
-  reg$sample_type == "Total DNA" & (
-    (reg$tumour_normal_designation == "Tumour" &
-     reg$specimen_tissue_source    == "Solid tissue" &
-     grepl("-\\d+[A-Z]*[DR]T$", reg$submitter_sample_id)) |
-    (reg$tumour_normal_designation == "Normal" &
-     reg$specimen_tissue_source    == "Buffy coat" &
-     grepl("-\\d+[A-Z]*[DR]N$", reg$submitter_sample_id))
-  )
+  reg$sample_type               == "Total DNA" &
+  reg$tumour_normal_designation == "Tumour" &
+  reg$specimen_tissue_source    == "Solid tissue" &
+  grepl("-\\d+[A-Z]*[DR]T$", reg$submitter_sample_id)
 }
 
 cat("Reading sample registrations...\n")
 reg  <- read.csv(opt$sample_registrations, header=TRUE)
 link <- reg[is_cbio_sample(reg), ]
 
-# Deduplicate: when multiple samples share the same patient + specimen + designation
-# (e.g. -1DT and -2DT for the same biopsy), keep the first by sample ID. Tumour rows
-# sort first so a normal can never displace the tumour for a shared specimen ID.
-link <- link[order(link$tumour_normal_designation != "Tumour", link$submitter_sample_id), ]
-link <- link[!duplicated(link[, c("submitter_donor_id", "submitter_specimen_id",
-                                  "tumour_normal_designation")]), ]
+# Deduplicate: when multiple samples share the same patient + specimen
+# (e.g. -1DT and -2DT for the same biopsy), keep the first by sample ID.
+link <- link[order(link$submitter_sample_id), ]
+link <- link[!duplicated(link[, c("submitter_donor_id", "submitter_specimen_id")]), ]
 link$patient <- link$submitter_donor_id
 link$sample  <- link$submitter_sample_id
 
@@ -181,9 +176,10 @@ diag <- diag[, intersect(c("patient", "cancer_type_code", "clinical_stage_group"
                               "pathological_n_category", "pathological_m_category",
                               "primary_site", "laterality", "basis_of_diagnosis",
                               "submitter_primary_diagnosis_id"), names(diag))]
-diag <- diag[order(diag$patient), ]
-diag <- diag[!duplicated(diag$patient), ]
-diag <- subset(diag, select=-c(patient))
+# Keep every diagnosis: a donor may have more than one, and the right one for a
+# sample is the one its sequenced specimen points at (resolved at merge time below).
+diag <- diag[order(diag$patient, diag$submitter_primary_diagnosis_id), ]
+diag <- diag[!duplicated(diag[, c("patient", "submitter_primary_diagnosis_id")]), ]
 
 # ── Specimens ──────────────────────────────────────────────────────────────────
 cat("Reading specimens...\n")
@@ -199,18 +195,20 @@ spec <- spec[, intersect(c("submitter_specimen_id", "tumour_histological_type", 
 # ── Merge: link ← spec (by specimen ID), then → donors → diagnoses ───────────
 m <- merge(link,  spec,   by="submitter_specimen_id", all.x=TRUE)
 m <- merge(m,     donors, by="patient", all.x=TRUE)
-m <- merge(m,     diag,   by="submitter_primary_diagnosis_id", all.x=TRUE)
 
-print(head(m[m$sample == "MoHQ-CM-3-255-567534-1DT" | m$sample == "MoHQ-CM-3-256-567553-1DT", ]))
-print(" --- ")
-# Keep only rows where the specimen's diagnosis ID matches the patient's primary diagnosis ID
-if (all(c("submitter_primary_diagnosis_id.x", "submitter_primary_diagnosis_id.y") %in% names(m))) {
-  m <- m[(m$submitter_primary_diagnosis_id.x == m$submitter_primary_diagnosis_id.y) |
-           is.na(m$submitter_primary_diagnosis_id.x), ]
-  m <- subset(m, select=-c(submitter_primary_diagnosis_id.x, submitter_primary_diagnosis_id.y))
-}
+# Each sample takes the primary diagnosis of its own sequenced specimen, so a donor
+# with several diagnoses gets the one that was actually sequenced rather than the
+# first one on file. Specimens with no usable diagnosis link fall back to the
+# patient's first diagnosis.
+if (!("submitter_primary_diagnosis_id" %in% names(m))) m$submitter_primary_diagnosis_id <- NA_character_
+diag_keys  <- paste(diag$patient, diag$submitter_primary_diagnosis_id)
+first_idx  <- !duplicated(diag$patient)
+first_diag <- setNames(diag$submitter_primary_diagnosis_id[first_idx], diag$patient[first_idx])
+fallback   <- is.na(m$submitter_primary_diagnosis_id) |
+              !(paste(m$patient, m$submitter_primary_diagnosis_id) %in% diag_keys)
+m$submitter_primary_diagnosis_id[fallback] <- first_diag[m$patient[fallback]]
 
-print(m[m$sample == "MoHQ-CM-3-255-567534-1DT" | m$sample == "MoHQ-CM-3-256-567553-1DT", ])
+m <- merge(m, diag, by=c("patient", "submitter_primary_diagnosis_id"), all.x=TRUE)
 
 # ── Filter to genomic subjects (optional) ────────────────────────────────────
 # When the genomic pipeline provides a linking file (subject_id TAB sample_id),
@@ -222,16 +220,12 @@ if (!is.null(opt$genomic_subjects)) {
   genomic <- read.table(opt$genomic_subjects, header=TRUE, sep="\t", stringsAsFactors=FALSE)
   m <- m[m$patient %in% genomic$subject_id, ]
   if (nrow(m) == 0) stop("Error: No clinical subjects match the genomic subjects file.")
-  # Only remap sample IDs for patients with a single clinical TUMOUR sample.
+  # Only remap sample IDs for patients with a single clinical sample.
   # Multi-sample patients keep their clinical sample IDs to avoid duplicate SAMPLE_IDs.
-  # Normal (buffy coat) rows are never remapped and are excluded from the count --
-  # the linking file maps a subject to its tumour sample only, and counting normals
-  # would make every patient look multi-sample and suppress the remap entirely.
   sample_map    <- setNames(genomic$sample_id, genomic$subject_id)
-  tumour_idx    <- m$tumour_normal_designation == "Tumour"
-  sample_counts <- table(m$patient[tumour_idx])
+  sample_counts <- table(m$patient)
   single        <- names(sample_counts[sample_counts == 1])
-  idx           <- tumour_idx & m$patient %in% single
+  idx           <- m$patient %in% single
   m$sample[idx] <- sample_map[m$patient[idx]]
 }
 
@@ -528,9 +522,7 @@ if (opt$mode == "patient") {
     list("RELAPSE_SITE_LABEL",         "relapse_site_label",             "Relapse Site Label",           "Human-readable label for the anatomic site of progression.",           "STRING", "1"),
     list("METHOD_OF_PROGRESSION_STATUS", "method_of_progression",        "Method of Progression Status", "Method used to assess disease progression status.",                    "STRING", "1")
   )
-  # Prefer the tumour row per patient so the choice does not depend on merge order.
-  m_patient <- m[order(m$patient, m$tumour_normal_designation != "Tumour"), ]
-  m_patient <- m_patient[!duplicated(m_patient$patient), ]
+  m_patient <- m[!duplicated(m$patient), ]
   write_cbio_table(m_patient, col_defs, opt$output)
 
 } else if (opt$mode == "sample") {

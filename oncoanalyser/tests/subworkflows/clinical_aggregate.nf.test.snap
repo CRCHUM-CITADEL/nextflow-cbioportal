@@ -1,11 +1,11 @@
 {
     "All file types \u2014 clinical output files are produced": {
         "content": [
-            "data_clinical_sample.txt:md5,0f106c72c675f8fa8141cc68d712aaaf",
+            "data_clinical_sample.txt:md5,1c991bc80e56633e1a7e47e29e07a6c4",
             "data_clinical_patient.txt:md5,436f98ea35d7d19a3fa8f69fa7c1aa8e",
             "data_timeline.txt:md5,48e4a8a7ef89899bd171ac7aad99faaf"
         ],
-        "timestamp": "2026-08-25T14:52:13.520942655",
+        "timestamp": "2026-08-27T15:51:11.527841519",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "25.10.4"

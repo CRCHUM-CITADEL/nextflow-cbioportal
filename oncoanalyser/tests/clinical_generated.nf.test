@@ -30,7 +30,7 @@ nextflow_pipeline {
 
             // Output files are identical to those produced by the hand-written samplesheet
             assert path("${params.outdir}/TEST/data_clinical_patient.txt").md5 == "436f98ea35d7d19a3fa8f69fa7c1aa8e"
-            assert path("${params.outdir}/TEST/data_clinical_sample.txt").md5  == "0f106c72c675f8fa8141cc68d712aaaf"
+            assert path("${params.outdir}/TEST/data_clinical_sample.txt").md5  == "1c991bc80e56633e1a7e47e29e07a6c4"
             assert path("${params.outdir}/TEST/meta_clinical_patient.txt").md5 == "db4e12d00e844523c08f6b37fd57865f"
             assert path("${params.outdir}/TEST/meta_clinical_sample.txt").md5  == "28084eb9555ebab829df83fe97a1cdbe"
         }

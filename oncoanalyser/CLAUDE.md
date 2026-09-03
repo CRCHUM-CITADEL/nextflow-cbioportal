@@ -14,6 +14,12 @@ Oncoanalyser WGS/WTS + clinical CSVs → cBioPortal. HPC-only (SLURM + Apptainer
   `Tumor_Variant_Count` is `SplitFrags + RealignedFrags + DiscordantFrags`.
   `TranscriptUp/Down` and `ExonUp/Down` populate `Site1/2_Ensembl_Transcript_Id`
   and `Site1/2_Region_Number`. The converter is 3.0-only; 2.3 CSVs are rejected
+- `Site1/2_Region` uses cBioPortal's vocabulary `{5_Prime_UTR, 3_Prime_UTR, Promoter,
+Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend falls
+  on an exon (`FusionReadData.java` `TransExonRef`), so: transcript + exon → `Exon`;
+  gene named but no exon ref → `Intron` (the caller assigns genes by gene-body overlap
+  with no promoter allowance); no gene → `NA`. UTR/Promoter are not derivable —
+  `pass_fusions.tsv` has no coding-type or CDS boundaries, and UTR bases are exonic
 - `ml_format_cnv.R` / `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`
 - No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes
 - VEP/PCGR data must be pre-staged

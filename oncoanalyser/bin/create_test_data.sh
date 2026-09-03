@@ -141,11 +141,13 @@ ENSG00000142156	COL6A1	2000	200.0	0.56	312.50	308.20	120
 EOF
 
 # Isofox pass fusions (T1) — PRDM15--PFKL, a TMPRSS2--ERG deletion, and three
-# rows whose Name has an empty half (unannotated breakend) that must be filtered
+# rows whose Name has an empty half (unannotated breakend) that must be filtered.
+# PFKL--COL6A1's 5' breakend has no exonic transcript ref -> Site1_Region = Intron
 cat > "${BASE}/oncoanalyser_output/TEST/T1/isofox/T1-T.isf.pass_fusions.tsv" << 'EOF'
 Name	KnownType	ChromosomeUp	ChromosomeDown	PositionUp	PositionDown	OrientationUp	OrientationDown	JunctionTypeUp	JunctionTypeDown	TranscriptUp	TranscriptDown	ExonUp	ExonDown	SvType	SplitFrags	RealignedFrags	DiscordantFrags	DepthUp	DepthDown	MaxAnchorLengthUp	MaxAnchorLengthDown	CohortFrequency
 PRDM15_PFKL	KNOWN_PAIR	chr21	chr21	41800000	44300000	1	-1	KNOWN	KNOWN	ENST00000398642	ENST00000349048	2	3	DEL	8	0	3	24	26	75	80	0
 TMPRSS2_ERG	NONE	chr21	chr21	41500000	38400000	-1	1	CANONICAL	KNOWN	ENST00000332149	ENST00000442448	1	4	DEL	4	1	2	18	15	90	85	0.01
+PFKL_COL6A1	NONE	chr21	chr21	44310000	45400000	1	-1	UNKNOWN	KNOWN		ENST00000361866	0	3	DEL	3	0	1	14	16	65	70	0
 _ORPHAN3P	NONE	chr21	chr21	42000000	42500000	1	-1	CANONICAL	KNOWN		ENST00000399329	0	2	DEL	4	0	0	12	11	70	100	0
 ORPHAN5P_	NONE	chr21	chr21	43000000	43500000	-1	1	KNOWN	CANONICAL	ENST00000399330		3	0	DEL	2	0	1	15	9	110	40	0.05
 _	NONE	chr21	chr21	43800000	43900000	1	-1	CANONICAL	CANONICAL			0	0	DEL	3	0	0	10	10	120	120	0

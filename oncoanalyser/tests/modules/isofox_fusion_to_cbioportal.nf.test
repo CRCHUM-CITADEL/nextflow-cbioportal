@@ -53,20 +53,38 @@ nextflow_process {
 
             // Isofox 3.0 packs both symbols into Name ("<up>_<down>"); rows where
             // either half is empty carry no Hugo symbol and must be dropped.
-            // T1's fixture has 5 records, 3 of them unannotated.
+            // T1's fixture has 6 records, 3 of them unannotated.
             def t1_cols = t1_lines[0].split('\t') as List
             def t1_rows = t1_lines.drop(1).collect { it.split('\t', -1) }
-            assert t1_rows.size() == 2 : "Unannotated fusions should be filtered, got ${t1_rows.size()} rows"
-            assert t1_rows.collect { it[t1_cols.indexOf('Site1_Hugo_Symbol')] }.sort() == ['PRDM15', 'TMPRSS2']
+            assert t1_rows.size() == 3 : "Unannotated fusions should be filtered, got ${t1_rows.size()} rows"
+            assert t1_rows.collect { it[t1_cols.indexOf('Site1_Hugo_Symbol')] }.sort() == ['PFKL', 'PRDM15', 'TMPRSS2']
 
             // TranscriptUp/Down and ExonUp/Down are now carried through
             def prdm15 = t1_rows.find { it[t1_cols.indexOf('Site1_Hugo_Symbol')] == 'PRDM15' }
             assert prdm15[t1_cols.indexOf('Site1_Ensembl_Transcript_Id')] == 'ENST00000398642'
             assert prdm15[t1_cols.indexOf('Site2_Ensembl_Transcript_Id')] == 'ENST00000349048'
             assert prdm15[t1_cols.indexOf('Site1_Region_Number')] == '2'
-            assert prdm15[t1_cols.indexOf('Site1_Region')] == 'exon'
             // TotalFragments is gone in 3.0 — SplitFrags + RealignedFrags + DiscordantFrags
             assert prdm15[t1_cols.indexOf('Tumor_Variant_Count')] == '11'
+
+            // Site1/2_Region must use cBioPortal's vocabulary:
+            // {5_Prime_UTR, 3_Prime_UTR, Promoter, Exon, Intron}. Isofox records a
+            // transcript + exon rank only for an exonic breakend; a named gene with
+            // no exon reference is intronic.
+            def region_vocab = ['5_Prime_UTR', '3_Prime_UTR', 'Promoter', 'Exon', 'Intron', 'NA']
+            t1_rows.each { row ->
+                assert row[t1_cols.indexOf('Site1_Region')] in region_vocab
+                assert row[t1_cols.indexOf('Site2_Region')] in region_vocab
+            }
+            assert prdm15[t1_cols.indexOf('Site1_Region')] == 'Exon'
+            assert prdm15[t1_cols.indexOf('Site2_Region')] == 'Exon'
+
+            // PFKL--COL6A1's 5' breakend has no exonic transcript reference
+            def pfkl = t1_rows.find { it[t1_cols.indexOf('Site1_Hugo_Symbol')] == 'PFKL' }
+            assert pfkl[t1_cols.indexOf('Site1_Region')] == 'Intron'
+            assert pfkl[t1_cols.indexOf('Site1_Region_Number')] == 'NA'
+            assert pfkl[t1_cols.indexOf('Site1_Ensembl_Transcript_Id')] == 'NA'
+            assert pfkl[t1_cols.indexOf('Site2_Region')] == 'Exon'
 
             // T2's two fixture rows share coordinates and collapse to one
             def t2_path = process.out.sv.collect { meta, f -> f }.find { it.toString().endsWith('T2.isofox_fusion.data_sv.txt') }

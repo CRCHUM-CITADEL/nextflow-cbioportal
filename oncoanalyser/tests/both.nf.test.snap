@@ -73,16 +73,16 @@
             [
                 "T1-1DT.data_clinical_patient.txt:md5,2010fd165866d6d452d8f588acc72e27",
                 "T1-1DT.data_clinical_sample.txt:md5,39110e08e8f90680a38666fc44c592a1",
-                "T1-1DT.data_sv.txt:md5,95b70454d5c3c1b78eee2610d9c7c452",
-                "T1-1DT.isofox_fusion.data_sv.txt:md5,48370ab5f3e024e8cf54d81362b12016",
+                "T1-1DT.data_sv.txt:md5,6a4040b49a39c19c908c5ba4630846ae",
+                "T1-1DT.isofox_fusion.data_sv.txt:md5,77a18620be45f68dcfafe7e7ea31a0fa",
                 "T1-1DT.somatic_rna_germline.maf:md5,bcb504cbd5eefdfbc98d90d262063d23",
                 "T1-1DT.tpm.tsv:md5,96ae6022f4ea845aa9e6abefc74cf233",
                 "T1-1DT_data_cna_hg38.seg:md5,c597634b2dc3d61031a7175b82e71de8",
                 "T1-1DT_data_cna_long.txt:md5,9b2504d25b5ecf622e3946f6fa71e2d6",
                 "T2-T.data_clinical_patient.txt:md5,300767b153ff652fd7d3598c73e45f13",
                 "T2-T.data_clinical_sample.txt:md5,e0a32435a18fa25185b5983be7394aa6",
-                "T2-T.data_sv.txt:md5,f883589d30a024b065424116ed4c5f50",
-                "T2-T.isofox_fusion.data_sv.txt:md5,db7530e8066bd21f0d7ef1680dcfad88",
+                "T2-T.data_sv.txt:md5,f4bf36a7119664f7afc2acdbb1ba4444",
+                "T2-T.isofox_fusion.data_sv.txt:md5,cb04b4979793e733662b1bbd81f38e72",
                 "T2-T.somatic_rna_germline.maf:md5,db5c7a6a8dbd897c4d0c7d3b13094ca3",
                 "T2-T.tpm.tsv:md5,862382082e3d6b1dc0ba6799e45275b6",
                 "T2-T_data_cna_hg38.seg:md5,030edeb8f62811eac3d91ed49ff098e3",
@@ -97,7 +97,7 @@
                 "data_cna_long.txt:md5,c4c280b51f50e10db9a08ab632391532",
                 "data_expression.txt:md5,81f6b9440fff9939c5012d381bfe02a9",
                 "data_mutations_dna_rna_germline.txt:md5,2f8e1d0f5da3d1f1c6daf29672022750",
-                "data_sv.txt:md5,7e1bb5f5459488399ef0cd3318444857",
+                "data_sv.txt:md5,d35d116bd783c31a9d5e04b51ea99fc6",
                 "data_timeline.txt:md5,48e4a8a7ef89899bd171ac7aad99faaf",
                 "all_somatic_mutations.tsv:md5,7e9a1a0b48d0f2dd825b57b56290268d",
                 "cnv_gene.tsv:md5,d378d8cbab81e111b158bed4c2dd9d46",
@@ -129,7 +129,7 @@
                 "util_linking_file.txt:md5,74ba4d7e0241c94fd014a4d994a83497"
             ]
         ],
-        "timestamp": "2026-09-03T14:23:27.900712064",
+        "timestamp": "2026-09-03T15:28:19.960937985",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "25.10.4"

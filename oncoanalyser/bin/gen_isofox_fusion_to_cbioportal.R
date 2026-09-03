@@ -94,6 +94,30 @@ exon_or_na <- function(x) {
 exon_up   <- exon_or_na(fusions$ExonUp)
 exon_down <- exon_or_na(fusions$ExonDown)
 
+# cBioPortal's Site1/2_Region vocabulary is {5_Prime_UTR, 3_Prime_UTR, Promoter, Exon, Intron}.
+#
+# Isofox fills Transcript/Exon from the breakend's TransExonRef list
+# (FusionReadData.java) — a transcript and exon rank are recorded only when the
+# breakend falls on an exon of that transcript, and are left empty/0 otherwise.
+# The fusion caller assigns a gene by overlap with the gene body and has no
+# upstream/promoter allowance, so a named gene with no exon reference means the
+# breakend sits inside that gene but outside every exon: intronic.
+#
+#   transcript + exon rank  -> Exon
+#   gene but no exon ref    -> Intron
+#   no gene                 -> NA (the row is dropped by the Hugo-symbol filter below)
+#
+# 5_Prime_UTR / 3_Prime_UTR / Promoter are not derivable from pass_fusions.tsv:
+# it carries no coding-type or CDS boundaries (RnaFusionFile.java lists all 23
+# columns), and UTR bases are exonic, so they surface here as Exon.
+classify_region <- function(gene, transcript, exon) {
+    ifelse(!is.na(exon) & !is.na(transcript), "Exon",
+           ifelse(!is.na(gene) & gene != "", "Intron", NA_character_))
+}
+
+transcript_up   <- blank_to_na(fusions$TranscriptUp)
+transcript_down <- blank_to_na(fusions$TranscriptDown)
+
 int_or_zero <- function(x) {
     x <- suppressWarnings(as.integer(x))
     x[is.na(x)] <- 0L
@@ -104,13 +128,13 @@ result <- data.table(
     Sample_Id                   = opt$sample,
     SV_Status                   = "SOMATIC",
     Site1_Hugo_Symbol           = gene_up,
-    Site1_Ensembl_Transcript_Id = blank_to_na(fusions$TranscriptUp),
+    Site1_Ensembl_Transcript_Id = transcript_up,
     Site1_Region_Number         = exon_up,
-    Site1_Region                = ifelse(is.na(exon_up), NA_character_, "exon"),
+    Site1_Region                = classify_region(gene_up, transcript_up, exon_up),
     Site2_Hugo_Symbol           = gene_down,
-    Site2_Ensembl_Transcript_Id = blank_to_na(fusions$TranscriptDown),
+    Site2_Ensembl_Transcript_Id = transcript_down,
     Site2_Region_Number         = exon_down,
-    Site2_Region                = ifelse(is.na(exon_down), NA_character_, "exon"),
+    Site2_Region                = classify_region(gene_down, transcript_down, exon_down),
     Site2_Effect_On_Frame       = NA_character_,
     NCBI_Build                  = "GRCh38",
     Class                       = "FUSION",

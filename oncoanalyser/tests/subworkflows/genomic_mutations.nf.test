@@ -24,21 +24,21 @@ nextflow_workflow {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_germline'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/T1-T.pave.germline.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
                     ]
                 )
                 // Somatic VCF
                 input[1] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/T1-T.pave.somatic.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/somatic/T1-T.pave.somatic.vcf.gz')
                     ]
                 )
                 // RNA-append VCF
                 input[2] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_rna'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/sage_append/somatic/T1-T.sage.append.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/sage_append/T1-T/T1-T.sage.append.vcf.gz')
                     ]
                 )
                 // Reference FASTA (chr21 only)

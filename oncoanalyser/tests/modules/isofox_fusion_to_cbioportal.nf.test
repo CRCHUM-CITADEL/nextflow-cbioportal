@@ -17,11 +17,11 @@ nextflow_process {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sv_rna_fusion'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/isofox/T1-T-RNA.isf.pass_fusions.csv')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/isofox/T1-T.isf.pass_fusions.tsv')
                     ],
                     [
                         [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sv_rna_fusion'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/isofox/T2-T-RNA.isf.pass_fusions.csv')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/isofox/T2-T.isf.pass_fusions.tsv')
                     ]
                 )
                 """
@@ -50,6 +50,27 @@ nextflow_process {
             assert t1_lines[1].contains('SOMATIC')
             assert t1_lines[1].contains('FUSION')
             assert t1_lines[1].contains('Yes')   // RNA_Support
+
+            // Isofox 3.0 packs both symbols into Name ("<up>_<down>"); rows where
+            // either half is empty carry no Hugo symbol and must be dropped.
+            // T1's fixture has 5 records, 3 of them unannotated.
+            def t1_cols = t1_lines[0].split('\t') as List
+            def t1_rows = t1_lines.drop(1).collect { it.split('\t', -1) }
+            assert t1_rows.size() == 2 : "Unannotated fusions should be filtered, got ${t1_rows.size()} rows"
+            assert t1_rows.collect { it[t1_cols.indexOf('Site1_Hugo_Symbol')] }.sort() == ['PRDM15', 'TMPRSS2']
+
+            // TranscriptUp/Down and ExonUp/Down are now carried through
+            def prdm15 = t1_rows.find { it[t1_cols.indexOf('Site1_Hugo_Symbol')] == 'PRDM15' }
+            assert prdm15[t1_cols.indexOf('Site1_Ensembl_Transcript_Id')] == 'ENST00000398642'
+            assert prdm15[t1_cols.indexOf('Site2_Ensembl_Transcript_Id')] == 'ENST00000349048'
+            assert prdm15[t1_cols.indexOf('Site1_Region_Number')] == '2'
+            assert prdm15[t1_cols.indexOf('Site1_Region')] == 'exon'
+            // TotalFragments is gone in 3.0 — SplitFrags + RealignedFrags + DiscordantFrags
+            assert prdm15[t1_cols.indexOf('Tumor_Variant_Count')] == '11'
+
+            // T2's two fixture rows share coordinates and collapse to one
+            def t2_path = process.out.sv.collect { meta, f -> f }.find { it.toString().endsWith('T2.isofox_fusion.data_sv.txt') }
+            assert path(t2_path.toString()).readLines().size() == 2 : "T2's duplicate-coordinate rows should dedupe to one"
 
             snapshot(
                 process.out.sv.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }

@@ -8,6 +8,12 @@ Oncoanalyser WGS/WTS + clinical CSVs → cBioPortal. HPC-only (SLURM + Apptainer
 - `data_sv.txt` rows require Hugo symbols at both sites — filter unannotated rows
 - SV classification (`gen_esvee_sv_to_cbioportal.R`): BND ALT strand → `(+,-)` DEL, `(-,+)` DUP, `(+,+)/(−,−)` INV, diff chr TRANSLOC. DNA SVs: `DNA_Support=Yes, RNA_Support=No`
 - RNA fusions (`gen_isofox_fusion_to_cbioportal.R`): `Class=FUSION, DNA_Support=No, RNA_Support=Yes`. Both merge into `data_sv.txt`
+- Isofox 3.0 `pass_fusions.tsv` packs both gene symbols into one `Name` column
+  (`<up>_<down>`, split on the first `_`); a row whose half is empty is unannotated
+  and gets dropped by the Hugo-symbol filter. `TotalFragments` no longer exists —
+  `Tumor_Variant_Count` is `SplitFrags + RealignedFrags + DiscordantFrags`.
+  `TranscriptUp/Down` and `ExonUp/Down` populate `Site1/2_Ensembl_Transcript_Id`
+  and `Site1/2_Region_Number`. The converter is 3.0-only; 2.3 CSVs are rejected
 - `ml_format_cnv.R` / `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`
 - No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes
 - VEP/PCGR data must be pre-staged

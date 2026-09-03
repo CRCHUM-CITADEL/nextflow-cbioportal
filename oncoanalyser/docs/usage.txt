@@ -33,8 +33,8 @@ Genomic mode processing steps:
   Copy-number variants         PURPLE somatic + gene TSVs   data_cna_hg38.seg,
                                                             data_cna_long.txt
   Structural variants (DNA)    ESVEE somatic VCF            data_sv.txt (DNA rows)
-  RNA fusions                  Isofox pass_fusions CSV      data_sv.txt (RNA rows)
-  Gene expression              Isofox gene_data CSV         data_expression.txt
+  RNA fusions                  Isofox pass_fusions TSV      data_sv.txt (RNA rows)
+  Gene expression              Isofox gene_data TSV         data_expression.txt
   Mutations                    PAVE somatic/germline/RNA    data_mutations_dna_rna_
                                VCFs                         germline.txt (MAF)
   Mutational signatures (SBS)  SNV trinucleotide counts     Contribution + counts
@@ -144,10 +144,12 @@ GENOMIC SAMPLESHEET
 
     <folder>/
     |-- pave/
-    |   |-- <subject_id>-T.pave.somatic.vcf.gz         Somatic DNA mutations
-    |   +-- <subject_id>-T.pave.germline.vcf.gz        Germline DNA mutations
+    |   |-- somatic/
+    |   |   +-- <subject_id>-T.pave.somatic.vcf.gz     Somatic DNA mutations
+    |   +-- germline/
+    |       +-- <subject_id>-T.pave.germline.vcf.gz    Germline DNA mutations
     |-- sage_append/
-    |   +-- somatic/
+    |   +-- <subject_id>-T/
     |       +-- <subject_id>-T.sage.append.vcf.gz      RNA-supported somatic
     |-- esvee/
     |   +-- <subject_id>-T.esvee.somatic.vcf.gz        Somatic structural variants
@@ -155,8 +157,8 @@ GENOMIC SAMPLESHEET
     |   |-- <subject_id>-T.purple.cnv.somatic.tsv      Somatic CN segments
     |   +-- <subject_id>-T.purple.cnv.gene.tsv         Gene-level copy numbers
     |-- isofox/
-    |   |-- <subject_id>-T-RNA.isf.gene_data.csv       Gene expression (Isofox)
-    |   +-- <subject_id>-T-RNA.isf.pass_fusions.csv    RNA gene fusions (Isofox)
+    |   |-- <subject_id>-T.isf.gene_data.tsv           Gene expression (Isofox)
+    |   +-- <subject_id>-T.isf.pass_fusions.tsv        RNA gene fusions (Isofox)
     +-- sigs/
         +-- <subject_id>-T.sig.snv_counts.csv          Trinucleotide SNV counts
 

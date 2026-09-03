@@ -17,11 +17,11 @@ nextflow_workflow {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'expression'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/isofox/T1-T-RNA.isf.gene_data.csv')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/isofox/T1-T.isf.gene_data.tsv')
                     ],
                     [
                         [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'expression'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/isofox/T2-T-RNA.isf.gene_data.csv')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/isofox/T2-T.isf.gene_data.tsv')
                     ]
                 )
                 input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_chr21.tsv')

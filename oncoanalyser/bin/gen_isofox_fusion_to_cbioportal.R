@@ -2,12 +2,20 @@
 
 # Convert Isofox RNA fusion output to cBioPortal data_sv.txt format.
 #
-# Isofox fusion.tsv column naming can vary slightly by version.
-# This script auto-detects the 5'/3' gene, chromosome, and position columns.
-# Typical column sets:
-#   - GeneName / OtherGeneName  (Isofox ≥v1.5)
-#   - GeneNameUp / GeneNameDown (older)
-#   - 5pGeneName / 3pGeneName   (some builds)
+# Expects the oncoanalyser 3.0 Isofox pass-fusion table
+# (<sample>.isf.pass_fusions.tsv), whose columns are:
+#   Name KnownType ChromosomeUp ChromosomeDown PositionUp PositionDown
+#   OrientationUp OrientationDown JunctionTypeUp JunctionTypeDown
+#   TranscriptUp TranscriptDown ExonUp ExonDown SvType
+#   SplitFrags RealignedFrags DiscordantFrags DepthUp DepthDown
+#   MaxAnchorLengthUp MaxAnchorLengthDown CohortFrequency
+#
+# Both gene symbols are packed into Name as "<up>_<down>"; either half may be
+# empty when Isofox could not annotate that breakend. Such rows are dropped —
+# data_sv.txt requires a Hugo symbol at both sites.
+#
+# KnownType, JunctionType*, SvType, Depth*, MaxAnchorLength* and CohortFrequency
+# have no cBioPortal SV counterpart and are deliberately not emitted.
 
 suppressPackageStartupMessages({
     library(optparse)
@@ -15,7 +23,7 @@ suppressPackageStartupMessages({
 })
 
 option_list <- list(
-    make_option(c("-i", "--input"),  type = "character", help = "Isofox fusion TSV file (<sample>.isofox.fusion.tsv)"),
+    make_option(c("-i", "--input"),  type = "character", help = "Isofox fusion TSV file (<sample>.isf.pass_fusions.tsv)"),
     make_option(c("-s", "--sample"), type = "character", help = "Tumor RNA sample ID"),
     make_option(c("-o", "--output"), type = "character", help = "Output data_sv.txt path")
 )
@@ -30,24 +38,15 @@ cat("Reading Isofox fusion file:", opt$input, "\n")
 fusions <- fread(opt$input, header = TRUE)
 cat("Found", nrow(fusions), "fusion records\n")
 
-# Helper: pick first matching column name from a priority list
-pick_col <- function(cols_available, candidates) {
-    for (c in candidates) {
-        if (c %in% cols_available) return(c)
-    }
-    stop(paste("None of the expected columns found:", paste(candidates, collapse = ", "),
-               "\nAvailable:", paste(cols_available, collapse = ", ")))
-}
-
 if (nrow(fusions) == 0) {
     cat("No fusions found. Writing empty output.\n")
 
     empty <- data.table(
         Sample_Id = character(), SV_Status = character(),
         Site1_Hugo_Symbol = character(), Site1_Ensembl_Transcript_Id = character(),
-        Site1_Region_Number = character(), Site1_Region = character(),
+        Site1_Region_Number = integer(), Site1_Region = character(),
         Site2_Hugo_Symbol = character(), Site2_Ensembl_Transcript_Id = character(),
-        Site2_Region_Number = character(), Site2_Region = character(),
+        Site2_Region_Number = integer(), Site2_Region = character(),
         Site2_Effect_On_Frame = character(), NCBI_Build = character(),
         Class = character(), DNA_Support = character(), RNA_Support = character(),
         Tumor_Variant_Count = integer(), Connection_Type = character(),
@@ -61,64 +60,76 @@ if (nrow(fusions) == 0) {
     quit(status = 0)
 }
 
-cols <- names(fusions)
+required_cols <- c("Name", "ChromosomeUp", "ChromosomeDown", "PositionUp", "PositionDown",
+                   "TranscriptUp", "TranscriptDown", "ExonUp", "ExonDown",
+                   "SplitFrags", "RealignedFrags", "DiscordantFrags")
+missing_cols <- setdiff(required_cols, names(fusions))
+if (length(missing_cols) > 0) {
+    stop(paste("Missing expected Isofox 3.0 columns:", paste(missing_cols, collapse = ", "),
+               "\nAvailable:", paste(names(fusions), collapse = ", ")))
+}
 
-# Auto-detect 5' gene info columns
-gene1_col <- pick_col(cols, c("GeneName", "GeneNameUp", "5pGeneName", "gene_name_up", "GeneA"))
-chr1_col  <- pick_col(cols, c("Chromosome", "ChrUp", "5pChromosome", "chr_up", "ChrA"))
-pos1_col  <- pick_col(cols, c("Position", "PosUp", "JunctionPositionUp", "pos_up", "PosA", "JunctionPosition"))
+# Name is "<up gene>_<down gene>" — split on the first underscore.
+# A Name without any underscore is malformed: keep it as the 5' gene only so the
+# row is dropped by the Hugo-symbol filter rather than becoming a self-fusion.
+fusion_name <- as.character(fusions$Name)
+gene_up     <- sub("_.*$", "", fusion_name)
+gene_down   <- ifelse(grepl("_", fusion_name, fixed = TRUE),
+                      sub("^[^_]*_", "", fusion_name), "")
 
-# Auto-detect 3' gene info columns
-gene2_col <- pick_col(cols, c("OtherGeneName", "GeneNameDown", "3pGeneName", "gene_name_down", "GeneB"))
-chr2_col  <- pick_col(cols, c("OtherChromosome", "ChrDown", "3pChromosome", "chr_down", "ChrB"))
-pos2_col  <- pick_col(cols, c("OtherPosition", "PosDown", "JunctionPositionDown", "pos_down", "PosB"))
+# Blank strings mean "not annotated" — carry them through as NA
+blank_to_na <- function(x) {
+    x <- as.character(x)
+    x[is.na(x) | x == ""] <- NA_character_
+    x
+}
 
-# Auto-detect read count columns
-split_col   <- Filter(function(c) c %in% cols,
-                      c("SplitFragments", "JunctionReadCount", "SpliceReadCount",
-                        "SplitFragmentCount", "junction_read_count"))[1]
-discord_col <- Filter(function(c) c %in% cols,
-                      c("DiscordantPairs", "DiscordantFragments", "DiscordantFragmentCount",
-                        "discordant_fragment_count", "DiscordantReads"))[1]
-total_col   <- Filter(function(c) c %in% cols,
-                      c("TotalFragments", "total_fragments"))[1]
+# Exon 0 is Isofox's "no exon" placeholder
+exon_or_na <- function(x) {
+    x <- suppressWarnings(as.integer(x))
+    x[!is.na(x) & x == 0] <- NA_integer_
+    x
+}
 
-cat("Using columns: 5'gene=", gene1_col, ", 5'chr=", chr1_col, ", 5'pos=", pos1_col, "\n")
-cat("              3'gene=", gene2_col, ", 3'chr=", chr2_col, ", 3'pos=", pos2_col, "\n")
+exon_up   <- exon_or_na(fusions$ExonUp)
+exon_down <- exon_or_na(fusions$ExonDown)
+
+int_or_zero <- function(x) {
+    x <- suppressWarnings(as.integer(x))
+    x[is.na(x)] <- 0L
+    x
+}
 
 result <- data.table(
     Sample_Id                   = opt$sample,
     SV_Status                   = "SOMATIC",
-    Site1_Hugo_Symbol           = fusions[[gene1_col]],
-    Site1_Ensembl_Transcript_Id = NA_character_,
-    Site1_Region_Number         = NA_character_,
-    Site1_Region                = NA_character_,
-    Site2_Hugo_Symbol           = fusions[[gene2_col]],
-    Site2_Ensembl_Transcript_Id = NA_character_,
-    Site2_Region_Number         = NA_character_,
-    Site2_Region                = NA_character_,
+    Site1_Hugo_Symbol           = gene_up,
+    Site1_Ensembl_Transcript_Id = blank_to_na(fusions$TranscriptUp),
+    Site1_Region_Number         = exon_up,
+    Site1_Region                = ifelse(is.na(exon_up), NA_character_, "exon"),
+    Site2_Hugo_Symbol           = gene_down,
+    Site2_Ensembl_Transcript_Id = blank_to_na(fusions$TranscriptDown),
+    Site2_Region_Number         = exon_down,
+    Site2_Region                = ifelse(is.na(exon_down), NA_character_, "exon"),
     Site2_Effect_On_Frame       = NA_character_,
     NCBI_Build                  = "GRCh38",
     Class                       = "FUSION",
     DNA_Support                 = "No",
     RNA_Support                 = "Yes",
-    Tumor_Variant_Count         = if (length(total_col) > 0 && !is.na(total_col))
-                                        fusions[[total_col]]
-                                    else if (length(split_col) > 0 && !is.na(split_col))
-                                        fusions[[split_col]]
-                                    else NA_integer_,
+    # Isofox 3.0 dropped TotalFragments — sum the three supporting-fragment counts
+    Tumor_Variant_Count         = int_or_zero(fusions$SplitFrags) +
+                                  int_or_zero(fusions$RealignedFrags) +
+                                  int_or_zero(fusions$DiscordantFrags),
     Connection_Type             = "5to3",
     Breakpoint_Type             = "PRECISE",
-    Event_Info                  = paste0("RNA-seq Fusion: ", fusions[[gene1_col]], "--", fusions[[gene2_col]]),
-    Annotation                  = paste0(fusions[[gene1_col]], " - ", fusions[[gene2_col]], " fusion"),
-    Site1_Chromosome            = sub("^chr", "", as.character(fusions[[chr1_col]])),
-    Site1_Position              = fusions[[pos1_col]],
-    Site2_Chromosome            = sub("^chr", "", as.character(fusions[[chr2_col]])),
-    Site2_Position              = fusions[[pos2_col]],
-    Tumor_Split_Read_Count      = if (length(split_col) > 0 && !is.na(split_col))
-                                        fusions[[split_col]] else NA_integer_,
-    Tumor_Paired_End_Read_Count = if (length(discord_col) > 0 && !is.na(discord_col))
-                                        fusions[[discord_col]] else NA_integer_
+    Event_Info                  = paste0("RNA-seq Fusion: ", gene_up, "--", gene_down),
+    Annotation                  = paste0(gene_up, " - ", gene_down, " fusion"),
+    Site1_Chromosome            = sub("^chr", "", as.character(fusions$ChromosomeUp)),
+    Site1_Position              = fusions$PositionUp,
+    Site2_Chromosome            = sub("^chr", "", as.character(fusions$ChromosomeDown)),
+    Site2_Position              = fusions$PositionDown,
+    Tumor_Split_Read_Count      = suppressWarnings(as.integer(fusions$SplitFrags)),
+    Tumor_Paired_End_Read_Count = suppressWarnings(as.integer(fusions$DiscordantFrags))
 )
 
 # Deduplicate on genomic coordinates

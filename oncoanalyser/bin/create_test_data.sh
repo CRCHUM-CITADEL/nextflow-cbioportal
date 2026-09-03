@@ -93,17 +93,17 @@ echo ""
 echo "--- Creating T1 fixtures ---"
 
 # pave somatic VCF (T1)
-make_vcf "${BASE}/oncoanalyser_output/TEST/T1/pave/T1-T.pave.somatic.vcf.gz" \
+make_vcf "${BASE}/oncoanalyser_output/TEST/T1/pave/somatic/T1-T.pave.somatic.vcf.gz" \
 "${snv_header_t1}chr21	41800000	.	C	T	60	PASS	DP=100	GT:AD:DP	0/0:50,0:50	0/1:40,30:70
 "
 
 # pave germline VCF (T1) — must have sample column T1 so FILTER_GERMLINE_DNA can exclude it
-make_vcf "${BASE}/oncoanalyser_output/TEST/T1/pave/T1-T.pave.germline.vcf.gz" \
+make_vcf "${BASE}/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz" \
 "${snv_header_t1}chr21	44300100	.	A	G	80	PASS	DP=120	GT:AD:DP	0/1:55,10:65	0/0:60,0:60
 "
 
 # sage append VCF (RNA-append somatic, T1)
-make_vcf "${BASE}/oncoanalyser_output/TEST/T1/sage_append/somatic/T1-T.sage.append.vcf.gz" \
+make_vcf "${BASE}/oncoanalyser_output/TEST/T1/sage_append/T1-T/T1-T.sage.append.vcf.gz" \
 "${snv_header_t1}chr21	41800000	.	C	T	60	PASS	DP=80	GT:AD:DP	0/0:40,0:40	0/1:30,25:55
 "
 
@@ -130,30 +130,41 @@ PFKL	chr21	44300051	44327376	1.2	1.8	0	0	0	0	0	0	0	0	0	0	0	0	0
 HUNK	chr21	31873020	32044633	0.3	0.5	0	0	0	0	0	0	0	0	0	0	0	0	0
 EOF
 
-# Isofox gene data CSV (T1)
+# Isofox gene data TSV (T1)
 mkdir -p "${BASE}/oncoanalyser_output/TEST/T1/isofox"
-cat > "${BASE}/oncoanalyser_output/TEST/T1/isofox/T1-T-RNA.isf.gene_data.csv" << 'EOF'
-GeneId,GeneName,rawCounts,fragmentsPerKbLength,medianGCContent,TPM,AdjustedTPM,spliceJunctionCount
-ENSG00000141956,PRDM15,1200,120.5,0.55,145.82,140.10,85
-ENSG00000141959,PFKL,800,80.2,0.52,23.45,22.80,40
-ENSG00000142149,HUNK,300,30.1,0.48,8.12,7.90,15
-ENSG00000142156,COL6A1,2000,200.0,0.56,312.50,308.20,120
+cat > "${BASE}/oncoanalyser_output/TEST/T1/isofox/T1-T.isf.gene_data.tsv" << 'EOF'
+GeneId	GeneName	rawCounts	fragmentsPerKbLength	medianGCContent	TPM	AdjustedTPM	spliceJunctionCount
+ENSG00000141956	PRDM15	1200	120.5	0.55	145.82	140.10	85
+ENSG00000141959	PFKL	800	80.2	0.52	23.45	22.80	40
+ENSG00000142149	HUNK	300	30.1	0.48	8.12	7.90	15
+ENSG00000142156	COL6A1	2000	200.0	0.56	312.50	308.20	120
+EOF
+
+# Isofox pass fusions (T1) — PRDM15--PFKL, a TMPRSS2--ERG deletion, and three
+# rows whose Name has an empty half (unannotated breakend) that must be filtered
+cat > "${BASE}/oncoanalyser_output/TEST/T1/isofox/T1-T.isf.pass_fusions.tsv" << 'EOF'
+Name	KnownType	ChromosomeUp	ChromosomeDown	PositionUp	PositionDown	OrientationUp	OrientationDown	JunctionTypeUp	JunctionTypeDown	TranscriptUp	TranscriptDown	ExonUp	ExonDown	SvType	SplitFrags	RealignedFrags	DiscordantFrags	DepthUp	DepthDown	MaxAnchorLengthUp	MaxAnchorLengthDown	CohortFrequency
+PRDM15_PFKL	KNOWN_PAIR	chr21	chr21	41800000	44300000	1	-1	KNOWN	KNOWN	ENST00000398642	ENST00000349048	2	3	DEL	8	0	3	24	26	75	80	0
+TMPRSS2_ERG	NONE	chr21	chr21	41500000	38400000	-1	1	CANONICAL	KNOWN	ENST00000332149	ENST00000442448	1	4	DEL	4	1	2	18	15	90	85	0.01
+_ORPHAN3P	NONE	chr21	chr21	42000000	42500000	1	-1	CANONICAL	KNOWN		ENST00000399329	0	2	DEL	4	0	0	12	11	70	100	0
+ORPHAN5P_	NONE	chr21	chr21	43000000	43500000	-1	1	KNOWN	CANONICAL	ENST00000399330		3	0	DEL	2	0	1	15	9	110	40	0.05
+_	NONE	chr21	chr21	43800000	43900000	1	-1	CANONICAL	CANONICAL			0	0	DEL	3	0	0	10	10	120	120	0
 EOF
 
 echo "--- Creating T2 fixtures ---"
 
 # pave somatic VCF (T2)
-make_vcf "${BASE}/oncoanalyser_output/TEST/T2/pave/T2-T.pave.somatic.vcf.gz" \
+make_vcf "${BASE}/oncoanalyser_output/TEST/T2/pave/somatic/T2-T.pave.somatic.vcf.gz" \
 "${snv_header_t2}chr21	41800500	.	G	A	55	PASS	DP=90	GT:AD:DP	0/0:45,0:45	0/1:35,28:63
 "
 
 # pave germline VCF (T2)
-make_vcf "${BASE}/oncoanalyser_output/TEST/T2/pave/T2-T.pave.germline.vcf.gz" \
+make_vcf "${BASE}/oncoanalyser_output/TEST/T2/pave/germline/T2-T.pave.germline.vcf.gz" \
 "${snv_header_t2}chr21	44300200	.	T	C	75	PASS	DP=110	GT:AD:DP	0/1:50,12:62	0/0:55,0:55
 "
 
 # sage append VCF (T2)
-make_vcf "${BASE}/oncoanalyser_output/TEST/T2/sage_append/somatic/T2-T.sage.append.vcf.gz" \
+make_vcf "${BASE}/oncoanalyser_output/TEST/T2/sage_append/T2-T/T2-T.sage.append.vcf.gz" \
 "${snv_header_t2}chr21	41800500	.	G	A	55	PASS	DP=70	GT:AD:DP	0/0:35,0:35	0/1:28,22:50
 "
 
@@ -180,12 +191,19 @@ HUNK	chr21	31873020	32044633	0.4	0.6	0	0	0	0	0	0	0	0	0	0	0	0	0
 EOF
 
 mkdir -p "${BASE}/oncoanalyser_output/TEST/T2/isofox"
-cat > "${BASE}/oncoanalyser_output/TEST/T2/isofox/T2-T-RNA.isf.gene_data.csv" << 'EOF'
-GeneId,GeneName,rawCounts,fragmentsPerKbLength,medianGCContent,TPM,AdjustedTPM,spliceJunctionCount
-ENSG00000141956,PRDM15,900,90.5,0.54,110.20,106.50,70
-ENSG00000141959,PFKL,1500,150.0,0.53,45.80,44.20,65
-ENSG00000142149,HUNK,200,20.0,0.47,5.30,5.10,10
-ENSG00000142156,COL6A1,1800,180.0,0.55,280.40,276.80,105
+cat > "${BASE}/oncoanalyser_output/TEST/T2/isofox/T2-T.isf.gene_data.tsv" << 'EOF'
+GeneId	GeneName	rawCounts	fragmentsPerKbLength	medianGCContent	TPM	AdjustedTPM	spliceJunctionCount
+ENSG00000141956	PRDM15	900	90.5	0.54	110.20	106.50	70
+ENSG00000141959	PFKL	1500	150.0	0.53	45.80	44.20	65
+ENSG00000142149	HUNK	200	20.0	0.47	5.30	5.10	10
+ENSG00000142156	COL6A1	1800	180.0	0.55	280.40	276.80	105
+EOF
+
+# Isofox pass fusions (T2) — two rows on identical coordinates, which dedupe to one
+cat > "${BASE}/oncoanalyser_output/TEST/T2/isofox/T2-T.isf.pass_fusions.tsv" << 'EOF'
+Name	KnownType	ChromosomeUp	ChromosomeDown	PositionUp	PositionDown	OrientationUp	OrientationDown	JunctionTypeUp	JunctionTypeDown	TranscriptUp	TranscriptDown	ExonUp	ExonDown	SvType	SplitFrags	RealignedFrags	DiscordantFrags	DepthUp	DepthDown	MaxAnchorLengthUp	MaxAnchorLengthDown	CohortFrequency
+PRDM15_PFKL	KNOWN_PAIR	chr21	chr21	41800500	44300200	1	-1	KNOWN	KNOWN	ENST00000398642	ENST00000349048	2	3	DEL	6	0	2	20	22	75	80	0
+PRDM15_PFKL	KNOWN_PAIR	chr21	chr21	41800500	44300200	1	-1	CANONICAL	KNOWN	ENST00000398643	ENST00000349048	2	3	DEL	1	0	0	20	22	60	65	0
 EOF
 
 # ──────────────────────────────────────────────────────────────────────────────

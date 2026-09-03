@@ -5,7 +5,7 @@ process ISOFOX_FUSION_TO_CBIOPORTAL {
     container params.container_r
 
     input:
-        tuple val(meta), path(fusion_csv)
+        tuple val(meta), path(fusion_tsv)
 
     output:
         tuple val(meta), path("${meta.sample}.isofox_fusion.data_sv.txt"), emit: sv
@@ -16,7 +16,7 @@ process ISOFOX_FUSION_TO_CBIOPORTAL {
     script:
     """
     Rscript ${projectDir}/bin/gen_isofox_fusion_to_cbioportal.R \\
-        --input  ${fusion_csv} \\
+        --input  ${fusion_tsv} \\
         --sample ${meta.sample} \\
         --output ${meta.sample}.isofox_fusion.data_sv.txt
     """

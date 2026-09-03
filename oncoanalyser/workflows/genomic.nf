@@ -190,13 +190,13 @@ workflow GENOMIC {
         //   esvee/caller/${sample_id}-T.esvee.unfiltered.vcf.gz
         //   purple/${sample_id}-T.purple.cnv.somatic.tsv
         //   purple/${sample_id}-T.purple.cnv.gene.tsv
-        //   isofox/${sample_id}-T.isf.gene_data.csv
+        //   isofox/${sample_id}-T.isf.gene_data.tsv
 
         // SAGE somatic VCF → mutations
         ch_sage_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/pave/${meta.subject}-T.pave.somatic.vcf.gz",
+                    "${meta.folder}/pave/somatic/${meta.subject}-T.pave.somatic.vcf.gz",
                     'mutation (PAVE somatic)')
                 vcf ? [meta + [pipeline: 'mutation'], vcf] : null
             }
@@ -206,7 +206,7 @@ workflow GENOMIC {
         ch_sage_germline_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/pave/${meta.subject}-T.pave.germline.vcf.gz",
+                    "${meta.folder}/pave/germline/${meta.subject}-T.pave.germline.vcf.gz",
                     'germline mutation (PAVE)')
                 vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
@@ -216,7 +216,7 @@ workflow GENOMIC {
         ch_sage_rna_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/sage_append/somatic/${meta.subject}-T.sage.append.vcf.gz",
+                    "${meta.folder}/sage_append/${meta.subject}-T/${meta.subject}-T.sage.append.vcf.gz",
                     'mutation (SAGE RNA append)')
                 vcf ? [meta + [pipeline: 'mutation_rna'], vcf] : null
             }
@@ -249,7 +249,7 @@ workflow GENOMIC {
         ch_isofox_exp = ch_samples_to_run
             .map { meta ->
                 def exp = findOncoFile(meta,
-                    "${meta.folder}/isofox/${meta.subject}-T-RNA.isf.gene_data.csv",
+                    "${meta.folder}/isofox/${meta.subject}-T.isf.gene_data.tsv",
                     'expression (Isofox)')
                 exp ? [meta + [pipeline: 'expression'], exp] : null
             }
@@ -259,7 +259,7 @@ workflow GENOMIC {
         ch_isofox_fusion = ch_samples_to_run
             .map { meta ->
                 def fusions = findOncoFile(meta,
-                    "${meta.folder}/isofox/${meta.subject}-T-RNA.isf.pass_fusions.csv",
+                    "${meta.folder}/isofox/${meta.subject}-T.isf.pass_fusions.tsv",
                     'rna fusion (Isofox)')
                 fusions ? [meta + [pipeline: 'sv_rna_fusion'], fusions] : null
             }
@@ -279,7 +279,7 @@ workflow GENOMIC {
         ch_sigs_dbs = ch_samples_to_run
             .map { meta ->
                 def f = findOncoFile(meta,
-                    "${meta.folder}/pave/${meta.subject}-T.pave.somatic.vcf.gz",
+                    "${meta.folder}/pave/somatic/${meta.subject}-T.pave.somatic.vcf.gz",
                     'somatic VCF (SigProfiler DBS)')
                 f ? [meta + [pipeline: 'sigs_dbs'], f] : null
             }
@@ -289,7 +289,7 @@ workflow GENOMIC {
         ch_sigs_id = ch_samples_to_run
             .map { meta ->
                 def f = findOncoFile(meta,
-                    "${meta.folder}/pave/${meta.subject}-T.pave.somatic.vcf.gz",
+                    "${meta.folder}/pave/somatic/${meta.subject}-T.pave.somatic.vcf.gz",
                     'somatic VCF (SigProfiler ID)')
                 f ? [meta + [pipeline: 'sigs_id'], f] : null
             }

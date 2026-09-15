@@ -1,7 +1,7 @@
 {
     "both mode \u2014 genomic + clinical combined output": {
         "content": [
-            34,
+            40,
             [
                 "TEST",
                 "TEST.tar.gz",
@@ -129,7 +129,7 @@
                 "util_linking_file.txt:md5,74ba4d7e0241c94fd014a4d994a83497"
             ]
         ],
-        "timestamp": "2026-09-03T15:28:19.960937985",
+        "timestamp": "2026-09-15T17:41:39.569105783",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "25.10.4"

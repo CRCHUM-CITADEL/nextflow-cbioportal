@@ -86,7 +86,7 @@ workflow {
             .map { group, f -> f }
             .first()
 
-        // Pass the linking file path as a string so FORMAT_CLINICAL can filter to genomic subjects
+        // Pass the linking file path as a string so BUILD_CLINICAL_TABLE can filter to genomic subjects
         ch_genomic_subjects = GENOMIC.out.linking_file
             .map { group, f -> f.toString() }
             .first()

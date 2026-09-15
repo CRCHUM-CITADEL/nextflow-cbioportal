@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Clinical output generation split into focused modules for easier debugging: `BUILD_CLINICAL_TABLE` + `WRITE_CLINICAL_{SAMPLE,PATIENT}` (was `FORMAT_CLINICAL`, run once per mode) and `GENERATE_TIMELINE_{SURGERY,TREATMENT,STATUS,SPECIMEN,LAB_TEST}` + `MERGE_TIMELINE` (was one `GENERATE_TIMELINE` process). Shared helpers extracted to `bin/clinical_common.R`.
 - Timeline generation from ARGO clinical CSVs (`gen_timeline.R`): produces a single combined `data_timeline.txt` with all event types (surgery, treatment, status, specimen, lab_test)
 - MOHCCN mapping tables (`assets/mohccn_*` CSVs) for translating plain-text values to ICD-O / ontology codes in clinical and timeline output
 - New params: `mohccn_primary_site_map`, `mohccn_specimen_tissue_source_map`, `mohccn_treatment_intent_map`
@@ -32,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clinical sample deduplication: better merging to remove duplicate sample-level rows
 - Removed `analyte_type` from sample-level clinical output rows
 - Status data frame handling in clinical output
+- MOHCCN map lookups now trim whitespace on both the label and code columns consistently between the clinical and timeline outputs (`clin_format.R`'s map previously did not trim, so a whitespace-padded map entry could resolve in `data_timeline.txt` but silently become `NA` in `data_clinical_sample.txt`); no checked-in `assets/mohccn_*` file is actually affected today, but the two lookups no longer risk drifting apart
 
 ## v1.0.0dev - [date]
 

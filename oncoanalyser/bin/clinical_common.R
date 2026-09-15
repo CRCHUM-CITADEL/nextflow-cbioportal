@@ -30,16 +30,18 @@ clean_json_array <- function(x) {
 # Skips empty rows (primary_site.csv has 900+ trailing empty rows).
 # Reads only first 3 cols (treatment_intent.csv has 26 cols due to trailing commas).
 #
-# NOTE: intentionally NOT trimmed, matching clin_format.R's historical behavior,
-# to keep this extraction output-preserving. gen_timeline.R used to trim; see
-# the follow-up commit that unifies the two on trimmed lookups (CHANGELOG).
+# Both value and code are trimmed. Before this shared library existed,
+# clin_format.R built this map WITHOUT trimming while gen_timeline.R trimmed
+# both sides — a whitespace-padded map entry would resolve in the timeline but
+# silently become NA in the clinical file. Trimming here fixes that divergence
+# for both callers.
 read_mohccn_map <- function(filepath) {
   if (is.null(filepath) || !file.exists(filepath)) return(NULL)
   raw <- read.csv(filepath, header=FALSE, skip=1, stringsAsFactors=FALSE, fill=TRUE)
   raw <- raw[, 1:3, drop=FALSE]
   colnames(raw) <- c("full_str", "value", "code")
   raw <- raw[nchar(trimws(raw$value)) > 0, ]
-  setNames(raw$code, raw$value)
+  setNames(trimws(raw$code), trimws(raw$value))
 }
 
 # Reverse a label->code map (as returned by read_mohccn_map) into code->label,

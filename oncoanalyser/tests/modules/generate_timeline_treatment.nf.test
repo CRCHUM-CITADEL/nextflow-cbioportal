@@ -1,0 +1,75 @@
+nextflow_process {
+
+    name "Test GENERATE_TIMELINE_TREATMENT module"
+    script "modules/local/generate_timeline_treatment/main.nf"
+    process "GENERATE_TIMELINE_TREATMENT"
+    tag "module"
+    tag "generate_timeline_treatment"
+
+    test("Treatments + systemic therapies — TREATMENT timeline rows are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        file('${projectDir}/assets/test_data/clinical/treatments.csv'),
+                        file('${projectDir}/assets/test_data/clinical/systemic_therapies.csv'),
+                        [],
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv')
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ch_timeline_part.size() == 1
+
+            def f = path(process.out.ch_timeline_part.collect { group, file -> file }[0].toString())
+            def lines = f.readLines()
+            assert lines[0].split('\t').toList() ==
+                ['PATIENT_ID', 'START_DATE', 'STOP_DATE', 'EVENT_TYPE', 'TREATMENT_TYPE',
+                 'AGENT', 'TREATMENT_INTENT', 'TREATMENT_INTENT_CODE']
+            assert lines.drop(1).every { it.split('\t')[3] == 'TREATMENT' }
+        }
+    }
+
+    test("No treatments provided — output file is created but empty") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        [],
+                        [],
+                        [],
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv')
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ch_timeline_part.size() == 1
+            def f = path(process.out.ch_timeline_part.collect { group, file -> file }[0].toString())
+            assert f.size() == 0
+        }
+    }
+}

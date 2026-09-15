@@ -1,0 +1,72 @@
+nextflow_process {
+
+    name "Test GENERATE_TIMELINE_LAB_TEST module"
+    script "modules/local/generate_timeline_lab_test/main.nf"
+    process "GENERATE_TIMELINE_LAB_TEST"
+    tag "module"
+    tag "generate_timeline_lab_test"
+
+    test("Biomarkers — LAB_TEST timeline rows are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        file('${projectDir}/assets/test_data/clinical/biomarkers.csv'),
+                        []
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ch_timeline_part.size() == 1
+
+            def f = path(process.out.ch_timeline_part.collect { group, file -> file }[0].toString())
+            def lines = f.readLines()
+            assert lines[0].split('\t').toList() ==
+                ['PATIENT_ID', 'START_DATE', 'STOP_DATE', 'EVENT_TYPE', 'TEST', 'RESULT']
+            assert lines.size() == 2 : "Fixture has one CA125 biomarker result"
+            assert lines[1].split('\t')[3] == 'LAB_TEST'
+            assert lines[1].split('\t')[4] == 'CA125'
+        }
+    }
+
+    test("No biomarkers provided — output file is created but empty") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        [],
+                        []
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ch_timeline_part.size() == 1
+            def f = path(process.out.ch_timeline_part.collect { group, file -> file }[0].toString())
+            assert f.size() == 0
+        }
+    }
+}

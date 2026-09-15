@@ -1,0 +1,80 @@
+nextflow_process {
+
+    name "Test GENERATE_TIMELINE_SURGERY module"
+    script "modules/local/generate_timeline_surgery/main.nf"
+    process "GENERATE_TIMELINE_SURGERY"
+    tag "module"
+    tag "generate_timeline_surgery"
+
+    test("Treatments + surgeries — SURGERY timeline rows are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        file('${projectDir}/assets/test_data/clinical/treatments.csv'),
+                        file('${projectDir}/assets/test_data/clinical/surgeries.csv'),
+                        [],
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv')
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ch_timeline_part.size() == 1
+
+            def f = path(process.out.ch_timeline_part.collect { group, file -> file }[0].toString())
+            def lines = f.readLines()
+            assert lines[0].split('\t').toList() ==
+                ['PATIENT_ID', 'START_DATE', 'STOP_DATE', 'EVENT_TYPE', 'SUBTYPE',
+                 'SITE', 'SITE_LABEL', 'TREATMENT_INTENT', 'TREATMENT_INTENT_CODE']
+            assert lines.drop(1).every { it.split('\t')[3] == 'SURGERY' }
+        }
+    }
+
+    test("No treatments provided — output file is created but empty") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        [],
+                        [],
+                        [],
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv')
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            // The Nextflow output is declared non-optional (see merge_timeline.R for
+            // why): the script must always create the file, even zero-byte, or the
+            // task fails with a MissingFileException despite exiting 0.
+            assert process.success
+            assert process.out.ch_timeline_part.size() == 1
+            def f = path(process.out.ch_timeline_part.collect { group, file -> file }[0].toString())
+            assert f.size() == 0
+        }
+    }
+}

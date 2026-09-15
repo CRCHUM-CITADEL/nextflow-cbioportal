@@ -1,0 +1,124 @@
+nextflow_process {
+
+    name "Test MERGE_TIMELINE module"
+    script "modules/local/merge_timeline/main.nf"
+    process "MERGE_TIMELINE"
+    tag "module"
+    tag "merge_timeline"
+
+    test("Five event-type parts — unioned into one data_timeline.txt") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        'TEST',
+                        [
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_surgery.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_treatment.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_status.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_specimen.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_lab_test.txt')
+                        ]
+                    )
+                )
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ch_timeline.size() == 1
+
+            def f = path(process.out.ch_timeline.collect { group, file -> file }[0].toString())
+            def lines = f.readLines()
+
+            // 4 common columns first, then the rest alphabetically — a hard
+            // contract with combine_cbioportal_outputs.py's union-append strategy.
+            def cols = lines[0].split('\t').toList()
+            assert cols[0..3] == ['PATIENT_ID', 'START_DATE', 'STOP_DATE', 'EVENT_TYPE']
+            assert cols.drop(4) == cols.drop(4).sort()
+
+            // Rows are grouped by EVENT_TYPE in a fixed order (SURGERY, TREATMENT,
+            // STATUS, SPECIMEN, LAB_TEST) regardless of the order the five part
+            // files were passed in, so the merged file is deterministic.
+            def event_types = lines.drop(1).collect { it.split('\t')[3] }
+            assert event_types == event_types.sort {
+                a, b -> ['SURGERY', 'TREATMENT', 'STATUS', 'SPECIMEN', 'LAB_TEST'].indexOf(a) <=>
+                         ['SURGERY', 'TREATMENT', 'STATUS', 'SPECIMEN', 'LAB_TEST'].indexOf(b)
+            }
+            assert event_types.unique().sort() == ['LAB_TEST', 'SPECIMEN', 'STATUS', 'SURGERY', 'TREATMENT']
+        }
+    }
+
+    test("Deterministic row order regardless of input file order") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        'TEST',
+                        [
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_lab_test.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_specimen.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_status.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_treatment.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_surgery.txt')
+                        ]
+                    )
+                )
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def f = path(process.out.ch_timeline.collect { group, file -> file }[0].toString())
+            def event_types = f.readLines().drop(1).collect { it.split('\t')[3] }
+            assert event_types == event_types.sort {
+                a, b -> ['SURGERY', 'TREATMENT', 'STATUS', 'SPECIMEN', 'LAB_TEST'].indexOf(a) <=>
+                         ['SURGERY', 'TREATMENT', 'STATUS', 'SPECIMEN', 'LAB_TEST'].indexOf(b)
+            }
+        }
+    }
+
+    test("All parts empty — output file is created but empty") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        'TEST',
+                        [
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_empty1.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_empty2.txt')
+                        ]
+                    )
+                )
+                """
+            }
+        }
+
+        then {
+            // Each upstream per-event module always creates its output, even a
+            // zero-byte one when it has no rows (see merge_timeline.R) — MERGE_TIMELINE
+            // must tolerate that (not error on read.csv over an empty file) and, when
+            // every part is empty, still create its own non-optional output.
+            assert process.success
+            def f = path(process.out.ch_timeline.collect { group, file -> file }[0].toString())
+            assert f.size() == 0
+        }
+    }
+}

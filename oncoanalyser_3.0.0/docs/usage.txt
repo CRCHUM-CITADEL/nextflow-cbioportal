@@ -100,8 +100,8 @@ Reference data:
   Ensembl annotations        ensembl_annotations      BioMart TSV (Ensembl 113)
   (CNV/SV/expression)                                 with entrez_ncbi_id column.
   mafsmith reference         mafsmith_data            mafsmith home directory with
-                                                      its pre-fetched VEP data and
-                                                      fastvep. No auto-download.
+                                                      its reference data. Empty =
+                                                      auto-download (see below).
   COSMIC fusion data         cosmic_data              COSMIC Fusion TSV for ML SV.
   ChimerKB data              chimer_data              ChimerDB KnownFusions Excel.
                                                       Bundled in assets/.
@@ -305,7 +305,7 @@ GENOMIC INPUT PARAMETERS
   genomic_samplesheet      Yes       --        Path to genomic samplesheet CSV
   ensembl_annotations      Yes       --        BioMart TSV (Ensembl 113)
   genome_reference         Yes       --        GRCh38 reference FASTA
-  mafsmith_data            Yes       --        mafsmith home dir (no auto-download)
+  mafsmith_data            No        (empty)   mafsmith home dir; empty = auto-download
   vep_data                 No        (empty)   VEP cache directory, used by PCGR
   pcgr_data                No        (empty)   PCGR reference data directory
   cosmic_data              No        --        COSMIC Fusion TSV for ML
@@ -395,10 +395,34 @@ SITE CONFIGURATION
   config and pass it with -c my_site.config.
 
   Reference-data params with no portable default (required for genomic
-  and both modes): ensembl_annotations, genome_reference, mafsmith_data.
-  vep_data, pcgr_data, cosmic_data and chimer_data
-  are optional -- VEP and PCGR data are downloaded when left empty,
+  and both modes): ensembl_annotations, genome_reference.
+  mafsmith_data, vep_data, pcgr_data, cosmic_data and chimer_data
+  are optional -- VEP, PCGR and mafsmith data are downloaded when left empty,
   which needs internet access on the compute node.
+
+  mafsmith reference data
+
+    Left empty, mafsmith_data is provisioned by DOWNLOAD_MAFSMITH, which
+    runs `mafsmith fetch --genome grch38 --ensembl-release 113` and
+    stores the result in assets/mafsmith/. fastvep is not built at run
+    time: it ships in the container and mafsmith picks it up from PATH.
+
+    Prefer pre-staging a bundle and passing --mafsmith_data. What the
+    fetch downloads is Ensembl's primary assembly, whose contigs are
+    named 1, 2, X; oncoanalyser aligns against the GATK hg38 reference,
+    whose contigs are chr1, chr2, chrX. mafsmith's reference has to match
+    the genome the mutations were called on, so the auto-download suits
+    testing and portability rather than a real cohort.
+
+    To build one by hand, in the mafsmith container:
+
+      mafsmith fetch --data-dir /path/to/mafsmith_home \
+          --skip-fastvep \
+          --gff3 /path/to/genes.gff3.gz \
+          --ref-fasta /path/to/Homo_sapiens_assembly38.fasta
+
+    Both --gff3 and --ref-fasta must be given together; supplying only
+    one makes mafsmith download both instead.
 
 GENOMIC MODE
 

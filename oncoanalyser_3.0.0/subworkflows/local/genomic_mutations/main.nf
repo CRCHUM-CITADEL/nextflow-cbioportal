@@ -4,6 +4,7 @@ include { PCGR                   } from '../../../modules/local/pcgr'
 include { CONVERT_CPSR_TO_MAF    } from '../../../modules/local/convert_cpsr_to_maf'
 include { DOWNLOAD_VEP_TEST      } from '../../../modules/local/download_vep_test'
 include { DOWNLOAD_PCGR          } from '../../../modules/local/download_pcgr'
+include { DOWNLOAD_MAFSMITH      } from '../../../modules/local/download_mafsmith'
 include { BCFTOOLS_INDEX         } from '../../../modules/nf-core/bcftools/index'
 include { FILTER_GERMLINE_DNA    } from '../../../modules/local/filter_germline_dna'
 
@@ -14,9 +15,10 @@ workflow GENOMIC_MUTATIONS {
         som_rna_vcf   // tuple (meta, sage.append.vcf.gz)   — SAGE RNA-append VCF
         vep_data      // channel<path> — pre-staged VEP cache, for PCGR (may be empty)
         pcgr_data     // channel<path> — pre-staged PCGR reference data (may be empty)
-        mafsmith_data // channel<path> — pre-staged mafsmith home (.mafsmith), required
+        mafsmith_data // channel<path> — pre-staged mafsmith home (.mafsmith), may be empty
         needs_vep
         needs_pcgr
+        needs_mafsmith
 
     main:
         // Reference data is only needed when there is at least one subject to
@@ -25,10 +27,9 @@ workflow GENOMIC_MUTATIONS {
         // touches the network zero times.
         ch_has_work = som_dna_vcf.count().filter { n -> n > 0 }
 
-        ch_vep_data      = needs_vep  ? DOWNLOAD_VEP_TEST(ch_has_work).cache_dir.first() : vep_data.first()
-        ch_pcgr_data     = needs_pcgr ? DOWNLOAD_PCGR(ch_has_work).data_dir.first()      : pcgr_data.first()
-        // No download fallback for mafsmith: PIPELINE_INITIALISATION requires the path.
-        ch_mafsmith_data = mafsmith_data.first()
+        ch_vep_data      = needs_vep      ? DOWNLOAD_VEP_TEST(ch_has_work).cache_dir.first() : vep_data.first()
+        ch_pcgr_data     = needs_pcgr     ? DOWNLOAD_PCGR(ch_has_work).data_dir.first()      : pcgr_data.first()
+        ch_mafsmith_data = needs_mafsmith ? DOWNLOAD_MAFSMITH(ch_has_work).data_dir.first()  : mafsmith_data.first()
 
         ger_dna_filtered = FILTER_GERMLINE_DNA(ger_dna_vcf)
 

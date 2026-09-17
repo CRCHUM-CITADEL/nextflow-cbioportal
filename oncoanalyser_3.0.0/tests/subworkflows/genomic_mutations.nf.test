@@ -54,9 +54,10 @@ nextflow_workflow {
                 input[4] = Channel.of(file('${projectDir}/assets/test_data/reference'))
                 // mafsmith home — stubbed, so only its presence matters
                 input[5] = Channel.of(file('${projectDir}/assets/test_data/clinical'))
-                // needs_vep / needs_pcgr
+                // needs_vep / needs_pcgr / needs_mafsmith
                 input[6] = false
                 input[7] = false
+                input[8] = false
                 """
             }
         }
@@ -76,7 +77,67 @@ nextflow_workflow {
                 assert ran.any { it.contains(proc) } : "${proc} did not run: ${ran}"
             }
             // No download process is reachable when the reference data is pre-staged.
-            assert !ran.any { it.contains('DOWNLOAD_VEP_TEST') || it.contains('DOWNLOAD_PCGR') }
+            assert !ran.any {
+                it.contains('DOWNLOAD_VEP_TEST') || it.contains('DOWNLOAD_PCGR') || it.contains('DOWNLOAD_MAFSMITH')
+            }
+        }
+    }
+
+    test("No pre-staged reference data — the download fallbacks run instead") {
+
+        config "tests/nextflow_mutations.config"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_germline'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
+                    ]
+                )
+                input[1] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/somatic/T1-T.pave.somatic.vcf.gz')
+                    ]
+                )
+                input[2] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_rna'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/sage_append/T1-T/T1-T.sage.append.vcf.gz')
+                    ]
+                )
+                // Nothing pre-staged: the three needs_* flags select the download modules.
+                // Their stubs make empty directories, so nothing is actually fetched here.
+                input[3] = Channel.empty()
+                input[4] = Channel.empty()
+                input[5] = Channel.empty()
+                input[6] = true
+                input[7] = true
+                input[8] = true
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.out.size() == 1
+
+            // The download modules publish with storeDir, so a directory left by an
+            // earlier run satisfies them without the process executing again. Assert on
+            // the directory each one is responsible for, which holds either way, rather
+            // than on the trace — under -stub-run these are the stubs' empty dirs.
+            ['vep', 'pcgr', 'mafsmith'].each { name ->
+                assert file("${projectDir}/assets/${name}").exists() : "assets/${name} was not provisioned"
+            }
+
+            // MAFSMITH still runs, fed by the fallback rather than a pre-staged bundle.
+            def ran = workflow.trace.succeeded().collect { it.name }
+            assert ran.any { it.contains('MAFSMITH') && !it.contains('DOWNLOAD') } : "MAFSMITH did not run: ${ran}"
         }
     }
 }

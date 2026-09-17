@@ -10,13 +10,23 @@ Requires Nextflow >= 26.04.4.
 
 - R scripts → `container_r`; Python → `container_python`; SigProfiler → `container_sigprofiler`;
   VCF→MAF → `container_mafsmith`
-- **VCF→MAF is `MAFSMITH` (nf-osi/mafsmith), not vcf2maf** (since 4.0.0). It needs
-  `mafsmith_data`: the mafsmith home directory holding its pre-fetched VEP data and
-  the `fastvep` executable, symlinked in as `.mafsmith` with `HOME=./`. Its bundled
-  reference must match the genome SAGE aligned against. There is **no download
-  fallback** — unlike VEP/PCGR — so `PIPELINE_INITIALISATION` requires the param:
-  an empty channel would make `MAFSMITH` never run and the mutation branch silently
-  produce nothing. `genome_reference` is still required, but now only by SigProfiler
+- **VCF→MAF is `MAFSMITH` (nf-osi/mafsmith), not vcf2maf** (since 4.0.0).
+  `mafsmith vcf2maf` always reads `$HOME/.mafsmith`, ignoring `--data-dir`, so the
+  module sets `HOME=./` and symlinks `mafsmith_data` in as `.mafsmith`.
+  `genome_reference` is still required, but now only by SigProfiler
+- `mafsmith_data` is optional: empty means `DOWNLOAD_MAFSMITH` runs `mafsmith fetch`
+  (`storeDir assets/mafsmith`), gated on `ch_has_work` like the VEP/PCGR downloads.
+  **Prefer pre-staging it.** The fetch pulls Ensembl's primary assembly (contigs
+  `1`/`2`/`X`) while oncoanalyser aligns against GATK hg38 (`chr1`/`chr2`/`chrX`), and
+  mafsmith's reference must match the genome the mutations were called on. A hand-built
+  bundle takes `--gff3` and `--ref-fasta` — **both or neither**, since `fetch` only
+  takes the link path when it has the pair, and otherwise downloads both
+- fastvep is **built into the container**, not fetched at run time: `resolve_fastvep()`
+  falls back to `which fastvep` when `<data-dir>/bin/fastvep` is missing. That is why
+  `DOWNLOAD_MAFSMITH` can pass `--skip-fastvep` and the image needs no cargo toolchain
+  at run time. Rebuilding `containers/mafsmith_v0.1.0.def` is required for this
+- The `MAFSMITH` script locates the VCF sample columns by the `FORMAT` header and the
+  MAF `Tumor_Sample_Barcode` column by name, rather than at fixed positions
 - `data_sv.txt` rows require Hugo symbols at both sites — filter unannotated rows
 - SV classification (`gen_esvee_sv_to_cbioportal.R`): BND ALT strand → `(+,-)` DEL, `(-,+)` DUP, `(+,+)/(−,−)` INV, diff chr TRANSLOC. DNA SVs: `DNA_Support=Yes, RNA_Support=No`
 - RNA fusions (`gen_isofox_fusion_to_cbioportal.R`): `Class=FUSION, DNA_Support=No, RNA_Support=Yes`. Both merge into `data_sv.txt`
@@ -59,8 +69,9 @@ nextflow run main.nf -profile slurm,apptainer,citadel ...   # CRCHUM; citadel LA
 nextflow run main.nf -profile apptainer --ensembl_annotations ... --genome_reference ...
 ```
 
-`ensembl_annotations`, `genome_reference` and `mafsmith_data` have no default and
-are required for genomic/both mode. (`ensembl_annotations_expr` was dropped in 4.0.0 —
+`ensembl_annotations` and `genome_reference` have no default and are required for
+genomic/both mode; `mafsmith_data`, `vep_data` and `pcgr_data` are optional and
+auto-download when empty. (`ensembl_annotations_expr` was dropped in 4.0.0 —
 Isofox expression now maps Ensembl→Entrez through `ensembl_annotations` too.) Note
 `.gitignore` has a `/nextflow_*.config` rule with an explicit negation for
 `nextflow_citadel.config`.

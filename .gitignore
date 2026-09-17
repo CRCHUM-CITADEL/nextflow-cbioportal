@@ -16,6 +16,9 @@ containers/*.img*
 output/
 output_*/
 tmp/
+command.txt
+
+assets/mafsmith/
 
 *.swp
 

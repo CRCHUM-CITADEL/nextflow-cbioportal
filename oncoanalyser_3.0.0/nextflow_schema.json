@@ -156,7 +156,7 @@
         "mafsmith_data": {
             "type": "string",
             "format": "directory-path",
-            "description": "mafsmith home directory holding its pre-fetched VEP data and the fastvep executable. Required for genomic/both mode \u2014 there is no download fallback."
+            "description": "mafsmith home directory holding its reference data. If empty, the pipeline fetches one with `mafsmith fetch`, which needs internet on the compute node and uses Ensembl contig naming."
         },
         "sample_registrations": {
             "type": "string",

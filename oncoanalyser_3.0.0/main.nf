@@ -56,8 +56,9 @@ workflow {
 
         ch_chimer_data = params.chimer_data ? Channel.fromPath(params.chimer_data) : Channel.empty()
 
-        needs_vep_download  = !params.vep_data
-        needs_pcgr_download = !params.pcgr_data
+        needs_vep_download      = !params.vep_data
+        needs_pcgr_download     = !params.pcgr_data
+        needs_mafsmith_download = !params.mafsmith_data
 
         GENOMIC (
             PIPELINE_INITIALISATION.out.genomic_samplesheet,
@@ -67,6 +68,7 @@ workflow {
             ch_mafsmith_data,
             needs_vep_download,
             needs_pcgr_download,
+            needs_mafsmith_download,
             params.genome_reference,
             params.cosmic_data,
             params.chimer_data,

@@ -125,9 +125,10 @@ workflow GENOMIC {
         ensembl_annotations     // path — BioMart TSV for CNV gene mapping + ESVEE gene overlap
         vep_data                // channel<path> — pre-staged VEP cache (may be empty)
         pcgr_data               // channel<path> — pre-staged PCGR reference data (may be empty)
-        mafsmith_data           // channel<path> — pre-staged mafsmith home (required)
+        mafsmith_data           // channel<path> — pre-staged mafsmith home (may be empty)
         needs_vep               // boolean — true when vep_data is not supplied
         needs_pcgr              // boolean — true when pcgr_data is not supplied
+        needs_mafsmith          // boolean — true when mafsmith_data is not supplied
         fasta                   // path — GRCh38 reference FASTA (for SigProfiler indel context)
         cosmic_data             // channel<path> — COSMIC/ChimerKB fusion data for ML step
         chimer_data
@@ -361,7 +362,8 @@ workflow GENOMIC {
             pcgr_data,
             mafsmith_data,
             needs_vep,
-            needs_pcgr
+            needs_pcgr,
+            needs_mafsmith
         )
 
         // ── Mix new results with pre-existing cached results ──────────────────

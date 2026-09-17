@@ -53,8 +53,12 @@ nextflow run main.nf -profile apptainer \
  --mode genomic \
  --genomic_samplesheet samplesheet.csv \
  --ensembl_annotations biomart_grch38.tsv \
- --genome_reference Homo_sapiens_assembly38.fasta \
- --mafsmith_data /path/to/mafsmith_home
+ --genome_reference Homo_sapiens_assembly38.fasta
+
+VEP, PCGR and mafsmith reference data are downloaded when their params
+are left empty, which needs internet on the compute node. Pass
+--mafsmith_data to point at a pre-built mafsmith home instead; see
+"mafsmith reference data" in docs/usage.txt for why that is preferred.
 
 Copy nextflow_citadel.config as a starting point for your own site
 config and pass it with -c my_site.config.

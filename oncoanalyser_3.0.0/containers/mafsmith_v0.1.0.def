@@ -2,8 +2,6 @@ Bootstrap: docker
 From: rust:1.98-bookworm
 
 %post
-
-%post
     set -eu
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -19,6 +17,14 @@ From: rust:1.98-bookworm
     cd /tmp/mafsmith
     cargo build --release
     install -m 0755 target/release/mafsmith /usr/local/bin/mafsmith
+
+    # fastVEP is mafsmith's default annotation engine. Building it here rather than
+    # letting `mafsmith fetch` cargo-install it at run time keeps the build toolchain
+    # out of the runtime image, and `mafsmith vcf2maf` falls back to `which fastvep`
+    # when <data-dir>/bin/fastvep is absent. This is what makes the pipeline's
+    # DOWNLOAD_MAFSMITH able to pass --skip-fastvep.
+    cargo install --git https://github.com/Huang-lab/fastVEP --branch master \
+        fastvep-cli --root /usr/local
 
     cd /
     rm -rf /tmp/mafsmith /usr/local/cargo/registry /usr/local/cargo/git
@@ -38,6 +44,7 @@ From: rust:1.98-bookworm
 
 %test
     command -v mafsmith
+    command -v fastvep
     command -v python3
     mafsmith --help >/dev/null
 

@@ -14,6 +14,11 @@ process MAFSMITH {
         task.ext.when == null || task.ext.when
 
     script:
+    // Extra CSQ subfields to carry through as trailing MAF columns. mafsmith's 53
+    // standard columns drop most of what VEP annotates, and cBioPortal displays some
+    // of it. Names must match fastVEP's DEFAULT_CSQ_FIELDS exactly — an unknown name
+    // is not an error, it just yields an empty column.
+    def retain_ann = params.mafsmith_retain_ann ? "--retain-ann ${params.mafsmith_retain_ann}" : ''
     """
     # mafsmith looks under \$HOME/.mafsmith for its reference data, so point HOME at the
     # task directory and link the bundle in.
@@ -48,6 +53,7 @@ process MAFSMITH {
 
     mafsmith vcf2maf \\
         \$ID_ARGS \\
+        ${retain_ann} \\
         --input-vcf tmp.${meta.sample}.somatic.vcf \\
         --output-maf tmp.${meta.sample}.maf
 

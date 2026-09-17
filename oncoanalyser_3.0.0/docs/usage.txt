@@ -306,6 +306,7 @@ GENOMIC INPUT PARAMETERS
   ensembl_annotations      Yes       --        BioMart TSV (Ensembl 113)
   genome_reference         Yes       --        GRCh38 reference FASTA
   mafsmith_data            No        (empty)   mafsmith home dir; empty = auto-download
+  mafsmith_retain_ann      No        (10 CSQ)  Extra VEP fields kept as MAF columns
   vep_data                 No        (empty)   VEP cache directory, used by PCGR
   pcgr_data                No        (empty)   PCGR reference data directory
   cosmic_data              No        --        COSMIC Fusion TSV for ML
@@ -423,6 +424,39 @@ SITE CONFIGURATION
 
     Both --gff3 and --ref-fasta must be given together; supplying only
     one makes mafsmith download both instead.
+
+  MAF columns
+
+    mafsmith writes 53 standard MAF columns where vcf2maf wrote ~133,
+    so the VEP annotations cBioPortal displays are opt-in. VEP packs
+    them into the VCF's INFO/CSQ field and declares the layout in the
+    header ("... Format: Allele|Consequence|IMPACT|..."); mafsmith's
+    --retain-ann names subfields to pull out and append as extra MAF
+    columns, in the order given.
+
+    mafsmith_retain_ann drives that flag. Its default is
+
+      Consequence,IMPACT,SYMBOL,Feature_type,CCDS,EXON,INTRON,
+      Existing_variation,CLIN_SIG,AF
+
+    Names must match fastVEP's CSQ field list exactly. A name fastVEP
+    does not emit is not an error -- you get a column of empty strings.
+    The full list fastVEP writes is its DEFAULT_CSQ_FIELDS: Allele,
+    Consequence, IMPACT, SYMBOL, Gene, Feature_type, Feature, BIOTYPE,
+    EXON, INTRON, HGVSc, HGVSp, cDNA_position, CDS_position,
+    Protein_position, Amino_acids, Codons, Existing_variation,
+    REF_ALLELE, UPLOADED_ALLELE, DISTANCE, STRAND, FLAGS, CANONICAL,
+    SYMBOL_SOURCE, HGNC_ID, MANE, MANE_SELECT, MANE_PLUS_CLINICAL, TSL,
+    APPRIS, CCDS, ENSP, SOURCE, HGVS_OFFSET, SIFT, PolyPhen, AF,
+    CLIN_SIG, SOMATIC, PHENO, PUBMED, MOTIF_NAME, MOTIF_POS,
+    HIGH_INF_POS, MOTIF_SCORE_CHANGE, TRANSCRIPTION_FACTORS, ACMG,
+    ACMG_CRITERIA. Some of these (Allele, Gene, Feature, BIOTYPE,
+    CANONICAL, SIFT, PolyPhen, HGVSc, HGVSp) are already standard MAF
+    columns and do not need retaining.
+
+    vcf2maf's RefSeq and VARIANT_CLASS have no fastVEP counterpart and
+    cannot be restored this way. Set mafsmith_retain_ann to "" to drop
+    back to the 53 standard columns.
 
 GENOMIC MODE
 

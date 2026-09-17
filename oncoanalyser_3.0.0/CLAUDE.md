@@ -27,6 +27,10 @@ Requires Nextflow >= 26.04.4.
   at run time. Rebuilding `containers/mafsmith_v0.1.0.def` is required for this
 - The `MAFSMITH` script locates the VCF sample columns by the `FORMAT` header and the
   MAF `Tumor_Sample_Barcode` column by name, rather than at fixed positions
+- mafsmith writes **53 MAF columns to vcf2maf's ~133**. `mafsmith_retain_ann` names VEP
+  CSQ subfields to append as extra columns; names must match fastVEP's `DEFAULT_CSQ_FIELDS`
+  (an unknown name silently yields an empty column). `RefSeq` and `VARIANT_CLASS` have no
+  fastVEP counterpart and cannot be restored
 - `CONVERT_CPSR_TO_MAF` merges CPSR germline calls (`Mutation_Status=Germline`, filtered to
   Pathogenic / Likely_Pathogenic / VUS on the CPSR TSV's 52nd field) into the somatic+RNA MAF,
   then drops `Intron`/`IGR` rows. `gen_convert_cpsr_to_maf.R` keys each germline row on the

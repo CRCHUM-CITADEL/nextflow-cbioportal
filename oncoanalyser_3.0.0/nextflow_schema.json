@@ -153,6 +153,10 @@
         "pcgr_data": {
             "type": "string"
         },
+        "mafsmith_retain_ann": {
+            "type": "string",
+            "description": "Comma-separated VEP CSQ subfields to retain as extra MAF columns beyond mafsmith's 53 standard ones. Names must match fastVEP's CSQ field list; an unknown name yields an empty column. Empty disables the flag."
+        },
         "mafsmith_data": {
             "type": "string",
             "format": "directory-path",

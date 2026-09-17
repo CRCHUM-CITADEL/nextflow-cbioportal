@@ -1,4 +1,4 @@
-# CLAUDE.md — oncoanalyser
+# CLAUDE.md — oncoanalyser_3.0.0
 
 Oncoanalyser WGS/WTS + clinical CSVs → cBioPortal. HPC-only (SLURM + Apptainer).
 
@@ -8,7 +8,15 @@ Requires Nextflow >= 26.04.4.
 
 ## Key Rules
 
-- R scripts → `container_r`; Python → `container_python`; SigProfiler → `container_sigprofiler`
+- R scripts → `container_r`; Python → `container_python`; SigProfiler → `container_sigprofiler`;
+  VCF→MAF → `container_mafsmith`
+- **VCF→MAF is `MAFSMITH` (nf-osi/mafsmith), not vcf2maf** (since 4.0.0). It needs
+  `mafsmith_data`: the mafsmith home directory holding its pre-fetched VEP data and
+  the `fastvep` executable, symlinked in as `.mafsmith` with `HOME=./`. Its bundled
+  reference must match the genome SAGE aligned against. There is **no download
+  fallback** — unlike VEP/PCGR — so `PIPELINE_INITIALISATION` requires the param:
+  an empty channel would make `MAFSMITH` never run and the mutation branch silently
+  produce nothing. `genome_reference` is still required, but now only by SigProfiler
 - `data_sv.txt` rows require Hugo symbols at both sites — filter unannotated rows
 - SV classification (`gen_esvee_sv_to_cbioportal.R`): BND ALT strand → `(+,-)` DEL, `(-,+)` DUP, `(+,+)/(−,−)` INV, diff chr TRANSLOC. DNA SVs: `DNA_Support=Yes, RNA_Support=No`
 - RNA fusions (`gen_isofox_fusion_to_cbioportal.R`): `Class=FUSION, DNA_Support=No, RNA_Support=Yes`. Both merge into `data_sv.txt`
@@ -51,9 +59,15 @@ nextflow run main.nf -profile slurm,apptainer,citadel ...   # CRCHUM; citadel LA
 nextflow run main.nf -profile apptainer --ensembl_annotations ... --genome_reference ...
 ```
 
-`ensembl_annotations`, `ensembl_annotations_expr` and `genome_reference` have no
-default and are required for genomic/both mode. Note `.gitignore` has a
-`/nextflow_*.config` rule with an explicit negation for `nextflow_citadel.config`.
+`ensembl_annotations`, `genome_reference` and `mafsmith_data` have no default and
+are required for genomic/both mode. (`ensembl_annotations_expr` was dropped in 4.0.0 —
+Isofox expression now maps Ensembl→Entrez through `ensembl_annotations` too.) Note
+`.gitignore` has a `/nextflow_*.config` rule with an explicit negation for
+`nextflow_citadel.config`.
+
+`--incremental` marks a follow-up load into a study cBioPortal already holds: it
+skips `cancer_type.txt` / `meta_cancer_type.txt` so the cancer type is not registered
+twice. It is unrelated to per-subject output caching, which is automatic.
 
 ## Clinical Module Layout
 

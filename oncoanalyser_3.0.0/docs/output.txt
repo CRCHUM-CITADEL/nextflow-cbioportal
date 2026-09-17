@@ -79,7 +79,7 @@ PER-GROUP AGGREGATED FILES
     ML-formatted versions of CNV, expression, mutations, and SVs
     (with COSMIC/ChimerDB fusion annotations) for downstream analysis.
 
-  Cancer type (only when --generate_cancer_type is set):
+  Cancer type (skipped when --incremental is set):
 
     cancer_type.txt        One headerless row: type id, name, colour, parent
     meta_cancer_type.txt   Metadata for the cancer type file

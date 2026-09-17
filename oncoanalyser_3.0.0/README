@@ -53,8 +53,8 @@ nextflow run main.nf -profile apptainer \
  --mode genomic \
  --genomic_samplesheet samplesheet.csv \
  --ensembl_annotations biomart_grch38.tsv \
- --ensembl_annotations_expr biomart_grch38.tsv \
- --genome_reference Homo_sapiens_assembly38.fasta
+ --genome_reference Homo_sapiens_assembly38.fasta \
+ --mafsmith_data /path/to/mafsmith_home
 
 Copy nextflow_citadel.config as a starting point for your own site
 config and pass it with -c my_site.config.
@@ -192,6 +192,7 @@ Example command:
         --clinical_samplesheet clinical_samplesheet.csv \
         --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
         --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
+        --mafsmith_data /path/to/mafsmith_home \
         --vep_data /path/to/vep_cache \
         --pcgr_data /path/to/pcgr_ref_data
 
@@ -203,7 +204,8 @@ Both mode without clinical data (template output only):
         --study_id "MY_STUDY" \
         --genomic_samplesheet samplesheet.csv \
         --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
-        --genome_reference /path/to/Homo_sapiens_assembly38.fasta
+        --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
+        --mafsmith_data /path/to/mafsmith_home
 
 ## Documentation
 

@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Supports oncoanalyser 3.0 only.** Output from oncoanalyser 2.3 is no longer accepted: the Isofox fusion converter hard-requires the 3.0 `pass_fusions.tsv` columns (`Name`, `TranscriptUp/Down`, `ExonUp/Down`, `SplitFrags`/`RealignedFrags`/`DiscordantFrags`) and stops on anything else, and the genomic workflow resolves the 3.0 directory layout (`pave/`, `sage_append/<sample>-T/`, `.esvee.somatic.vcf.gz`, `.isf.*.tsv`). No parameter gates this — re-run oncoanalyser 3.0 rather than downgrading the pipeline.
 - **Requires Nextflow >= 26.04.4** (manifest `nextflowVersion`, CI, and the documented `module load`).
-- **Site-specific defaults have moved out of `nextflow.config`** into `nextflow_citadel.config`, loaded by the new `citadel` profile. CRCHUM runs must add it — `-profile slurm,apptainer,citadel`, listed last. `nextflow.config` now ships portable defaults only: public `oras://` container images, empty reference-data paths, `outdir = 'output'`, no notification address. `ensembl_annotations`, `ensembl_annotations_expr` and `genome_reference` therefore have no default and must be supplied for genomic/both mode.
+- **Site-specific defaults have moved out of `nextflow.config`** into `nextflow_citadel.config`, loaded by the new `citadel` profile. CRCHUM runs must add it — `-profile slurm,apptainer,citadel`, listed last. `nextflow.config` now ships portable defaults only: public `oras://` container images, empty reference-data paths, `outdir = 'output'`, no notification address. `ensembl_annotations`, `genome_reference` and `mafsmith_data` therefore have no default and must be supplied for genomic/both mode.
+- **`vcf2maf` is replaced by `mafsmith`** ([nf-osi/mafsmith](https://github.com/nf-osi/mafsmith) v0.1.0). The `VCF2MAF` local module, the nf-core `vcf2maf` module and the vcf2maf container definition are gone, along with the params `container_vcf2maf`, `vep_params` and `vep_path`, which nothing else read. Two new params replace them: `container_mafsmith` and `mafsmith_data`, the mafsmith home directory holding its pre-fetched VEP data and the `fastvep` executable. `mafsmith_data` is **required** for genomic/both mode — unlike VEP and PCGR there is no download fallback, and `PIPELINE_INITIALISATION` now errors rather than letting the mutation branch silently produce nothing. Its bundled reference must match the genome SAGE aligned against. `vep_data` stays: PCGR still uses it, and `genome_reference` is still required, now only by SigProfiler.
+- **`ensembl_annotations_expr` is removed.** Isofox expression now maps Ensembl→Entrez through `ensembl_annotations`, the same BioMart TSV the CNV and SV converters already used, so only one annotation file has to be staged.
+- **`generate_cancer_type` is replaced by `incremental`, with the opposite sense.** `cancer_type.txt` and `meta_cancer_type.txt` are now written on every run and _skipped_ by `--incremental`, which marks a follow-up load into a study cBioPortal already holds (re-registering the cancer type errors there). A first load needs no flag; per-subject output caching remains automatic and unrelated.
 - `data_clinical_sample.txt` gains two columns (`CANCER_TYPE_LABEL`, `TUMOR_TISSUE_SITE_LABEL`), so its checksum changes.
 
 ### Added
@@ -27,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tests/test_combine_cbioportal_outputs.py` pytest suite, plus a pytest job in the linting workflow
 - Per-module nf-tests for every clinical module (there were none): `build_clinical_table`, `write_clinical_{sample,patient}`, `generate_timeline_{surgery,treatment,status,specimen,lab_test}` and `merge_timeline`, including empty-input and deterministic-ordering cases
 - `citadel` profile and `nextflow_citadel.config` for CRCHUM site settings; `SITE CONFIGURATION` section in `docs/usage.txt` for everyone else
-- `vep_path` and `generate_cancer_type` declared in `nextflow_schema.json`
+- `incremental`, `mafsmith_data` and `container_mafsmith` declared in `nextflow_schema.json` (an undeclared param trips nf-schema validation)
 
 ### Changed
 
@@ -35,12 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared R helpers extracted to `bin/clinical_common.R`, staged into each process as an explicit `path()` input so it participates in the task hash
 - Removed dead `modules/local/assign_date` and `modules/local/concat_results`
 - Renamed the stale `CRCHUM-CITADEL/nextflow-sante-precision` to `nextflow-cbioportal` throughout
+- The pipeline directory is now named for the upstream tool version it consumes: `oncoanalyser/` → `oncoanalyser_3.0.0/` (its sibling `dragen/` → `dragen_4.4/`). CI working directories and the monorepo README/CLAUDE.md tables follow
+- `process_medium_memory` drops from 60 GB / 36 h to 36 GB / 23 h, which is what the mutation step actually needs now that mafsmith has replaced vcf2maf + VEP
+- `tests/subworkflows/genomic_mutations.nf.test` runs under `-stub-run` and asserts the wiring instead of MAF content: mafsmith's reference bundle is a site path with no public download, so the real mutation path cannot execute in CI
 
 ### Fixed
 
 - `optional: true` on the timeline outputs was written as an argument to `path()` rather than an option on the output declaration, so it had no effect: a process whose event type produced no rows failed with `MissingFileException` despite exiting 0. The pre-existing `GENERATE_TIMELINE` had the same latent mistake
 - `data_timeline.txt` row order is now deterministic. `MERGE_TIMELINE` stable-sorts by a fixed EVENT_TYPE order, since `mix()`/`groupTuple()` guarantees no arrival order across the five per-event channels
-- `vcf2maf` emitted a literal `--vep-path null` whenever a VEP cache was configured, because `params.vep_path` was referenced but declared nowhere. It is now declared and only passed when set (tests never caught this: they run with `vep_data = ""` and take the other branch)
+- `MAFSMITH` has a `stub:` block. A process without one runs its **real** script under `-stub-run` instead of erroring, which would have broken `tests/incremental_pipeline.nf.test`
+- The empty `params { }` block in `tests/nextflow_subworkflow.config` was dead, and Nextflow rejects it (`Unknown config attribute 'params'`) as soon as a test adds a config of its own
 - `workflows/genomic.nf`'s path-convention comment described the pre-3.0 layout while the code below it read the 3.0 one
 - `<study>.tar.gz` in `both` mode was genomic-only: `PACKAGE_CBIOPORTAL` now runs from `main.nf` after `CLINICAL`, so the archive also carries the clinical files, `data_timeline.txt`, `meta_timeline.txt` and `util_linking_file.txt`
 - `data_mutational_signatures_counts_ID.txt` was published to the output directory but missing from `<study>.tar.gz`

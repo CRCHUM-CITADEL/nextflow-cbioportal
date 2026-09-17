@@ -1,9 +1,9 @@
 #!/usr/bin/env nextflow
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    CRCHUM-CITADEL/nextflow-sante-precision
+    CRCHUM-CITADEL/nextflow-cbioportal
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/CRCHUM-CITADEL/nextflow-sante-precision
+    Github : https://github.com/CRCHUM-CITADEL/nextflow-cbioportal
 ----------------------------------------------------------------------------------------
 */
 

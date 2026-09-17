@@ -25,10 +25,15 @@ process VCF2MAF {
     def args          = task.ext.args   ?: ''
     def prefix        = task.ext.prefix ?: "${meta.sample}"
     def vep_cache_cmd = vep_cache       ? "--vep-data $vep_cache ${params.vep_params}" : ""     // If VEP is present, it will find it and add it to commands otherwise blank
+    // vcf2maf finds vep on PATH by default; only pass --vep-path when the user
+    // has pointed params.vep_path at a specific install. Interpolating it
+    // unconditionally produced a literal "--vep-path null" whenever a VEP cache
+    // was configured, since the param is not declared anywhere by default.
+    def vep_path_cmd  = params.vep_path ? "--vep-path ${params.vep_path}" : ""
     def VERSION       = '1.6.22' // WARN: Version information not provided by tool on CLI. Please update this string when bumping container versions.
     """
     if [ "$vep_cache" ]; then
-        VEP_CMD="--vep-path ${params.vep_path}"
+        VEP_CMD="${vep_path_cmd}"
         VEP_VERSION=\$(echo -e "\\n    ensemblvep: \$( echo \$(vep --help 2>&1) | sed 's/^.*Versions:.*ensembl-vep : //;s/ .*\$//')")
     else
         VEP_CMD=""

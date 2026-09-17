@@ -183,16 +183,18 @@ workflow GENOMIC {
             }
 
         // ── Build per-modality input channels ─────────────────────────────────
-        // File naming conventions (relative to folder):
-        //   sage/somatic/${sample_id}-T.sage.somatic.vcf.gz   — SAGE somatic DNA
-        //   sage/germline/${sample_id}-N.sage.germline.vcf.gz — SAGE germline DNA
-        //   sage/append/${sample_id}-T.sage.append.vcf.gz     — SAGE somatic RNA append
-        //   esvee/caller/${sample_id}-T.esvee.unfiltered.vcf.gz
-        //   purple/${sample_id}-T.purple.cnv.somatic.tsv
-        //   purple/${sample_id}-T.purple.cnv.gene.tsv
-        //   isofox/${sample_id}-T.isf.gene_data.tsv
+        // File naming conventions (relative to folder), oncoanalyser 3.0 layout:
+        //   pave/somatic/${subject}-T.pave.somatic.vcf.gz          — PAVE somatic DNA
+        //   pave/germline/${subject}-T.pave.germline.vcf.gz        — PAVE germline DNA
+        //   sage_append/${subject}-T/${subject}-T.sage.append.vcf.gz — SAGE somatic RNA append
+        //   esvee/${subject}-T.esvee.somatic.vcf.gz
+        //   purple/${subject}-T.purple.cnv.somatic.tsv
+        //   purple/${subject}-T.purple.cnv.gene.tsv
+        //   isofox/${subject}-T.isf.gene_data.tsv
+        //   isofox/${subject}-T.isf.pass_fusions.tsv
+        //   sigs/${subject}-T.sig.snv_counts.csv
 
-        // SAGE somatic VCF → mutations
+        // PAVE somatic VCF → mutations
         ch_sage_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
@@ -235,7 +237,7 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // ESVEE unfiltered VCF (tumor only) → structural variants
+        // ESVEE somatic VCF (tumor only) → structural variants
         ch_esvee_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,

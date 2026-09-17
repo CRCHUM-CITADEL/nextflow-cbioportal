@@ -1,6 +1,6 @@
 {
-    "name": "CRCHUM-CITADEL/nextflow-sante-precision",
-    "homePage": "https://github.com/CRCHUM-CITADEL/nextflow-sante-precision",
+    "name": "CRCHUM-CITADEL/nextflow-cbioportal",
+    "homePage": "https://github.com/CRCHUM-CITADEL/nextflow-cbioportal",
     "repos": {
         "https://github.com/nf-core/modules.git": {
             "modules": {

@@ -4,7 +4,7 @@
             12,
             {
                 "Workflow": {
-                    "CRCHUM-CITADEL/nextflow-sante-precision": "v3.2.1"
+                    "CRCHUM-CITADEL/nextflow-cbioportal": "v3.2.1"
                 }
             },
             [
@@ -26,10 +26,10 @@
                 "meta_timeline.txt:md5,156fd8531c8a49b03b1d541ef2af267c"
             ]
         ],
-        "timestamp": "2026-09-17T10:42:08.358932149",
+        "timestamp": "2026-09-17T11:54:24.88378004",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "25.10.4"
+            "nextflow": "26.04.4"
         }
     }
 }

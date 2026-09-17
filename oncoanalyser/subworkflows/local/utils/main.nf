@@ -1,5 +1,5 @@
 //
-// Subworkflow with functionality specific to the CRCHUM-CITADEL/nextflow-sante-precision pipeline
+// Subworkflow with functionality specific to the CRCHUM-CITADEL/nextflow-cbioportal pipeline
 //
 
 /*

@@ -10,10 +10,7 @@
             "type": "object",
             "fa_icon": "fas fa-terminal",
             "description": "Define where the pipeline should find input data and save output data.",
-            "required": [
-                "outdir",
-                "mode"
-            ],
+            "required": ["outdir", "mode"],
             "properties": {
                 "genomic_samplesheet": {
                     "type": "string",
@@ -47,11 +44,7 @@
                 "mode": {
                     "type": "string",
                     "description": "The pipeline mode you'd like to run. Either 'clinical', 'genomic', or 'both'",
-                    "enum": [
-                        "clinical",
-                        "genomic",
-                        "both"
-                    ],
+                    "enum": ["clinical", "genomic", "both"],
                     "fa_icon": "fas fa-folder-open"
                 }
             }

@@ -18,6 +18,16 @@ Each pipeline is self-contained with its own `main.nf`, `nextflow.config`, `modu
 - Always add `stub:` blocks to new processes
 - Use `params.container_*` — never hardcode image paths
 - Output missing values as `NA`
+- Site-specific settings do not belong in `nextflow.config`. It keeps portable
+  defaults only (public container images, empty reference paths); CRCHUM values
+  live in a sibling `nextflow_<site>.config` loaded by a matching profile. The
+  oncoanalyser pipeline establishes this with `nextflow_citadel.config` and
+  `-profile citadel` — list the site profile LAST so it wins on overlap.
+  `nextflow.config` itself cannot be renamed: Nextflow auto-loads it, and it
+  holds the `test` profile, the nf-schema plugin and the manifest.
+- Nextflow optional outputs: `optional: true` is an option on the whole output
+  declaration, not an argument to `path()` — `path("f.txt", optional: true)`
+  silently does nothing
 
 ## Commands
 

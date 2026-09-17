@@ -102,10 +102,13 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # oncoanalyser — 14 tests across modules, subworkflows, and pipeline levels
+  # oncoanalyser — tests across modules, subworkflows, and pipeline levels
   #
   # Pipeline tests:
   #   tests/clinical.nf.test              (R container)
+  #   tests/clinical_generated.nf.test    (R container)
+  #   tests/clinical_template.nf.test     (R container)
+  #   tests/both.nf.test                  (genomic + clinical, precomputed fixtures)
   #   tests/incremental.nf.test           (R container)
   #
   # Subworkflow tests:
@@ -118,6 +121,15 @@ jobs:
   #   tests/subworkflows/genomic_mutations.nf.test        (PCGR + vcf2maf — CI only)
   #
   # Module tests:
+  #   tests/modules/build_clinical_table.nf.test          (R container)
+  #   tests/modules/write_clinical_sample.nf.test         (R container)
+  #   tests/modules/write_clinical_patient.nf.test        (R container)
+  #   tests/modules/generate_timeline_surgery.nf.test     (R container)
+  #   tests/modules/generate_timeline_treatment.nf.test   (R container)
+  #   tests/modules/generate_timeline_status.nf.test      (R container)
+  #   tests/modules/generate_timeline_specimen.nf.test    (R container)
+  #   tests/modules/generate_timeline_lab_test.nf.test    (R container)
+  #   tests/modules/merge_timeline.nf.test                (R container)
   #   tests/modules/isofox_fusion_to_cbioportal.nf.test   (R container)
   #   tests/modules/package_cbioportal.nf.test            (stub — no containers)
   #   tests/modules/sigprofiler_sbs.nf.test               (SigProfiler container)

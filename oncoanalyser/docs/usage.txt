@@ -502,11 +502,28 @@ RUNNING TESTS
 
   Verify your installation with the bundled test data:
 
-    ./nf-test test tests/clinical.nf.test tests/subworkflows/ tests/modules/ \
+    ./nf-test test tests/ --profile test,apptainer
+
+  Or a subset -- the clinical pipeline tests, for example:
+
+    ./nf-test test tests/clinical.nf.test tests/clinical_generated.nf.test \
+        tests/clinical_template.nf.test tests/both.nf.test \
         --profile test,apptainer
 
     ./nf-test test tests/subworkflows/genomic_cnv.nf.test \
         --profile test,apptainer
+
+  Regenerate snapshots after an intended output change:
+
+    ./nf-test test <test> --profile test,apptainer --update-snapshot
+
+  CI runs with --ci --changed-since HEAD^, which never updates snapshots,
+  so commit any snapshot change together with the change that caused it.
+
+  The Python suites (samplesheet generator, output combiner) run under
+  pytest:
+
+    python3 -m pytest tests/ -v
 
 
 Troubleshooting

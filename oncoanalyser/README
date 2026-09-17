@@ -3,6 +3,9 @@
 Nextflow pipeline that converts oncoanalyser WGS/WTS output and clinical
 CSVs into cBioPortal-ready files.
 
+Requires oncoanalyser 3.0 output. The 2.3 layout is not supported
+(since 4.0.0). Requires Nextflow >= 26.04.4.
+
 oncoanalyser: https://github.com/nf-core/oncoanalyser
 cBioPortal: https://www.cbioportal.org/
 

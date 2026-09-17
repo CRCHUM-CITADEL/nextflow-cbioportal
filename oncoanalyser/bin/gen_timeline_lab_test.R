@@ -123,4 +123,3 @@ if (!is.null(lab_out) && nrow(lab_out) > 0) {
 } else {
   cat("No LAB_TEST timeline data to write.\n")
 }
-

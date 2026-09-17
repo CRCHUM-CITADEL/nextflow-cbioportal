@@ -40,8 +40,12 @@ jobs:
         id: changes
         run: |
           BASE_SHA=${{ github.event.pull_request.base.sha || 'HEAD~1' }}
-          for pipeline in ampliseq oncoanalyser dragen; do
-            if git diff --quiet "$BASE_SHA" HEAD -- "$pipeline/"; then
+          # "<output key>:<directory>" — the directories carry a version suffix,
+          # but the output keys must stay valid job/output identifiers.
+          for entry in ampliseq:ampliseq oncoanalyser:oncoanalyser_3.0.0 dragen:dragen_4.4; do
+            pipeline="${entry%%:*}"
+            dir="${entry#*:}"
+            if git diff --quiet "$BASE_SHA" HEAD -- "$dir/"; then
               echo "${pipeline}=false" >> $GITHUB_OUTPUT
             else
               echo "${pipeline}=true" >> $GITHUB_OUTPUT
@@ -163,7 +167,7 @@ jobs:
           total_shards: ${{ needs.oncoanalyser-shards.outputs.total_shards }}
           github_token: ${{ secrets.GH_PAT }}
           nxf_version: ${{ env.NXF_VER }}
-          working_directory: oncoanalyser
+          working_directory: oncoanalyser_3.0.0
 
   oncoanalyser-shards:
     name: oncoanalyser-shards
@@ -185,7 +189,7 @@ jobs:
           NFT_VER: ${{ env.NFT_VER }}
         with:
           max_shards: 7
-          working_directory: oncoanalyser
+          working_directory: oncoanalyser_3.0.0
 
   # ---------------------------------------------------------------------------
   # dragen — 10 tests across modules, subworkflows, and pipeline levels
@@ -232,7 +236,7 @@ jobs:
           total_shards: ${{ needs.dragen-shards.outputs.total_shards }}
           github_token: ${{ secrets.GH_PAT }}
           nxf_version: ${{ env.NXF_VER }}
-          working_directory: dragen
+          working_directory: dragen_4.4
 
   dragen-shards:
     name: dragen-shards
@@ -254,7 +258,7 @@ jobs:
           NFT_VER: ${{ env.NFT_VER }}
         with:
           max_shards: 7
-          working_directory: dragen
+          working_directory: dragen_4.4
 
   # ---------------------------------------------------------------------------
   # Final gate — all pipeline jobs must pass

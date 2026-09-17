@@ -120,13 +120,7 @@
         "ensembl_annotations": {
             "type": "string",
             "format": "file-path",
-            "description": "BioMart TSV for PURPLE CNV gene-to-Entrez mapping and ESVEE breakpoint gene annotation.",
-            "pattern": "^\\S+\\.tsv"
-        },
-        "ensembl_annotations_expr": {
-            "type": "string",
-            "format": "file-path",
-            "description": "BioMart TSV for Isofox expression Ensembl-to-Entrez ID mapping.",
+            "description": "BioMart TSV for PURPLE CNV gene-to-Entrez mapping, ESVEE breakpoint gene annotation and Isofox expression Ensembl-to-Entrez ID mapping.",
             "pattern": "^\\S+\\.tsv"
         },
         "container_pcgr": {
@@ -138,10 +132,10 @@
         "container_r": {
             "type": "string"
         },
-        "container_vcf2maf": {
+        "container_sigprofiler": {
             "type": "string"
         },
-        "container_sigprofiler": {
+        "container_mafsmith": {
             "type": "string"
         },
         "input_dir": {
@@ -150,21 +144,19 @@
         "genome_reference": {
             "type": "string",
             "format": "file-path",
-            "description": "Genome reference FASTA (GRCh38) \u2014 required for vcf2maf.",
+            "description": "Genome reference FASTA (GRCh38) \u2014 required by SigProfiler for indel context.",
             "pattern": "^\\S+\\.(fa|fasta)$"
-        },
-        "vep_params": {
-            "type": "string"
         },
         "vep_data": {
             "type": "string"
         },
-        "vep_path": {
-            "type": "string",
-            "description": "Directory containing the vep executable. Leave empty to use the one on PATH inside the container."
-        },
         "pcgr_data": {
             "type": "string"
+        },
+        "mafsmith_data": {
+            "type": "string",
+            "format": "directory-path",
+            "description": "mafsmith home directory holding its pre-fetched VEP data and the fastvep executable. Required for genomic/both mode \u2014 there is no download fallback."
         },
         "sample_registrations": {
             "type": "string",
@@ -221,10 +213,10 @@
             "format": "file-path",
             "description": "Path to MOHCCN treatment intent mapping CSV."
         },
-        "generate_cancer_type": {
+        "incremental": {
             "type": "boolean",
             "default": false,
-            "description": "Generate cancer_type.txt and meta_cancer_type.txt for the study."
+            "description": "Set on a follow-up load into a study cBioPortal already holds: cancer_type.txt and meta_cancer_type.txt are skipped so the cancer type is not registered twice. Per-subject output caching is automatic and needs no flag."
         }
     }
 }

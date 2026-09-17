@@ -77,8 +77,11 @@ workflow PIPELINE_INITIALISATION {
             error("ERROR: Missing --ensembl_annotations (BioMart TSV). Pass it on the command line, set it in your own -c config, or use -profile citadel at CRCHUM.")
         }
 
-        if (!params.ensembl_annotations_expr){
-            error("ERROR: Missing --ensembl_annotations_expr (BioMart TSV). Pass it on the command line, set it in your own -c config, or use -profile citadel at CRCHUM.")
+        // Unlike VEP and PCGR, mafsmith has no download fallback: an unset path
+        // leaves its channel empty, MAFSMITH never executes, and the whole mutation
+        // branch silently produces nothing. Fail here instead.
+        if (!params.mafsmith_data){
+            error("ERROR: Missing --mafsmith_data (mafsmith home directory holding its pre-fetched VEP data). Pass it on the command line, set it in your own -c config, or use -profile citadel at CRCHUM.")
         }
 
         ch_genomic_samplesheet = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))

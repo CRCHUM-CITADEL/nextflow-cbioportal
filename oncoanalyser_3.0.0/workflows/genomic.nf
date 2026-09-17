@@ -123,12 +123,12 @@ workflow GENOMIC {
     take:
         samplesheet_list        // from nf-schema — one record per samplesheet row
         ensembl_annotations     // path — BioMart TSV for CNV gene mapping + ESVEE gene overlap
-        ensembl_annotations_expr// path — BioMart TSV for Isofox expression Entrez ID mapping
         vep_data                // channel<path> — pre-staged VEP cache (may be empty)
         pcgr_data               // channel<path> — pre-staged PCGR reference data (may be empty)
+        mafsmith_data           // channel<path> — pre-staged mafsmith home (required)
         needs_vep               // boolean — true when vep_data is not supplied
         needs_pcgr              // boolean — true when pcgr_data is not supplied
-        fasta                   // path — GRCh38 reference FASTA (for vcf2maf)
+        fasta                   // path — GRCh38 reference FASTA (for SigProfiler indel context)
         cosmic_data             // channel<path> — COSMIC/ChimerKB fusion data for ML step
         chimer_data
 
@@ -351,15 +351,15 @@ workflow GENOMIC {
 
         SIGS_COUNTS_TO_CBIOPORTAL(ch_sigs_counts)
 
-        GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
+        GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations)
 
         GENOMIC_MUTATIONS(
             ch_sage_germline_vcf,
             ch_sage_vcf,
             ch_sage_rna_vcf,
-            fasta,
             vep_data,
             pcgr_data,
+            mafsmith_data,
             needs_vep,
             needs_pcgr
         )
@@ -456,10 +456,12 @@ reference_genome: hg38
 
         GENERATE_META_FILE(all_groups, "study", meta_text)
 
-        // ── Cancer type file (optional) ──────────────────────────────────────
+        // ── Cancer type file ─────────────────────────────────────────────────
+        // Skipped on a follow-up load (--incremental): cBioPortal already holds
+        // the cancer type from the first load and re-registering it errors.
 
         ch_cancer_type = Channel.empty()
-        if (params.generate_cancer_type) {
+        if (!params.incremental) {
             GENERATE_CANCER_TYPE(all_groups)
             ch_cancer_type = GENERATE_CANCER_TYPE.out.flatMap { group, ct, meta_ct ->
                 [tuple(group, ct), tuple(group, meta_ct)]

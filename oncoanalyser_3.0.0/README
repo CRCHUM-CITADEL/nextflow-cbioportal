@@ -191,7 +191,6 @@ Example command:
         --genomic_samplesheet samplesheet.csv \
         --clinical_samplesheet clinical_samplesheet.csv \
         --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
-        --ensembl_annotations_expr /path/to/biomart_grch38_ensembl_110.tsv \
         --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
         --vep_data /path/to/vep_cache \
         --pcgr_data /path/to/pcgr_ref_data
@@ -204,7 +203,6 @@ Both mode without clinical data (template output only):
         --study_id "MY_STUDY" \
         --genomic_samplesheet samplesheet.csv \
         --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
-        --ensembl_annotations_expr /path/to/biomart_grch38_ensembl_110.tsv \
         --genome_reference /path/to/Homo_sapiens_assembly38.fasta
 
 ## Documentation

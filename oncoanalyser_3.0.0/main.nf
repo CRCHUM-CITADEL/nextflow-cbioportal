@@ -51,6 +51,7 @@ workflow {
 
         ch_vep_data    = params.vep_data    ? Channel.fromPath(params.vep_data)    : Channel.empty()
         ch_pcgr_data   = params.pcgr_data   ? Channel.fromPath(params.pcgr_data)   : Channel.empty()
+        ch_mafsmith_data = params.mafsmith_data ? Channel.fromPath(params.mafsmith_data) : Channel.empty()
         ch_cosmic_data = params.cosmic_data ? Channel.fromPath(params.cosmic_data) : Channel.empty()
 
         ch_chimer_data = params.chimer_data ? Channel.fromPath(params.chimer_data) : Channel.empty()
@@ -61,9 +62,9 @@ workflow {
         GENOMIC (
             PIPELINE_INITIALISATION.out.genomic_samplesheet,
             params.ensembl_annotations,
-            params.ensembl_annotations_expr,
             ch_vep_data,
             ch_pcgr_data,
+            ch_mafsmith_data,
             needs_vep_download,
             needs_pcgr_download,
             params.genome_reference,

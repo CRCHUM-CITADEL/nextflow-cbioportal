@@ -99,7 +99,6 @@ Reference data:
                                                       Empty = auto-download.
   Ensembl annotations        ensembl_annotations      BioMart TSV (Ensembl 113)
   (CNV/SV)                                            with entrez_ncbi_id column.
-  Ensembl annotations        ensembl_annotations_expr BioMart TSV (Ensembl 110)
   (expression)                                        for Isofox ID mapping.
   COSMIC fusion data         cosmic_data              COSMIC Fusion TSV for ML SV.
   ChimerKB data              chimer_data              ChimerDB KnownFusions Excel.
@@ -303,7 +302,6 @@ GENOMIC INPUT PARAMETERS
   -----------------------  --------  --------  ----------------------------
   genomic_samplesheet      Yes       --        Path to genomic samplesheet CSV
   ensembl_annotations      Yes       --        BioMart TSV (Ensembl 113)
-  ensembl_annotations_expr Yes       --        BioMart TSV (Ensembl 110)
   genome_reference         Yes       --        GRCh38 reference FASTA
   vep_data                 No        (empty)   VEP cache directory
   vep_params               No        (default) Additional VEP CLI arguments
@@ -373,7 +371,6 @@ GENOMIC MODE
       --project_description "Description of my study" \
       --genomic_samplesheet samplesheet.csv \
       --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
-      --ensembl_annotations_expr /path/to/biomart_grch38_ensembl_110.tsv \
       --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
       --vep_data /path/to/vep_cache \
       --pcgr_data /path/to/pcgr_ref_data
@@ -401,7 +398,6 @@ BOTH MODE
       --genomic_samplesheet samplesheet.csv \
       --clinical_samplesheet clinical_samplesheet.csv \
       --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
-      --ensembl_annotations_expr /path/to/biomart_grch38_ensembl_110.tsv \
       --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
       --vep_data /path/to/vep_cache \
       --pcgr_data /path/to/pcgr_ref_data
@@ -417,7 +413,6 @@ USING A PARAMS FILE
     project_description: "Description of my study"
     genomic_samplesheet: "/data/samplesheet.csv"
     ensembl_annotations: "/path/to/biomart_grch38_ensembl_113.tsv"
-    ensembl_annotations_expr: "/path/to/biomart_grch38_ensembl_110.tsv"
     genome_reference: "/path/to/Homo_sapiens_assembly38.fasta"
     vep_data: "/path/to/vep_cache"
     pcgr_data: "/path/to/pcgr_ref_data"

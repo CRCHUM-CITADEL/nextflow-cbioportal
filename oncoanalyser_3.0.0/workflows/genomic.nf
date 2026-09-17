@@ -42,9 +42,9 @@ workflow GENOMIC {
     take:
         samplesheet_list        // from nf-schema — one record per samplesheet row
         ensembl_annotations     // path — BioMart TSV for CNV gene mapping + ESVEE gene overlap
-        ensembl_annotations_expr// path — BioMart TSV for Isofox expression Entrez ID mapping
         vep_data                // channel<path> — pre-staged VEP cache (may be empty)
         pcgr_data               // channel<path> — pre-staged PCGR reference data (may be empty)
+        mafsmith_data           // channel<path> — pre-staged mafsmith reference data
         needs_vep               // boolean — true when vep_data is not supplied
         needs_pcgr              // boolean — true when pcgr_data is not supplied
         fasta                   // path — GRCh38 reference FASTA (for vcf2maf)
@@ -321,7 +321,7 @@ workflow GENOMIC {
 
         SIGS_COUNTS_TO_CBIOPORTAL(ch_sigs_counts)
 
-        GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations_expr)
+        GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations)
 
         GENOMIC_MUTATIONS(
             ch_sage_germline_vcf,
@@ -330,6 +330,7 @@ workflow GENOMIC {
             fasta,
             vep_data,
             pcgr_data,
+            mafsmith_data,
             needs_vep,
             needs_pcgr
         )
@@ -431,7 +432,7 @@ reference_genome: hg38
         // ── Cancer type file (optional) ──────────────────────────────────────
 
         ch_cancer_type = Channel.empty()
-        if (params.generate_cancer_type) {
+        if (!params.incremental) {
             GENERATE_CANCER_TYPE(all_groups)
             ch_cancer_type = GENERATE_CANCER_TYPE.out.flatMap { group, ct, meta_ct ->
                 [tuple(group, ct), tuple(group, meta_ct)]

@@ -77,10 +77,6 @@ workflow PIPELINE_INITIALISATION {
             error("ERROR: Missing ensembl_annotations file (tsv format). Check input in nextflow.config")
         }
 
-        if (!params.ensembl_annotations_expr){
-            error("ERROR: Missing ensembl_annotations_expr file (tsv format). Check input in nextflow.config")
-        }
-
         ch_genomic_samplesheet = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))
     }
 

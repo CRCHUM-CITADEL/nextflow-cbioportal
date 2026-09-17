@@ -1,11 +1,11 @@
-include { VCF2MAF              } from '../../../modules/local/vcf2maf'
-include { INTEGRATE_RNA_VARIANTS } from '../../../modules/local/integrate_rna_variants'
-include { PCGR                 } from '../../../modules/local/pcgr'
-include { CONVERT_CPSR_TO_MAF  } from '../../../modules/local/convert_cpsr_to_maf'
-include { DOWNLOAD_VEP_TEST    } from '../../../modules/local/download_vep_test'
-include { DOWNLOAD_PCGR        } from '../../../modules/local/download_pcgr'
-include { BCFTOOLS_INDEX       } from '../../../modules/nf-core/bcftools/index'
-include { FILTER_GERMLINE_DNA  } from '../../../modules/local/filter_germline_dna'
+include { MAFSMITH                  } from '../../../modules/local/mafsmith'
+include { INTEGRATE_RNA_VARIANTS    } from '../../../modules/local/integrate_rna_variants'
+include { PCGR                      } from '../../../modules/local/pcgr'
+include { CONVERT_CPSR_TO_MAF       } from '../../../modules/local/convert_cpsr_to_maf'
+include { DOWNLOAD_VEP_TEST         } from '../../../modules/local/download_vep_test'
+include { DOWNLOAD_PCGR             } from '../../../modules/local/download_pcgr'
+include { BCFTOOLS_INDEX            } from '../../../modules/nf-core/bcftools/index'
+include { FILTER_GERMLINE_DNA       } from '../../../modules/local/filter_germline_dna'
 
 workflow GENOMIC_MUTATIONS {
     take:
@@ -15,15 +15,16 @@ workflow GENOMIC_MUTATIONS {
         fasta
         vep_data
         pcgr_data
+        mafsmith_data
         needs_vep
         needs_pcgr
 
     main:
         ch_vep_data  = needs_vep  ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_data.first()
         ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR().data_dir.first()      : pcgr_data.first()
+        ch_mafsmith_data = mafsmith_data.first()
 
         ger_dna_filtered = FILTER_GERMLINE_DNA(ger_dna_vcf)
-
         ger_dna_index = BCFTOOLS_INDEX(ger_dna_filtered).tbi
 
         ger_dna_vcf_with_index = ger_dna_filtered
@@ -36,7 +37,7 @@ workflow GENOMIC_MUTATIONS {
             ch_pcgr_data
         )
 
-        // add germinal_sample to somatic meta so vcf2maf can set the normal sample column
+        // add germinal_sample to somatic meta so mafsmith can set the normal sample column
         som_dna_vcf_input = som_dna_vcf
             .map { meta, vcf -> tuple(meta.subject, meta, vcf) }
             .join(
@@ -47,13 +48,12 @@ workflow GENOMIC_MUTATIONS {
                 return tuple(meta, som_vcf)
             }
 
-        VCF2MAF(
+        MAFSMITH(
             som_dna_vcf_input,
-            fasta,
-            ch_vep_data
+            ch_mafsmith_data
         )
 
-        som_dna_maf = VCF2MAF.out.maf.map { meta, maf ->
+        som_dna_maf = MAFSMITH.out.maf.map { meta, maf ->
             return tuple(meta, maf)
         }
 

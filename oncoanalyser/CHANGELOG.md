@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `CANCER_TYPE_LABEL` and `TUMOR_TISSUE_SITE_LABEL` columns in `data_clinical_sample.txt`: human-readable labels for the ICD-O topography codes already carried by `CANCER_TYPE_CODE` (`cancer_type_code`) and `TUMOR_TISSUE_SITE` (`specimen_anatomic_location`), reverse-mapped through the MOHCCN primary-site table the same way `RELAPSE_SITE_LABEL` already was. Labels resolve to the C+2-digit parent code, since the MOHCCN table only carries parent codes (`C22.0` and `C22.1` both label as "Liver and intrahepatic bile ducts")
 - Clinical output generation split into focused modules for easier debugging: `BUILD_CLINICAL_TABLE` + `WRITE_CLINICAL_{SAMPLE,PATIENT}` (was `FORMAT_CLINICAL`, run once per mode) and `GENERATE_TIMELINE_{SURGERY,TREATMENT,STATUS,SPECIMEN,LAB_TEST}` + `MERGE_TIMELINE` (was one `GENERATE_TIMELINE` process). Shared helpers extracted to `bin/clinical_common.R`.
 - Timeline generation from ARGO clinical CSVs (`gen_timeline.R`): produces a single combined `data_timeline.txt` with all event types (surgery, treatment, status, specimen, lab_test)
 - MOHCCN mapping tables (`assets/mohccn_*` CSVs) for translating plain-text values to ICD-O / ontology codes in clinical and timeline output

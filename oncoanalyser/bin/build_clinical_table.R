@@ -421,6 +421,16 @@ ti_map  <- read_mohccn_map(opt$treatment_intent_map)
 m$primary_site_code           <- apply_mohccn_map(m$primary_site,           ps_map)
 m$specimen_tissue_source_code <- apply_mohccn_map(m$specimen_tissue_source, sts_map)
 m$relapse_site_label          <- apply_ps_label(m$relapse_site_val, ps_map_rev)
+
+# cancer_type_code (primary_diagnoses.csv) and specimen_anatomic_location
+# (specimens.csv) are already ICD-O topography codes in the data, same as the
+# relapse site above — give each a human-readable label alongside the code.
+# Note apply_ps_label() resolves to the C+2-digit parent, because the MOHCCN
+# primary_site table only carries parent codes: C22.0 and C22.1 both label as
+# "Liver and intrahepatic bile ducts". Sub-site precision would need a fuller
+# ICD-O-3 topography table as a new asset.
+m$cancer_type_label                <- apply_ps_label(m$cancer_type_code,           ps_map_rev)
+m$specimen_anatomic_location_label <- apply_ps_label(m$specimen_anatomic_location, ps_map_rev)
 if ("treatment_intent" %in% names(m)) {
   m$treatment_intent_code <- apply_mohccn_map(m$treatment_intent, ti_map)
 } else {

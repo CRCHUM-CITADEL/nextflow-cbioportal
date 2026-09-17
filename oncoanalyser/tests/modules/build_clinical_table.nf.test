@@ -58,6 +58,17 @@ nextflow_process {
             assert cols.contains('os_status')
             assert cols.contains('primary_site_code')
             assert cols.contains('relapse_site_label')
+
+            // cancer_type_code and specimen_anatomic_location are ICD-O topography
+            // codes in the source data; each gets a reverse-mapped label alongside.
+            def rows = lines.drop(1).collect { [cols, it.split('\t', -1) as List].transpose().collectEntries() }
+            def t1   = rows.find { it['patient'] == 'T1' }
+            assert t1['cancer_type_code']  == 'C25.0'
+            assert t1['cancer_type_label'] == 'Pancreas'
+            // T1's sequenced specimen is a liver site from a pancreatic primary —
+            // the label is what makes that legible in the clinical file.
+            assert t1['specimen_anatomic_location']       == 'C22.0'
+            assert t1['specimen_anatomic_location_label'] == 'Liver and intrahepatic bile ducts'
         }
     }
 }

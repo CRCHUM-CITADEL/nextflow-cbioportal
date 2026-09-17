@@ -31,4 +31,8 @@ process CONVERT_CPSR_TO_MAF {
     awk -F'\t' 'NR>2{if(\$9!="Intron" && \$9!="IGR"){print \$0}}' tmp.${maf_meta.sample}.somatic_rna_germline.maf >> ${maf_meta.sample}.somatic_rna_germline.maf
     """
 
+    stub:
+    """
+    touch "${maf_meta.sample}.somatic_rna_germline.maf"
+    """
 }

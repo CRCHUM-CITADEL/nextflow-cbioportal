@@ -145,7 +145,38 @@ The `_LABEL` suffix is deliberate: cBioPortal reserves `CANCER_TYPE` /
 
 ## Incremental Processing
 
-The genomic workflow checks for pre-existing output files per subject. If all expected outputs (CNV, SV, expression, mutations) already exist, processing is skipped. This allows adding new subjects to the samplesheet and re-running without reprocessing the entire cohort. Delete a subject's output directory to force reprocessing.
+Re-running with a samplesheet of old + new subjects skips the subjects already
+processed and merges their published outputs with the freshly computed ones.
+
+- **`subjectOutputs()` in `workflows/genomic.nf` is the single source of truth** for
+  what a run publishes per subject. Both the "is this subject done" gate and the cache
+  loader read that one table, and `cachedFiles()` asserts its tag argument is in it.
+  Add a new per-subject output there and nowhere else — keeping the gate and the loader
+  as two hand-written lists is how the ID signatures ended up gated but never reloaded,
+  silently dropping every cached subject from the two `*_ID.txt` files.
+- **A subject is cached all-or-nothing.** `resolveSubjectCache()` returns the whole set
+  or `null`; a subject missing any `required: true` output is reprocessed from source
+  and contributes _nothing_ from disk. Mixing stale and fresh files for one sample is
+  not just duplicate rows — fresh and cached files share a basename, so the staged-list
+  merges (`MERGE_EXPRESSION_FILES_TO_CBIOPORTAL`, `MERGE_SIGS_*`) abort the run with an
+  input file name collision.
+- The signature outputs are `required: false`: SigProfiler legitimately emits nothing
+  for a subject with too few mutations, so gating on them would reprocess that subject
+  forever. They are still always loaded when present.
+- **Cached subjects bypass `MERGE_SAMPLE_SV`.** The published `<sample>.data_sv.txt` is
+  already that module's merged DNA + RNA-fusion output, and re-merging it would hand the
+  process an input with the same name as its own output.
+  `<sample>.isofox_fusion.data_sv.txt` is never published, so there is nothing to cache.
+- **The samplesheet defines the cohort.** The group-level files are rebuilt from it on
+  every run, so a subject dropped from the samplesheet vanishes from the study even
+  though its folder stays on disk. The workflow warns about this by diffing the previous
+  run's `util_linking_file.txt`, read before it is overwritten.
+- Delete a subject's output directory to force reprocessing.
+- With no subject left to process, no reference data is downloaded: `GENOMIC_MUTATIONS`
+  gates `DOWNLOAD_VEP_TEST` / `DOWNLOAD_PCGR` on `som_dna_vcf.count().filter { it > 0 }`.
+- Case-list sample lists use `toList()`, not `collect()`: `collect()` emits nothing for
+  an empty channel, which would shift the positional zip in `GENERATE_CASE_LIST` and
+  write one modality's samples under another's label.
 
 ## Combining Two Runs (`bin/combine_cbioportal_outputs.py`)
 
@@ -200,3 +231,12 @@ nf-test gotchas:
 - Sort snapshots: `.sort { it.toString().split('/').last() }`
 - `collectFile` with `storeDir` won't create dirs — call `file("${params.outdir}/GROUP").mkdirs()` in test setup
 - `genomic_ml` uses `options "-stub-run"` to skip `DOWNLOAD_KNOWN_FUSIONS`
+- A process with no `stub:` block runs its **real** script under `-stub-run` — Nextflow
+  does not error. Every module on the genomic path therefore needs one
+- `tests/incremental_pipeline.nf.test` drives the whole pipeline under `-stub-run`:
+  freshly processed subjects emit empty placeholders while cached subjects contribute
+  real fixture content, so a sample's rows appear in a merged file if and only if it was
+  read from the cache. Its config disables the container engines, since a stub is plain
+  shell and pulling an image for a `touch` only invites registry-auth failures
+- `WorkflowTask` exposes the public fields `name` and `success` only — use
+  `workflow.trace.succeeded().collect { it.name }`; it has no `toString()`

@@ -30,4 +30,10 @@ process PURPLE_CNV_TO_CBIOPORTAL {
         --output_seg         ${meta.sample}_data_cna_hg38.seg \\
         --output_long        ${meta.sample}_data_cna_long.txt
     """
+
+    stub:
+    """
+    touch "${meta.sample}_data_cna_hg38.seg"
+    touch "${meta.sample}_data_cna_long.txt"
+    """
 }

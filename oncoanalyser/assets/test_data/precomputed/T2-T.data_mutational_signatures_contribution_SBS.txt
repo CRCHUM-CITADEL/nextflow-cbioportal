@@ -1,0 +1,3 @@
+ENTITY_STABLE_ID	NAME	DESCRIPTION	T2-T
+SBS1	SBS1	Spontaneous deamination of 5-methylcytosine	0.3500
+SBS5	SBS5	Unknown aetiology, clock-like	0.4000

@@ -76,4 +76,9 @@ process VCF2MAF {
     head -2 tmp.${meta.sample}.maf > ${meta.sample}.maf
     tail -n +3 tmp.${meta.sample}.maf | awk -v col16="${meta.sample}" 'BEGIN {FS=OFS="\\t"} {\$16=col16; print}' >> ${meta.sample}.maf
     """
+
+    stub:
+    """
+    touch "${meta.sample}.maf"
+    """
 }

@@ -22,4 +22,9 @@ process INTEGRATE_RNA_VARIANTS {
         -o ${dna_meta.sample}.somatic_rna.maf \
         --min_depth=3 --min_vaf=0.05
     """
+
+    stub:
+    """
+    touch "${dna_meta.sample}.somatic_rna.maf"
+    """
 }

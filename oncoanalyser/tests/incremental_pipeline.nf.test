@@ -1,0 +1,156 @@
+/*
+ * Pipeline-level incremental processing.
+ *
+ * tests/incremental.nf.test covers the group-level merge in isolation; these cases
+ * cover the part that decides what to merge — the skip gate in workflows/genomic.nf.
+ *
+ * Everything runs under -stub-run, so freshly processed subjects emit empty
+ * placeholder files while cached subjects contribute their real fixture content.
+ * A sample's rows therefore appear in a merged file if, and only if, that sample was
+ * picked up from the cache.
+ */
+
+nextflow_pipeline {
+
+    name "Test incremental processing"
+    script "../main.nf"
+    tag "pipeline"
+    tag "incremental"
+
+    test("cached subject is skipped and merged with a newly processed one") {
+
+        config "tests/nextflow_incremental.config"
+        options "-stub-run"
+
+        setup {
+            // T1 is already processed: stage every file a real run publishes for it.
+            def precomputed = "${projectDir}/assets/test_data/precomputed"
+            def dir = new File("${outputDir}/TEST/T1")
+            dir.mkdirs()
+            [
+                "T1-1DT_data_cna_hg38.seg",
+                "T1-1DT_data_cna_long.txt",
+                "T1-1DT.data_sv.txt",
+                "T1-1DT.tpm.tsv",
+                "T1-1DT.somatic_rna_germline.maf",
+                "T1-1DT.data_mutational_signatures_contribution_SBS.txt",
+                "T1-1DT.data_mutational_signatures_counts_SBS.txt",
+                "T1-1DT.data_mutational_signatures_contribution_DBS.txt",
+                "T1-1DT.data_mutational_signatures_counts_DBS.txt",
+                "T1-1DT.data_mutational_signatures_contribution_ID.txt",
+                "T1-1DT.data_mutational_signatures_counts_ID.txt",
+            ].each { name ->
+                java.nio.file.Files.copy(
+                    new File("${precomputed}/${name}").toPath(),
+                    new File("${dir}/${name}").toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                )
+            }
+
+            // The checked-in samplesheet carries folder paths relative to the launch
+            // directory, which under nf-test is not the project root.
+            new File("${outputDir}/samplesheet.csv").text = """\
+group,subject_id,sample_id,folder
+TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
+TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
+"""
+        }
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                genomic_samplesheet = "${outputDir}/samplesheet.csv"
+            }
+        }
+
+        then {
+            def tasks    = workflow.trace.succeeded().collect { it.name }
+            def t1_tasks = tasks.findAll { it.contains('T1-1DT') }
+            def t2_tasks = tasks.findAll { it.contains('T2-T') }
+
+            def seg  = path("${params.outdir}/TEST/data_cna_hg38.seg").readLines()
+            def long_cnv = path("${params.outdir}/TEST/data_cna_long.txt").readLines()
+            def sv   = path("${params.outdir}/TEST/data_sv.txt").readLines()
+
+            assertAll(
+                { assert workflow.success },
+                // T1 is cached: not one task may be scheduled for it
+                { assert t1_tasks.isEmpty() : "T1 is already processed but ran tasks: ${t1_tasks}" },
+                // T2 is new: it must actually be processed
+                { assert !t2_tasks.isEmpty() : "T2 was never processed; tasks were: ${tasks}" },
+                // T1's cached rows must survive into the merged study files, exactly once
+                { assert seg.count { it.startsWith('T1-1DT\t') } == 3
+                         : "Expected T1's 3 cached segments in data_cna_hg38.seg, got ${seg.findAll { it.startsWith('T1-1DT\t') }}" },
+                { assert long_cnv.count { it.split('\t')[2] == 'T1-1DT' } == 3
+                         : "Expected T1's 3 cached CNA rows in data_cna_long.txt" },
+                { assert sv.count { it.startsWith('T1-1DT\t') } > 0
+                         : "T1's cached SV rows are missing from data_sv.txt" },
+                // The ID signature merges must be reachable from cached input alone.
+                // (Their content is asserted in tests/both.nf.test, which runs the R
+                // merge for real; under -stub-run every merge output is an empty file.)
+                { assert tasks.any { it.contains('MERGE_SIGS_ID_TO_CBIOPORTAL') }
+                         : "MERGE_SIGS_ID_TO_CBIOPORTAL never ran" },
+                { assert tasks.any { it.contains('MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL') }
+                         : "MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL never ran" },
+                // the linking file always describes the full samplesheet cohort
+                { assert path("${params.outdir}/TEST/util_linking_file.txt").readLines().size() == 3 }
+            )
+        }
+    }
+
+    test("partially processed subject is reprocessed and its stale files are ignored") {
+
+        config "tests/nextflow_incremental.config"
+        options "-stub-run"
+
+        setup {
+            // T1 looks processed except for its MAF — an interrupted previous run.
+            // Its leftover files must not be merged in alongside the fresh ones.
+            def precomputed = "${projectDir}/assets/test_data/precomputed"
+            def dir = new File("${outputDir}/TEST/T1")
+            dir.mkdirs()
+            [
+                "T1-1DT_data_cna_hg38.seg",
+                "T1-1DT_data_cna_long.txt",
+                "T1-1DT.data_sv.txt",
+                "T1-1DT.tpm.tsv",
+            ].each { name ->
+                java.nio.file.Files.copy(
+                    new File("${precomputed}/${name}").toPath(),
+                    new File("${dir}/${name}").toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                )
+            }
+
+            new File("${outputDir}/samplesheet.csv").text = """\
+group,subject_id,sample_id,folder
+TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
+"""
+        }
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                genomic_samplesheet = "${outputDir}/samplesheet.csv"
+            }
+        }
+
+        then {
+            def tasks = workflow.trace.succeeded().collect { it.name }
+            def seg   = path("${params.outdir}/TEST/data_cna_hg38.seg").readLines()
+            def long_cnv = path("${params.outdir}/TEST/data_cna_long.txt").readLines()
+
+            assertAll(
+                { assert workflow.success },
+                // incomplete => reprocessed
+                { assert tasks.any { it.contains('T1-1DT') } : "Incomplete subject T1 was not reprocessed" },
+                // ...and none of its stale files may be merged in. Under -stub-run the
+                // fresh outputs are empty, so any T1 data row here came from the cache.
+                { assert seg.count { it.startsWith('T1-1DT\t') } == 0
+                         : "Stale cached segments were merged for a reprocessed subject: ${seg.findAll { it.startsWith('T1-1DT\t') }}" },
+                { assert long_cnv.every { it.split('\t').size() < 3 || it.split('\t')[2] != 'T1-1DT' }
+                         : "Stale cached CNA rows were merged for a reprocessed subject" }
+            )
+        }
+    }
+}

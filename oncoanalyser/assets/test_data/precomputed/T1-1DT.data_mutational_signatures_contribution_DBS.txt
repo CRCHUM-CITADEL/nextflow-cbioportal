@@ -1,0 +1,3 @@
+ENTITY_STABLE_ID	NAME	DESCRIPTION	T1-1DT
+DBS2	DBS2	Tobacco smoking and other mutagens	0.2500
+DBS4	DBS4	Unknown aetiology	0.3000

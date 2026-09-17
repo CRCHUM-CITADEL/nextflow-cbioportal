@@ -19,8 +19,14 @@ workflow GENOMIC_MUTATIONS {
         needs_pcgr
 
     main:
-        ch_vep_data  = needs_vep  ? DOWNLOAD_VEP_TEST().cache_dir.first() : vep_data.first()
-        ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR().data_dir.first()      : pcgr_data.first()
+        // Reference data is only needed when there is at least one subject to
+        // process. On a fully incremental run (every subject already cached) this
+        // channel stays empty, so the download processes never run and the run
+        // touches the network zero times.
+        ch_has_work = som_dna_vcf.count().filter { n -> n > 0 }
+
+        ch_vep_data  = needs_vep  ? DOWNLOAD_VEP_TEST(ch_has_work).cache_dir.first() : vep_data.first()
+        ch_pcgr_data = needs_pcgr ? DOWNLOAD_PCGR(ch_has_work).data_dir.first()      : pcgr_data.first()
 
         ger_dna_filtered = FILTER_GERMLINE_DNA(ger_dna_vcf)
 

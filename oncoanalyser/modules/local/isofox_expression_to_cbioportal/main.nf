@@ -24,4 +24,9 @@ process ISOFOX_EXPRESSION_TO_CBIOPORTAL {
         --sample_id ${meta.sample} \\
         --output   ${meta.sample}.tpm.tsv
     """
+
+    stub:
+    """
+    touch "${meta.sample}.tpm.tsv"
+    """
 }

@@ -31,6 +31,87 @@ def findOncoFile(meta, path_str, label) {
 }
 
 
+// Every per-subject file this workflow publishes to <outdir>/<group>/<subject>/.
+//
+// SINGLE SOURCE OF TRUTH: both the "is this subject already done" gate and the
+// cache loader read this table. Keeping them as two hand-written lists is how
+// the ID signatures ended up gated-but-never-loaded — add a modality here and
+// it is picked up by both sides at once.
+//
+//   tag      — pipeline tag the mix sites below select on
+//   suffix   — filename, appended to meta.sample
+//   required — must exist for the subject to count as processed. The signature
+//              files are optional: SigProfiler legitimately emits nothing for a
+//              subject with too few mutations, and gating on them would
+//              reprocess such a subject on every single run.
+def subjectOutputs() {
+    return [
+        [tag: 'cnv_seg',         suffix: '_data_cna_hg38.seg',                               required: true ],
+        [tag: 'cnv_long',        suffix: '_data_cna_long.txt',                               required: true ],
+        [tag: 'sv',              suffix: '.data_sv.txt',                                     required: true ],
+        [tag: 'expression',      suffix: '.tpm.tsv',                                         required: true ],
+        [tag: 'mutation',        suffix: '.somatic_rna_germline.maf',                        required: true ],
+        [tag: 'sigs',            suffix: '.data_mutational_signatures_contribution_SBS.txt', required: false],
+        [tag: 'sigs_counts',     suffix: '.data_mutational_signatures_counts_SBS.txt',       required: false],
+        [tag: 'sigs_dbs',        suffix: '.data_mutational_signatures_contribution_DBS.txt', required: false],
+        [tag: 'sigs_counts_dbs', suffix: '.data_mutational_signatures_counts_DBS.txt',       required: false],
+        [tag: 'sigs_id',         suffix: '.data_mutational_signatures_contribution_ID.txt',  required: false],
+        [tag: 'sigs_counts_id',  suffix: '.data_mutational_signatures_counts_ID.txt',        required: false],
+    ]
+}
+
+
+// Resolve a subject's previously-published outputs.
+// Returns null when the subject still has work to do, otherwise a map of
+// tag -> file. All-or-nothing on purpose: a half-written subject is reprocessed
+// from scratch, and none of its stale files are merged into the study.
+def resolveSubjectCache(meta) {
+    def subjectDir = file("${params.outdir}/${meta.group}/${meta.subject}")
+    if (!subjectDir.exists() || !subjectDir.isDirectory()) {
+        return null
+    }
+    def found = [:]
+    def complete = subjectOutputs().every { output ->
+        def f = file("${subjectDir}/${meta.sample}${output.suffix}", checkIfExists: false)
+        if (f.exists() && !f.isEmpty()) {
+            found[output.tag] = f
+            return true
+        }
+        return !output.required
+    }
+    return complete ? found : null
+}
+
+
+// Cached per-subject files carrying the given tag, as [meta, file].
+// The tag must exist in subjectOutputs(), so a typo at a mix site fails loudly
+// instead of quietly yielding an empty channel — which is exactly how the ID
+// signatures went missing for cached subjects in the first place.
+def cachedFiles(ch_cache, String tag) {
+    assert tag in subjectOutputs()*.tag : "Unknown cached-output tag '${tag}'"
+    return ch_cache.filter { meta, _f -> meta.pipeline == tag }
+}
+
+
+// Subjects the previous run put in the study, read from the linking file it left
+// behind. That file is an exact record of the last cohort, which beats scanning the
+// group directory for subject folders (that directory also holds case_lists/,
+// machine_learning/ and the flat data_*/meta_* files).
+//
+// Must be called before ch_linking_file overwrites it for this run.
+def previousCohort(group) {
+    def linking = file("${params.outdir}/${group}/util_linking_file.txt", checkIfExists: false)
+    if (!linking.exists()) {
+        return [] as Set
+    }
+    return linking.readLines()
+        .drop(1)
+        .findAll { line -> line?.trim() }
+        .collect { line -> line.split('\t')[0] }
+        .toSet()
+}
+
+
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -70,116 +151,63 @@ workflow GENOMIC {
             }
 
         // ── Incremental processing: detect already-processed subjects ────────
-        // Check output directory for existing per-subject files.
-        // If all expected outputs exist, skip processing and reuse cached files.
+        // A subject counts as done only when every required per-subject output is
+        // already on disk (see subjectOutputs()). Done subjects contribute their
+        // cached files and run no tasks; every other subject is reprocessed from
+        // source and contributes nothing from disk, so a partially written subject
+        // can never be merged in twice.
 
-        ch_files_ran = ch_samples
-            .filter { meta ->
-                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
-                baseDir.exists() && baseDir.isDirectory()
-            }
-            .flatMap { meta ->
-                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
-                def files = []
+        ch_subject_cache = ch_samples
+            .map { meta -> [meta, resolveSubjectCache(meta)] }
 
-                // CNV files (use meta.sample for filename)
-                def seg = file("${baseDir}/${meta.sample}_data_cna_hg38.seg", checkIfExists: false)
-                def long_cnv = file("${baseDir}/${meta.sample}_data_cna_long.txt", checkIfExists: false)
-                if (seg.exists() && long_cnv.exists()) {
-                    files.add([meta + [pipeline: 'cnv'], [seg: seg, longfile: long_cnv]])
-                }
-
-                // SV file
-                def sv = file("${baseDir}/${meta.sample}.data_sv.txt", checkIfExists: false)
-                if (sv.exists()) {
-                    files.add([meta + [pipeline: 'sv'], sv])
-                }
-
-                // Expression file
-                def tpm = file("${baseDir}/${meta.sample}.tpm.tsv", checkIfExists: false)
-                if (tpm.exists()) {
-                    files.add([meta + [pipeline: 'expression'], tpm])
-                }
-
-                // Mutation file
-                def maf = file("${baseDir}/${meta.sample}.somatic_rna_germline.maf", checkIfExists: false)
-                if (maf.exists()) {
-                    files.add([meta + [pipeline: 'mutation'], maf])
-                }
-
-                // RNA fusion file (optional — only present for samples with RNA data)
-                def rna_fusion = file("${baseDir}/${meta.sample}.isofox_fusion.data_sv.txt", checkIfExists: false)
-                if (rna_fusion.exists()) {
-                    files.add([meta + [pipeline: 'sv_rna_fusion'], rna_fusion])
-                }
-
-                // Signatures contribution file (optional — only present when sufficient mutations exist)
-                def sigs = file("${baseDir}/${meta.sample}.data_mutational_signatures_contribution_SBS.txt", checkIfExists: false)
-                if (sigs.exists()) {
-                    files.add([meta + [pipeline: 'sigs'], sigs])
-                }
-
-                // Signatures counts file (optional — only present when sufficient mutations exist)
-                def sigs_counts = file("${baseDir}/${meta.sample}.data_mutational_signatures_counts_SBS.txt", checkIfExists: false)
-                if (sigs_counts.exists()) {
-                    files.add([meta + [pipeline: 'sigs_counts'], sigs_counts])
-                }
-
-                // DBS signature contribution file
-                def sigs_dbs = file("${baseDir}/${meta.sample}.data_mutational_signatures_contribution_DBS.txt", checkIfExists: false)
-                if (sigs_dbs.exists()) {
-                    files.add([meta + [pipeline: 'sigs_dbs'], sigs_dbs])
-                }
-
-                // DBS signature counts file
-                def sigs_counts_dbs = file("${baseDir}/${meta.sample}.data_mutational_signatures_counts_DBS.txt", checkIfExists: false)
-                if (sigs_counts_dbs.exists()) {
-                    files.add([meta + [pipeline: 'sigs_counts_dbs'], sigs_counts_dbs])
-                }
-
-
-                return files
+        // Cached per-subject files, tagged so the mix sites below can select them.
+        ch_files_ran = ch_subject_cache
+            .filter { _meta, cache -> cache != null }
+            .flatMap { meta, cache ->
+                cache.collect { tag, cached_file -> [meta + [pipeline: tag], cached_file] }
             }
 
-        // Get set of already-processed subject names (those with all 4 outputs)
-        existing_subjects = ch_samples
-            .filter { meta ->
-                def baseDir = file("${params.outdir}/${meta.group}/${meta.subject}")
-                if (!baseDir.exists()) return false
-                def seg = file("${baseDir}/${meta.sample}_data_cna_hg38.seg", checkIfExists: false)
-                def long_cnv = file("${baseDir}/${meta.sample}_data_cna_long.txt", checkIfExists: false)
-                def sv = file("${baseDir}/${meta.sample}.data_sv.txt", checkIfExists: false)
-                def tpm = file("${baseDir}/${meta.sample}.tpm.tsv", checkIfExists: false)
-                def maf = file("${baseDir}/${meta.sample}.somatic_rna_germline.maf", checkIfExists: false)
-                return seg.exists() && long_cnv.exists() && sv.exists() && tpm.exists() && maf.exists()
-            }
-            .map { meta -> meta.subject }
-            .collect()
-            .map { it.toSet() }
-            .ifEmpty([] as Set)
-
-        // Filter to only new samples that need processing
-        ch_samples_to_run = ch_samples
-            .combine(existing_subjects)
-            .filter { meta, existing_set -> meta.subject !in existing_set }
-            .map { meta, existing_set -> meta }
+        // Subjects that still need processing
+        ch_samples_to_run = ch_subject_cache
+            .filter { _meta, cache -> cache == null }
+            .map { meta, _cache -> meta }
 
         // Log skipped samples
-        ch_samples
-            .combine(existing_subjects)
-            .filter { meta, existing_set -> meta.subject in existing_set }
-            .subscribe { meta, set ->
-                log.info "Skipping already-processed subject: ${meta.subject}"
+        ch_subject_cache
+            .filter { _meta, cache -> cache != null }
+            .subscribe { meta, cache ->
+                log.info "Skipping already-processed subject: ${meta.subject} (${cache.size()} cached file(s))"
             }
 
-        // Warn if all samples already processed
-        ch_samples_to_run
-            .collect()
-            .filter { list ->
-                if (list.isEmpty()) {
-                    log.warn "All subjects in samplesheet already processed. Skipping genomic processing."
+        // One-line run summary, and a warning when there is nothing left to do
+        ch_subject_cache
+            .map { _meta, cache -> cache == null ? 'run' : 'cached' }
+            .toList()
+            .subscribe { states ->
+                def to_run = states.count('run')
+                log.info "Incremental processing: ${states.count('cached')} subject(s) cached, ${to_run} to process"
+                if (to_run == 0) {
+                    log.warn "All subjects in samplesheet already processed. Only the group-level merge will run."
                 }
-                return true
+            }
+
+        // The samplesheet defines the cohort: the group-level study files are rebuilt
+        // from it on every run, so a subject dropped from the samplesheet disappears
+        // from the study even though its per-subject folder is still on disk. Read the
+        // previous cohort now, before ch_linking_file rewrites it further down.
+        previous_cohort = previousCohort("${params.study_id}")
+
+        ch_samples
+            .map { meta -> meta.subject }
+            .toList()
+            .subscribe { subjects ->
+                def dropped = (previous_cohort - (subjects as Set)).sort()
+                if (dropped) {
+                    log.warn "Subject(s) ${dropped.join(', ')} were in the previous run of study " +
+                             "${params.study_id} but are not in this samplesheet. The samplesheet defines the " +
+                             "cohort, so they will NOT appear in the merged study files, even though their " +
+                             "output folders remain on disk."
+                }
             }
 
         // ── Build per-modality input channels ─────────────────────────────────
@@ -337,57 +365,55 @@ workflow GENOMIC {
         )
 
         // ── Mix new results with pre-existing cached results ──────────────────
+        // cachedFiles() rejects a tag that is not in subjectOutputs(), so a cached
+        // subject can never go missing from one of these outputs unnoticed.
 
         all_cnv_seg = GENOMIC_CNV.out.segfile
-            .mix(ch_files_ran
-                .filter { meta, files -> meta.pipeline == 'cnv' }
-                .map { meta, files -> [meta, files.seg] })
+            .mix(cachedFiles(ch_files_ran, 'cnv_seg'))
 
         all_cnv_long = GENOMIC_CNV.out.longfile
-            .mix(ch_files_ran
-                .filter { meta, files -> meta.pipeline == 'cnv' }
-                .map { meta, files -> [meta, files.longfile] })
+            .mix(cachedFiles(ch_files_ran, 'cnv_long'))
 
-        // Group all SV files (fresh + cached) by sample, then merge into one per-sample file
-        ch_sv_all_raw = GENOMIC_SV.out.sv_out
+        // Group the freshly produced SV files (DNA + RNA fusion) by sample and merge
+        // them into one file per sample. A cached subject already has that merged
+        // file on disk, so it bypasses MERGE_SAMPLE_SV entirely — re-merging it would
+        // feed the process an input with the same name as its own output.
+        ch_sv_per_sample = GENOMIC_SV.out.sv_out
             .mix(ISOFOX_FUSION_TO_CBIOPORTAL.out.sv)
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv' })
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sv_rna_fusion' })
-
-        ch_sv_per_sample = ch_sv_all_raw
-            .map { meta, file -> [meta.sample, meta, file] }
+            .map { meta, sv_file -> [meta.sample, meta, sv_file] }
             .groupTuple()
-            .map { sample, metas, files ->
+            .map { _sample, metas, files ->
                 [metas[0], files instanceof List ? files : [files]]
             }
 
         MERGE_SAMPLE_SV(ch_sv_per_sample)
 
         all_sv = MERGE_SAMPLE_SV.out.sv
+            .mix(cachedFiles(ch_files_ran, 'sv'))
 
         all_expression = GENOMIC_EXPRESSION.out.out
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'expression' })
+            .mix(cachedFiles(ch_files_ran, 'expression'))
 
         all_mutations = GENOMIC_MUTATIONS.out.out
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'mutation' })
+            .mix(cachedFiles(ch_files_ran, 'mutation'))
 
         all_sigs = SIGPROFILER_SBS.out.sigs
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs' })
+            .mix(cachedFiles(ch_files_ran, 'sigs'))
 
         all_sigs_counts = SIGS_COUNTS_TO_CBIOPORTAL.out.sigs_counts
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_counts' })
+            .mix(cachedFiles(ch_files_ran, 'sigs_counts'))
 
         all_sigs_dbs = SIGPROFILER_DBS.out.sigs_dbs
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_dbs' })
+            .mix(cachedFiles(ch_files_ran, 'sigs_dbs'))
 
         all_sigs_counts_dbs = SIGPROFILER_DBS.out.sigs_counts_dbs
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_counts_dbs' })
+            .mix(cachedFiles(ch_files_ran, 'sigs_counts_dbs'))
 
         all_sigs_id = SIGPROFILER_ID.out.sigs_id
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_id' })
+            .mix(cachedFiles(ch_files_ran, 'sigs_id'))
 
         all_sigs_counts_id = SIGPROFILER_ID.out.sigs_counts_id
-            .mix(ch_files_ran.filter { meta, f -> meta.pipeline == 'sigs_counts_id' })
+            .mix(cachedFiles(ch_files_ran, 'sigs_counts_id'))
 
         // ── Aggregate per-group outputs ───────────────────────────────────────
 

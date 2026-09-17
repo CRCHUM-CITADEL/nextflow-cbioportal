@@ -12,12 +12,6 @@ nextflow_process {
     // already a slot — so a name the MAF does not carry (Consequence, IMPACT, FILTER,
     // Feature_type, CCDS, RefSeq) used to widen the row past the header and produce a
     // ragged file rather than an error. The row-width assertion below is what guards it.
-    //
-    // CAVEAT: the module currently runs `mv $som_dna_rna_maf tmp.<sample>...maf` straight
-    // after gen_convert_cpsr_to_maf.R writes that same path, so the script's combined
-    // output is overwritten by its own input and no germline row reaches the published
-    // MAF. Until that is resolved this case only exercises the somatic passthrough and
-    // the Intron/IGR filter; it gains teeth over the germline rows the moment it is.
     test("mafsmith-shaped MAF — every row matches the header width") {
 
         config "tests/nextflow_mutations.config"
@@ -54,6 +48,21 @@ nextflow_process {
 
             // The module's own filter drops Intron/IGR rows on field 9.
             assert !lines.drop(2).any { it.split('\t', -1)[8] in ['Intron', 'IGR'] }
+
+            // Germline variants from the CPSR TSV are merged in alongside the somatic
+            // rows — this is what the file's name promises.
+            def header = lines[1].split('\t', -1) as List
+            def statusCol = header.indexOf('Mutation_Status')
+            def symbolCol = header.indexOf('Hugo_Symbol')
+            def rows = lines.drop(2).collect { it.split('\t', -1) }
+
+            assert rows.any { it[statusCol] == 'Somatic' }  : "somatic rows lost"
+            assert rows.any { it[statusCol] == 'Germline' } : "no germline rows merged in"
+            assert rows.find { it[statusCol] == 'Germline' }[symbolCol] == 'BRCA1'
+
+            // Only the pathogenic CPSR row survives the module's field-52 filter; the
+            // Benign one in the fixture must not appear.
+            assert rows.count { it[statusCol] == 'Germline' } == 1
         }
     }
 }

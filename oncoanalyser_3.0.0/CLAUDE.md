@@ -27,6 +27,13 @@ Requires Nextflow >= 26.04.4.
   at run time. Rebuilding `containers/mafsmith_v0.1.0.def` is required for this
 - The `MAFSMITH` script locates the VCF sample columns by the `FORMAT` header and the
   MAF `Tumor_Sample_Barcode` column by name, rather than at fixed positions
+- `CONVERT_CPSR_TO_MAF` merges CPSR germline calls (`Mutation_Status=Germline`, filtered to
+  Pathogenic / Likely_Pathogenic / VUS on the CPSR TSV's 52nd field) into the somatic+RNA MAF,
+  then drops `Intron`/`IGR` rows. `gen_convert_cpsr_to_maf.R` keys each germline row on the
+  **incoming MAF's header** and pins it back to those columns before appending — `maf_entry$X <- v`
+  appends a slot when `X` is absent, and `rbind()` onto a zero-row frame widens silently rather
+  than erroring, which writes rows wider than the header. Add a column here only if the annotator
+  actually emits it
 - `data_sv.txt` rows require Hugo symbols at both sites — filter unannotated rows
 - SV classification (`gen_esvee_sv_to_cbioportal.R`): BND ALT strand → `(+,-)` DEL, `(-,+)` DUP, `(+,+)/(−,−)` INV, diff chr TRANSLOC. DNA SVs: `DNA_Support=Yes, RNA_Support=No`
 - RNA fusions (`gen_isofox_fusion_to_cbioportal.R`): `Class=FUSION, DNA_Support=No, RNA_Support=Yes`. Both merge into `data_sv.txt`

@@ -90,7 +90,7 @@ nextflow_process {
         }
     }
 
-    test("All parts empty — output file is created but empty") {
+    test("Only some event types present — merges just those") {
 
         when {
             params {
@@ -102,8 +102,8 @@ nextflow_process {
                     tuple(
                         'TEST',
                         [
-                            file('${projectDir}/tests/modules/fixtures/data_timeline_empty1.txt'),
-                            file('${projectDir}/tests/modules/fixtures/data_timeline_empty2.txt')
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_status.txt'),
+                            file('${projectDir}/tests/modules/fixtures/data_timeline_specimen.txt')
                         ]
                     )
                 )
@@ -112,13 +112,17 @@ nextflow_process {
         }
 
         then {
-            // Each upstream per-event module always creates its output, even a
-            // zero-byte one when it has no rows (see merge_timeline.R) — MERGE_TIMELINE
-            // must tolerate that (not error on read.csv over an empty file) and, when
-            // every part is empty, still create its own non-optional output.
+            // A per-event module whose event type produced no rows emits no file
+            // at all (its output is optional), so MERGE_TIMELINE routinely sees a
+            // subset of the five parts — the union must still be well-formed.
             assert process.success
+            assert process.out.ch_timeline.size() == 1
+
             def f = path(process.out.ch_timeline.collect { group, file -> file }[0].toString())
-            assert f.size() == 0
+            def lines = f.readLines()
+            def cols  = lines[0].split('\t').toList()
+            assert cols[0..3] == ['PATIENT_ID', 'START_DATE', 'STOP_DATE', 'EVENT_TYPE']
+            assert lines.drop(1).collect { it.split('\t')[3] }.unique().sort() == ['SPECIMEN', 'STATUS']
         }
     }
 }

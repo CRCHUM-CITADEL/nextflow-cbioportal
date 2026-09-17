@@ -112,14 +112,9 @@ if (!is.null(opt$treatments)) {
   }
 }
 
-# Always create the output file, even when empty. The Nextflow module declares
-# this output non-optional: relying on an optional output that is genuinely
-# absent has proven unreliable on some Nextflow versions (see merge_timeline.R
-# and CLAUDE.md).
 if (!is.null(surg_out) && nrow(surg_out) > 0) {
   write.table(surg_out, opt$output, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
   cat(sprintf("Wrote %d row(s) to %s\n", nrow(surg_out), opt$output))
 } else {
-  file.create(opt$output)
   cat("No SURGERY timeline data to write.\n")
 }

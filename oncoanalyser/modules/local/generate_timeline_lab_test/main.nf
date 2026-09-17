@@ -13,7 +13,7 @@ process GENERATE_TIMELINE_LAB_TEST {
         path(clinical_common_r)
 
     output:
-        tuple val(meta.group), path("data_timeline_lab_test.txt"), emit: ch_timeline_part
+        tuple val(meta.group), path("data_timeline_lab_test.txt"), emit: ch_timeline_part, optional: true
 
     script:
     def sample_reg_arg       = sample_registrations ? "--sample_registrations ${sample_registrations}" : ""

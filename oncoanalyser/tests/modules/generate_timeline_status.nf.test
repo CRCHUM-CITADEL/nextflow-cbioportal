@@ -42,7 +42,7 @@ nextflow_process {
         }
     }
 
-    test("No follow-ups provided — output file is created but empty") {
+    test("No follow-ups provided — no timeline file is emitted") {
 
         when {
             params {
@@ -65,10 +65,10 @@ nextflow_process {
         }
 
         then {
+            // The output is declared optional, so a run with nothing to write
+            // emits no file at all rather than an empty one.
             assert process.success
-            assert process.out.ch_timeline_part.size() == 1
-            def f = path(process.out.ch_timeline_part.collect { group, file -> file }[0].toString())
-            assert f.size() == 0
+            assert process.out.ch_timeline_part.size() == 0
         }
     }
 }

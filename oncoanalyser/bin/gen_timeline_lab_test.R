@@ -117,15 +117,10 @@ if (!is.null(opt$biomarkers)) {
   }
 }
 
-# Always create the output file, even when empty. The Nextflow module declares
-# this output non-optional: relying on an optional output that is genuinely
-# absent has proven unreliable on some Nextflow versions (see merge_timeline.R
-# and CLAUDE.md).
 if (!is.null(lab_out) && nrow(lab_out) > 0) {
   write.table(lab_out, opt$output, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
   cat(sprintf("Wrote %d row(s) to %s\n", nrow(lab_out), opt$output))
 } else {
-  file.create(opt$output)
   cat("No LAB_TEST timeline data to write.\n")
 }
 

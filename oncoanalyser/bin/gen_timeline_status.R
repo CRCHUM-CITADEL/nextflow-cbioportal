@@ -98,14 +98,9 @@ if (!is.null(fu_data) && nrow(fu_data) > 0) {
   status_out$START_DATE[is.na(status_out$START_DATE)] <- 0
 }
 
-# Always create the output file, even when empty. The Nextflow module declares
-# this output non-optional: relying on an optional output that is genuinely
-# absent has proven unreliable on some Nextflow versions (see merge_timeline.R
-# and CLAUDE.md).
 if (!is.null(status_out) && nrow(status_out) > 0) {
   write.table(status_out, opt$output, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
   cat(sprintf("Wrote %d row(s) to %s\n", nrow(status_out), opt$output))
 } else {
-  file.create(opt$output)
   cat("No STATUS timeline data to write.\n")
 }

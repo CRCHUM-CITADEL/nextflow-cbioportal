@@ -16,7 +16,7 @@ process GENERATE_TIMELINE_SPECIMEN {
         path(clinical_common_r)
 
     output:
-        tuple val(meta.group), path("data_timeline_specimen.txt"), emit: ch_timeline_part
+        tuple val(meta.group), path("data_timeline_specimen.txt"), emit: ch_timeline_part, optional: true
 
     script:
     def sample_reg_arg       = sample_registrations ? "--sample_registrations ${sample_registrations}" : ""

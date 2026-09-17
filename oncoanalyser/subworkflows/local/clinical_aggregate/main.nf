@@ -197,18 +197,13 @@ data_filename: data_clinical_patient.txt
 
         MERGE_TIMELINE(ch_timeline_parts)
 
-        // MERGE_TIMELINE's output is declared non-optional (see merge_timeline.R):
-        // it always creates data_timeline.txt, writing a zero-byte file when none
-        // of the five event types produced any rows for a group. Downstream, that
-        // is exactly the "no timeline data" case the original single-process
-        // GENERATE_TIMELINE represented by not emitting a file at all — so treat
-        // an empty file the same way here: skip the meta file and keep it out of
-        // the study package.
-        ch_timeline_nonempty = MERGE_TIMELINE.out.ch_timeline
-            .filter { _group, f -> f.size() > 0 }
+        // MERGE_TIMELINE emits nothing for a group whose five event types all
+        // came back empty (its output is optional), so a group with no timeline
+        // data gets no data_timeline.txt and no meta_timeline.txt — the same
+        // behaviour as the original single GENERATE_TIMELINE process.
 
         // Generate meta file for the combined timeline data file
-        ch_timeline_nonempty
+        MERGE_TIMELINE.out.ch_timeline
             .map { group, f -> group }
             .set { ch_timeline_groups }
 
@@ -229,7 +224,7 @@ data_filename: data_timeline.txt
         ch_package_files = WRITE_CLINICAL_SAMPLE.out.ch_clinical_sample
             .mix(WRITE_CLINICAL_PATIENT.out.ch_clinical_patient)
             .mix(GENERATE_META_FILE.out)
-            .mix(ch_timeline_nonempty)
+            .mix(MERGE_TIMELINE.out.ch_timeline)
             .mix(GENERATE_META_FILE_TIMELINE.out)
 
     emit:

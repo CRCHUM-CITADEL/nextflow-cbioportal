@@ -42,14 +42,10 @@ rbind_fill <- function(df_list) {
 
 input_files <- strsplit(opt$inputs, ",")[[1]]
 parts <- lapply(input_files, function(f) {
-  # Each per-event script always creates its output file, even when it has no
-  # rows to write (a zero-byte file) — Nextflow outputs here are declared
-  # non-optional because relying on an optional output that is genuinely
-  # absent has proven unreliable on some Nextflow versions. So a missing file
-  # would be a real error, but a zero-byte one is the normal "no data" case
-  # and must not be passed to read.csv() (which errors on an empty file).
-  if (!file.exists(f)) stop(paste("Error: File does not exist:", f))
-  if (file.info(f)$size == 0) return(NULL)
+  # A per-event script writes nothing at all when it has no rows, and its
+  # Nextflow output is declared optional, so only the parts that actually
+  # produced rows are staged here. Skip anything else defensively.
+  if (!file.exists(f) || file.info(f)$size == 0) return(NULL)
   read.csv(f, sep = "\t", header = TRUE, stringsAsFactors = FALSE, colClasses = "character")
 })
 
@@ -73,9 +69,7 @@ if (!is.null(combined) && nrow(combined) > 0) {
   write.table(combined, opt$output, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
   cat(sprintf("Wrote %d row(s) to %s\n", nrow(combined), opt$output))
 } else {
-  # Always create the output file, even when empty. The Nextflow module
-  # declares this output non-optional for the same reason as the per-event
-  # scripts above.
-  file.create(opt$output)
+  # No file is written; the module's output is declared optional, so the group
+  # simply produces no data_timeline.txt (matching the original behaviour).
   cat("No timeline data to write.\n")
 }

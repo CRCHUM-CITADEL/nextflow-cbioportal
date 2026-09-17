@@ -9,7 +9,7 @@ process MERGE_TIMELINE {
         tuple val(group), path(timeline_parts, stageAs: "part_*.txt")
 
     output:
-        tuple val(group), path("data_timeline.txt"), emit: ch_timeline
+        tuple val(group), path("data_timeline.txt"), emit: ch_timeline, optional: true
 
     script:
     def inputs_arg = timeline_parts instanceof List ? timeline_parts.join(",") : timeline_parts

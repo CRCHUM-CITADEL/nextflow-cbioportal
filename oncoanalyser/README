@@ -15,7 +15,7 @@ cd nextflow-cbioportal/oncoanalyser
 
 # 2. Load modules
 
-module load nextflow/25.10.2 apptainer/1.3.5 htslib/1.22.1
+module load nextflow/26.04.4 apptainer/1.3.5 htslib/1.22.1
 
 # 3a. Run (genomic mode)
 

@@ -82,11 +82,11 @@
     "properties": {
         "email": {
             "type": "string",
-            "default": "justin.bellavance.chum@ssss.gouv.qc.ca"
+            "description": "Email address for completion summary."
         },
         "email_on_fail": {
             "type": "string",
-            "default": "justin.bellavance.chum@ssss.gouv.qc.ca"
+            "description": "Email address for completion summary, only when the pipeline fails."
         },
         "plaintext_email": {
             "type": "boolean"

@@ -354,20 +354,58 @@ PROFILES
 
   Profile      Purpose
   -----------  ------------------------------------------------
-  apptainer    REQUIRED. Enables Apptainer, sets cache dir.
-  slurm        Submits jobs to SLURM. Edit clusterOptions for
-               your allocation.
+  apptainer    REQUIRED. Enables Apptainer.
+  slurm        Submits jobs to SLURM. Set clusterOptions for
+               your allocation (see SITE CONFIGURATION below).
+  citadel      CRCHUM/CITADEL site settings: reference-data paths,
+               prebuilt .sif containers, SLURM account, scratch and
+               Apptainer cache. List it LAST.
   debug        Dumps process hashes, prints hostname, keeps work dir.
   gpu          Adds --nv flag for GPU passthrough.
   local        Uses local SIF paths instead of ORAS URIs.
   test         Uses bundled test data with reduced resources.
+
+
+SITE CONFIGURATION
+
+  nextflow.config ships portable defaults only: public container
+  images and EMPTY reference-data paths. Nothing in it is specific to
+  any one cluster, so an external team can run the pipeline without
+  editing site paths out of it.
+
+  At CRCHUM, add the citadel profile. It loads nextflow_citadel.config,
+  which supplies the /project/60005 reference data, the prebuilt .sif
+  containers, --account=def-chasse, scratch and the shared Apptainer
+  cache:
+
+    nextflow run main.nf -profile slurm,apptainer,citadel ...
+
+  List citadel LAST so its values win wherever profiles overlap.
+
+  Elsewhere, either pass the reference data on the command line:
+
+    nextflow run main.nf -profile apptainer \
+      --mode genomic \
+      --genomic_samplesheet samplesheet.csv \
+      --ensembl_annotations biomart_grch38.tsv \
+      --ensembl_annotations_expr biomart_grch38.tsv \
+      --genome_reference Homo_sapiens_assembly38.fasta
+
+  or copy nextflow_citadel.config as a template for your own site
+  config and pass it with -c my_site.config.
+
+  Reference-data params with no portable default (required for genomic
+  and both modes): ensembl_annotations, ensembl_annotations_expr,
+  genome_reference. vep_data, pcgr_data, cosmic_data and chimer_data
+  are optional -- VEP and PCGR data are downloaded when left empty,
+  which needs internet access on the compute node.
 
 GENOMIC MODE
 
   module load nextflow/26.04.4 apptainer/1.3.5 htslib/1.22.1
 
   nextflow run main.nf \
-      -profile slurm,apptainer \
+      -profile slurm,apptainer,citadel \
       --mode genomic \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
@@ -381,7 +419,7 @@ GENOMIC MODE
 CLINICAL MODE
 
   nextflow run main.nf \
-      -profile slurm,apptainer \
+      -profile slurm,apptainer,citadel \
       --mode clinical \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
@@ -394,7 +432,7 @@ BOTH MODE
   clinical workflow, so --sample_registrations is not needed.
 
   nextflow run main.nf \
-      -profile slurm,apptainer \
+      -profile slurm,apptainer,citadel \
       --mode both \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
@@ -427,7 +465,7 @@ USING A PARAMS FILE
 
   Then run:
 
-    nextflow run main.nf -profile slurm,apptainer -params-file params.yaml
+    nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml
 
   Note: Use -params-file (not -c) for parameters. Custom config files
   via -c should only be used for process resource tuning.
@@ -454,7 +492,7 @@ RESUMING A FAILED RUN
   Nextflow caches intermediate results. If a run fails, fix the issue
   and resume:
 
-    nextflow run main.nf -profile slurm,apptainer -params-file params.yaml -resume
+    nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml -resume
 
   Nextflow reuses cached results from completed steps and only re-runs
   what failed. The pipeline's incremental processing also skips subjects
@@ -498,10 +536,14 @@ SLURM ACCOUNT ERRORS
 
   Symptom: "sbatch: error: invalid account" or similar.
 
-  Fix: Edit nextflow.config and change clusterOptions in the slurm
-  profile to your allocation:
+  Fix: At CRCHUM, add the citadel profile, which sets the account:
 
-    clusterOptions = '--account=your-allocation'
+    nextflow run main.nf -profile slurm,apptainer,citadel ...
+
+  Elsewhere, set clusterOptions to your own allocation in your site
+  config (see SITE CONFIGURATION) rather than editing nextflow.config:
+
+    process.clusterOptions = '--account=your-allocation'
 
 "ALL SUBJECTS IN SAMPLESHEET ALREADY PROCESSED"
 
@@ -567,5 +609,5 @@ RUNNING IN THE BACKGROUND
   Use screen, tmux, or submit Nextflow itself as a SLURM job:
 
     screen -S nf-run
-    nextflow run main.nf -profile slurm,apptainer -params-file params.yaml
+    nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml
     # Ctrl+A, D to detach; screen -r nf-run to reattach

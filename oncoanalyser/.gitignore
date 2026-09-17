@@ -23,7 +23,10 @@ assets/test_data/vcf/*.final.*
 assets/test_data/vep/*
 assets/vep/*
 
+# Local per-run configs are untracked, but the CRCHUM/CITADEL site config is
+# part of the pipeline (see -profile citadel).
 /nextflow_*.config
+!/nextflow_citadel.config
 /*samplesheet.csv
 /samplesheet_*.csv
 data/

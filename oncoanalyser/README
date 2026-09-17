@@ -19,22 +19,42 @@ module load nextflow/26.04.4 apptainer/1.3.5 htslib/1.22.1
 
 # 3a. Run (genomic mode)
 
-nextflow run main.nf -profile slurm,apptainer \
+nextflow run main.nf -profile slurm,apptainer,citadel \
  --mode genomic \
  --genomic_samplesheet samplesheet.csv
 
 # 3b. Run (clinical mode)
 
-nextflow run main.nf -profile slurm,apptainer \
+nextflow run main.nf -profile slurm,apptainer,citadel \
  --mode clinical \
  --clinical_samplesheet clinical_samplesheet.csv
 
 # 3c. Run (both mode — genomic + clinical in one run)
 
-nextflow run main.nf -profile slurm,apptainer \
+nextflow run main.nf -profile slurm,apptainer,citadel \
  --mode both \
  --genomic_samplesheet samplesheet.csv \
  --clinical_samplesheet clinical_samplesheet.csv
+
+# Site configuration
+
+The -profile citadel above loads nextflow_citadel.config, which holds
+the CRCHUM/CITADEL reference-data paths, prebuilt .sif containers, and
+SLURM account. List it LAST so it wins wherever profiles overlap.
+
+Outside CRCHUM, drop it and supply the reference data yourself --
+nextflow.config ships portable defaults only (public container images,
+empty reference paths). Genomic and both modes require at least:
+
+nextflow run main.nf -profile apptainer \
+ --mode genomic \
+ --genomic_samplesheet samplesheet.csv \
+ --ensembl_annotations biomart_grch38.tsv \
+ --ensembl_annotations_expr biomart_grch38.tsv \
+ --genome_reference Homo_sapiens_assembly38.fasta
+
+Copy nextflow_citadel.config as a starting point for your own site
+config and pass it with -c my_site.config.
 
 In "both" mode, the genomic workflow runs first and produces a
 linking file that maps sample IDs to clinical patient IDs. The

@@ -74,11 +74,11 @@ workflow PIPELINE_INITIALISATION {
 
     if (mode in ['genomic', 'both']){
         if (!params.ensembl_annotations){
-            error("ERROR: Missing ensembl_annotations file (tsv format). Check input in nextflow.config")
+            error("ERROR: Missing --ensembl_annotations (BioMart TSV). Pass it on the command line, set it in your own -c config, or use -profile citadel at CRCHUM.")
         }
 
         if (!params.ensembl_annotations_expr){
-            error("ERROR: Missing ensembl_annotations_expr file (tsv format). Check input in nextflow.config")
+            error("ERROR: Missing --ensembl_annotations_expr (BioMart TSV). Pass it on the command line, set it in your own -c config, or use -profile citadel at CRCHUM.")
         }
 
         ch_genomic_samplesheet = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))

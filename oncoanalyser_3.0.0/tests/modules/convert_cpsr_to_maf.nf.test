@@ -1,0 +1,59 @@
+nextflow_process {
+
+    name "Test CONVERT_CPSR_TO_MAF"
+    script "modules/local/convert_cpsr_to_maf/main.nf"
+    process "CONVERT_CPSR_TO_MAF"
+    tag "module"
+    tag "convert_cpsr_to_maf"
+
+    // The input MAF here carries exactly the 53 columns mafsmith emits, not the ~133
+    // vcf2maf used to. gen_convert_cpsr_to_maf.R builds its germline rows by assigning
+    // into a list keyed on the incoming header, and `list$X <- v` APPENDS when X is not
+    // already a slot — so a name the MAF does not carry (Consequence, IMPACT, FILTER,
+    // Feature_type, CCDS, RefSeq) used to widen the row past the header and produce a
+    // ragged file rather than an error. The row-width assertion below is what guards it.
+    //
+    // CAVEAT: the module currently runs `mv $som_dna_rna_maf tmp.<sample>...maf` straight
+    // after gen_convert_cpsr_to_maf.R writes that same path, so the script's combined
+    // output is overwritten by its own input and no germline row reaches the published
+    // MAF. Until that is resolved this case only exercises the somatic passthrough and
+    // the Intron/IGR filter; it gains teeth over the germline rows the moment it is.
+    test("mafsmith-shaped MAF — every row matches the header width") {
+
+        config "tests/nextflow_mutations.config"
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    'T1',
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/tests/modules/fixtures/mafsmith_somatic_rna.maf'),
+                    [group: 'TEST', subject: 'T1', sample: 'T1-N'],
+                    file('${projectDir}/tests/modules/fixtures/cpsr_germline.tsv.gz')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def maf = path(process.out[0][0][1].toString())
+            def lines = maf.readLines()
+
+            assert lines[0].startsWith('#version')
+            def width = lines[1].split('\t', -1).size()
+            assert width == 53 : "header lost or gained columns: ${width}"
+
+            // No row may be wider or narrower than the header it is written under.
+            lines.drop(2).eachWithIndex { line, i ->
+                def n = line.split('\t', -1).size()
+                assert n == width : "row ${i + 1} has ${n} fields, header has ${width}"
+            }
+
+            // The module's own filter drops Intron/IGR rows on field 9.
+            assert !lines.drop(2).any { it.split('\t', -1)[8] in ['Intron', 'IGR'] }
+        }
+    }
+}

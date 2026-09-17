@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `process_medium_memory` drops from 60 GB / 36 h to 36 GB / 23 h, which is what the mutation step actually needs now that mafsmith has replaced vcf2maf + VEP
 - `tests/subworkflows/genomic_mutations.nf.test` runs under `-stub-run` and asserts the wiring instead of MAF content, with a second case covering the download fallbacks
 - `MAFSMITH` locates the VCF sample columns by the `FORMAT` header and the MAF `Tumor_Sample_Barcode` column by name, instead of hardcoding VCF fields 10/11 and MAF field 16. Verified to select the same columns on the existing fixtures, and it now fails loudly if the MAF header lacks the column
+- `gen_convert_cpsr_to_maf.R` wrote germline rows wider than the header they were written under. It builds each row as a list keyed on the incoming MAF's columns, but `maf_entry$X <- v` appends when `X` is not already a slot, so the six assignments naming `Feature_type`, `Consequence`, `IMPACT`, `FILTER`, `CCDS` and `RefSeq` widened the row whenever the MAF did not already carry them — and `rbind()` onto a zero-row frame adopts the wider shape rather than erroring. vcf2maf's ~133 columns happened to cover all six; mafsmith emits 53, which turned this into ragged output (59 fields against a 53-field header, reproduced in the R container). Each row is now pinned back to the header's columns before it is appended
 
 ### Fixed
 

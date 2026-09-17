@@ -297,6 +297,17 @@ convert_cpsr_to_maf <- function(cpsr_file, maf_file, output_file) {
       maf_entry$RefSeq <- cpsr_entry[[refseq_col]]
     }
 
+    # Pin the row back to the incoming MAF's schema before appending it.
+    # `maf_entry$X <- v` APPENDS when X is not already a slot, so any assignment above
+    # naming a column the MAF does not carry silently widens the row. rbind() onto a
+    # zero-row frame then adopts the wider shape, and the germline rows get written with
+    # more fields than the header declares -- ragged output rather than an error.
+    # vcf2maf's ~133 columns happened to cover every name used above; mafsmith emits 53,
+    # so this has to be enforced rather than assumed. Indexing by maf_columns keeps
+    # exactly the header's columns, in the header's order.
+    maf_entry <- maf_entry[maf_columns]
+    names(maf_entry) <- maf_columns
+
     # Add to results
     maf_entries <- rbind(maf_entries, as.data.frame(as.list(maf_entry), stringsAsFactors=FALSE))
   }

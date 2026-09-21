@@ -1,0 +1,64 @@
+nextflow_process {
+
+    name "Test PURPLE_CNV_TO_CBIOPORTAL module"
+    script "modules/local/purple_cnv_to_cbioportal/main.nf"
+    process "PURPLE_CNV_TO_CBIOPORTAL"
+    tag "module"
+    tag "purple_cnv"
+
+    test("A gene with an unparseable copy number is dropped, not called as an amplification") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.cnv.somatic.tsv'),
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/unparseable_min_cn.cnv.gene.tsv'),
+                        []
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def long_path = process.out.long.collect { meta, f -> f }[0]
+            def lines = path(long_path.toString()).readLines()
+            def cols  = lines[0].split('\t') as List
+            def rows  = lines.drop(1).collect { it.split('\t', -1) }
+            def value_by_gene = rows.collectEntries {
+                [(it[cols.indexOf('Hugo_Symbol')]): it[cols.indexOf('Value')]]
+            }
+
+            // PRDM15 carries minCopyNumber "." in the fixture. as.numeric() makes that
+            // NA, and data.table's fcase() returns its `default` when every condition is
+            // NA rather than propagating NA -- so the gene used to be written as Value=2,
+            // a high-level amplification indistinguishable from a real one.
+            assert !value_by_gene.containsKey('PRDM15') :
+                "Unparseable minCopyNumber must not be scored, got Value=${value_by_gene['PRDM15']}"
+
+            // It must be dropped rather than written as NA: NA passes validateData.py
+            // but aborts the Java loader (CnaUtil.createAlteration does Integer.valueOf
+            // with no NA branch), so an NA row would fail the study import.
+            assert !value_by_gene.values().contains('NA') :
+                "DISCRETE_LONG Value must never be NA -- cBioPortal's importer cannot parse it"
+
+            // Every other gene is untouched: only the unparseable row goes.
+            assert value_by_gene == [
+                'PFKL'         : '-1',
+                'HUNK'         : '-2',
+                'XGENE_NEUTRAL': '-1',
+                'XGENE_DEL'    : '-2',
+                'YGENE_NEUTRAL': '-1',
+            ]
+        }
+    }
+}

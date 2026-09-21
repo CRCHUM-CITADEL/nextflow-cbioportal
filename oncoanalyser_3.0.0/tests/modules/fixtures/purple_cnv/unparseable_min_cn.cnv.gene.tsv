@@ -1,0 +1,7 @@
+gene	chromosome	start	end	minCopyNumber	maxCopyNumber	unused1	unused2	unused3	unused4	unused5	unused6	unused7	unused8	unused9	unused10	unused11	unused12	unused13
+PRDM15	chr21	41798225	41879482	.	4.1	0	0	0	0	0	0	0	0	0	0	0	0	0
+PFKL	chr21	44300051	44327376	1.2	1.8	0	0	0	0	0	0	0	0	0	0	0	0	0
+HUNK	chr21	31873020	32044633	0.3	0.5	0	0	0	0	0	0	0	0	0	0	0	0	0
+XGENE_NEUTRAL	chrX	50000000	50010000	1.0	1.0	0	0	0	0	0	0	0	0	0	0	0	0	0
+XGENE_DEL	chrX	60000000	60010000	0.2	0.2	0	0	0	0	0	0	0	0	0	0	0	0	0
+YGENE_NEUTRAL	chrY	20000000	20010000	1.0	1.0	0	0	0	0	0	0	0	0	0	0	0	0	0

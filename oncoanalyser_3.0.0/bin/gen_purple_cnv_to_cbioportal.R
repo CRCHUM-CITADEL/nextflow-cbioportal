@@ -91,6 +91,27 @@ purple_gene[, baseline    := expected_cn(chromosome, sample_sex)]
 purple_gene <- purple_gene[!is.na(baseline)]
 
 purple_gene[, cn_equiv := min_cn * 2 / baseline]
+
+# An unparseable copy number must not be scored. fcase() returns `default` when
+# every condition is NA rather than propagating NA, so a gene whose minCopyNumber
+# failed to parse used to fall through to 2 -- a high-level amplification,
+# indistinguishable from a real one.
+#
+# Drop the row rather than write NA. cBioPortal folds DISCRETE_LONG into its wide
+# DISCRETE form on import and renders an absent (gene, sample) pair as "not
+# profiled", which is exactly what an unparseable call means. An explicit NA would
+# pass validateData.py -- NA is in CNADiscreteLongValidator.ALLOWED_CNA_VALUES --
+# and then abort the load: CnaUtil.createAlteration() ends in
+# Integer.valueOf(value).shortValue() with no NA branch, and the line loop in
+# ImportCnaDiscreteLongData has no try/catch, so the NumberFormatException
+# propagates and fails the whole study import.
+n_unscored <- sum(is.na(purple_gene$cn_equiv))
+if (n_unscored > 0) {
+    warning(sprintf("Dropping %d gene(s) with an unparseable %s",
+                    n_unscored, min_cn_col), call. = FALSE)
+    purple_gene <- purple_gene[!is.na(cn_equiv)]
+}
+
 purple_gene[, cn_value := fcase(
     baseline < 2 & min_cn < 0.5, -2L,   # haploid: the only copy is gone
     cn_equiv <  0.5,             -2L,

@@ -3,6 +3,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- **A gene with an unparseable `minCopyNumber` was written as a high-level amplification.** `gen_purple_cnv_to_cbioportal.R` coerces the column with `as.numeric()`, which yields `NA` on anything malformed, and then discretises with data.table's `fcase()`. `fcase()` returns its `default` when every condition is `NA` rather than propagating `NA`, so the gene fell through to `Value = 2` — byte-identical to a real high-level amplification. Such genes are now dropped, with a counted `warning()` naming how many. They are deliberately **not** written as `NA`: `NA` passes `validateData.py` (it is listed in `CNADiscreteLongValidator.ALLOWED_CNA_VALUES`) but aborts the load, because `CnaUtil.createAlteration()` ends in `Integer.valueOf(value).shortValue()` with no `NA` branch and the line loop in `ImportCnaDiscreteLongData` has no `try`/`catch`. An absent (gene, sample) pair is the format's own way of saying "not profiled" — the importer folds `DISCRETE_LONG` into the wide `DISCRETE` form and renders a missing pair as an empty cell. Covered by `tests/modules/purple_cnv_to_cbioportal.nf.test`, which fails against the previous behaviour. Output is unchanged for any cohort whose PURPLE files parse cleanly, so no checksum moves in the test fixtures
+
 ## 4.0.0 - 2026-09-17
 
 ### Breaking

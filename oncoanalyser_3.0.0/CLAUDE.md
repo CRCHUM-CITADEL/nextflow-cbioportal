@@ -75,7 +75,17 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   behaviour. **Incremental processing does not pick this up on its own** —
   `resolveSubjectCache()` matches on file existence, not content, so a subject
   already published under the old flat-diploid math stays cached with the wrong
-  chrX/chrY calls until its output directory is deleted and it is reprocessed
+  chrX/chrY calls until its output directory is deleted and it is reprocessed.
+  A gene whose `minCopyNumber` does not parse is **dropped**, never scored and
+  never written as `NA`. `fcase()` returns its `default` when every condition is
+  NA instead of propagating NA, so such a gene silently became `Value = 2` — a
+  high-level amplification. `NA` is not an alternative: it passes
+  `validateData.py` (it is in `CNADiscreteLongValidator.ALLOWED_CNA_VALUES`) and
+  then aborts the load, because `CnaUtil.createAlteration()` ends in
+  `Integer.valueOf(value).shortValue()` with no NA branch and the line loop in
+  `ImportCnaDiscreteLongData` has no try/catch. An absent (gene, sample) pair is
+  the correct way to say "not profiled" — the importer folds DISCRETE_LONG into
+  the wide DISCRETE form and renders a missing pair as an empty cell
 - No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes
 - VEP/PCGR data must be pre-staged
 - Nextflow optional outputs: `optional: true` is an option on the whole output

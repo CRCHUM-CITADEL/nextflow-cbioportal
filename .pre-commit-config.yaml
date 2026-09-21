@@ -15,7 +15,9 @@ repos:
               .*ro-crate-metadata\.json$|
               .*/modules/nf-core/.*|
               .*/subworkflows/nf-core/.*|
-              .*\.snap$
+              .*\.snap$|
+              .*/tests/modules/fixtures/.*|
+              .*/assets/test_data/.*
           )$
       - id: end-of-file-fixer
         exclude: |
@@ -23,5 +25,7 @@ repos:
               .*ro-crate-metadata\.json$|
               .*/modules/nf-core/.*|
               .*/subworkflows/nf-core/.*|
-              .*\.snap$
+              .*\.snap$|
+              .*/tests/modules/fixtures/.*|
+              .*/assets/test_data/.*
           )$

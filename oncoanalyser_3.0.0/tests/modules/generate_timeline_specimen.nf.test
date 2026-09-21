@@ -1,0 +1,79 @@
+nextflow_process {
+
+    name "Test GENERATE_TIMELINE_SPECIMEN module"
+    script "modules/local/generate_timeline_specimen/main.nf"
+    process "GENERATE_TIMELINE_SPECIMEN"
+    tag "module"
+    tag "generate_timeline_specimen"
+
+    test("Specimens + follow-ups — SPECIMEN timeline rows are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        file('${projectDir}/assets/test_data/clinical/specimens.csv'),
+                        file('${projectDir}/assets/test_data/clinical/follow_ups.csv'),
+                        [],
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv')
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ch_timeline_part.size() == 1
+
+            def f = path(process.out.ch_timeline_part.collect { group, file -> file }[0].toString())
+            def lines = f.readLines()
+            assert lines[0].split('\t').toList() ==
+                ['PATIENT_ID', 'START_DATE', 'STOP_DATE', 'EVENT_TYPE', 'SPECIMEN_SITE',
+                 'SPECIMEN_SITE_LABEL', 'SPECIMEN_TYPE', 'SAMPLE_TYPE',
+                 'SPECIMEN_TISSUE_SOURCE', 'SPECIMEN_TISSUE_SOURCE_CODE']
+            assert lines.size() > 1
+            assert lines.drop(1).every { it.split('\t')[3] == 'SPECIMEN' }
+        }
+    }
+
+    test("No specimens provided — no timeline file is emitted") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        [],
+                        [],
+                        [],
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
+                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv')
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            // The output is declared optional, so a run with nothing to write
+            // emits no file at all rather than an empty one.
+            assert process.success
+            assert process.out.ch_timeline_part.size() == 0
+        }
+    }
+}

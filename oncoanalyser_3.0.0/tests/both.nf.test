@@ -16,13 +16,22 @@ nextflow_pipeline {
             [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
                 def dir = new File("${outputDir}/TEST/${subject}")
                 dir.mkdirs()
+                // Exactly the files a real run publishes per subject — the set the
+                // incremental gate looks for. <sample>.isofox_fusion.data_sv.txt is
+                // deliberately NOT staged: ISOFOX_FUSION_TO_CBIOPORTAL does not
+                // publish it, and its rows already live in <sample>.data_sv.txt.
                 def fixtures = [
                     "${sample}_data_cna_hg38.seg",
                     "${sample}_data_cna_long.txt",
                     "${sample}.data_sv.txt",
                     "${sample}.tpm.tsv",
                     "${sample}.somatic_rna_germline.maf",
-                    "${sample}.isofox_fusion.data_sv.txt",
+                    "${sample}.data_mutational_signatures_contribution_SBS.txt",
+                    "${sample}.data_mutational_signatures_counts_SBS.txt",
+                    "${sample}.data_mutational_signatures_contribution_DBS.txt",
+                    "${sample}.data_mutational_signatures_counts_DBS.txt",
+                    "${sample}.data_mutational_signatures_contribution_ID.txt",
+                    "${sample}.data_mutational_signatures_counts_ID.txt",
                 ]
                 fixtures.each { name ->
                     java.nio.file.Files.copy(
@@ -72,6 +81,18 @@ nextflow_pipeline {
             def sample_cols = sample_lines[0].split('\t') as List
             def sample_ids  = data_rows.collect { it.split('\t', -1)[sample_cols.indexOf('SAMPLE_ID')] }
 
+            // Every modality cached per subject must reach the group-level file.
+            // The ID signatures used to be gated but never loaded, so cached subjects
+            // silently vanished from the two ID files on any incremental run.
+            def sig_files = [
+                'data_mutational_signatures_contribution_SBS.txt',
+                'data_mutational_signatures_counts_SBS.txt',
+                'data_mutational_signatures_contribution_DBS.txt',
+                'data_mutational_signatures_counts_DBS.txt',
+                'data_mutational_signatures_contribution_ID.txt',
+                'data_mutational_signatures_counts_ID.txt',
+            ]
+
             assertAll(
                 { assert workflow.success },
                 { assert linking_subjects == ['T1', 'T2'] : "Linking file should contain T1 and T2, got: ${linking_subjects}" },
@@ -88,6 +109,19 @@ nextflow_pipeline {
                 { assert tar_entries.contains('meta_timeline.txt') : "Archive missing meta_timeline.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('util_linking_file.txt') : "Archive missing util_linking_file.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('cases_sequenced.txt') : "Archive missing case lists, got: ${tar_entries}" },
+                // The cached per-subject data_sv.txt is passed through untouched now
+                // that MERGE_SAMPLE_SV is bypassed, so its RNA fusion rows (merged in
+                // when the subject was first processed) must still reach the study.
+                { assert path("${params.outdir}/TEST/data_sv.txt").readLines().count { it.contains('\tFUSION\tNo\tYes\t') } == 4
+                         : "RNA fusion rows were lost from the cached SV files" },
+                { assert path("${params.outdir}/TEST/data_sv.txt").readLines().count { it.contains('\tYes\tNo\t') } == 2
+                         : "DNA SV rows were lost from the cached SV files" },
+                { assert sig_files.every { path("${params.outdir}/TEST/${it}").exists() }
+                         : "Missing group-level signature file(s): " + sig_files.findAll { !path("${params.outdir}/TEST/${it}").exists() } },
+                { assert sig_files.every { f ->
+                        def header = path("${params.outdir}/TEST/${f}").readLines()[0]
+                        header.contains('T1-1DT') && header.contains('T2-T')
+                  } : "A cached subject is missing from a group-level signature file" },
                 { assert snapshot(
                     workflow.trace.succeeded().size(),
                     stable_name,

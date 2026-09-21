@@ -62,7 +62,7 @@ Software:
 
   Software      Version     Notes
   ----------    --------    ----------------------------------------
-  Nextflow      >= 24.10.2  module load nextflow/25.10.2 on most HPC
+  Nextflow      >= 26.04.4  module load nextflow/26.04.4 on most HPC
   Apptainer     >= 1.0      Required for containers. Not Docker.
   htslib        Any recent  Provides bcftools and tabix
 
@@ -75,7 +75,7 @@ Container images:
   -----------------------  ----------------------------------------
   sdp-r:4.5.1              R scripts (CNV, SV, expression, aggregation)
   sdp-python:3.12          Python scripts
-  vcf2maf + ensembl-vep    VCF-to-MAF conversion
+  mafsmith:0.1.0           VCF-to-MAF conversion
   pcgr:2.2.5               Germline variant annotation (PCGR/CPSR)
   sdp-sigprofiler:1.1.3    Mutational signature fitting
 
@@ -92,14 +92,16 @@ Reference data:
   Reference                  Parameter                Description
   -------------------------  -----------------------  --------------------------
   GRCh38 FASTA               genome_reference         Human reference genome with
-                                                      .fai index. For vcf2maf.
+                                                      .fai index. For SigProfiler.
   VEP cache                  vep_data                 Ensembl VEP cache dir (v113).
                                                       Empty = auto-download test.
   PCGR reference             pcgr_data                PCGR reference data dir.
                                                       Empty = auto-download.
   Ensembl annotations        ensembl_annotations      BioMart TSV (Ensembl 113)
-  (CNV/SV)                                            with entrez_ncbi_id column.
-  (expression)                                        for Isofox ID mapping.
+  (CNV/SV/expression)                                 with entrez_ncbi_id column.
+  mafsmith reference         mafsmith_data            mafsmith home directory with
+                                                      its reference data. Empty =
+                                                      auto-download (see below).
   COSMIC fusion data         cosmic_data              COSMIC Fusion TSV for ML SV.
   ChimerKB data              chimer_data              ChimerDB KnownFusions Excel.
                                                       Bundled in assets/.
@@ -303,8 +305,9 @@ GENOMIC INPUT PARAMETERS
   genomic_samplesheet      Yes       --        Path to genomic samplesheet CSV
   ensembl_annotations      Yes       --        BioMart TSV (Ensembl 113)
   genome_reference         Yes       --        GRCh38 reference FASTA
-  vep_data                 No        (empty)   VEP cache directory
-  vep_params               No        (default) Additional VEP CLI arguments
+  mafsmith_data            No        (empty)   mafsmith home dir; empty = auto-download
+  mafsmith_retain_ann      No        (10 CSQ)  Extra VEP fields kept as MAF columns
+  vep_data                 No        (empty)   VEP cache directory, used by PCGR
   pcgr_data                No        (empty)   PCGR reference data directory
   cosmic_data              No        --        COSMIC Fusion TSV for ML
   chimer_data              No        bundled   ChimerKB4.xlsx
@@ -329,7 +332,7 @@ CONTAINER PARAMETERS
   ---------------------  -----------------  ----------------------------
   container_r            ORAS or local SIF  R 4.5.1 container
   container_python       ORAS or local SIF  Python 3.12 container
-  container_vcf2maf      Wave container     vcf2maf + Ensembl-VEP
+  container_mafsmith     ORAS or local SIF  mafsmith 0.1.0
   container_pcgr         ORAS or local SIF  PCGR 2.2.5
   container_sigprofiler  ORAS or local SIF  SigProfiler 1.1.3
 
@@ -352,20 +355,115 @@ PROFILES
 
   Profile      Purpose
   -----------  ------------------------------------------------
-  apptainer    REQUIRED. Enables Apptainer, sets cache dir.
-  slurm        Submits jobs to SLURM. Edit clusterOptions for
-               your allocation.
+  apptainer    REQUIRED. Enables Apptainer.
+  slurm        Submits jobs to SLURM. Set clusterOptions for
+               your allocation (see SITE CONFIGURATION below).
+  citadel      CRCHUM/CITADEL site settings: reference-data paths,
+               prebuilt .sif containers, SLURM account, scratch and
+               Apptainer cache. List it LAST.
   debug        Dumps process hashes, prints hostname, keeps work dir.
   gpu          Adds --nv flag for GPU passthrough.
   local        Uses local SIF paths instead of ORAS URIs.
   test         Uses bundled test data with reduced resources.
 
+
+SITE CONFIGURATION
+
+  nextflow.config ships portable defaults only: public container
+  images and EMPTY reference-data paths. Nothing in it is specific to
+  any one cluster, so an external team can run the pipeline without
+  editing site paths out of it.
+
+  At CRCHUM, add the citadel profile. It loads nextflow_citadel.config,
+  which supplies the /project/60005 reference data, the prebuilt .sif
+  containers, --account=def-chasse, scratch and the shared Apptainer
+  cache:
+
+    nextflow run main.nf -profile slurm,apptainer,citadel ...
+
+  List citadel LAST so its values win wherever profiles overlap.
+
+  Elsewhere, either pass the reference data on the command line:
+
+    nextflow run main.nf -profile apptainer \
+      --mode genomic \
+      --genomic_samplesheet samplesheet.csv \
+      --ensembl_annotations biomart_grch38.tsv \
+      --genome_reference Homo_sapiens_assembly38.fasta \
+      --mafsmith_data /path/to/mafsmith_home
+
+  or copy nextflow_citadel.config as a template for your own site
+  config and pass it with -c my_site.config.
+
+  Reference-data params with no portable default (required for genomic
+  and both modes): ensembl_annotations, genome_reference.
+  mafsmith_data, vep_data, pcgr_data, cosmic_data and chimer_data
+  are optional -- VEP, PCGR and mafsmith data are downloaded when left empty,
+  which needs internet access on the compute node.
+
+  mafsmith reference data
+
+    Left empty, mafsmith_data is provisioned by DOWNLOAD_MAFSMITH, which
+    runs `mafsmith fetch --genome grch38 --ensembl-release 113` and
+    stores the result in assets/mafsmith/. fastvep is not built at run
+    time: it ships in the container and mafsmith picks it up from PATH.
+
+    Prefer pre-staging a bundle and passing --mafsmith_data. What the
+    fetch downloads is Ensembl's primary assembly, whose contigs are
+    named 1, 2, X; oncoanalyser aligns against the GATK hg38 reference,
+    whose contigs are chr1, chr2, chrX. mafsmith's reference has to match
+    the genome the mutations were called on, so the auto-download suits
+    testing and portability rather than a real cohort.
+
+    To build one by hand, in the mafsmith container:
+
+      mafsmith fetch --data-dir /path/to/mafsmith_home \
+          --skip-fastvep \
+          --gff3 /path/to/genes.gff3.gz \
+          --ref-fasta /path/to/Homo_sapiens_assembly38.fasta
+
+    Both --gff3 and --ref-fasta must be given together; supplying only
+    one makes mafsmith download both instead.
+
+  MAF columns
+
+    mafsmith writes 53 standard MAF columns where vcf2maf wrote ~133,
+    so the VEP annotations cBioPortal displays are opt-in. VEP packs
+    them into the VCF's INFO/CSQ field and declares the layout in the
+    header ("... Format: Allele|Consequence|IMPACT|..."); mafsmith's
+    --retain-ann names subfields to pull out and append as extra MAF
+    columns, in the order given.
+
+    mafsmith_retain_ann drives that flag. Its default is
+
+      Consequence,IMPACT,SYMBOL,Feature_type,CCDS,EXON,INTRON,
+      Existing_variation,CLIN_SIG,AF
+
+    Names must match fastVEP's CSQ field list exactly. A name fastVEP
+    does not emit is not an error -- you get a column of empty strings.
+    The full list fastVEP writes is its DEFAULT_CSQ_FIELDS: Allele,
+    Consequence, IMPACT, SYMBOL, Gene, Feature_type, Feature, BIOTYPE,
+    EXON, INTRON, HGVSc, HGVSp, cDNA_position, CDS_position,
+    Protein_position, Amino_acids, Codons, Existing_variation,
+    REF_ALLELE, UPLOADED_ALLELE, DISTANCE, STRAND, FLAGS, CANONICAL,
+    SYMBOL_SOURCE, HGNC_ID, MANE, MANE_SELECT, MANE_PLUS_CLINICAL, TSL,
+    APPRIS, CCDS, ENSP, SOURCE, HGVS_OFFSET, SIFT, PolyPhen, AF,
+    CLIN_SIG, SOMATIC, PHENO, PUBMED, MOTIF_NAME, MOTIF_POS,
+    HIGH_INF_POS, MOTIF_SCORE_CHANGE, TRANSCRIPTION_FACTORS, ACMG,
+    ACMG_CRITERIA. Some of these (Allele, Gene, Feature, BIOTYPE,
+    CANONICAL, SIFT, PolyPhen, HGVSc, HGVSp) are already standard MAF
+    columns and do not need retaining.
+
+    vcf2maf's RefSeq and VARIANT_CLASS have no fastVEP counterpart and
+    cannot be restored this way. Set mafsmith_retain_ann to "" to drop
+    back to the 53 standard columns.
+
 GENOMIC MODE
 
-  module load nextflow/25.10.2 apptainer/1.3.5 htslib/1.22.1
+  module load nextflow/26.04.4 apptainer/1.3.5 htslib/1.22.1
 
   nextflow run main.nf \
-      -profile slurm,apptainer \
+      -profile slurm,apptainer,citadel \
       --mode genomic \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
@@ -378,7 +476,7 @@ GENOMIC MODE
 CLINICAL MODE
 
   nextflow run main.nf \
-      -profile slurm,apptainer \
+      -profile slurm,apptainer,citadel \
       --mode clinical \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
@@ -391,7 +489,7 @@ BOTH MODE
   clinical workflow, so --sample_registrations is not needed.
 
   nextflow run main.nf \
-      -profile slurm,apptainer \
+      -profile slurm,apptainer,citadel \
       --mode both \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
@@ -422,7 +520,7 @@ USING A PARAMS FILE
 
   Then run:
 
-    nextflow run main.nf -profile slurm,apptainer -params-file params.yaml
+    nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml
 
   Note: Use -params-file (not -c) for parameters. Custom config files
   via -c should only be used for process resource tuning.
@@ -449,7 +547,7 @@ RESUMING A FAILED RUN
   Nextflow caches intermediate results. If a run fails, fix the issue
   and resume:
 
-    nextflow run main.nf -profile slurm,apptainer -params-file params.yaml -resume
+    nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml -resume
 
   Nextflow reuses cached results from completed steps and only re-runs
   what failed. The pipeline's incremental processing also skips subjects
@@ -459,11 +557,28 @@ RUNNING TESTS
 
   Verify your installation with the bundled test data:
 
-    ./nf-test test tests/clinical.nf.test tests/subworkflows/ tests/modules/ \
+    ./nf-test test tests/ --profile test,apptainer
+
+  Or a subset -- the clinical pipeline tests, for example:
+
+    ./nf-test test tests/clinical.nf.test tests/clinical_generated.nf.test \
+        tests/clinical_template.nf.test tests/both.nf.test \
         --profile test,apptainer
 
     ./nf-test test tests/subworkflows/genomic_cnv.nf.test \
         --profile test,apptainer
+
+  Regenerate snapshots after an intended output change:
+
+    ./nf-test test <test> --profile test,apptainer --update-snapshot
+
+  CI runs with --ci --changed-since HEAD^, which never updates snapshots,
+  so commit any snapshot change together with the change that caused it.
+
+  The Python suites (samplesheet generator, output combiner) run under
+  pytest:
+
+    python3 -m pytest tests/ -v
 
 
 Troubleshooting
@@ -493,10 +608,14 @@ SLURM ACCOUNT ERRORS
 
   Symptom: "sbatch: error: invalid account" or similar.
 
-  Fix: Edit nextflow.config and change clusterOptions in the slurm
-  profile to your allocation:
+  Fix: At CRCHUM, add the citadel profile, which sets the account:
 
-    clusterOptions = '--account=your-allocation'
+    nextflow run main.nf -profile slurm,apptainer,citadel ...
+
+  Elsewhere, set clusterOptions to your own allocation in your site
+  config (see SITE CONFIGURATION) rather than editing nextflow.config:
+
+    process.clusterOptions = '--account=your-allocation'
 
 "ALL SUBJECTS IN SAMPLESHEET ALREADY PROCESSED"
 
@@ -534,7 +653,7 @@ MEMORY OR TIME ERRORS
 
     // custom.config
     process {
-        withName: 'VCF2MAF' {
+        withName: 'MAFSMITH' {
             memory = '100.GB'
             time   = '24.h'
         }
@@ -562,5 +681,5 @@ RUNNING IN THE BACKGROUND
   Use screen, tmux, or submit Nextflow itself as a SLURM job:
 
     screen -S nf-run
-    nextflow run main.nf -profile slurm,apptainer -params-file params.yaml
+    nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml
     # Ctrl+A, D to detach; screen -r nf-run to reattach

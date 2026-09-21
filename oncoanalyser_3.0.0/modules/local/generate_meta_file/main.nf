@@ -17,4 +17,9 @@ ${text}
 EOF
     cat identified_text.txt > meta_${label}.txt
     """
+
+    stub:
+    """
+    touch "meta_${label}.txt"
+    """
 }

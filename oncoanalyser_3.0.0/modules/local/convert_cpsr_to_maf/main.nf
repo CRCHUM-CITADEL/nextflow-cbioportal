@@ -25,10 +25,12 @@ process CONVERT_CPSR_TO_MAF {
        $som_dna_rna_maf \
        tmp.${maf_meta.sample}.somatic_rna_germline.maf
 
-    mv $som_dna_rna_maf tmp.${maf_meta.sample}.somatic_rna_germline.maf
-
     head -n2 tmp.${maf_meta.sample}.somatic_rna_germline.maf > ${maf_meta.sample}.somatic_rna_germline.maf
     awk -F'\t' 'NR>2{if(\$9!="Intron" && \$9!="IGR"){print \$0}}' tmp.${maf_meta.sample}.somatic_rna_germline.maf >> ${maf_meta.sample}.somatic_rna_germline.maf
     """
 
+    stub:
+    """
+    touch "${maf_meta.sample}.somatic_rna_germline.maf"
+    """
 }

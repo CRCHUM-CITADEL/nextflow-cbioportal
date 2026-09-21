@@ -1,0 +1,38 @@
+nextflow_process {
+
+    name "Test WRITE_CLINICAL_SAMPLE module"
+    script "modules/local/write_clinical_sample/main.nf"
+    process "WRITE_CLINICAL_SAMPLE"
+    tag "module"
+    tag "write_clinical_sample"
+
+    test("Merged clinical table — data_clinical_sample.txt is produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple('TEST', file('${projectDir}/tests/modules/fixtures/clinical_merged.tsv'))
+                )
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ch_clinical_sample.size() == 1
+
+            def f = path(process.out.ch_clinical_sample.collect { group, file -> file }[0].toString())
+            def lines = f.readLines()
+
+            // 4 '#' metadata header rows, then the column-id row, then data rows.
+            assert lines[0].startsWith('#')
+            assert lines[3].startsWith('#')
+            assert lines[4].split('\t').contains('SAMPLE_ID')
+            assert lines.size() > 5
+        }
+    }
+}

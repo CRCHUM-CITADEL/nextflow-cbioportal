@@ -1,0 +1,40 @@
+process GENERATE_TIMELINE_SURGERY {
+    publishDir { "${params.outdir}/${meta.group}" }, mode: 'copy', enabled: false
+
+    container params.container_r
+
+    tag { meta.group }
+
+    input:
+        tuple val(meta),
+              path(sample_registrations),
+              path(treatments),
+              path(surgeries),
+              path(genomic_subjects),
+              path(primary_site_map),
+              path(treatment_intent_map)
+        path(clinical_common_r)
+
+    output:
+        tuple val(meta.group), path("data_timeline_surgery.txt"), emit: ch_timeline_part, optional: true
+
+    script:
+    def sample_reg_arg           = sample_registrations ? "--sample_registrations ${sample_registrations}" : ""
+    def treatments_arg           = treatments            ? "--treatments ${treatments}"                     : ""
+    def surgeries_arg            = surgeries             ? "--surgeries ${surgeries}"                       : ""
+    def genomic_subjects_arg     = genomic_subjects      ? "--genomic_subjects ${genomic_subjects}"         : ""
+    """
+    gen_timeline_surgery.R \
+        ${sample_reg_arg} \
+        ${treatments_arg} \
+        ${surgeries_arg} \
+        ${genomic_subjects_arg} \
+        --primary_site_map ${primary_site_map} \
+        --treatment_intent_map ${treatment_intent_map}
+    """
+
+    stub:
+    """
+    touch data_timeline_surgery.txt
+    """
+}

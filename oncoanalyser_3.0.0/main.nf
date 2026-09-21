@@ -1,9 +1,9 @@
 #!/usr/bin/env nextflow
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    CRCHUM-CITADEL/nextflow-sante-precision
+    CRCHUM-CITADEL/nextflow-cbioportal
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/CRCHUM-CITADEL/nextflow-sante-precision
+    Github : https://github.com/CRCHUM-CITADEL/nextflow-cbioportal
 ----------------------------------------------------------------------------------------
 */
 
@@ -56,8 +56,9 @@ workflow {
 
         ch_chimer_data = params.chimer_data ? Channel.fromPath(params.chimer_data) : Channel.empty()
 
-        needs_vep_download  = !params.vep_data
-        needs_pcgr_download = !params.pcgr_data
+        needs_vep_download      = !params.vep_data
+        needs_pcgr_download     = !params.pcgr_data
+        needs_mafsmith_download = !params.mafsmith_data
 
         GENOMIC (
             PIPELINE_INITIALISATION.out.genomic_samplesheet,
@@ -67,6 +68,7 @@ workflow {
             ch_mafsmith_data,
             needs_vep_download,
             needs_pcgr_download,
+            needs_mafsmith_download,
             params.genome_reference,
             params.cosmic_data,
             params.chimer_data,
@@ -87,7 +89,7 @@ workflow {
             .map { group, f -> f }
             .first()
 
-        // Pass the linking file path as a string so FORMAT_CLINICAL can filter to genomic subjects
+        // Pass the linking file path as a string so BUILD_CLINICAL_TABLE can filter to genomic subjects
         ch_genomic_subjects = GENOMIC.out.linking_file
             .map { group, f -> f.toString() }
             .first()

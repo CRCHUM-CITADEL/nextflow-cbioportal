@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-sante-precision/assets/schema_clinical_input.json",
-    "title": "CRCHUM-CITADEL/nextflow-sante-precision clinical pipeline parameters",
+    "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-cbioportal/assets/schema_clinical_input.json",
+    "title": "CRCHUM-CITADEL/nextflow-cbioportal clinical pipeline parameters",
     "description": "Pipeline Nextflow pour besoins des projets santé de précision, pipeline de donnees clinique",
     "type": "array",
     "items": {

@@ -24,7 +24,7 @@ nextflow_workflow {
                         file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/esvee/T2-T.esvee.unfiltered.vcf.gz')
                     ]
                 )
-                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_chr21.tsv')
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
                 """
             }
         }

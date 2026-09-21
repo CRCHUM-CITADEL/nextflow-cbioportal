@@ -23,4 +23,9 @@ process FILTER_GERMLINE_DNA {
         -o ${meta.sample}.vcf.gz \\
         tmp.${meta.sample}.vcf
     """
+
+    stub:
+    """
+    echo | gzip > "${meta.sample}.vcf.gz"
+    """
 }

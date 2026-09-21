@@ -1,5 +1,5 @@
 //
-// Subworkflow with functionality specific to the CRCHUM-CITADEL/nextflow-sante-precision pipeline
+// Subworkflow with functionality specific to the CRCHUM-CITADEL/nextflow-cbioportal pipeline
 //
 
 /*
@@ -74,7 +74,7 @@ workflow PIPELINE_INITIALISATION {
 
     if (mode in ['genomic', 'both']){
         if (!params.ensembl_annotations){
-            error("ERROR: Missing ensembl_annotations file (tsv format). Check input in nextflow.config")
+            error("ERROR: Missing --ensembl_annotations (BioMart TSV). Pass it on the command line, set it in your own -c config, or use -profile citadel at CRCHUM.")
         }
 
         ch_genomic_samplesheet = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))

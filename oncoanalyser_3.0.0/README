@@ -3,6 +3,9 @@
 Nextflow pipeline that converts oncoanalyser WGS/WTS output and clinical
 CSVs into cBioPortal-ready files.
 
+Requires oncoanalyser 3.0 output. The 2.3 layout is not supported
+(since 4.0.0). Requires Nextflow >= 26.04.4.
+
 oncoanalyser: https://github.com/nf-core/oncoanalyser
 cBioPortal: https://www.cbioportal.org/
 
@@ -15,26 +18,50 @@ cd nextflow-cbioportal/oncoanalyser
 
 # 2. Load modules
 
-module load nextflow/25.10.2 apptainer/1.3.5 htslib/1.22.1
+module load nextflow/26.04.4 apptainer/1.3.5 htslib/1.22.1
 
 # 3a. Run (genomic mode)
 
-nextflow run main.nf -profile slurm,apptainer \
+nextflow run main.nf -profile slurm,apptainer,citadel \
  --mode genomic \
  --genomic_samplesheet samplesheet.csv
 
 # 3b. Run (clinical mode)
 
-nextflow run main.nf -profile slurm,apptainer \
+nextflow run main.nf -profile slurm,apptainer,citadel \
  --mode clinical \
  --clinical_samplesheet clinical_samplesheet.csv
 
 # 3c. Run (both mode — genomic + clinical in one run)
 
-nextflow run main.nf -profile slurm,apptainer \
+nextflow run main.nf -profile slurm,apptainer,citadel \
  --mode both \
  --genomic_samplesheet samplesheet.csv \
  --clinical_samplesheet clinical_samplesheet.csv
+
+# Site configuration
+
+The -profile citadel above loads nextflow_citadel.config, which holds
+the CRCHUM/CITADEL reference-data paths, prebuilt .sif containers, and
+SLURM account. List it LAST so it wins wherever profiles overlap.
+
+Outside CRCHUM, drop it and supply the reference data yourself --
+nextflow.config ships portable defaults only (public container images,
+empty reference paths). Genomic and both modes require at least:
+
+nextflow run main.nf -profile apptainer \
+ --mode genomic \
+ --genomic_samplesheet samplesheet.csv \
+ --ensembl_annotations biomart_grch38.tsv \
+ --genome_reference Homo_sapiens_assembly38.fasta
+
+VEP, PCGR and mafsmith reference data are downloaded when their params
+are left empty, which needs internet on the compute node. Pass
+--mafsmith_data to point at a pre-built mafsmith home instead; see
+"mafsmith reference data" in docs/usage.txt for why that is preferred.
+
+Copy nextflow_citadel.config as a starting point for your own site
+config and pass it with -c my_site.config.
 
 In "both" mode, the genomic workflow runs first and produces a
 linking file that maps sample IDs to clinical patient IDs. The
@@ -169,6 +196,7 @@ Example command:
         --clinical_samplesheet clinical_samplesheet.csv \
         --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
         --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
+        --mafsmith_data /path/to/mafsmith_home \
         --vep_data /path/to/vep_cache \
         --pcgr_data /path/to/pcgr_ref_data
 
@@ -180,7 +208,8 @@ Both mode without clinical data (template output only):
         --study_id "MY_STUDY" \
         --genomic_samplesheet samplesheet.csv \
         --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
-        --genome_reference /path/to/Homo_sapiens_assembly38.fasta
+        --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
+        --mafsmith_data /path/to/mafsmith_home
 
 ## Documentation
 

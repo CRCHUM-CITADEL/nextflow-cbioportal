@@ -114,6 +114,16 @@ Isofox expression now maps Ensembl→Entrez through `ensembl_annotations` too.) 
 `.gitignore` has a `/nextflow_*.config` rule with an explicit negation for
 `nextflow_citadel.config`.
 
+`cosmic_data` and `chimer_data` are **all-or-nothing** — `FORMAT_PROCESS_ML_SV`
+unions the two fusion lists, so one without the other reaches the process with an
+empty `path` input and aborts the run with a bare `Path must not be empty`. Only
+`cosmic_data` is site-specific (licence-gated); ChimerKB ships in `assets/` and is
+the portable default, so in practice setting `cosmic_data` is what switches the ML
+SV step on. `PIPELINE_INITIALISATION` rejects the half-configured case up front, and
+`GENOMIC_ML` gates on both. Note the `test` profile leaves `cosmic_data` empty, so
+the branch is only covered by the dedicated case in
+`tests/subworkflows/genomic_ml.nf.test`.
+
 `--incremental` marks a follow-up load into a study cBioPortal already holds: it
 skips `cancer_type.txt` / `meta_cancer_type.txt` so the cancer type is not registered
 twice. It is unrelated to per-subject output caching, which is automatic.

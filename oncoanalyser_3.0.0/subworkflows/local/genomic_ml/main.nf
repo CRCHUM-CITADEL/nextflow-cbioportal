@@ -46,7 +46,11 @@ workflow GENOMIC_ML {
             hotspots_data
         )
 
-        if (cosmic_data) {
+        // Both fusion databases are required — the processor unions them. Gating on
+        // cosmic_data alone handed FORMAT_PROCESS_ML_SV an empty `path known_fusions`
+        // and failed the run with a bare "Path must not be empty"; PIPELINE_INITIALISATION
+        // now rejects the half-configured case up front, so this is belt and braces.
+        if (cosmic_data && chimer_data) {
             FORMAT_PROCESS_ML_SV(
                 cosmic_data,
                 chimer_data,

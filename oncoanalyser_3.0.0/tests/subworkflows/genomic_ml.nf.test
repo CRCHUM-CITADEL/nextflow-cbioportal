@@ -44,6 +44,49 @@ nextflow_workflow {
 
         then {
             assert workflow.success
+            // cosmic_data empty — the SV branch must not run at all
+            def ran = workflow.trace.succeeded().collect { it.name }
+            assert ran.every { !it.contains('FORMAT_PROCESS_ML_SV') }
+        }
+    }
+
+    // Regression: the SV branch used to be gated on cosmic_data alone, so a run with
+    // cosmic_data set and chimer_data empty reached FORMAT_PROCESS_ML_SV with an empty
+    // `path known_fusions` and died with "Path must not be empty". Every existing test
+    // passed cosmic_data = "" and never entered the branch.
+    test("ML SV branch runs when both fusion databases are supplied") {
+
+        options "-stub-run"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = Channel.of(
+                    ['TEST', file('${projectDir}/assets/test_data/precomputed/data_cna_long.txt')]
+                )
+                input[1] = Channel.of(
+                    ['TEST', file('${projectDir}/assets/test_data/precomputed/data_expression.txt')]
+                )
+                input[2] = Channel.of(
+                    ['TEST', file('${projectDir}/assets/test_data/precomputed/data_mutations_dna_rna_germline.txt')]
+                )
+                input[3] = Channel.of(
+                    ['TEST', file('${projectDir}/assets/test_data/precomputed/data_sv.txt')]
+                )
+                input[4] = file('${projectDir}/assets/test_data/annotations/cosmic_fusion_test.tsv')
+                input[5] = file('${projectDir}/assets/test_data/annotations/ChimerKB4.xlsx')
+                input[6] = []
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            def ran = workflow.trace.succeeded().collect { it.name }
+            assert ran.any { it.contains('FORMAT_PROCESS_ML_SV') }
         }
     }
 }

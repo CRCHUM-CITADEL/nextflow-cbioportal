@@ -187,10 +187,22 @@ def validateInputParameters() {
             error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
         }
 
+        // FORMAT_PROCESS_ML_SV unions the COSMIC and ChimerKB fusion lists, so the two
+        // are all-or-nothing. Setting only one used to reach the process with an empty
+        // path input and abort the run with an unattributable "Path must not be empty".
         if (params.cosmic_data) {
             def cosmic_data = file(params.cosmic_data)
             if (!cosmic_data.exists()) {
                 error("ERROR: Cosmic data file does not exist: ${params.cosmic_data}")
+            }
+
+            if (!params.chimer_data) {
+                error("ERROR: cosmic_data is set but chimer_data is empty. The ML SV step needs both fusion databases — set chimer_data, or clear cosmic_data to skip FORMAT_PROCESS_ML_SV.")
+            }
+
+            def chimer_data = file(params.chimer_data)
+            if (!chimer_data.exists()) {
+                error("ERROR: Chimer data file does not exist: ${params.chimer_data}")
             }
         }
 

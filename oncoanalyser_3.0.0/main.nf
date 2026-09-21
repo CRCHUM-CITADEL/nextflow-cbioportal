@@ -52,9 +52,11 @@ workflow {
         ch_vep_data    = params.vep_data    ? Channel.fromPath(params.vep_data)    : Channel.empty()
         ch_pcgr_data   = params.pcgr_data   ? Channel.fromPath(params.pcgr_data)   : Channel.empty()
         ch_mafsmith_data = params.mafsmith_data ? Channel.fromPath(params.mafsmith_data) : Channel.empty()
-        ch_cosmic_data = params.cosmic_data ? Channel.fromPath(params.cosmic_data) : Channel.empty()
 
-        ch_chimer_data = params.chimer_data ? Channel.fromPath(params.chimer_data) : Channel.empty()
+        // cosmic_data / chimer_data are passed on as plain param strings, not channels —
+        // GENOMIC_ML tests them with a truth check to decide whether to run the ML SV
+        // step, which a channel cannot answer. (Two ch_* channels built here were never
+        // wired to anything and have been removed.)
 
         ch_hotspots_data = params.cancer_hotspots_data ? Channel.fromPath(params.cancer_hotspots_data).first() : Channel.value([])
 

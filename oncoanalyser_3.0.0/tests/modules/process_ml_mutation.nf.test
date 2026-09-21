@@ -1,0 +1,94 @@
+nextflow_process {
+
+    name "Test PROCESS_ML_MUTATION module"
+    script "modules/local/process_ml_mutation/main.nf"
+    process "PROCESS_ML_MUTATION"
+    tag "module"
+    tag "ml"
+
+    // Exercises the vectorized encoders end to end against a small hand-built MAF-derived
+    // fixture, hitting: a hotspot match, a hotspot gene with an unmatched AA change
+    // ("_other"), a hotspot gene with an NA AA change ("_other"), a non-hotspot gene, two
+    // mutations in one sample+gene where the higher-weight one wins on the gene-level
+    // encodings but both land in different hybrid columns, an NA dna_vaf that must
+    // propagate to NA regardless of the other contributing row's value, and an RNA-effect
+    // row that must be dropped entirely rather than becoming a column. See
+    // tests/modules/fixtures/process_ml_mutation/ for the exact rows.
+    test("Hand-built somatic fixture with pre-staged hotspots — all five encodings") {
+
+        config "tests/modules/nextflow_process_ml_mutation.config"
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    ['TEST', file('${projectDir}/tests/modules/fixtures/process_ml_mutation/all_somatic_mutations.tsv')]
+                )
+                input[1] = file('${projectDir}/tests/modules/fixtures/process_ml_mutation/hotspots.json')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def names = process.out[0].flatten().collect { it.toString().split('/').last() }.sort()
+            assert names == [
+                'mutations_processed_binary.tsv',
+                'mutations_processed_effect.tsv',
+                'mutations_processed_hybrid.tsv',
+                'mutations_processed_integrated.tsv',
+                'mutations_processed_vaf.tsv',
+            ]
+
+            def hybrid_path = process.out[0].flatten().find { it.toString().endsWith('mutations_processed_hybrid.tsv') }
+            def hybrid_lines = path(hybrid_path.toString()).readLines()
+            def hybrid_header = hybrid_lines[0].split('\t')
+
+            // The matched hotspot and both "_other" fallbacks (unmatched AA change,
+            // NA AA change) must all appear as distinct columns.
+            assert hybrid_header.contains('TP53_R248_W')
+            assert hybrid_header.contains('TP53_other')
+            assert hybrid_header.contains('KRAS_G12_D')
+            assert hybrid_header.contains('KRAS_other')
+
+            def s1_row = hybrid_lines.find { it.startsWith('S1\t') }.split('\t')
+            def col = { name -> s1_row[hybrid_header.toList().indexOf(name)] }
+            // S1/TP53: R248W (Missense, weight 2, vaf .4) hits the hotspot column;
+            // G245S (Nonsense, weight 4, vaf .6) is unmatched and hits "_other" —
+            // both survive as separate hybrid columns even though they share a sample+gene.
+            assert col('TP53_R248_W') == '0.8'
+            assert col('TP53_other') == '2.4'
+            // S1/KRAS: Splice_Site with an NA AA change also falls into "_other".
+            assert col('KRAS_other') == '0.6'
+
+            def integrated_path = process.out[0].flatten().find { it.toString().endsWith('mutations_processed_integrated.tsv') }
+            def integrated_lines = path(integrated_path.toString()).readLines()
+            def integrated_header = integrated_lines[0].split('\t')
+            def s1_integrated = integrated_lines.find { it.startsWith('S1\t') }.split('\t')
+            // On the gene-level (non-hybrid) encodings, the two TP53 rows collapse to one
+            // column: the higher-weight row (Nonsense_Mutation, weight 4) wins outright.
+            assert s1_integrated[integrated_header.toList().indexOf('TP53')] == '2.4'
+
+            def vaf_path = process.out[0].flatten().find { it.toString().endsWith('mutations_processed_vaf.tsv') }
+            def vaf_lines = path(vaf_path.toString()).readLines()
+            def vaf_header = vaf_lines[0].split('\t')
+            def s2_vaf = vaf_lines.find { it.startsWith('S2\t') }.split('\t')
+            // S2/GENEX: one row has dna_vaf NA (simulating t_depth == 0); NA must
+            // propagate to the cell regardless of the other row's valid value.
+            assert s2_vaf[vaf_header.toList().indexOf('GENEX')] == 'NA'
+
+            // RNAGENE only ever appears on an effect=="RNA" row, which is dropped before
+            // any column is built — it must not surface as a column anywhere.
+            assert !hybrid_header.contains('RNAGENE')
+            assert !integrated_header.contains('RNAGENE')
+
+            snapshot(
+                process.out[0].flatten().collect { path(it.toString()) }.sort { it.toString().split('/').last() }
+            ).match()
+        }
+    }
+}

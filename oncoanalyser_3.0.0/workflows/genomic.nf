@@ -132,6 +132,7 @@ workflow GENOMIC {
         fasta                   // path — GRCh38 reference FASTA (for SigProfiler indel context)
         cosmic_data             // channel<path> — COSMIC/ChimerKB fusion data for ML step
         chimer_data
+        hotspots_data           // channel<path> — pre-staged cancerhotspots.org data (may be empty)
 
     main:
 
@@ -450,6 +451,7 @@ workflow GENOMIC {
             GENOMIC_AGGREGATE_OUTPUT.out.sv,
             cosmic_data,
             chimer_data,
+            hotspots_data,
         )
 
         // ── Study-level metadata ──────────────────────────────────────────────

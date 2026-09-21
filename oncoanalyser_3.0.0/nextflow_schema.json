@@ -182,6 +182,10 @@
             "type": "string",
             "description": "Path to ChimerKB Excel file for ML SV processing."
         },
+        "cancer_hotspots_data": {
+            "type": "string",
+            "description": "Path to a pre-staged copy of the cancerhotspots.org single-residue hotspots API response, used by PROCESS_ML_MUTATION. If empty, the pipeline fetches it live, which needs internet on the compute node."
+        },
         "cosmic_reference": {
             "type": "string",
             "description": "Path to COSMIC v3.6 mutational signature reference ZIP."

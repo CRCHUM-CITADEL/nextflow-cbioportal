@@ -15,6 +15,7 @@ workflow GENOMIC_ML {
         sv_result           // tuple (group, filepath)
         cosmic_data         // file
         chimer_data
+        hotspots_data       // channel<path> — pre-staged cancerhotspots.org data (may be empty)
 
     main:
 
@@ -41,7 +42,8 @@ workflow GENOMIC_ML {
         )
 
         PROCESS_ML_MUTATION(
-            FORMAT_ML_MUTATION.out
+            FORMAT_ML_MUTATION.out,
+            hotspots_data
         )
 
         if (cosmic_data) {

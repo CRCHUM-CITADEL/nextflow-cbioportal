@@ -16,7 +16,7 @@ process ESVEE_SV_TO_CBIOPORTAL {
 
     script:
     """
-    Rscript ${projectDir}/bin/gen_esvee_sv_to_cbioportal.R \\
+    gen_esvee_sv_to_cbioportal.R \\
         --input               ${esvee_vcf_tumor} \\
         --sample              ${meta.sample} \\
         --ensembl_annotations ${ensembl_annotations} \\

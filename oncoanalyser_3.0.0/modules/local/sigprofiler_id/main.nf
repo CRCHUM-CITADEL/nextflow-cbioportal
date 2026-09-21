@@ -23,7 +23,7 @@ process SIGPROFILER_ID {
     """
     python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1]).extract('COSMIC_Human_ID-83_GRCh38_v3.6.csv')" ${cosmic_zip}
 
-    python3 ${projectDir}/bin/run_sigprofiler_id.py \\
+    run_sigprofiler_id.py \\
         --vcf             ${somatic_vcf} \\
         --fasta           ${fasta} \\
         --signatures_db   COSMIC_Human_ID-83_GRCh38_v3.6.csv \\

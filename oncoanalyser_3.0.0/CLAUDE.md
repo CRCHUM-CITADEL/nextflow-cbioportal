@@ -54,6 +54,17 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   with no promoter allowance); no gene → `NA`. UTR/Promoter are not derivable —
   `pass_fusions.tsv` has no coding-type or CDS boundaries, and UTR bases are exonic
 - `ml_format_cnv.R` / `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`
+- `ml_mutation_processor.R`'s five encodings are deliberately vectorized (linear-index
+  `match()` + an ascending-assign `fill_max()`/`fill_weighted_max()` helper), not the
+  original row-by-row `for` loop with character-name matrix indexing — that loop was
+  the slowest step in the pipeline (~quadratic in cohort size: `%in%` scan + hashed
+  dimname lookup per row, per encoding). The vaf/effect running max must stay a bare
+  `max()`-equivalent, not `na.rm = TRUE`: any `NA` `dna_vaf` (from `t_depth == 0`) must
+  make the whole cell `NA` regardless of the other contributing rows' values, matching
+  base R's `max(current, NA)` propagation. `fetch_hotspots()` also now takes an optional
+  pre-staged path (`params.cancer_hotspots_data`, next to `vep_data`/`pcgr_data`/
+  `mafsmith_data`) instead of always hitting cancerhotspots.org live; PROCESS_ML_MUTATION
+  passes `[]` when unset, which Groovy treats as falsy, so the script falls back to the GET.
 - `gen_purple_cnv_to_cbioportal.R` scores copy number against the sample's expected
   baseline, not a flat diploid 2: autosomes are 2, chrX is 1 in a male and 2
   otherwise, chrY is 1 except 2 for an unresolved sex, and chrY is dropped entirely
@@ -73,6 +84,11 @@ optional: true` works; `path("f.txt", optional: true)` silently does nothing and
   the task fails with `MissingFileException` when the file is genuinely absent
 - New `bin/` scripts must be `chmod +x`, or the process fails with exit 126
   ("Permission denied") inside the container rather than a normal error
+- Modules invoke `bin/` scripts by bare name (`gen_foo.R`, not
+  `Rscript ${projectDir}/bin/gen_foo.R`) — Nextflow puts `bin/` on `PATH` for every
+  task, and the shebang (`#!/usr/bin/env Rscript` / `#!/usr/bin/env python3`) picks
+  the interpreter. The explicit-interpreter form still works but is inconsistent
+  with the rest of the modules and was removed everywhere it had crept in
 
 ## Configuration Layout
 

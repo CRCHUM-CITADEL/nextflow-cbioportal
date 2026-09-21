@@ -22,7 +22,7 @@ process PURPLE_CNV_TO_CBIOPORTAL {
     #take the first 19 columns as there are 2 buggy columns
     cut -f1-19 ${purple_cnv_gene} > ${meta.sample}.cnv.gene.cleaned.tsv
 
-    Rscript ${projectDir}/bin/gen_purple_cnv_to_cbioportal.R \\
+    gen_purple_cnv_to_cbioportal.R \\
         --purple_cnv_somatic ${purple_cnv_somatic} \\
         --purple_cnv_gene    ${meta.sample}.cnv.gene.cleaned.tsv \\
         --sample_id          ${meta.sample} \\

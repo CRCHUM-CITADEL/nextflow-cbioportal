@@ -21,7 +21,7 @@ process SIGPROFILER_SBS {
     """
     python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1]).extract('COSMIC_Human_SBS-96_GRCh38_v3.6.csv')" ${cosmic_zip}
 
-    python3 ${projectDir}/bin/run_sigprofiler_sbs.py \\
+    run_sigprofiler_sbs.py \\
         --snv_counts    ${snv_counts} \\
         --signatures_db COSMIC_Human_SBS-96_GRCh38_v3.6.csv \\
         --metadata      ${sbs_metadata} \\

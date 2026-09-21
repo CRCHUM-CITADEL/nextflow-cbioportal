@@ -14,17 +14,18 @@ Pipeline was refactored to accept nf-core/oncoanalyser outputs instead of DRAGEN
 
 Paths below are relative to the samplesheet's `folder` column, and `<subject>` is `subject_id`. These are what `workflows/genomic.nf` actually resolves — keep this table in sync with the `findOncoFile` calls there.
 
-| Modality         | Old (DRAGEN)                                      | New (oncoanalyser 3.0)                                   |
-| ---------------- | ------------------------------------------------- | -------------------------------------------------------- |
-| Mutations        | `*.WGS_somatic-tumor_normal.hard-filtered.vcf.gz` | `pave/somatic/<subject>-T.pave.somatic.vcf.gz`           |
-| Germline         | `*.WGS_germinal.hard-filtered.vcf.gz`             | `pave/germline/<subject>-T.pave.germline.vcf.gz`         |
-| RNA append       | N/A                                               | `sage_append/<subject>-T/<subject>-T.sage.append.vcf.gz` |
-| CNV (segments)   | `*.WGS_somatic-tumor_normal.cnv.vcf.gz`           | `purple/<subject>-T.purple.cnv.somatic.tsv`              |
-| CNV (genes)      | derived from VCF + annotation                     | `purple/<subject>-T.purple.cnv.gene.tsv`                 |
-| SV (DNA)         | N/A                                               | `esvee/<subject>-T.esvee.somatic.vcf.gz`                 |
-| Fusions (RNA)    | `*.fusion_candidates.final`                       | `isofox/<subject>-T.isf.pass_fusions.tsv`                |
-| Expression       | `*.quant.genes.sf` (Salmon)                       | `isofox/<subject>-T.isf.gene_data.tsv`                   |
-| Signature counts | N/A                                               | `sigs/<subject>-T.sig.snv_counts.csv`                    |
+| Modality            | Old (DRAGEN)                                      | New (oncoanalyser 3.0)                                   |
+| ------------------- | ------------------------------------------------- | -------------------------------------------------------- |
+| Mutations           | `*.WGS_somatic-tumor_normal.hard-filtered.vcf.gz` | `pave/somatic/<subject>-T.pave.somatic.vcf.gz`           |
+| Germline            | `*.WGS_germinal.hard-filtered.vcf.gz`             | `pave/germline/<subject>-T.pave.germline.vcf.gz`         |
+| RNA append          | N/A                                               | `sage_append/<subject>-T/<subject>-T.sage.append.vcf.gz` |
+| CNV (segments)      | `*.WGS_somatic-tumor_normal.cnv.vcf.gz`           | `purple/<subject>-T.purple.cnv.somatic.tsv`              |
+| CNV (genes)         | derived from VCF + annotation                     | `purple/<subject>-T.purple.cnv.gene.tsv`                 |
+| CNV (sex, optional) | N/A                                               | `purple/<subject>-T.purple.purity.tsv` (`gender` column) |
+| SV (DNA)            | N/A                                               | `esvee/<subject>-T.esvee.somatic.vcf.gz`                 |
+| Fusions (RNA)       | `*.fusion_candidates.final`                       | `isofox/<subject>-T.isf.pass_fusions.tsv`                |
+| Expression          | `*.quant.genes.sf` (Salmon)                       | `isofox/<subject>-T.isf.gene_data.tsv`                   |
+| Signature counts    | N/A                                               | `sigs/<subject>-T.sig.snv_counts.csv`                    |
 
 ## Samplesheet
 

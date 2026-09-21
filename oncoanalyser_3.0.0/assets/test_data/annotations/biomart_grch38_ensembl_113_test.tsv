@@ -581,3 +581,7 @@ ENSG00000291052	ABCC13	100579	lncRNA	21	14236206	14338017	1	ATP binding cassette
 ENSG00000292434	KCNJ6-AS1	100580	lncRNA	21	37644927	37740702	1	KCNJ6 antisense RNA 1 [Source:NCBI gene (formerly Entrezgene);Acc:105372799]
 ENSG00000293035	LINC01667	100581	lncRNA	21	9781848	9839362	-1	long intergenic non-protein coding RNA 1667 [Source:NCBI gene (formerly Entrezgene);Acc:441058]
 ENSG00000293210	SSR4P1	100582	lncRNA	21	45056000	45074165	-1	signal sequence receptor subunit 4 pseudogene 1 [Source:NCBI gene (formerly Entrezgene);Acc:728039]
+ENSG00000900001	XGENE_NEUTRAL	200001	protein_coding	X	50000000	50010000	1	Test fixture gene on chrX (neutral copy number)
+ENSG00000900002	XGENE_DEL	200002	protein_coding	X	60000000	60010000	1	Test fixture gene on chrX (deep deletion)
+ENSG00000900003	YGENE_NEUTRAL	200003	protein_coding	Y	20000000	20010000	1	Test fixture gene on chrY (neutral copy number, male)
+ENSG00000900004	XGENE_FEMALE	200004	protein_coding	X	50000000	50010000	1	Test fixture gene on chrX (neutral copy number, female)

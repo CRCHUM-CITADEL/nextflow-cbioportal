@@ -18,42 +18,80 @@ nextflow_workflow {
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
                         file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.cnv.somatic.tsv'),
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.cnv.gene.tsv')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.cnv.gene.tsv'),
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.purity.tsv')
                     ],
                     [
                         [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'cnv'],
                         file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple/T2-T.purple.cnv.somatic.tsv'),
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple/T2-T.purple.cnv.gene.tsv')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple/T2-T.purple.cnv.gene.tsv'),
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple/T2-T.purple.purity.tsv')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1_nopurity', pipeline: 'cnv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.cnv.somatic.tsv'),
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.cnv.gene.tsv'),
+                        []
                     ]
                 )
-                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_chr21.tsv')
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
                 """
             }
         }
 
         then {
             assert workflow.success
-            assert workflow.out.segfile.size()  == 2
-            assert workflow.out.longfile.size() == 2
+            assert workflow.out.segfile.size()  == 3
+            assert workflow.out.longfile.size() == 3
 
             def seg_names  = workflow.out.segfile.collect  { meta, f -> f.toString().split('/').last() }.sort()
             def long_names = workflow.out.longfile.collect { meta, f -> f.toString().split('/').last() }.sort()
-            assert seg_names  == ['T1_data_cna_hg38.seg', 'T2_data_cna_hg38.seg']
-            assert long_names == ['T1_data_cna_long.txt', 'T2_data_cna_long.txt']
+            assert seg_names  == ['T1_data_cna_hg38.seg', 'T1_nopurity_data_cna_hg38.seg', 'T2_data_cna_hg38.seg']
+            assert long_names == ['T1_data_cna_long.txt', 'T1_nopurity_data_cna_long.txt', 'T2_data_cna_long.txt']
+
+            def segFile  = { name -> path(workflow.out.segfile.collect  { meta, f -> f }.find { it.toString().endsWith(name) }.toString()) }
+            def longFile = { name -> path(workflow.out.longfile.collect { meta, f -> f }.find { it.toString().endsWith(name) }.toString()) }
 
             // Verify SEG format: header row + data rows present
-            def seg_t1_path = workflow.out.segfile.collect { meta, f -> f }.find { it.toString().endsWith('T1_data_cna_hg38.seg') }
-            def seg_lines = path(seg_t1_path.toString()).readLines()
-            assert seg_lines[0].startsWith('ID')
-            assert seg_lines.size() > 1
+            def seg_t1_lines = segFile('T1_data_cna_hg38.seg').readLines()
+            assert seg_t1_lines[0].startsWith('ID')
+            assert seg_t1_lines.size() > 1
 
             // Verify CNA long format: expected columns in header
-            def long_t1_path = workflow.out.longfile.collect { meta, f -> f }.find { it.toString().endsWith('T1_data_cna_long.txt') }
-            def long_header = path(long_t1_path.toString()).readLines()[0]
-            assert long_header.contains('Hugo_Symbol')
-            assert long_header.contains('Sample_Id')
-            assert long_header.contains('Value')
+            def long_t1_header = longFile('T1_data_cna_long.txt').readLines()[0]
+            assert long_t1_header.contains('Hugo_Symbol')
+            assert long_t1_header.contains('Sample_Id')
+            assert long_t1_header.contains('Value')
 
+            // ── T1 (male): chrX/chrY use a haploid baseline ──────────────────
+            def t1_long = longFile('T1_data_cna_long.txt').readLines()
+            // XGENE_NEUTRAL: absolute CN 1.0 on a haploid baseline is copy-neutral, not a hemizygous loss
+            assert t1_long.any { it.startsWith('XGENE_NEUTRAL\t') && it.endsWith('\t0') }
+            // XGENE_DEL: absolute CN 0.2 on a haploid baseline is a full loss (the haploid deep-deletion floor)
+            assert t1_long.any { it.startsWith('XGENE_DEL\t') && it.endsWith('\t-2') }
+            // YGENE_NEUTRAL: absolute CN 1.0 on a male chrY (baseline 1) is copy-neutral
+            assert t1_long.any { it.startsWith('YGENE_NEUTRAL\t') && it.endsWith('\t0') }
+
+            def t1_seg = segFile('T1_data_cna_hg38.seg').readLines()
+            // chrX segment at copyNumber 1.0 against a haploid baseline: log2(1/1) == 0, not log2(1/2) == -1
+            assert t1_seg.any { it.split('\t')[1] == 'X' && it.split('\t')[5].toDouble() == 0.0d }
+            // chrY segment at copyNumber 1.0 against a haploid baseline: log2(1/1) == 0
+            assert t1_seg.any { it.split('\t')[1] == 'Y' && it.split('\t')[5].toDouble() == 0.0d }
+
+            // ── T2 (female): chrY is not measured — no row at all, not a deep deletion ──
+            def t2_long = longFile('T2_data_cna_long.txt').readLines()
+            assert !t2_long.any { it.startsWith('YGENE_DROP\t') }
+            def t2_seg = segFile('T2_data_cna_hg38.seg').readLines()
+            assert !t2_seg.any { it.split('\t')[1] == 'Y' }
+            // XGENE_FEMALE: absolute CN 2.0 on the normal diploid chrX baseline is copy-neutral
+            assert t2_long.any { it.startsWith('XGENE_FEMALE\t') && it.endsWith('\t0') }
+
+            // ── No purity file: falls back to the diploid baseline everywhere (today's behaviour) ──
+            def nopurity_long = longFile('T1_nopurity_data_cna_long.txt').readLines()
+            // Same XGENE_NEUTRAL row (absolute CN 1.0), but scored as diploid: a hemizygous loss
+            assert nopurity_long.any { it.startsWith('XGENE_NEUTRAL\t') && it.endsWith('\t-1') }
+
+            // Autosome (chr21) calls are unaffected by sex — same underlying data.table branch either way.
             snapshot(
                 workflow.out.segfile.collect  { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() },
                 workflow.out.longfile.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }

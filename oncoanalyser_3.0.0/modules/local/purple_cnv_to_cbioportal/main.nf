@@ -7,7 +7,7 @@ process PURPLE_CNV_TO_CBIOPORTAL {
     publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy'
 
     input:
-        tuple val(meta), path(purple_cnv_somatic), path(purple_cnv_gene)
+        tuple val(meta), path(purple_cnv_somatic), path(purple_cnv_gene), path(purple_purity)
         path ensembl_annotations
 
     output:
@@ -18,6 +18,7 @@ process PURPLE_CNV_TO_CBIOPORTAL {
         task.ext.when == null || task.ext.when
 
     script:
+    def purity_arg = purple_purity ? "--purple_purity ${purple_purity}" : ''
     """
     #take the first 19 columns as there are 2 buggy columns
     cut -f1-19 ${purple_cnv_gene} > ${meta.sample}.cnv.gene.cleaned.tsv
@@ -28,7 +29,8 @@ process PURPLE_CNV_TO_CBIOPORTAL {
         --sample_id          ${meta.sample} \\
         --ensembl_annotations ${ensembl_annotations} \\
         --output_seg         ${meta.sample}_data_cna_hg38.seg \\
-        --output_long        ${meta.sample}_data_cna_long.txt
+        --output_long        ${meta.sample}_data_cna_long.txt \\
+        ${purity_arg}
     """
 
     stub:

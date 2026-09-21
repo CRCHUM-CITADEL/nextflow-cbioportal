@@ -254,6 +254,9 @@ workflow GENOMIC {
             .filter { it != null }
 
         // PURPLE CNV somatic + gene TSV → copy-number
+        // The purity file is optional: it only supplies the sample's sex for the
+        // chrX/chrY baseline, so a subject without one still gets CNV output —
+        // just with a diploid baseline everywhere, same as before this file existed.
         ch_purple_cnv = ch_samples_to_run
             .map { meta ->
                 def somatic = findOncoFile(meta,
@@ -262,7 +265,12 @@ workflow GENOMIC {
                 def gene = findOncoFile(meta,
                     "${meta.folder}/purple/${meta.subject}-T.purple.cnv.gene.tsv",
                     'cnv (PURPLE gene)')
-                (somatic && gene) ? [meta + [pipeline: 'cnv'], somatic, gene] : null
+                def purity = file("${meta.folder}/purple/${meta.subject}-T.purple.purity.tsv", checkIfExists: false)
+                if (!purity.exists() || purity.isEmpty()) {
+                    log.warn "No PURPLE purity file for ${meta.subject}; chrX/chrY will use a diploid baseline"
+                    purity = []
+                }
+                (somatic && gene) ? [meta + [pipeline: 'cnv'], somatic, gene, purity] : null
             }
             .filter { it != null }
 

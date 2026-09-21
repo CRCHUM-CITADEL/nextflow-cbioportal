@@ -54,6 +54,17 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   with no promoter allowance); no gene → `NA`. UTR/Promoter are not derivable —
   `pass_fusions.tsv` has no coding-type or CDS boundaries, and UTR bases are exonic
 - `ml_format_cnv.R` / `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`
+- `gen_purple_cnv_to_cbioportal.R` scores copy number against the sample's expected
+  baseline, not a flat diploid 2: autosomes are 2, chrX is 1 in a male and 2
+  otherwise, chrY is 1 except 2 for an unresolved sex, and chrY is dropped entirely
+  (no SEG segment, no DISCRETE_LONG row) in a female — it was never sequenced.
+  Sex comes from `gender` in the optional `purple/<subject>-T.purple.purity.tsv`
+  (PURPLE's own MALE/FEMALE/MALE_KLINEFELTER call); a missing or unrecognised
+  file falls back to the diploid baseline everywhere, i.e. today's pre-4.0.0
+  behaviour. **Incremental processing does not pick this up on its own** —
+  `resolveSubjectCache()` matches on file existence, not content, so a subject
+  already published under the old flat-diploid math stays cached with the wrong
+  chrX/chrY calls until its output directory is deleted and it is reprocessed
 - No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes
 - VEP/PCGR data must be pre-staged
 - Nextflow optional outputs: `optional: true` is an option on the whole output

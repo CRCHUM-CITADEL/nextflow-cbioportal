@@ -256,6 +256,15 @@ if (length(sv_rows) > 0) {
     )
 }
 
+# Deduplicate SVs that differ only by fragment/read-support counts (same
+# breakpoint pair called more than once): keep the call with the most total
+# read support (split + paired-end reads).
+read_total <- nafill(result$Tumor_Split_Read_Count, fill = 0L) +
+              nafill(result$Tumor_Paired_End_Read_Count, fill = 0L)
+result <- result[order(-read_total)]
+result <- unique(result, by = c("Site1_Chromosome", "Site1_Position",
+                                "Site2_Chromosome", "Site2_Position"))
+
 cat("Writing SV output:", opt$output, "\n")
 cat("Total SV records:", nrow(result), "\n")
 write.table(result, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")

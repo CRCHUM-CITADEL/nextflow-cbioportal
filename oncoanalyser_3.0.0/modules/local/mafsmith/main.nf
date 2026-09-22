@@ -57,6 +57,17 @@ process MAFSMITH {
         --input-vcf tmp.${meta.sample}.somatic.vcf \\
         --output-maf tmp.${meta.sample}.maf
 
+    # mafsmith's --retain-ann only reads CSQ subfields, so every plain INFO field SAGE
+    # and PAVE wrote -- GND_FREQ (gnomAD), TIER, CLNSIG, PON_COUNT, ... -- is dropped.
+    # Join them back on the MAF's own coordinate convention. Columns are always added,
+    # even when the VCF declares none of them, so every per-subject MAF keeps the same
+    # width and the group-level collectFile merge cannot go ragged.
+    annotate_maf_with_vcf_info.py \\
+        --vcf tmp.${meta.sample}.somatic.vcf \\
+        --maf tmp.${meta.sample}.maf \\
+        --output tmp.${meta.sample}.annotated.maf
+    mv tmp.${meta.sample}.annotated.maf tmp.${meta.sample}.maf
+
     # Rewrite Tumor_Sample_Barcode to the cBioPortal sample id. Line 1 of a MAF is
     # #version and line 2 the column header, so the header names are read from line 2 and
     # the column is located by name rather than assumed to sit at a fixed position.

@@ -289,6 +289,7 @@ show_profile_in_analysis_tab: true
 profile_description: ADD TEXT
 profile_name: Mutations
 data_filename: data_mutations_dna_rna_germline.txt
+namespaces: HMF
     """
 
             meta_text_sigs = """cancer_study_identifier: add_text

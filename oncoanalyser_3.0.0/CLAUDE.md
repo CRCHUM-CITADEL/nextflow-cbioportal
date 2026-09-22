@@ -27,6 +27,20 @@ Requires Nextflow >= 26.04.4.
   at run time. Rebuilding `containers/mafsmith_v0.1.0.def` is required for this
 - The `MAFSMITH` script locates the VCF sample columns by the `FORMAT` header and the
   MAF `Tumor_Sample_Barcode` column by name, rather than at fixed positions
+- **`--retain-ann` reads CSQ subfields only.** Every plain INFO field SAGE/PAVE writes
+  is invisible to it, which is why PAVE's gnomAD frequency (`GND_FREQ`) never reached
+  the MAF despite being in the input VCF. `MAFSMITH` therefore runs
+  `annotate_maf_with_vcf_info.py`, which joins ten INFO fields back in: `GND_FREQ` as
+  `gnomAD_AF`, and `TIER`, `CLNSIG`, `CLNSIGCONF`, `PON_COUNT`, `MAPPABILITY`, `MSG`,
+  `TNC`, `REP_C`, `MH` under the `HMF.` prefix declared by `namespaces: HMF` in
+  `meta_sequenced.txt`. Two invariants hold it together: the join normalises the VCF
+  side **exactly** the way mafsmith does (`src/vcf/normalization.rs` — strip the common
+  REF/ALT prefix advancing POS, empty allele becomes `-`, `Start = pos-1` for an
+  insertion), because keying on raw `POS`/`REF`/`ALT` matches SNVs and silently skips
+  every indel; and the columns are written unconditionally, because a column set that
+  varied with what each VCF declared would make the group `collectFile` merge ragged.
+  The step fails when nothing matches. **Cached subjects keep their older, narrower
+  MAF** — reprocess them or the merged file goes ragged
 - mafsmith writes **53 MAF columns to vcf2maf's ~133**. `mafsmith_retain_ann` names VEP
   CSQ subfields to append as extra columns; names must match fastVEP's `DEFAULT_CSQ_FIELDS`
   (an unknown name silently yields an empty column). `RefSeq` and `VARIANT_CLASS` have no

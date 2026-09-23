@@ -1,0 +1,66 @@
+nextflow_process {
+
+    name "Test MAFSMITH"
+    script "modules/local/mafsmith/main.nf"
+    process "MAFSMITH"
+    tag "module"
+    tag "mafsmith"
+
+    // PAVE somatic VCFs list the normal column first and the tumor second. mafsmith,
+    // unlike vcf2maf.pl, does not take the VCF column from --tumor-id: without
+    // --vcf-tumor-id it treats the FIRST column as the tumor, so t_* came from the
+    // normal (t_alt_count 0) and cBioPortal, which derives allele frequency from
+    // t_alt_count / (t_alt_count + t_ref_count), showed every somatic call at ~0%.
+    // This runs the real binary; the genomic_mutations test is stub-only and could
+    // not see it.
+    test("tumor and normal depths come from their own VCF columns") {
+
+        config "tests/nextflow_mafsmith.config"
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/somatic/T1-T.pave.somatic.vcf.gz')
+                ])
+                // --skip-annotation: the bundle is never read, only symlinked in
+                input[1] = file('${projectDir}/assets/test_data/clinical')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out.maf[0][1].toString()).readLines()
+            assert lines[0].startsWith('#version')
+            def header = lines[1].split('\t', -1) as List
+            def rows = lines.drop(2).collect { it.split('\t', -1) }
+            assert rows : "no MAF rows written"
+
+            def col = { String name ->
+                def i = header.indexOf(name)
+                assert i >= 0 : "no ${name} column"
+                i
+            }
+
+            // First PASS record of the fixture: normal 0/0:50,0:50, tumor 0/1:40,30:70
+            def first = rows[0]
+            assert first[col('t_ref_count')] == '40'
+            assert first[col('t_alt_count')] == '30'
+            assert first[col('t_depth')]     == '70'
+            assert first[col('n_ref_count')] == '50'
+            assert first[col('n_alt_count')] == '0'
+            assert first[col('n_depth')]     == '50'
+
+            // Somatic calls carry tumor alt reads on every row, never zero.
+            rows.each { r ->
+                assert (r[col('t_alt_count')] as int) > 0 : "t_alt_count is 0: ${r[col('Start_Position')]}"
+            }
+
+            assert rows.every { it[col('Tumor_Sample_Barcode')] == 'T1' }
+            assert rows.every { it[col('Matched_Norm_Sample_Barcode')] == 'T1-N' }
+        }
+    }
+}

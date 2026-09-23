@@ -25,6 +25,12 @@ Requires Nextflow >= 26.04.4.
   falls back to `which fastvep` when `<data-dir>/bin/fastvep` is missing. That is why
   `DOWNLOAD_MAFSMITH` can pass `--skip-fastvep` and the image needs no cargo toolchain
   at run time. Rebuilding `containers/mafsmith_v0.1.0.def` is required for this
+- **mafsmith does not derive `--vcf-tumor-id` from `--tumor-id`** (vcf2maf.pl did). The
+  barcode flags only name the MAF columns; without `--vcf-tumor-id` / `--vcf-normal-id`
+  mafsmith takes the FIRST VCF sample as the tumor — the normal, in PAVE's layout — and
+  `t_*`/`n_*` swap, so cBioPortal shows ~0% allele frequency. `MAFSMITH` passes both.
+  `tests/modules/mafsmith.nf.test` runs the real binary with `--skip-annotation` (via
+  `task.ext.args`) to guard this
 - The `MAFSMITH` script locates the VCF sample columns by the `FORMAT` header and the
   MAF `Tumor_Sample_Barcode` column by name, rather than at fixed positions
 - **`--retain-ann` reads CSQ subfields only.** Every plain INFO field SAGE/PAVE writes

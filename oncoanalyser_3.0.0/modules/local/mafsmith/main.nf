@@ -19,6 +19,7 @@ process MAFSMITH {
     // of it. Names must match fastVEP's DEFAULT_CSQ_FIELDS exactly — an unknown name
     // is not an error, it just yields an empty column.
     def retain_ann = params.mafsmith_retain_ann ? "--retain-ann ${params.mafsmith_retain_ann}" : ''
+    def args       = task.ext.args ?: ''
     """
     # mafsmith looks under \$HOME/.mafsmith for its reference data, so point HOME at the
     # task directory and link the bundle in.
@@ -47,13 +48,18 @@ process MAFSMITH {
     TMP_NORMAL_ID=\$(printf '%s' "\$SAMPLE_IDS" | cut -f1)
     TMP_TUMOR_ID=\$(printf '%s' "\$SAMPLE_IDS" | cut -f2)
 
+    # --tumor-id / --normal-id only set the MAF barcodes. Unlike vcf2maf.pl, mafsmith does
+    # not default --vcf-tumor-id to --tumor-id: without the --vcf-* flags it takes the FIRST
+    # sample column as the tumor, which here is the normal. t_ref_count / t_alt_count /
+    # t_depth -- what cBioPortal computes allele frequency from -- then come from the normal.
     ID_ARGS=""
-    [ -n "\$TMP_TUMOR_ID" ] && ID_ARGS="\$ID_ARGS --tumor-id \$TMP_TUMOR_ID"
-    [ -n "\$TMP_NORMAL_ID" ] && ID_ARGS="\$ID_ARGS --normal-id \$TMP_NORMAL_ID"
+    [ -n "\$TMP_TUMOR_ID" ] && ID_ARGS="\$ID_ARGS --tumor-id \$TMP_TUMOR_ID --vcf-tumor-id \$TMP_TUMOR_ID"
+    [ -n "\$TMP_NORMAL_ID" ] && ID_ARGS="\$ID_ARGS --normal-id \$TMP_NORMAL_ID --vcf-normal-id \$TMP_NORMAL_ID"
 
     mafsmith vcf2maf \\
         \$ID_ARGS \\
         ${retain_ann} \\
+        ${args} \\
         --input-vcf tmp.${meta.sample}.somatic.vcf \\
         --output-maf tmp.${meta.sample}.maf
 

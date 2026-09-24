@@ -71,13 +71,13 @@ Container images:
   Five Apptainer containers are used. They are pulled automatically on
   first run and cached in containers/:
 
-  Container                Purpose
-  -----------------------  ----------------------------------------
-  sdp-r:4.5.1              R scripts (CNV, SV, expression, aggregation)
-  sdp-python:3.12          Python scripts
-  mafsmith:0.1.0           VCF-to-MAF conversion
-  pcgr:2.2.5               Germline variant annotation (PCGR/CPSR)
-  sigprofiler:1.1.3        Mutational signature fitting
+  Container                      Purpose
+  -----------------------------  ----------------------------------------
+  sdp-r:4.5.1                    R scripts (CNV, SV, expression, aggregation)
+  sdp-python:3.12                Python scripts
+  mafsmith-fastvep:0.1.0-0.4.0   VCF-to-MAF conversion (mafsmith + fastVEP)
+  pcgr:2.2.5                     Germline variant annotation (PCGR/CPSR)
+  sigprofiler:1.1.3              Mutational signature fitting
 
   GHCR authentication: Containers at ghcr.io/crchum-citadel require
   membership in the crchum-citadel GitHub organization and a PAT:
@@ -332,7 +332,7 @@ CONTAINER PARAMETERS
   ---------------------  -----------------  ----------------------------
   container_r            ORAS or local SIF  R 4.5.1 container
   container_python       ORAS or local SIF  Python 3.12 container
-  container_mafsmith     ORAS or local SIF  mafsmith 0.1.0
+  container_mafsmith     ORAS or local SIF  mafsmith 0.1.0 + fastVEP 0.4.0
   container_pcgr         ORAS or local SIF  PCGR 2.2.5
   container_sigprofiler  ORAS or local SIF  SigProfiler 1.1.3
 

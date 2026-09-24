@@ -1,0 +1,25 @@
+# mafsmith 0.1.0 + fastVEP 0.4.0; the build stage keeps the Rust toolchain out of the final image
+
+Bootstrap: docker
+From: rust:1.98-bookworm
+Stage: build
+
+%post
+    cargo install --locked --git https://github.com/Huang-lab/fastVEP --tag v0.4.0 fastvep-cli --root /opt/tools
+    cargo install --git https://github.com/nf-osi/mafsmith --tag v0.1.0 mafsmith --root /opt/tools
+
+Bootstrap: docker
+From: debian:bookworm-slim
+Stage: final
+
+%files from build
+    /opt/tools/bin/fastvep /usr/local/bin/
+    /opt/tools/bin/mafsmith /usr/local/bin/
+
+%post
+    apt-get update && apt-get install -y --no-install-recommends ca-certificates procps python3
+    rm -rf /var/lib/apt/lists/*
+
+%test
+    mafsmith --help >/dev/null
+    fastvep --version

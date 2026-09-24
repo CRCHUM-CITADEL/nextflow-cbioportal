@@ -24,7 +24,10 @@ Requires Nextflow >= 26.04.4.
 - fastvep is **built into the container**, not fetched at run time: `resolve_fastvep()`
   falls back to `which fastvep` when `<data-dir>/bin/fastvep` is missing. That is why
   `DOWNLOAD_MAFSMITH` can pass `--skip-fastvep` and the image needs no cargo toolchain
-  at run time. Rebuilding `containers/mafsmith_v0.1.0.def` is required for this
+  at run time. The image is `containers/mafsmith-fastvep_v0.1.0-0.4.0.def` (tag
+  `mafsmith-fastvep:<mafsmith>-<fastvep>`): a two-stage build, Rust toolchain in the
+  build stage only, both tools `cargo install --git … --tag` (fastVEP with `--locked`).
+  Bump a version → rename the def and tag
 - **mafsmith does not derive `--vcf-tumor-id` from `--tumor-id`** (vcf2maf.pl did). The
   barcode flags only name the MAF columns; without `--vcf-tumor-id` / `--vcf-normal-id`
   mafsmith takes the FIRST VCF sample as the tumor — the normal, in PAVE's layout — and

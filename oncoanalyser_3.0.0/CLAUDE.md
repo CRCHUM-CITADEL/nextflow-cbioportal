@@ -48,7 +48,7 @@ Requires Nextflow >= 26.04.4.
   (an unknown name silently yields an empty column). `RefSeq` and `VARIANT_CLASS` have no
   fastVEP counterpart and cannot be restored
 - `CONVERT_CPSR_TO_MAF` merges CPSR germline calls (`Mutation_Status=Germline`, filtered to
-  ClinVar Pathogenic / Likely Pathogenic / VUS) into the somatic+RNA MAF,
+  Pathogenic / Likely Pathogenic / VUS on CPSR's final `CLASSIFICATION`) into the somatic+RNA MAF,
   then drops `Intron`/`IGR` rows. `gen_convert_cpsr_to_maf.R` keys each germline row on the
   **incoming MAF's header** and pins it back to those columns before appending — `maf_entry$X <- v`
   appends a slot when `X` is absent, and `rbind()` onto a zero-row frame widens silently rather
@@ -102,8 +102,12 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   `ImportCnaDiscreteLongData` has no try/catch. An absent (gene, sample) pair is
   the correct way to say "not profiled" — the importer folds DISCRETE_LONG into
   the wide DISCRETE form and renders a missing pair as an empty cell
-- `CONVERT_CPSR_TO_MAF` finds `CLINVAR_CLASSIFICATION` **by name** (cpsr 2.3.0 moved it from field 52)
-  and accepts both `Likely_Pathogenic` and `Likely Pathogenic`
+- `CONVERT_CPSR_TO_MAF` filters on CPSR's **final** classification, never `CLINVAR_CLASSIFICATION`:
+  the final call is ClinVar's verdict when ClinVar has one and CPSR's own ACMG call otherwise,
+  while `CLINVAR_CLASSIFICATION` is empty for any variant ClinVar has never seen, so filtering on
+  it silently dropped every novel germline call. The column is found **by name** — `CLASSIFICATION`
+  in cpsr >= 2.3, `FINAL_CLASSIFICATION` in cpsr <= 2.1 (the `test` profile's PCGR 2.1.2) — and the
+  step fails if neither exists. Both `Likely_Pathogenic` and `Likely Pathogenic` are accepted
 - **PCGR 2.3.x only accepts bundle 20260620 and VEP 115** — bump `container_pcgr`, the kit's bundle
   and its VEP cache together. The `test` profile stays on PCGR 2.1.2 to match its downloads
 - No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes

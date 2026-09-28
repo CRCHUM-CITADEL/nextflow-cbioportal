@@ -4,7 +4,7 @@
             12,
             {
                 "Workflow": {
-                    "CRCHUM-CITADEL/nextflow-cbioportal": "v4.0.0"
+                    "CRCHUM-CITADEL/nextflow-cbioportal": "v4.1.0"
                 }
             },
             [

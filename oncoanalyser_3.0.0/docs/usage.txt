@@ -332,14 +332,15 @@ PROFILES
 
   Profile      Purpose
   -----------  ------------------------------------------------
-  apptainer    REQUIRED. Enables Apptainer.
+  apptainer    REQUIRED. Enables Apptainer. Images are cached in
+               containers/ unless a site config sets apptainer.cacheDir.
   slurm        Submits jobs to SLURM. Set clusterOptions for
                your allocation (see SITE CONFIGURATION below).
   citadel      CRCHUM/CITADEL site settings: resource kit location,
                prebuilt .sif containers, SLURM account, scratch and
-               Apptainer cache. List it LAST.
+               Apptainer cache. List it LAST. It does not set outdir
+               or email; put those in a -params-file.
   debug        Dumps process hashes, prints hostname, keeps work dir.
-  gpu          Adds --nv flag for GPU passthrough.
   local        Uses local SIF paths instead of ORAS URIs.
   test         Uses bundled test data with reduced resources.
 

@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-cbioportal//nextflow_schema.json",
+    "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-cbioportal/main/oncoanalyser_3.0.0/nextflow_schema.json",
     "title": "CRCHUM-CITADEL/nextflow-cbioportal pipeline parameters",
-    "description": "Pipeline Nextflow pour besoin des projets sant\u00e9 de pr\u00e9cision",
+    "description": "Converts oncoanalyser 3.0 WGS/WTS output and ARGO/MOHCCN clinical CSVs into cBioPortal study files",
     "type": "object",
     "$defs": {
         "input_output_options": {
@@ -19,8 +19,8 @@
                     "schema": "assets/schema_genomic_input.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with X columns, and a header row.",
+                    "description": "Path to the genomic samplesheet: one row per subject, pointing at its oncoanalyser output directory.",
+                    "help_text": "Comma-separated file with a header row and the columns group, subject_id, sample_id, folder. Generate it with bin/generate_samplesheet.py; see docs/usage.txt.",
                     "fa_icon": "fas fa-file-csv"
                 },
                 "clinical_samplesheet": {
@@ -30,8 +30,8 @@
                     "schema": "assets/schema_clinical_input.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 4 columns, and a header row.",
+                    "description": "Path to the clinical samplesheet: one row per ARGO/MOHCCN clinical CSV.",
+                    "help_text": "Comma-separated file with a header row and the columns group_id, filetype, filepath, extraction_date, info (info may be empty). Generate it with bin/generate_clinical_samplesheet.py; see docs/usage.txt.",
                     "fa_icon": "fas fa-file-csv"
                 },
                 "outdir": {

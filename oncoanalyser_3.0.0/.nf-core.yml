@@ -2,11 +2,11 @@ nf_core_version: 3.3.2
 repository_type: pipeline
 template:
   author: Justin
-  description: testing for citadel
+  description: oncoanalyser 3.0 WGS/WTS output and clinical CSVs to cBioPortal
   force: false
   is_nfcore: false
-  name: test
-  org: citadel-test
+  name: nextflow-cbioportal
+  org: CRCHUM-CITADEL
   outdir: .
   skip_features:
     - github_badges
@@ -21,4 +21,4 @@ template:
     - vscode
     - citations
     - slackreport
-  version: 1.2.0dev
+  version: 4.0.0

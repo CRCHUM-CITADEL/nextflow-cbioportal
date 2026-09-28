@@ -6,7 +6,6 @@ library(dplyr)
 
 # Get command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-#args <- "/project/60005/shared/sub_projects/cbioportal_nextflow/nextflow-cbioportal/output/MoHQ-CM-3/data_cna_long.txt"
 
 # Check if file path argument was provided
 if (length(args) == 0) {

@@ -274,6 +274,15 @@ Configuration reference
 All parameters are set in nextflow.config or overridden on the command
 line with --param_name value.
 
+The pipeline prints its own parameter reference from nextflow_schema.json:
+
+    nextflow run main.nf --help              # main parameters, by group
+    nextflow run main.nf --help resources_dir  # full help for one parameter
+    nextflow run main.nf --help --showHidden # include the kit-file overrides
+
+  Nextflow reports the help run as cancelled (exit status 1); that is
+  how the nf-schema plugin stops after printing, not an error.
+
 CORE PARAMETERS
 
   Parameter              Required  Default                   Description

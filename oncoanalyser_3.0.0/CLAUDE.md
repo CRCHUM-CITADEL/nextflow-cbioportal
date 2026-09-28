@@ -112,6 +112,14 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   declaration, NOT an argument to `path()`. `tuple val(x), path("f.txt"), emit: y,
 optional: true` works; `path("f.txt", optional: true)` silently does nothing and
   the task fails with `MissingFileException` when the file is genuinely absent
+- Optional params with a schema `format` / `pattern` / `exists` (samplesheets, `resources_dir`)
+  default to `null`, never `""`: nf-schema >= 2.7 validates empty strings, and `""` fails
+  `file-path` / `directory-path` with "Argument of `file()` function cannot be empty". Test
+  configs that mean "unset" must use `null` too. Read them by truthiness only
+- `--help` is nf-schema's config-driven help (`validation.help` in `nextflow.config`); it needs
+  nf-schema >= 2.7 under Nextflow 26. `main.nf` returns on `helpRequested()` before
+  `PIPELINE_INITIALISATION`, because the plugin cancels the session only after the workflow
+  body has started
 - New `bin/` scripts must be `chmod +x`, or the process fails with exit 126
   ("Permission denied") inside the container rather than a normal error
 - Modules invoke `bin/` scripts by bare name (`gen_foo.R`, not

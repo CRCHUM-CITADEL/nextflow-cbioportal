@@ -288,21 +288,11 @@ GENOMIC INPUT PARAMETERS
   Parameter                Required  Default   Description
   -----------------------  --------  --------  ----------------------------
   genomic_samplesheet      Yes       --        Path to genomic samplesheet CSV
-  resources_dir            Yes*      --        Extracted resource kit
-  ensembl_annotations      No        kit       BioMart TSV (Ensembl 113)
-  genome_reference         No        kit       GRCh38 reference FASTA
-  mafsmith_data            No        kit       mafsmith home dir; no kit = auto-download
+  resources_dir            Yes       --        Extracted resource kit (all reference files)
   mafsmith_retain_ann      No        (10 CSQ)  Extra VEP fields kept as MAF columns
-  vep_data                 No        kit       VEP 115 cache directory, used by PCGR
-  pcgr_data                No        kit       PCGR reference bundle directory
-  cancer_hotspots_data     No        kit       cancerhotspots.org dump; no kit = live fetch
   cosmic_data              No        --        COSMIC Fusion TSV for ML (licence-gated)
-  chimer_data              No        kit       ChimerKB4.xlsx
-  sbs/dbs/id_signatures    No        kit       COSMIC v3.6 signature reference CSVs
-  sbs/dbs/id_metadata      No        kit       Signature metadata TSVs
 
-  * Or set every reference param individually. "kit" = resolved from
-    resources_dir when the param is left empty.
+  A single kit file can be overridden by its param name (docs/resources.md).
 
 CLINICAL INPUT PARAMETERS
 
@@ -310,9 +300,8 @@ CLINICAL INPUT PARAMETERS
   --------------------------------  --------  -----------    ----------------------------
   clinical_samplesheet              Yes       --             Path to clinical samplesheet CSV
   sample_registrations              No        (empty)        sample_registrations.csv for template mode
-  mohccn_primary_site_map           No        kit            MOHCCN primary site mapping (ICD-O codes)
-  mohccn_specimen_tissue_source_map No        kit            MOHCCN specimen tissue source mapping
-  mohccn_treatment_intent_map       No        kit            MOHCCN treatment intent mapping
+
+  MOHCCN mapping tables come from resources_dir.
 
 CONTAINER PARAMETERS
 

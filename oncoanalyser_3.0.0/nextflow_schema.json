@@ -120,7 +120,7 @@
         "resources_dir": {
             "type": "string",
             "format": "directory-path",
-            "description": "Extracted resource kit; empty reference params resolve from it."
+            "description": "Extracted resource kit directory (the one holding VERSION); every reference file is read from it."
         },
         "resources_version": {
             "type": "string",
@@ -130,7 +130,8 @@
         },
         "ensembl_annotations": {
             "type": "string",
-            "description": "Ensembl 113 BioMart TSV (gene/Entrez mapping for CNV, SV and expression)."
+            "description": "Ensembl 113 BioMart TSV (gene/Entrez mapping for CNV, SV and expression).",
+            "hidden": true
         },
         "container_pcgr": {
             "type": "string"
@@ -152,13 +153,16 @@
         },
         "genome_reference": {
             "type": "string",
-            "description": "GRCh38 FASTA, used by SigProfiler."
+            "description": "GRCh38 FASTA, used by SigProfiler.",
+            "hidden": true
         },
         "vep_data": {
-            "type": "string"
+            "type": "string",
+            "hidden": true
         },
         "pcgr_data": {
-            "type": "string"
+            "type": "string",
+            "hidden": true
         },
         "mafsmith_retain_ann": {
             "type": "string",
@@ -166,7 +170,8 @@
         },
         "mafsmith_data": {
             "type": "string",
-            "description": "mafsmith home directory (reference + fastVEP)."
+            "description": "mafsmith home directory (reference + fastVEP).",
+            "hidden": true
         },
         "sample_registrations": {
             "type": "string",
@@ -186,23 +191,28 @@
         },
         "chimer_data": {
             "type": "string",
-            "description": "ChimerKB fusion workbook for ML SV."
+            "description": "ChimerKB fusion workbook for ML SV.",
+            "hidden": true
         },
         "cancer_hotspots_data": {
             "type": "string",
-            "description": "cancerhotspots.org snapshot; fetched live if absent."
+            "description": "cancerhotspots.org snapshot; fetched live if absent.",
+            "hidden": true
         },
         "sbs_metadata": {
             "type": "string",
-            "description": "COSMIC SBS signature metadata TSV."
+            "description": "COSMIC SBS signature metadata TSV.",
+            "hidden": true
         },
         "dbs_metadata": {
             "type": "string",
-            "description": "COSMIC DBS signature metadata TSV."
+            "description": "COSMIC DBS signature metadata TSV.",
+            "hidden": true
         },
         "id_metadata": {
             "type": "string",
-            "description": "COSMIC ID signature metadata TSV."
+            "description": "COSMIC ID signature metadata TSV.",
+            "hidden": true
         },
         "cancer_type": {
             "type": "string",
@@ -210,15 +220,18 @@
         },
         "mohccn_primary_site_map": {
             "type": "string",
-            "description": "Path to MOHCCN primary site mapping CSV (ICD-O topography codes)."
+            "description": "Path to MOHCCN primary site mapping CSV (ICD-O topography codes).",
+            "hidden": true
         },
         "mohccn_specimen_tissue_source_map": {
             "type": "string",
-            "description": "Path to MOHCCN specimen tissue source mapping CSV."
+            "description": "Path to MOHCCN specimen tissue source mapping CSV.",
+            "hidden": true
         },
         "mohccn_treatment_intent_map": {
             "type": "string",
-            "description": "Path to MOHCCN treatment intent mapping CSV."
+            "description": "Path to MOHCCN treatment intent mapping CSV.",
+            "hidden": true
         },
         "incremental": {
             "type": "boolean",
@@ -227,15 +240,18 @@
         },
         "sbs_signatures": {
             "type": "string",
-            "description": "COSMIC v3.6 SBS-96 signature CSV."
+            "description": "COSMIC v3.6 SBS-96 signature CSV.",
+            "hidden": true
         },
         "dbs_signatures": {
             "type": "string",
-            "description": "COSMIC v3.6 DBS-78 signature CSV."
+            "description": "COSMIC v3.6 DBS-78 signature CSV.",
+            "hidden": true
         },
         "id_signatures": {
             "type": "string",
-            "description": "COSMIC v3.6 ID-83 signature CSV."
+            "description": "COSMIC v3.6 ID-83 signature CSV.",
+            "hidden": true
         }
     }
 }

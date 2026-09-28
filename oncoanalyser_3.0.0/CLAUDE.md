@@ -138,10 +138,11 @@ nextflow run main.nf -profile apptainer --resources_dir /path/to/nextflow-cbiopo
 ```
 
 **Reference data is one versioned resource kit** (docs/resources.md), passed as `resources_dir`.
-Every reference param defaults to `""` and is resolved by `resource(name)` in
-`subworkflows/local/utils/main.nf`: explicit param, else the kit file, else `""`.
-`resourceLayout()` is the single table of kit paths — read reference files through `resource()`,
-never `params.X`.
+Kit-backed params are deliberately **not declared** in `nextflow.config` (and `hidden` in the schema),
+to push users to the kit. `resource(name)` in `subworkflows/local/utils/main.nf` resolves them:
+explicit param, else the kit file, else `""`. `resourceLayout()` is the single table of kit paths —
+read reference files through `resource()`, never `params.X` (an undeclared `params.X` logs an
+"undefined parameter" warning; `explicitParam()` checks `containsKey` first).
 
 - Resolved at **run time**: a config default built from `params.resources_dir` misses a value set
   inside a profile (`-profile citadel`).

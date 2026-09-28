@@ -190,7 +190,7 @@ def validateInputParameters() {
 
         // Warn about kit files that are missing and not overridden by a param.
         def absent = resourceLayout().findAll { name, rel ->
-            !params[name] && !file("${params.resources_dir}/${rel}").exists()
+            !explicitParam(name) && !file("${params.resources_dir}/${rel}").exists()
         }.keySet()
         if (absent) {
             log.warn "Resource kit ${params.resources_dir} is missing, and no param overrides: ${absent.join(', ')}"
@@ -278,14 +278,20 @@ def resourceLayout() {
 // Explicit param, else the kit file if it exists, else ''; resolved at run time so a profile-set resources_dir is seen.
 def resource(String name) {
     assert name in resourceLayout() : "Unknown resource '${name}'"
-    if (params[name]) {
-        return params[name].toString()
+    if (explicitParam(name)) {
+        return explicitParam(name).toString()
     }
     if (!params.resources_dir) {
         return ''
     }
     def path = "${params.resources_dir}/${resourceLayout()[name]}".toString()
     return file(path).exists() ? path : ''
+}
+
+
+// Kit-backed params are not declared in nextflow.config; containsKey avoids the "undefined parameter" warning.
+def explicitParam(String name) {
+    return params.containsKey(name) ? params.get(name) : null
 }
 
 

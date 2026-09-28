@@ -8,7 +8,7 @@ process SIGPROFILER_DBS {
 
     input:
         tuple val(meta), path(somatic_vcf)
-        path cosmic_zip
+        path signatures_db  // COSMIC v3.6 DBS-78 reference CSV
         path dbs_metadata
 
     output:
@@ -20,11 +20,9 @@ process SIGPROFILER_DBS {
 
     script:
     """
-    python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1]).extract('COSMIC_Human_DBS-78_GRCh38_v3.6.csv')" ${cosmic_zip}
-
     run_sigprofiler_dbs.py \\
         --vcf             ${somatic_vcf} \\
-        --signatures_db   COSMIC_Human_DBS-78_GRCh38_v3.6.csv \\
+        --signatures_db   ${signatures_db} \\
         --metadata        ${dbs_metadata} \\
         --sample          ${meta.sample} \\
         --output_contrib  ${meta.sample}.data_mutational_signatures_contribution_DBS.txt \\

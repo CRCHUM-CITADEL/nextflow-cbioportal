@@ -117,11 +117,20 @@
         "config_profile_url": {
             "type": "string"
         },
+        "resources_dir": {
+            "type": "string",
+            "format": "directory-path",
+            "description": "Extracted resource kit; empty reference params resolve from it."
+        },
+        "resources_version": {
+            "type": "string",
+            "default": "1.0.0",
+            "description": "Kit version this release needs; must match resources_dir/VERSION.",
+            "hidden": true
+        },
         "ensembl_annotations": {
             "type": "string",
-            "format": "file-path",
-            "description": "BioMart TSV for PURPLE CNV gene-to-Entrez mapping, ESVEE breakpoint gene annotation and Isofox expression Ensembl-to-Entrez ID mapping.",
-            "pattern": "^\\S+\\.tsv"
+            "description": "Ensembl 113 BioMart TSV (gene/Entrez mapping for CNV, SV and expression)."
         },
         "container_pcgr": {
             "type": "string"
@@ -143,9 +152,7 @@
         },
         "genome_reference": {
             "type": "string",
-            "format": "file-path",
-            "description": "Genome reference FASTA (GRCh38) \u2014 required by SigProfiler for indel context.",
-            "pattern": "^\\S+\\.(fa|fasta)$"
+            "description": "GRCh38 FASTA, used by SigProfiler."
         },
         "vep_data": {
             "type": "string"
@@ -159,8 +166,7 @@
         },
         "mafsmith_data": {
             "type": "string",
-            "format": "directory-path",
-            "description": "mafsmith home directory holding its reference data. If empty, the pipeline fetches one with `mafsmith fetch`, which needs internet on the compute node and uses Ensembl contig naming."
+            "description": "mafsmith home directory (reference + fastVEP)."
         },
         "sample_registrations": {
             "type": "string",
@@ -180,27 +186,23 @@
         },
         "chimer_data": {
             "type": "string",
-            "description": "Path to ChimerKB Excel file for ML SV processing."
+            "description": "ChimerKB fusion workbook for ML SV."
         },
         "cancer_hotspots_data": {
             "type": "string",
-            "description": "Path to a pre-staged copy of the cancerhotspots.org single-residue hotspots API response, used by PROCESS_ML_MUTATION. If empty, the pipeline fetches it live, which needs internet on the compute node."
-        },
-        "cosmic_reference": {
-            "type": "string",
-            "description": "Path to COSMIC v3.6 mutational signature reference ZIP."
+            "description": "cancerhotspots.org snapshot; fetched live if absent."
         },
         "sbs_metadata": {
             "type": "string",
-            "description": "Path to COSMIC SBS metadata TSV."
+            "description": "COSMIC SBS signature metadata TSV."
         },
         "dbs_metadata": {
             "type": "string",
-            "description": "Path to COSMIC DBS metadata TSV."
+            "description": "COSMIC DBS signature metadata TSV."
         },
         "id_metadata": {
             "type": "string",
-            "description": "Path to COSMIC ID (indel) metadata TSV."
+            "description": "COSMIC ID signature metadata TSV."
         },
         "cancer_type": {
             "type": "string",
@@ -208,23 +210,32 @@
         },
         "mohccn_primary_site_map": {
             "type": "string",
-            "format": "file-path",
             "description": "Path to MOHCCN primary site mapping CSV (ICD-O topography codes)."
         },
         "mohccn_specimen_tissue_source_map": {
             "type": "string",
-            "format": "file-path",
             "description": "Path to MOHCCN specimen tissue source mapping CSV."
         },
         "mohccn_treatment_intent_map": {
             "type": "string",
-            "format": "file-path",
             "description": "Path to MOHCCN treatment intent mapping CSV."
         },
         "incremental": {
             "type": "boolean",
             "default": false,
             "description": "Set on a follow-up load into a study cBioPortal already holds: cancer_type.txt and meta_cancer_type.txt are skipped so the cancer type is not registered twice. Per-subject output caching is automatic and needs no flag."
+        },
+        "sbs_signatures": {
+            "type": "string",
+            "description": "COSMIC v3.6 SBS-96 signature CSV."
+        },
+        "dbs_signatures": {
+            "type": "string",
+            "description": "COSMIC v3.6 DBS-78 signature CSV."
+        },
+        "id_signatures": {
+            "type": "string",
+            "description": "COSMIC v3.6 ID-83 signature CSV."
         }
     }
 }

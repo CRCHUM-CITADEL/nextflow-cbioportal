@@ -28,9 +28,9 @@ nextflow_process {
                         file('${projectDir}/assets/test_data/clinical/follow_ups.csv'),
                         file('${projectDir}/assets/test_data/clinical/biomarkers.csv'),
                         [],
-                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
-                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv'),
-                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv')
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv'),
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv')
                     )
                 )
                 input[1] = file('${projectDir}/bin/clinical_common.R')

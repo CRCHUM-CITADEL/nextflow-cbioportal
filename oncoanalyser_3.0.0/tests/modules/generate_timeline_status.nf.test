@@ -20,7 +20,7 @@ nextflow_process {
                         file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
                         file('${projectDir}/assets/test_data/clinical/follow_ups.csv'),
                         [],
-                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv')
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv')
                     )
                 )
                 input[1] = file('${projectDir}/bin/clinical_common.R')
@@ -56,7 +56,7 @@ nextflow_process {
                         file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
                         [],
                         [],
-                        file('${projectDir}/assets/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv')
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv')
                     )
                 )
                 input[1] = file('${projectDir}/bin/clinical_common.R')

@@ -8,7 +8,7 @@ process SIGPROFILER_ID {
 
     input:
         tuple val(meta), path(somatic_vcf)
-        path cosmic_zip
+        path signatures_db  // COSMIC v3.6 ID-83 reference CSV
         path id_metadata
         path fasta
 
@@ -21,12 +21,10 @@ process SIGPROFILER_ID {
 
     script:
     """
-    python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1]).extract('COSMIC_Human_ID-83_GRCh38_v3.6.csv')" ${cosmic_zip}
-
     run_sigprofiler_id.py \\
         --vcf             ${somatic_vcf} \\
         --fasta           ${fasta} \\
-        --signatures_db   COSMIC_Human_ID-83_GRCh38_v3.6.csv \\
+        --signatures_db   ${signatures_db} \\
         --metadata        ${id_metadata} \\
         --sample          ${meta.sample} \\
         --output_contrib  ${meta.sample}.data_mutational_signatures_contribution_ID.txt \\

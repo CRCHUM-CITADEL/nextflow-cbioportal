@@ -16,7 +16,14 @@ process CONVERT_CPSR_TO_MAF {
     """
     zcat $ger_dna_tsv_gz > tmp.tsv
     head -1 tmp.tsv > tmp.germline.cpsr.tsv
-    awk -F"\\t" '\$52=="Pathogenic" || \$52=="Likely_Pathogenic" || \$52=="VUS"' tmp.tsv >> tmp.germline.cpsr.tsv
+
+    # Keep ClinVar P/LP/VUS; column found by name since its position and spelling vary across cpsr versions.
+    CLINVAR_COL=\$(head -1 tmp.tsv | tr '\\t' '\\n' | grep -n -x 'CLINVAR_CLASSIFICATION' | cut -d: -f1)
+    if [ -z "\$CLINVAR_COL" ]; then
+        echo "ERROR: no CLINVAR_CLASSIFICATION column in the header of $ger_dna_tsv_gz" >&2
+        exit 1
+    fi
+    awk -F"\\t" -v col="\$CLINVAR_COL" 'NR>1 && (\$col=="Pathogenic" || \$col=="Likely_Pathogenic" || \$col=="Likely Pathogenic" || \$col=="VUS")' tmp.tsv >> tmp.germline.cpsr.tsv
 
     rm tmp.tsv # to reduce size of work dir
 

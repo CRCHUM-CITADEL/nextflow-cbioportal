@@ -24,8 +24,8 @@ nextflow_process {
                         file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/sigs/T2-T.sig.snv_counts.csv')
                     ]
                 )
-                input[1] = file('${projectDir}/assets/COSMIC_Human_v3.6.zip')
-                input[2] = file('${projectDir}/assets/cosmic_sbs_metadata.tsv')
+                input[1] = file('${projectDir}/assets/test_data/resources/genomic/cosmic_mutational_signatures/COSMIC_Human_SBS-96_GRCh38_v3.6.csv')
+                input[2] = file('${projectDir}/assets/test_data/resources/genomic/cosmic_mutational_signatures/cosmic_sbs_metadata.tsv')
                 """
             }
         }

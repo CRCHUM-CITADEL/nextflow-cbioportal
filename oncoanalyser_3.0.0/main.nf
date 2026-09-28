@@ -17,6 +17,7 @@ include { GENOMIC   } from './workflows/genomic.nf'
 include { CLINICAL  } from './workflows/clinical.nf'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils'
+include { resource                } from './subworkflows/local/utils'
 include { PACKAGE_CBIOPORTAL      } from './modules/local/package_cbioportal'
 
 /*
@@ -49,33 +50,39 @@ workflow {
     //
     if (params.mode in ['genomic', 'both']){
 
-        ch_vep_data    = params.vep_data    ? Channel.fromPath(params.vep_data)    : Channel.empty()
-        ch_pcgr_data   = params.pcgr_data   ? Channel.fromPath(params.pcgr_data)   : Channel.empty()
-        ch_mafsmith_data = params.mafsmith_data ? Channel.fromPath(params.mafsmith_data) : Channel.empty()
+        // Reference files: explicit param, else the resource kit, else '' (download).
+        def vep_data      = resource('vep_data')
+        def pcgr_data     = resource('pcgr_data')
+        def mafsmith_data = resource('mafsmith_data')
+        def hotspots_data = resource('cancer_hotspots_data')
+
+        ch_vep_data      = vep_data      ? Channel.fromPath(vep_data)      : Channel.empty()
+        ch_pcgr_data     = pcgr_data     ? Channel.fromPath(pcgr_data)     : Channel.empty()
+        ch_mafsmith_data = mafsmith_data ? Channel.fromPath(mafsmith_data) : Channel.empty()
 
         // cosmic_data / chimer_data are passed on as plain param strings, not channels —
         // GENOMIC_ML tests them with a truth check to decide whether to run the ML SV
         // step, which a channel cannot answer. (Two ch_* channels built here were never
         // wired to anything and have been removed.)
 
-        ch_hotspots_data = params.cancer_hotspots_data ? Channel.fromPath(params.cancer_hotspots_data).first() : Channel.value([])
+        ch_hotspots_data = hotspots_data ? Channel.fromPath(hotspots_data).first() : Channel.value([])
 
-        needs_vep_download      = !params.vep_data
-        needs_pcgr_download     = !params.pcgr_data
-        needs_mafsmith_download = !params.mafsmith_data
+        needs_vep_download      = !vep_data
+        needs_pcgr_download     = !pcgr_data
+        needs_mafsmith_download = !mafsmith_data
 
         GENOMIC (
             PIPELINE_INITIALISATION.out.genomic_samplesheet,
-            params.ensembl_annotations,
+            resource('ensembl_annotations'),
             ch_vep_data,
             ch_pcgr_data,
             ch_mafsmith_data,
             needs_vep_download,
             needs_pcgr_download,
             needs_mafsmith_download,
-            params.genome_reference,
+            resource('genome_reference'),
             params.cosmic_data,
-            params.chimer_data,
+            resource('chimer_data'),
             ch_hotspots_data,
         )
     }

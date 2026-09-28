@@ -18,6 +18,7 @@ include { SIGPROFILER_SBS               } from '../modules/local/sigprofiler_sbs
 include { SIGPROFILER_DBS              } from '../modules/local/sigprofiler_dbs'
 include { SIGPROFILER_ID               } from '../modules/local/sigprofiler_id'
 include { SIGS_COUNTS_TO_CBIOPORTAL    } from '../modules/local/sigs_counts_to_cbioportal'
+include { resource                     } from '../subworkflows/local/utils'
 
 
 // Resolve an oncoanalyser output file path; log a warning and return null if absent.
@@ -353,11 +354,11 @@ workflow GENOMIC {
 
         ISOFOX_FUSION_TO_CBIOPORTAL(ch_isofox_fusion)
 
-        SIGPROFILER_SBS(ch_sigs_for_assignment, file(params.cosmic_reference), file(params.sbs_metadata))
+        SIGPROFILER_SBS(ch_sigs_for_assignment, file(resource('sbs_signatures')), file(resource('sbs_metadata')))
 
-        SIGPROFILER_DBS(ch_sigs_dbs, file(params.cosmic_reference), file(params.dbs_metadata))
+        SIGPROFILER_DBS(ch_sigs_dbs, file(resource('dbs_signatures')), file(resource('dbs_metadata')))
 
-        SIGPROFILER_ID(ch_sigs_id, file(params.cosmic_reference), file(params.id_metadata), fasta)
+        SIGPROFILER_ID(ch_sigs_id, file(resource('id_signatures')), file(resource('id_metadata')), fasta)
 
         SIGS_COUNTS_TO_CBIOPORTAL(ch_sigs_counts)
 

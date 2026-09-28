@@ -14,20 +14,13 @@ Requires Nextflow >= 26.04.4.
   `mafsmith vcf2maf` always reads `$HOME/.mafsmith`, ignoring `--data-dir`, so the
   module sets `HOME=./` and symlinks `mafsmith_data` in as `.mafsmith`.
   `genome_reference` is still required, but now only by SigProfiler
-- `mafsmith_data` is optional: empty means `DOWNLOAD_MAFSMITH` runs `mafsmith fetch`
-  (`storeDir assets/mafsmith`), gated on `ch_has_work` like the VEP/PCGR downloads.
-  **Prefer pre-staging it.** The fetch pulls Ensembl's primary assembly (contigs
-  `1`/`2`/`X`) while oncoanalyser aligns against GATK hg38 (`chr1`/`chr2`/`chrX`), and
-  mafsmith's reference must match the genome the mutations were called on. A hand-built
-  bundle takes `--gff3` and `--ref-fasta` — **both or neither**, since `fetch` only
-  takes the link path when it has the pair, and otherwise downloads both
-- fastvep is **built into the container**, not fetched at run time: `resolve_fastvep()`
-  falls back to `which fastvep` when `<data-dir>/bin/fastvep` is missing. That is why
-  `DOWNLOAD_MAFSMITH` can pass `--skip-fastvep` and the image needs no cargo toolchain
-  at run time. The image is `containers/mafsmith-fastvep_v0.1.0-0.4.0.def` (tag
-  `mafsmith-fastvep:<mafsmith>-<fastvep>`): a two-stage build, Rust toolchain in the
-  build stage only, both tools `cargo install --git … --tag` (fastVEP with `--locked`).
-  Bump a version → rename the def and tag
+- `mafsmith_data` comes from the resource kit. Without it, `DOWNLOAD_MAFSMITH` runs `mafsmith fetch`
+  (testing only): that pulls Ensembl contig names (`1`/`X`), not the GATK hg38 `chr1`/`chrX` the
+  calls use. A hand-built bundle needs `--gff3` and `--ref-fasta` together
+- **Production MAFs use the kit's fastVEP 0.3.0**, not the container's 0.4.0: mafsmith prefers
+  `<data-dir>/bin/fastvep`. Switching is an output change and a new kit version
+- The mafsmith image is `containers/mafsmith-fastvep_v0.1.0-0.4.0.def` (tag
+  `mafsmith-fastvep:<mafsmith>-<fastvep>`); bump a version → rename the def and tag
 - **mafsmith does not derive `--vcf-tumor-id` from `--tumor-id`** (vcf2maf.pl did). The
   barcode flags only name the MAF columns; without `--vcf-tumor-id` / `--vcf-normal-id`
   mafsmith takes the FIRST VCF sample as the tumor — the normal, in PAVE's layout — and
@@ -55,7 +48,7 @@ Requires Nextflow >= 26.04.4.
   (an unknown name silently yields an empty column). `RefSeq` and `VARIANT_CLASS` have no
   fastVEP counterpart and cannot be restored
 - `CONVERT_CPSR_TO_MAF` merges CPSR germline calls (`Mutation_Status=Germline`, filtered to
-  Pathogenic / Likely_Pathogenic / VUS on the CPSR TSV's 52nd field) into the somatic+RNA MAF,
+  ClinVar Pathogenic / Likely Pathogenic / VUS) into the somatic+RNA MAF,
   then drops `Intron`/`IGR` rows. `gen_convert_cpsr_to_maf.R` keys each germline row on the
   **incoming MAF's header** and pins it back to those columns before appending — `maf_entry$X <- v`
   appends a slot when `X` is absent, and `rbind()` onto a zero-row frame widens silently rather
@@ -109,8 +102,12 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   `ImportCnaDiscreteLongData` has no try/catch. An absent (gene, sample) pair is
   the correct way to say "not profiled" — the importer folds DISCRETE_LONG into
   the wide DISCRETE form and renders a missing pair as an empty cell
+- `CONVERT_CPSR_TO_MAF` finds `CLINVAR_CLASSIFICATION` **by name** (cpsr 2.3.0 moved it from field 52)
+  and accepts both `Likely_Pathogenic` and `Likely Pathogenic`
+- **PCGR 2.3.x only accepts bundle 20260620 and VEP 115** — bump `container_pcgr`, the kit's bundle
+  and its VEP cache together. The `test` profile stays on PCGR 2.1.2 to match its downloads
 - No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes
-- VEP/PCGR data must be pre-staged
+- Reference data comes from the resource kit (`--resources_dir`); see Configuration Layout
 - Nextflow optional outputs: `optional: true` is an option on the whole output
   declaration, NOT an argument to `path()`. `tuple val(x), path("f.txt"), emit: y,
 optional: true` works; `path("f.txt", optional: true)` silently does nothing and
@@ -132,17 +129,27 @@ Nextflow auto-loads `$projectDir/nextflow.config`, and it is the only home of th
 the manifest, and the `conf/*.config` includes.
 
 Site-specific values live in `nextflow_citadel.config`, loaded by the `citadel`
-profile — `/project/60005` reference data, prebuilt `.sif` containers,
-`--account=def-chasse`, scratch, and the shared Apptainer cache:
+profile — where the resource kit lives, the licensed `cosmic_data`, prebuilt `.sif`
+containers, `--account=def-chasse`, scratch, and the shared Apptainer cache:
 
 ```bash
 nextflow run main.nf -profile slurm,apptainer,citadel ...   # CRCHUM; citadel LAST
-nextflow run main.nf -profile apptainer --ensembl_annotations ... --genome_reference ...
+nextflow run main.nf -profile apptainer --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0 ...
 ```
 
-`ensembl_annotations` and `genome_reference` have no default and are required for
-genomic/both mode; `mafsmith_data`, `vep_data` and `pcgr_data` are optional and
-auto-download when empty. (`ensembl_annotations_expr` was dropped in 4.0.0 —
+**Reference data is one versioned resource kit** (docs/resources.md), passed as `resources_dir`.
+Every reference param defaults to `""` and is resolved by `resource(name)` in
+`subworkflows/local/utils/main.nf`: explicit param, else the kit file, else `""`.
+`resourceLayout()` is the single table of kit paths — read reference files through `resource()`,
+never `params.X`.
+
+- Resolved at **run time**: a config default built from `params.resources_dir` misses a value set
+  inside a profile (`-profile citadel`).
+- The run stops if `resources_dir/VERSION` differs from `params.resources_version`.
+- `cosmic_data` is never in the kit (licence-gated).
+- The `test` profile uses a mini-kit in `assets/test_data/resources/` (small files only).
+
+(`ensembl_annotations_expr` was dropped in 4.0.0 —
 Isofox expression now maps Ensembl→Entrez through `ensembl_annotations` too.) Note
 `.gitignore` has a `/nextflow_*.config` rule with an explicit negation for
 `nextflow_citadel.config`.
@@ -150,7 +157,7 @@ Isofox expression now maps Ensembl→Entrez through `ensembl_annotations` too.) 
 `cosmic_data` and `chimer_data` are **all-or-nothing** — `FORMAT_PROCESS_ML_SV`
 unions the two fusion lists, so one without the other reaches the process with an
 empty `path` input and aborts the run with a bare `Path must not be empty`. Only
-`cosmic_data` is site-specific (licence-gated); ChimerKB ships in `assets/` and is
+`cosmic_data` is site-specific (licence-gated); ChimerKB ships in the resource kit and is
 the portable default, so in practice setting `cosmic_data` is what switches the ML
 SV step on. `PIPELINE_INITIALISATION` rejects the half-configured case up front, and
 `GENOMIC_ML` gates on both. Note the `test` profile leaves `cosmic_data` empty, so

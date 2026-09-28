@@ -12,8 +12,7 @@ process PROCESS_ML_MUTATION {
         path "mutations_processed_*.tsv"
 
     script:
-    // hotspots_json is [] (falsy in Groovy) when params.cancer_hotspots_data is unset;
-    // the R script falls back to a live GET when it gets no second argument.
+    // hotspots_json is [] when no snapshot is available; the R script then fetches it live.
     def hotspots_arg = hotspots_json ? "${hotspots_json}" : ""
     """
     ml_mutation_processor.R $mutation_results $hotspots_arg

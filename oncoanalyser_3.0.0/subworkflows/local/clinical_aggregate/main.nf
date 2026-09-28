@@ -10,6 +10,7 @@ include { GENERATE_TIMELINE_STATUS }                 from '../../../modules/loca
 include { GENERATE_TIMELINE_SPECIMEN }               from '../../../modules/local/generate_timeline_specimen'
 include { GENERATE_TIMELINE_LAB_TEST }               from '../../../modules/local/generate_timeline_lab_test'
 include { MERGE_TIMELINE }                           from '../../../modules/local/merge_timeline'
+include { resource }                                 from '../utils'
 
 workflow CLINICAL_AGGREGATE {
     take:
@@ -55,9 +56,9 @@ workflow CLINICAL_AGGREGATE {
                     csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
                     csv_map.biomarkers           ? file(csv_map.biomarkers)           : [],
                     csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
-                    file(params.mohccn_primary_site_map),
-                    file(params.mohccn_specimen_tissue_source_map),
-                    file(params.mohccn_treatment_intent_map)
+                    file(resource('mohccn_primary_site_map')),
+                    file(resource('mohccn_specimen_tissue_source_map')),
+                    file(resource('mohccn_treatment_intent_map'))
                 )
             }
             .set { ch_build_input }
@@ -127,8 +128,8 @@ data_filename: data_clinical_patient.txt
                     csv_map.treatments           ? file(csv_map.treatments)           : [],
                     csv_map.surgeries            ? file(csv_map.surgeries)            : [],
                     csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
-                    file(params.mohccn_primary_site_map),
-                    file(params.mohccn_treatment_intent_map)
+                    file(resource('mohccn_primary_site_map')),
+                    file(resource('mohccn_treatment_intent_map'))
                 )
             }
             .set { ch_surgery_input }
@@ -142,7 +143,7 @@ data_filename: data_clinical_patient.txt
                     csv_map.treatments           ? file(csv_map.treatments)           : [],
                     csv_map.systemic_therapies   ? file(csv_map.systemic_therapies)   : [],
                     csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
-                    file(params.mohccn_treatment_intent_map)
+                    file(resource('mohccn_treatment_intent_map'))
                 )
             }
             .set { ch_treatment_input }
@@ -155,7 +156,7 @@ data_filename: data_clinical_patient.txt
                     csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
                     csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
                     csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
-                    file(params.mohccn_primary_site_map)
+                    file(resource('mohccn_primary_site_map'))
                 )
             }
             .set { ch_status_input }
@@ -169,8 +170,8 @@ data_filename: data_clinical_patient.txt
                     csv_map.specimens            ? file(csv_map.specimens)            : [],
                     csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
                     csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
-                    file(params.mohccn_primary_site_map),
-                    file(params.mohccn_specimen_tissue_source_map)
+                    file(resource('mohccn_primary_site_map')),
+                    file(resource('mohccn_specimen_tissue_source_map'))
                 )
             }
             .set { ch_specimen_input }

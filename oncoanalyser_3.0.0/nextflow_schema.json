@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-cbioportal//nextflow_schema.json",
+    "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-cbioportal/main/oncoanalyser_3.0.0/nextflow_schema.json",
     "title": "CRCHUM-CITADEL/nextflow-cbioportal pipeline parameters",
-    "description": "Pipeline Nextflow pour besoin des projets sant\u00e9 de pr\u00e9cision",
+    "description": "Converts oncoanalyser 3.0 WGS/WTS output and ARGO/MOHCCN clinical CSVs into cBioPortal study files",
     "type": "object",
     "$defs": {
         "input_output_options": {
@@ -19,8 +19,8 @@
                     "schema": "assets/schema_genomic_input.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with X columns, and a header row.",
+                    "description": "Path to the genomic samplesheet: one row per subject, pointing at its oncoanalyser output directory.",
+                    "help_text": "Comma-separated file with a header row and the columns group, subject_id, sample_id, folder. Generate it with bin/generate_samplesheet.py; see docs/usage.txt.",
                     "fa_icon": "fas fa-file-csv"
                 },
                 "clinical_samplesheet": {
@@ -30,8 +30,8 @@
                     "schema": "assets/schema_clinical_input.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 4 columns, and a header row.",
+                    "description": "Path to the clinical samplesheet: one row per ARGO/MOHCCN clinical CSV.",
+                    "help_text": "Comma-separated file with a header row and the columns group_id, filetype, filepath, extraction_date, info (info may be empty). Generate it with bin/generate_clinical_samplesheet.py; see docs/usage.txt.",
                     "fa_icon": "fas fa-file-csv"
                 },
                 "outdir": {
@@ -46,6 +46,215 @@
                     "description": "The pipeline mode you'd like to run. Either 'clinical', 'genomic', or 'both'",
                     "enum": ["clinical", "genomic", "both"],
                     "fa_icon": "fas fa-folder-open"
+                },
+                "sample_registrations": {
+                    "type": "string",
+                    "description": "Path to sample_registrations.csv for template clinical output (used when no clinical_samplesheet is provided)."
+                },
+                "email": {
+                    "type": "string",
+                    "description": "Email address for completion summary."
+                }
+            }
+        },
+        "study_options": {
+            "title": "cBioPortal study options",
+            "type": "object",
+            "fa_icon": "fas fa-book",
+            "description": "Metadata written into meta_study.txt and the cancer type files.",
+            "properties": {
+                "study_id": {
+                    "type": "string",
+                    "description": "Study identifier used for meta_study.txt name and the top-level output folder for all files."
+                },
+                "project_description": {
+                    "type": "string",
+                    "description": "Project description used for the desc value of meta_study.txt."
+                },
+                "cancer_type": {
+                    "type": "string",
+                    "description": "Cancer type abbreviation for cBioPortal (e.g. mixed, lung, brca)."
+                },
+                "incremental": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Set on a follow-up load into a study cBioPortal already holds: cancer_type.txt and meta_cancer_type.txt are skipped so the cancer type is not registered twice. Per-subject output caching is automatic and needs no flag."
+                }
+            }
+        },
+        "reference_data_options": {
+            "title": "Reference data options",
+            "type": "object",
+            "fa_icon": "fas fa-dna",
+            "description": "Reference data comes from the versioned resource kit (docs/resources.md).",
+            "help_text": "Pass --resources_dir and every reference file is read from the kit. The hidden parameters in this group override single kit files; use --showHidden to list them.",
+            "properties": {
+                "resources_dir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Extracted resource kit directory (the one holding VERSION); every reference file is read from it."
+                },
+                "cosmic_data": {
+                    "type": "string",
+                    "description": "Path to COSMIC fusion TSV for ML SV processing."
+                },
+                "mafsmith_retain_ann": {
+                    "type": "string",
+                    "description": "Comma-separated VEP CSQ subfields to retain as extra MAF columns beyond mafsmith's 53 standard ones. Names must match fastVEP's CSQ field list; an unknown name yields an empty column. Empty disables the flag."
+                },
+                "resources_version": {
+                    "type": "string",
+                    "default": "1.0.0",
+                    "description": "Kit version this release needs; must match resources_dir/VERSION.",
+                    "hidden": true
+                },
+                "ensembl_annotations": {
+                    "type": "string",
+                    "description": "Ensembl 113 BioMart TSV (gene/Entrez mapping for CNV, SV and expression).",
+                    "hidden": true
+                },
+                "genome_reference": {
+                    "type": "string",
+                    "description": "GRCh38 FASTA, used by SigProfiler.",
+                    "hidden": true
+                },
+                "vep_data": {
+                    "type": "string",
+                    "hidden": true,
+                    "description": "VEP cache directory used by PCGR."
+                },
+                "pcgr_data": {
+                    "type": "string",
+                    "hidden": true,
+                    "description": "PCGR reference bundle directory."
+                },
+                "mafsmith_data": {
+                    "type": "string",
+                    "description": "mafsmith home directory (reference + fastVEP).",
+                    "hidden": true
+                },
+                "chimer_data": {
+                    "type": "string",
+                    "description": "ChimerKB fusion workbook for ML SV.",
+                    "hidden": true
+                },
+                "cancer_hotspots_data": {
+                    "type": "string",
+                    "description": "cancerhotspots.org snapshot; fetched live if absent.",
+                    "hidden": true
+                },
+                "sbs_signatures": {
+                    "type": "string",
+                    "description": "COSMIC v3.6 SBS-96 signature CSV.",
+                    "hidden": true
+                },
+                "dbs_signatures": {
+                    "type": "string",
+                    "description": "COSMIC v3.6 DBS-78 signature CSV.",
+                    "hidden": true
+                },
+                "id_signatures": {
+                    "type": "string",
+                    "description": "COSMIC v3.6 ID-83 signature CSV.",
+                    "hidden": true
+                },
+                "sbs_metadata": {
+                    "type": "string",
+                    "description": "COSMIC SBS signature metadata TSV.",
+                    "hidden": true
+                },
+                "dbs_metadata": {
+                    "type": "string",
+                    "description": "COSMIC DBS signature metadata TSV.",
+                    "hidden": true
+                },
+                "id_metadata": {
+                    "type": "string",
+                    "description": "COSMIC ID signature metadata TSV.",
+                    "hidden": true
+                },
+                "mohccn_primary_site_map": {
+                    "type": "string",
+                    "description": "Path to MOHCCN primary site mapping CSV (ICD-O topography codes).",
+                    "hidden": true
+                },
+                "mohccn_specimen_tissue_source_map": {
+                    "type": "string",
+                    "description": "Path to MOHCCN specimen tissue source mapping CSV.",
+                    "hidden": true
+                },
+                "mohccn_treatment_intent_map": {
+                    "type": "string",
+                    "description": "Path to MOHCCN treatment intent mapping CSV.",
+                    "hidden": true
+                }
+            }
+        },
+        "container_options": {
+            "title": "Container options",
+            "type": "object",
+            "fa_icon": "fab fa-docker",
+            "description": "Container images. Site configs point these at prebuilt .sif files for offline compute nodes.",
+            "properties": {
+                "container_r": {
+                    "type": "string",
+                    "description": "R image for bin/ scripts (oras://, docker:// or a local .sif)."
+                },
+                "container_python": {
+                    "type": "string",
+                    "description": "Python image for bin/ scripts (oras://, docker:// or a local .sif)."
+                },
+                "container_pcgr": {
+                    "type": "string",
+                    "description": "PCGR/CPSR image (oras://, docker:// or a local .sif). Must match the kit's PCGR bundle and VEP cache."
+                },
+                "container_sigprofiler": {
+                    "type": "string",
+                    "description": "SigProfilerAssignment image (oras://, docker:// or a local .sif)."
+                },
+                "container_mafsmith": {
+                    "type": "string",
+                    "description": "mafsmith + fastVEP image used for VCF to MAF (oras://, docker:// or a local .sif)."
+                }
+            }
+        },
+        "institutional_config_options": {
+            "title": "Institutional config options",
+            "type": "object",
+            "fa_icon": "fas fa-university",
+            "description": "Parameters used to describe centralised config profiles. These should not be edited.",
+            "properties": {
+                "custom_config_version": {
+                    "type": "string",
+                    "default": "master",
+                    "description": "Git commit id of nf-core/configs to load institutional profiles from.",
+                    "hidden": true
+                },
+                "custom_config_base": {
+                    "type": "string",
+                    "default": "https://raw.githubusercontent.com/nf-core/configs/master",
+                    "description": "Base location of nf-core/configs; set to a local path for offline runs.",
+                    "hidden": true
+                },
+                "config_profile_name": {
+                    "type": "string",
+                    "description": "Institutional config name.",
+                    "hidden": true
+                },
+                "config_profile_description": {
+                    "type": "string",
+                    "description": "Institutional config description.",
+                    "hidden": true
+                },
+                "config_profile_contact": {
+                    "type": "string",
+                    "description": "Institutional config contact information.",
+                    "hidden": true
+                },
+                "config_profile_url": {
+                    "type": "string",
+                    "description": "Institutional config URL link.",
+                    "hidden": true
                 }
             }
         },
@@ -67,6 +276,31 @@
                     "fa_icon": "far calendar",
                     "description": "Suffix to add to the trace report filename. Default is the date and time in the format yyyy-MM-dd_HH-mm-ss.",
                     "hidden": true
+                },
+                "email_on_fail": {
+                    "type": "string",
+                    "description": "Email address for completion summary, only when the pipeline fails.",
+                    "hidden": true
+                },
+                "plaintext_email": {
+                    "type": "boolean",
+                    "description": "Send plain-text email instead of HTML.",
+                    "hidden": true
+                },
+                "monochrome_logs": {
+                    "type": "boolean",
+                    "description": "Do not use coloured log outputs.",
+                    "hidden": true
+                },
+                "hook_url": {
+                    "type": "string",
+                    "description": "Incoming webhook URL (Slack or Microsoft Teams) for completion notifications.",
+                    "hidden": true
+                },
+                "input_dir": {
+                    "type": "string",
+                    "description": "Unused; kept so existing configs that set it still validate.",
+                    "hidden": true
                 }
             }
         }
@@ -76,182 +310,19 @@
             "$ref": "#/$defs/input_output_options"
         },
         {
+            "$ref": "#/$defs/study_options"
+        },
+        {
+            "$ref": "#/$defs/reference_data_options"
+        },
+        {
+            "$ref": "#/$defs/container_options"
+        },
+        {
+            "$ref": "#/$defs/institutional_config_options"
+        },
+        {
             "$ref": "#/$defs/generic_options"
         }
-    ],
-    "properties": {
-        "email": {
-            "type": "string",
-            "description": "Email address for completion summary."
-        },
-        "email_on_fail": {
-            "type": "string",
-            "description": "Email address for completion summary, only when the pipeline fails."
-        },
-        "plaintext_email": {
-            "type": "boolean"
-        },
-        "monochrome_logs": {
-            "type": "boolean"
-        },
-        "hook_url": {
-            "type": "string"
-        },
-        "config_profile_name": {
-            "type": "string"
-        },
-        "config_profile_description": {
-            "type": "string"
-        },
-        "custom_config_version": {
-            "type": "string",
-            "default": "master"
-        },
-        "custom_config_base": {
-            "type": "string",
-            "default": "https://raw.githubusercontent.com/nf-core/configs/master"
-        },
-        "config_profile_contact": {
-            "type": "string"
-        },
-        "config_profile_url": {
-            "type": "string"
-        },
-        "resources_dir": {
-            "type": "string",
-            "format": "directory-path",
-            "description": "Extracted resource kit directory (the one holding VERSION); every reference file is read from it."
-        },
-        "resources_version": {
-            "type": "string",
-            "default": "1.0.0",
-            "description": "Kit version this release needs; must match resources_dir/VERSION.",
-            "hidden": true
-        },
-        "ensembl_annotations": {
-            "type": "string",
-            "description": "Ensembl 113 BioMart TSV (gene/Entrez mapping for CNV, SV and expression).",
-            "hidden": true
-        },
-        "container_pcgr": {
-            "type": "string"
-        },
-        "container_python": {
-            "type": "string"
-        },
-        "container_r": {
-            "type": "string"
-        },
-        "container_sigprofiler": {
-            "type": "string"
-        },
-        "container_mafsmith": {
-            "type": "string"
-        },
-        "input_dir": {
-            "type": "string"
-        },
-        "genome_reference": {
-            "type": "string",
-            "description": "GRCh38 FASTA, used by SigProfiler.",
-            "hidden": true
-        },
-        "vep_data": {
-            "type": "string",
-            "hidden": true
-        },
-        "pcgr_data": {
-            "type": "string",
-            "hidden": true
-        },
-        "mafsmith_retain_ann": {
-            "type": "string",
-            "description": "Comma-separated VEP CSQ subfields to retain as extra MAF columns beyond mafsmith's 53 standard ones. Names must match fastVEP's CSQ field list; an unknown name yields an empty column. Empty disables the flag."
-        },
-        "mafsmith_data": {
-            "type": "string",
-            "description": "mafsmith home directory (reference + fastVEP).",
-            "hidden": true
-        },
-        "sample_registrations": {
-            "type": "string",
-            "description": "Path to sample_registrations.csv for template clinical output (used when no clinical_samplesheet is provided)."
-        },
-        "study_id": {
-            "type": "string",
-            "description": "Study identifier used for meta_study.txt name and the top-level output folder for all files."
-        },
-        "project_description": {
-            "type": "string",
-            "description": "Project description used for the desc value of meta_study.txt."
-        },
-        "cosmic_data": {
-            "type": "string",
-            "description": "Path to COSMIC fusion TSV for ML SV processing."
-        },
-        "chimer_data": {
-            "type": "string",
-            "description": "ChimerKB fusion workbook for ML SV.",
-            "hidden": true
-        },
-        "cancer_hotspots_data": {
-            "type": "string",
-            "description": "cancerhotspots.org snapshot; fetched live if absent.",
-            "hidden": true
-        },
-        "sbs_metadata": {
-            "type": "string",
-            "description": "COSMIC SBS signature metadata TSV.",
-            "hidden": true
-        },
-        "dbs_metadata": {
-            "type": "string",
-            "description": "COSMIC DBS signature metadata TSV.",
-            "hidden": true
-        },
-        "id_metadata": {
-            "type": "string",
-            "description": "COSMIC ID signature metadata TSV.",
-            "hidden": true
-        },
-        "cancer_type": {
-            "type": "string",
-            "description": "Cancer type abbreviation for cBioPortal (e.g. mixed, lung, brca)."
-        },
-        "mohccn_primary_site_map": {
-            "type": "string",
-            "description": "Path to MOHCCN primary site mapping CSV (ICD-O topography codes).",
-            "hidden": true
-        },
-        "mohccn_specimen_tissue_source_map": {
-            "type": "string",
-            "description": "Path to MOHCCN specimen tissue source mapping CSV.",
-            "hidden": true
-        },
-        "mohccn_treatment_intent_map": {
-            "type": "string",
-            "description": "Path to MOHCCN treatment intent mapping CSV.",
-            "hidden": true
-        },
-        "incremental": {
-            "type": "boolean",
-            "default": false,
-            "description": "Set on a follow-up load into a study cBioPortal already holds: cancer_type.txt and meta_cancer_type.txt are skipped so the cancer type is not registered twice. Per-subject output caching is automatic and needs no flag."
-        },
-        "sbs_signatures": {
-            "type": "string",
-            "description": "COSMIC v3.6 SBS-96 signature CSV.",
-            "hidden": true
-        },
-        "dbs_signatures": {
-            "type": "string",
-            "description": "COSMIC v3.6 DBS-78 signature CSV.",
-            "hidden": true
-        },
-        "id_signatures": {
-            "type": "string",
-            "description": "COSMIC v3.6 ID-83 signature CSV.",
-            "hidden": true
-        }
-    }
+    ]
 }

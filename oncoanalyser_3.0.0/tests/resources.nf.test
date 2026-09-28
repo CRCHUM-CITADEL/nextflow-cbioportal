@@ -35,7 +35,7 @@ nextflow_pipeline {
             params {
                 mode          = 'clinical'
                 outdir        = "$outputDir"
-                resources_dir = ''
+                resources_dir = null
             }
         }
 
@@ -57,7 +57,7 @@ nextflow_pipeline {
             params {
                 mode                              = 'clinical'
                 outdir                            = "$outputDir"
-                resources_dir                     = ''
+                resources_dir                     = null
                 mohccn_primary_site_map           = "${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv"
                 mohccn_specimen_tissue_source_map = "${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv"
                 mohccn_treatment_intent_map       = "${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv"

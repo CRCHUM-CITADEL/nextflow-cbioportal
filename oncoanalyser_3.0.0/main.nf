@@ -18,6 +18,7 @@ include { CLINICAL  } from './workflows/clinical.nf'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils'
 include { resource                } from './subworkflows/local/utils'
+include { helpRequested           } from './subworkflows/local/utils'
 include { PACKAGE_CBIOPORTAL      } from './modules/local/package_cbioportal'
 
 /*
@@ -29,6 +30,11 @@ include { PACKAGE_CBIOPORTAL      } from './modules/local/package_cbioportal'
 workflow {
 
     main:
+
+    // The help text is already printed; stop before any input check can fail.
+    if (helpRequested()) {
+        return
+    }
 
     //
     // SUBWORKFLOW: Run initialisation tasks and checks

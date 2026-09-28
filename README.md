@@ -14,3 +14,7 @@ Each directory is named after the upstream tool version it consumes, not after i
 release version.
 
 Each pipeline is self-contained. Consult the pipeline-specific README for setup, configuration, samplesheet format, and run instructions.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The licence covers the pipeline code only; third-party tools, container images and reference data (including the resource kit and COSMIC) keep their own licences.

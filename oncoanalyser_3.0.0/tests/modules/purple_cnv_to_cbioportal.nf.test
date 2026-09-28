@@ -61,4 +61,203 @@ nextflow_process {
             ]
         }
     }
+
+    test("chrX/chrY scored against the PURPLE gender call: MALE") {
+
+        // Issue #40: sex is PURPLE's own estimate from the sequencing data (AMBER/COBALT),
+        // never clinical data -- a male's chrX/chrY are haploid: one copy is neutral, and a loss of that copy is -2.
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/sex_chromosomes.cnv.somatic.tsv'),
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/unparseable_min_cn.cnv.gene.tsv'),
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/male.purple.purity.tsv')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def long_lines = path(process.out.long.collect { meta, f -> f }[0].toString()).readLines()
+            def long_cols  = long_lines[0].split('\t') as List
+            def value_by_gene = long_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
+                [(it[long_cols.indexOf('Hugo_Symbol')]): it[long_cols.indexOf('Value')]]
+            }
+            // Autosomes never depend on sex.
+            assert value_by_gene == [
+                'PFKL'         : '-1',
+                'HUNK'         : '-2',
+                'XGENE_NEUTRAL': '0',
+                'XGENE_DEL'    : '-2',
+                'YGENE_NEUTRAL': '0',
+            ]
+
+            def seg_lines = path(process.out.seg.collect { meta, f -> f }[0].toString()).readLines()
+            def seg_cols  = seg_lines[0].split('\t') as List
+            def mean_by_chrom = seg_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
+                [(it[seg_cols.indexOf('chrom')]): it[seg_cols.indexOf('seg.mean')]]
+            }
+            // SEG log2 ratios use the same baseline: log2(copyNumber / expected copy number).
+            assert mean_by_chrom == ['21': '0', 'X': '0', 'Y': '0']
+        }
+    }
+
+    test("chrX/chrY scored against the PURPLE gender call: FEMALE") {
+
+        // Issue #40: sex is PURPLE's own estimate from the sequencing data (AMBER/COBALT),
+        // never clinical data -- a female's chrX is diploid and her chrY was never measured, so chrY is dropped rather than called a deletion.
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/sex_chromosomes.cnv.somatic.tsv'),
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/unparseable_min_cn.cnv.gene.tsv'),
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/female.purple.purity.tsv')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def long_lines = path(process.out.long.collect { meta, f -> f }[0].toString()).readLines()
+            def long_cols  = long_lines[0].split('\t') as List
+            def value_by_gene = long_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
+                [(it[long_cols.indexOf('Hugo_Symbol')]): it[long_cols.indexOf('Value')]]
+            }
+            // Autosomes never depend on sex.
+            assert value_by_gene == [
+                'PFKL'         : '-1',
+                'HUNK'         : '-2',
+                'XGENE_NEUTRAL': '-1',
+                'XGENE_DEL'    : '-2',
+            ]
+
+            def seg_lines = path(process.out.seg.collect { meta, f -> f }[0].toString()).readLines()
+            def seg_cols  = seg_lines[0].split('\t') as List
+            def mean_by_chrom = seg_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
+                [(it[seg_cols.indexOf('chrom')]): it[seg_cols.indexOf('seg.mean')]]
+            }
+            // SEG log2 ratios use the same baseline: log2(copyNumber / expected copy number).
+            assert mean_by_chrom == ['21': '0', 'X': '-1']
+        }
+    }
+
+    test("chrX/chrY scored against the PURPLE gender call: MALE_KLINEFELTER") {
+
+        // Issue #40: sex is PURPLE's own estimate from the sequencing data (AMBER/COBALT),
+        // never clinical data -- an XXY sample has two X copies and one Y.
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/sex_chromosomes.cnv.somatic.tsv'),
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/unparseable_min_cn.cnv.gene.tsv'),
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/male_klinefelter.purple.purity.tsv')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def long_lines = path(process.out.long.collect { meta, f -> f }[0].toString()).readLines()
+            def long_cols  = long_lines[0].split('\t') as List
+            def value_by_gene = long_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
+                [(it[long_cols.indexOf('Hugo_Symbol')]): it[long_cols.indexOf('Value')]]
+            }
+            // Autosomes never depend on sex.
+            assert value_by_gene == [
+                'PFKL'         : '-1',
+                'HUNK'         : '-2',
+                'XGENE_NEUTRAL': '-1',
+                'XGENE_DEL'    : '-2',
+                'YGENE_NEUTRAL': '0',
+            ]
+
+            def seg_lines = path(process.out.seg.collect { meta, f -> f }[0].toString()).readLines()
+            def seg_cols  = seg_lines[0].split('\t') as List
+            def mean_by_chrom = seg_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
+                [(it[seg_cols.indexOf('chrom')]): it[seg_cols.indexOf('seg.mean')]]
+            }
+            // SEG log2 ratios use the same baseline: log2(copyNumber / expected copy number).
+            assert mean_by_chrom == ['21': '0', 'X': '-1', 'Y': '0']
+        }
+    }
+
+    test("chrX/chrY scored against the PURPLE gender call: UNKNOWN") {
+
+        // Issue #40: sex is PURPLE's own estimate from the sequencing data (AMBER/COBALT),
+        // never clinical data -- an unrecognised gender falls back to the diploid baseline everywhere.
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'cnv'],
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/sex_chromosomes.cnv.somatic.tsv'),
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/unparseable_min_cn.cnv.gene.tsv'),
+                        file('${projectDir}/tests/modules/fixtures/purple_cnv/unknown.purple.purity.tsv')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def long_lines = path(process.out.long.collect { meta, f -> f }[0].toString()).readLines()
+            def long_cols  = long_lines[0].split('\t') as List
+            def value_by_gene = long_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
+                [(it[long_cols.indexOf('Hugo_Symbol')]): it[long_cols.indexOf('Value')]]
+            }
+            // Autosomes never depend on sex.
+            assert value_by_gene == [
+                'PFKL'         : '-1',
+                'HUNK'         : '-2',
+                'XGENE_NEUTRAL': '-1',
+                'XGENE_DEL'    : '-2',
+                'YGENE_NEUTRAL': '-1',
+            ]
+
+            def seg_lines = path(process.out.seg.collect { meta, f -> f }[0].toString()).readLines()
+            def seg_cols  = seg_lines[0].split('\t') as List
+            def mean_by_chrom = seg_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
+                [(it[seg_cols.indexOf('chrom')]): it[seg_cols.indexOf('seg.mean')]]
+            }
+            // SEG log2 ratios use the same baseline: log2(copyNumber / expected copy number).
+            assert mean_by_chrom == ['21': '0', 'X': '-1', 'Y': '-1']
+        }
+    }
 }

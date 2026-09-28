@@ -11,3 +11,7 @@ This monorepo contains three independent Nextflow DSL2 pipelines that transform 
 | `dragen/`       | DRAGEN somatic/germline + clinical CSVs              | Genomic + clinical files + ML tables → cBioPortal | [dragen/README.md](dragen/README.md)             |
 
 Each pipeline is self-contained. Consult the pipeline-specific README for setup, configuration, samplesheet format, and run instructions.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The licence covers the pipeline code only; third-party tools, container images and reference data (including the resource kit and COSMIC) keep their own licences.

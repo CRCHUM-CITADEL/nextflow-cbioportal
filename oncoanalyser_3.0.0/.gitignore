@@ -38,3 +38,6 @@ modified_code
 bin/new/
 test.*
 test_output/
+
+# Local agent notes, not pipeline content.
+/memory/

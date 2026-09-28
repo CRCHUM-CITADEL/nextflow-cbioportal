@@ -17,20 +17,21 @@ process CONVERT_CPSR_TO_MAF {
     zcat $ger_dna_tsv_gz > tmp.tsv
     head -1 tmp.tsv > tmp.germline.cpsr.tsv
 
-    # Keep P/LP/VUS by CPSR's final call: ClinVar's verdict when ClinVar has one, CPSR's own
-    # ACMG call otherwise. CLINVAR_CLASSIFICATION alone is empty for a variant ClinVar has never
-    # seen, which dropped every novel germline call. cpsr >= 2.3 names the column CLASSIFICATION,
-    # earlier versions FINAL_CLASSIFICATION; found by name since position varies across versions.
-    CLASS_COL=""
-    for name in CLASSIFICATION FINAL_CLASSIFICATION; do
-        CLASS_COL=\$(head -1 tmp.tsv | awk -F"\\t" -v name="\$name" '{for (i = 1; i <= NF; i++) if (\$i == name) { print i; exit }}')
-        if [ -n "\$CLASS_COL" ]; then break; fi
-    done
-    if [ -z "\$CLASS_COL" ]; then
-        echo "ERROR: no CLASSIFICATION or FINAL_CLASSIFICATION column in the header of $ger_dna_tsv_gz" >&2
-        exit 1
+    # Keep P/LP/VUS on CPSR's final call, not CLINVAR_CLASSIFICATION (empty for variants absent from ClinVar).
+    # cpsr >= 2.3 names it CLASSIFICATION, earlier FINAL_CLASSIFICATION.
+    # A header-only file is PCGR's no-variants placeholder: nothing to filter.
+    if [ \$(wc -l < tmp.tsv) -gt 1 ]; then
+        CLASS_COL=""
+        for name in CLASSIFICATION FINAL_CLASSIFICATION; do
+            CLASS_COL=\$(head -1 tmp.tsv | awk -F"\\t" -v name="\$name" '{for (i = 1; i <= NF; i++) if (\$i == name) { print i; exit }}')
+            if [ -n "\$CLASS_COL" ]; then break; fi
+        done
+        if [ -z "\$CLASS_COL" ]; then
+            echo "ERROR: no CLASSIFICATION or FINAL_CLASSIFICATION column in the header of $ger_dna_tsv_gz" >&2
+            exit 1
+        fi
+        awk -F"\\t" -v col="\$CLASS_COL" 'NR>1 && (\$col=="Pathogenic" || \$col=="Likely_Pathogenic" || \$col=="Likely Pathogenic" || \$col=="VUS")' tmp.tsv >> tmp.germline.cpsr.tsv
     fi
-    awk -F"\\t" -v col="\$CLASS_COL" 'NR>1 && (\$col=="Pathogenic" || \$col=="Likely_Pathogenic" || \$col=="Likely Pathogenic" || \$col=="VUS")' tmp.tsv >> tmp.germline.cpsr.tsv
 
     rm tmp.tsv # to reduce size of work dir
 

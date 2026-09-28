@@ -62,10 +62,9 @@ nextflow_process {
         }
     }
 
+    // #40: chrX/chrY baselines follow PURPLE's gender call (from the sequencing data, not clinical data).
     test("chrX/chrY scored against the PURPLE gender call: MALE") {
 
-        // Issue #40: sex is PURPLE's own estimate from the sequencing data (AMBER/COBALT),
-        // never clinical data -- a male's chrX/chrY are haploid: one copy is neutral, and a loss of that copy is -2.
         when {
             params {
                 outdir = "$outputDir"
@@ -93,7 +92,6 @@ nextflow_process {
             def value_by_gene = long_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
                 [(it[long_cols.indexOf('Hugo_Symbol')]): it[long_cols.indexOf('Value')]]
             }
-            // Autosomes never depend on sex.
             assert value_by_gene == [
                 'PFKL'         : '-1',
                 'HUNK'         : '-2',
@@ -107,15 +105,12 @@ nextflow_process {
             def mean_by_chrom = seg_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
                 [(it[seg_cols.indexOf('chrom')]): it[seg_cols.indexOf('seg.mean')]]
             }
-            // SEG log2 ratios use the same baseline: log2(copyNumber / expected copy number).
             assert mean_by_chrom == ['21': '0', 'X': '0', 'Y': '0']
         }
     }
 
     test("chrX/chrY scored against the PURPLE gender call: FEMALE") {
 
-        // Issue #40: sex is PURPLE's own estimate from the sequencing data (AMBER/COBALT),
-        // never clinical data -- a female's chrX is diploid and her chrY was never measured, so chrY is dropped rather than called a deletion.
         when {
             params {
                 outdir = "$outputDir"
@@ -143,7 +138,6 @@ nextflow_process {
             def value_by_gene = long_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
                 [(it[long_cols.indexOf('Hugo_Symbol')]): it[long_cols.indexOf('Value')]]
             }
-            // Autosomes never depend on sex.
             assert value_by_gene == [
                 'PFKL'         : '-1',
                 'HUNK'         : '-2',
@@ -156,15 +150,12 @@ nextflow_process {
             def mean_by_chrom = seg_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
                 [(it[seg_cols.indexOf('chrom')]): it[seg_cols.indexOf('seg.mean')]]
             }
-            // SEG log2 ratios use the same baseline: log2(copyNumber / expected copy number).
             assert mean_by_chrom == ['21': '0', 'X': '-1']
         }
     }
 
     test("chrX/chrY scored against the PURPLE gender call: MALE_KLINEFELTER") {
 
-        // Issue #40: sex is PURPLE's own estimate from the sequencing data (AMBER/COBALT),
-        // never clinical data -- an XXY sample has two X copies and one Y.
         when {
             params {
                 outdir = "$outputDir"
@@ -192,7 +183,6 @@ nextflow_process {
             def value_by_gene = long_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
                 [(it[long_cols.indexOf('Hugo_Symbol')]): it[long_cols.indexOf('Value')]]
             }
-            // Autosomes never depend on sex.
             assert value_by_gene == [
                 'PFKL'         : '-1',
                 'HUNK'         : '-2',
@@ -206,15 +196,12 @@ nextflow_process {
             def mean_by_chrom = seg_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
                 [(it[seg_cols.indexOf('chrom')]): it[seg_cols.indexOf('seg.mean')]]
             }
-            // SEG log2 ratios use the same baseline: log2(copyNumber / expected copy number).
             assert mean_by_chrom == ['21': '0', 'X': '-1', 'Y': '0']
         }
     }
 
     test("chrX/chrY scored against the PURPLE gender call: UNKNOWN") {
 
-        // Issue #40: sex is PURPLE's own estimate from the sequencing data (AMBER/COBALT),
-        // never clinical data -- an unrecognised gender falls back to the diploid baseline everywhere.
         when {
             params {
                 outdir = "$outputDir"
@@ -242,7 +229,6 @@ nextflow_process {
             def value_by_gene = long_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
                 [(it[long_cols.indexOf('Hugo_Symbol')]): it[long_cols.indexOf('Value')]]
             }
-            // Autosomes never depend on sex.
             assert value_by_gene == [
                 'PFKL'         : '-1',
                 'HUNK'         : '-2',
@@ -256,7 +242,6 @@ nextflow_process {
             def mean_by_chrom = seg_lines.drop(1).collect { it.split('\t', -1) }.collectEntries {
                 [(it[seg_cols.indexOf('chrom')]): it[seg_cols.indexOf('seg.mean')]]
             }
-            // SEG log2 ratios use the same baseline: log2(copyNumber / expected copy number).
             assert mean_by_chrom == ['21': '0', 'X': '-1', 'Y': '-1']
         }
     }

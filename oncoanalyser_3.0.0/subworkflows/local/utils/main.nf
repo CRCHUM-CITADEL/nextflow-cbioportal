@@ -295,7 +295,6 @@ def explicitParam(String name) {
 }
 
 
-// nf-schema prints --help / --helpFull and cancels the run, but the workflow body still executes.
 def helpRequested() {
     return ['help', 'helpFull'].any { name -> explicitParam(name) }
 }

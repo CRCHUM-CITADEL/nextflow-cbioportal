@@ -31,7 +31,7 @@ workflow {
 
     main:
 
-    // The help text is already printed; stop before any input check can fail.
+    // nf-schema printed the help but cancels the run only after this body starts.
     if (helpRequested()) {
         return
     }

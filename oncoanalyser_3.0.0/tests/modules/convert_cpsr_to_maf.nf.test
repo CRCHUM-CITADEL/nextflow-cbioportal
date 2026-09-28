@@ -60,10 +60,7 @@ nextflow_process {
             assert rows.any { it[statusCol] == 'Germline' } : "no germline rows merged in"
             assert rows.find { it[statusCol] == 'Germline' }[symbolCol] == 'BRCA1'
 
-            // The filter reads CPSR's final CLASSIFICATION, not CLINVAR_CLASSIFICATION: the
-            // ClinVar-pathogenic row and the stop-gain ClinVar has never seen (empty
-            // CLINVAR_CLASSIFICATION, CPSR's own call Likely Pathogenic) both survive; the
-            // Benign row must not appear.
+            // CPSR's final call keeps the ClinVar row and the novel stop-gain; Benign goes.
             def startCol = header.indexOf('Start_Position')
             def germline = rows.findAll { it[statusCol] == 'Germline' }
             assert germline*.getAt(startCol).sort() == ['43045677', '43045700'] :
@@ -98,8 +95,37 @@ nextflow_process {
             def startCol = header.indexOf('Start_Position')
             def germline = lines.drop(2).collect { it.split('\t', -1) }.findAll { it[statusCol] == 'Germline' }
 
-            // Same rows as above, from the older column name and its Likely_Pathogenic spelling.
             assert germline*.getAt(startCol).sort() == ['43045677', '43045700']
+        }
+    }
+
+    test("header-only placeholder (CPSR found nothing) — no germline rows, no error") {
+
+        config "tests/nextflow_mutations.config"
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    'T1',
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/tests/modules/fixtures/mafsmith_somatic_rna.maf'),
+                    [group: 'TEST', subject: 'T1', sample: 'T1-N'],
+                    file('${projectDir}/tests/modules/fixtures/cpsr_germline_placeholder.tsv.gz')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[1].split('\t', -1) as List
+            def statusCol = header.indexOf('Mutation_Status')
+            def rows = lines.drop(2).collect { it.split('\t', -1) }
+            assert rows.any { it[statusCol] == 'Somatic' }
+            assert !rows.any { it[statusCol] == 'Germline' }
         }
     }
 }

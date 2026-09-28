@@ -39,5 +39,5 @@ bin/new/
 test.*
 test_output/
 
-# Local agent notes, not pipeline content.
+# Agent notes
 /memory/

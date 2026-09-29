@@ -22,6 +22,11 @@ process PCGR {
     """
     mkdir -p ${debug}
 
+    # CPSR annotates every variant itself and aborts when an input INFO tag clashes with one of its
+    # own (PAVE writes IMPACT), so it gets the calls with all INFO removed; FILTER and genotypes stay.
+    bcftools annotate -x INFO -Oz -o cpsr_input.vcf.gz ${ger_dna_vcf}
+    bcftools index -t cpsr_input.vcf.gz
+
     # What CPSR is given: sample columns, genotypes (CPSR drops 0/0), FILTER values, contig names.
     summarise_vcf() {
         echo "records: \$(bcftools view -H "\$1" | wc -l)"
@@ -30,10 +35,10 @@ process PCGR {
         echo "-- FILTER"; bcftools query -f '%FILTER\\n' "\$1" | sort | uniq -c
         echo "-- contigs"; bcftools query -f '%CHROM\\n' "\$1" | uniq | awk 'NR <= 30'
     }
-    { echo "## CPSR input: ${ger_dna_vcf}"; summarise_vcf ${ger_dna_vcf}; } > ${debug}/input_summary.txt 2>&1 || true
+    { echo "## CPSR input (${ger_dna_vcf}, INFO removed)"; summarise_vcf cpsr_input.vcf.gz; } > ${debug}/input_summary.txt 2>&1 || true
 
     cpsr \\
-    --input_vcf ${ger_dna_vcf} \\
+    --input_vcf cpsr_input.vcf.gz \\
     --vep_dir ${vep_data} \\
     --refdata_dir $ref_data \\
     --output_dir . \\
@@ -43,6 +48,14 @@ process PCGR {
     --no_html \\
     --sample_id ${cpsr_id} \\
     ${args} 2>&1 | tee ${debug}/cpsr.log
+
+    # CPSR exits 0 even when it fails (e.g. input validation): an error must stop the task, never
+    # pass for "no variants" and become the header-only placeholder.
+    if grep -q -- '- ERROR -' ${debug}/cpsr.log; then
+        echo "CPSR failed for ${meta.sample}:" >&2
+        grep -- '- ERROR -' ${debug}/cpsr.log >&2
+        exit 1
+    fi
 
     # CPSR's other outputs (annotated PASS VCF/TSV, config, --debug intermediates) for inspection.
     for f in ${cpsr_id}.*; do

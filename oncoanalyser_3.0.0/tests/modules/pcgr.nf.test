@@ -7,15 +7,15 @@ nextflow_process {
     tag "module"
     tag "pcgr"
 
-    test("CPSR's normal-named output is published under the tumour sample name") {
+    test("PAVE INFO tags are stripped; CPSR's normal-named output is published under the tumour sample name") {
 
         when {
             process {
                 """
                 input[0] = Channel.of([
                     [group: 'TEST', subject: 'T1', sample: 'T1-T'],
-                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz'),
-                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz.tbi')
+                    file('${projectDir}/tests/modules/fixtures/pave_germline_impact.vcf.gz'),
+                    file('${projectDir}/tests/modules/fixtures/pave_germline_impact.vcf.gz.tbi')
                 ])
                 input[1] = file('${projectDir}/assets/test_data/annotations')
                 input[2] = file('${projectDir}/assets/test_data/reference')
@@ -64,6 +64,28 @@ nextflow_process {
             assert out.endsWith('EMPTY-T.cpsr.grch38.classification.tsv.gz')
             assert path(out).linesGzip.size() == 1
             assert path("${process.out.debug[0][1]}/cpsr.log").text.contains('header-only placeholder used')
+        }
+    }
+
+    test("CPSR logs an ERROR but exits 0 — the task fails instead of using the placeholder") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'BROKEN', sample: 'BROKEN-T'],
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz'),
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz.tbi')
+                ])
+                input[1] = file('${projectDir}/assets/test_data/annotations')
+                input[2] = file('${projectDir}/assets/test_data/reference')
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains('CPSR failed for BROKEN-T')
         }
     }
 }

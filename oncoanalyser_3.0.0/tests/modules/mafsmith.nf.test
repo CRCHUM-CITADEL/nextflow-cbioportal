@@ -61,6 +61,8 @@ nextflow_process {
 
             assert rows.every { it[col('Tumor_Sample_Barcode')] == 'T1' }
             assert rows.every { it[col('Matched_Norm_Sample_Barcode')] == 'T1-N' }
+            // mafsmith leaves Mutation_Status empty; cBioPortal needs it to tell somatic from germline.
+            assert rows.every { it[col('Mutation_Status')] == 'Somatic' }
         }
     }
 }

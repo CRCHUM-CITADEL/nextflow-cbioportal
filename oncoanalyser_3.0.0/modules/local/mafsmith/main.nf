@@ -74,18 +74,19 @@ process MAFSMITH {
         --output tmp.${meta.sample}.annotated.maf
     mv tmp.${meta.sample}.annotated.maf tmp.${meta.sample}.maf
 
-    # Rewrite Tumor_Sample_Barcode to the cBioPortal sample id. Line 1 of a MAF is
-    # #version and line 2 the column header, so the header names are read from line 2 and
-    # the column is located by name rather than assumed to sit at a fixed position.
-    SAMPLE_COL=\$(sed -n '2p' tmp.${meta.sample}.maf | tr '\\t' '\\n' | grep -n -x 'Tumor_Sample_Barcode' | cut -d: -f1)
-    if [ -z "\$SAMPLE_COL" ]; then
-        echo "ERROR: no Tumor_Sample_Barcode column in the header of tmp.${meta.sample}.maf" >&2
+    # Set Tumor_Sample_Barcode to the cBioPortal sample id and Mutation_Status to Somatic (mafsmith
+    # leaves it empty; cBioPortal tells somatic from germline by it). Columns are found by name on line 2.
+    col_of() { sed -n '2p' tmp.${meta.sample}.maf | awk -F"\\t" -v name="\$1" '{for (i = 1; i <= NF; i++) if (\$i == name) { print i; exit }}'; }
+    SAMPLE_COL=\$(col_of Tumor_Sample_Barcode)
+    STATUS_COL=\$(col_of Mutation_Status)
+    if [ -z "\$SAMPLE_COL" ] || [ -z "\$STATUS_COL" ]; then
+        echo "ERROR: no Tumor_Sample_Barcode or Mutation_Status column in the header of tmp.${meta.sample}.maf" >&2
         exit 1
     fi
 
     head -2 tmp.${meta.sample}.maf > ${meta.sample}.maf
     tail -n +3 tmp.${meta.sample}.maf \\
-        | awk -v col="\$SAMPLE_COL" -v sample="${meta.sample}" 'BEGIN {FS=OFS="\\t"} {\$col=sample; print}' \\
+        | awk -v col="\$SAMPLE_COL" -v scol="\$STATUS_COL" -v sample="${meta.sample}" 'BEGIN {FS=OFS="\\t"} {\$col=sample; \$scol="Somatic"; print}' \\
         >> ${meta.sample}.maf
     """
 

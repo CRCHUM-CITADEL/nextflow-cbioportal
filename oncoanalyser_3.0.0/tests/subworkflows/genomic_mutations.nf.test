@@ -83,6 +83,51 @@ nextflow_workflow {
         }
     }
 
+    test("Subject without an RNA-append VCF — its MAF is still produced") {
+
+        config "tests/nextflow_mutations.config"
+
+        when {
+            params {
+                outdir    = "$outputDir"
+                vep_data  = "${projectDir}/assets/test_data/annotations"
+                pcgr_data = "${projectDir}/assets/test_data/reference"
+            }
+            workflow {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_germline'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
+                    ]
+                )
+                input[1] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/somatic/T1-T.pave.somatic.vcf.gz')
+                    ]
+                )
+                // DNA only: a plain join on the RNA VCF used to drop this subject's mutations entirely.
+                input[2] = Channel.empty()
+                input[3] = Channel.of(file('${projectDir}/assets/test_data/annotations'))
+                input[4] = Channel.of(file('${projectDir}/assets/test_data/reference'))
+                input[5] = Channel.of(file('${projectDir}/assets/test_data/clinical'))
+                input[6] = false
+                input[7] = false
+                input[8] = false
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert workflow.out.out.size() == 1
+            def ran = workflow.trace.succeeded().collect { it.name }
+            assert ran.any { it.contains('INTEGRATE_RNA_VARIANTS') }
+            assert ran.any { it.contains('CONVERT_CPSR_TO_MAF') }
+        }
+    }
+
     test("No pre-staged reference data — the download fallbacks run instead") {
 
         config "tests/nextflow_mutations.config"

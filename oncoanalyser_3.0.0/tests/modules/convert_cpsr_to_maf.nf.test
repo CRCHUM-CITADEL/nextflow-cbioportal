@@ -128,4 +128,40 @@ nextflow_process {
             assert !rows.any { it[statusCol] == 'Germline' }
         }
     }
+
+    test("real integrated MAF — germline rows leave the RNA namespace empty") {
+
+        config "tests/nextflow_mutations.config"
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    'T1',
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/tests/modules/fixtures/integrated_somatic_rna.maf'),
+                    [group: 'TEST', subject: 'T1', sample: 'T1-N'],
+                    file('${projectDir}/tests/modules/fixtures/cpsr_germline.tsv.gz')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[1].split('\t', -1) as List
+            def rows = lines.drop(2).collect { it.split('\t', -1) }
+            def col = { String name -> def i = header.indexOf(name); assert i >= 0 : "no ${name} column"; i }
+
+            assert rows.every { it.size() == header.size() }
+            def germline = rows.findAll { it[col('Mutation_Status')] == 'Germline' }
+            assert germline
+            ['RNA.depth', 'RNA.vaf', 'RNA.ref_count', 'RNA.alt_count', 'RNA.expressed'].each { name ->
+                assert germline.every { it[col(name)] == '' } : "${name} not empty on a germline row"
+            }
+            assert rows.find { it[col('Mutation_Status')] == 'Somatic' && it[col('RNA.depth')] == '18' }
+        }
+    }
 }

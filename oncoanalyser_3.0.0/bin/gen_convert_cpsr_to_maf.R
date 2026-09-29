@@ -211,13 +211,6 @@ convert_cpsr_to_maf <- function(cpsr_file, maf_file, output_file) {
     maf_entry$Match_Norm_Seq_Allele1 <- maf_entry$Reference_Allele
     maf_entry$Match_Norm_Seq_Allele2 <- maf_entry$Reference_Allele
 
-    # Set RNA field placeholder
-    if ("t_depth_rna" %in% maf_columns) maf_entry$t_depth_rna <- ""
-    if ("t_ref_count_rna" %in% maf_columns) maf_entry$t_ref_count_rna <- ""
-    if ("t_alt_count_rna" %in% maf_columns) maf_entry$t_alt_count_rna <- ""
-    if ("t_vaf_rna" %in% maf_columns) maf_entry$t_vaf_rna <- ""
-    if ("Flag_RNA_Expressed" %in% maf_columns) maf_entry$Flag_RNA_Expressed <- ""
-
     # Map HGVSc and HGVSp
     if ("HGVSc" %in% cpsr_columns && !is.na(cpsr_entry$HGVSc) && cpsr_entry$HGVSc != "NA" && cpsr_entry$HGVSc != "") {
       maf_entry$HGVSc <- cpsr_entry$HGVSc

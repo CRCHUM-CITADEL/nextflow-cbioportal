@@ -65,12 +65,13 @@ workflow GENOMIC_MUTATIONS {
             return tuple(meta, maf)
         }
 
-        // join RNA-append VCF with somatic DNA MAF on subject
-        som_rna_dna_tuple = som_rna_vcf
-            .map { meta, file -> tuple(meta.subject, meta, file) }
-            .join(
-                som_dna_maf.map { meta, file -> tuple(meta.subject, meta, file) }
-            )
+        // Every DNA MAF goes on, with its RNA-append VCF when the subject has one; a plain
+        // join dropped DNA-only subjects entirely. Pairs keep remainder's null padding unambiguous.
+        som_rna_dna_tuple = som_dna_maf
+            .map { meta, maf -> tuple(meta.subject, [meta, maf]) }
+            .join(som_rna_vcf.map { meta, vcf -> tuple(meta.subject, [meta, vcf]) }, remainder: true)
+            .filter { subject, dna, rna -> dna != null }
+            .map { subject, dna, rna -> tuple(subject, rna ? rna[0] : dna[0], rna ? rna[1] : [], dna[0], dna[1]) }
 
         som_dna_rna_maf = INTEGRATE_RNA_VARIANTS(som_rna_dna_tuple)
 

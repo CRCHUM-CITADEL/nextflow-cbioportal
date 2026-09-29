@@ -27,6 +27,13 @@ Requires Nextflow >= 26.04.4.
   `t_*`/`n_*` swap, so cBioPortal shows ~0% allele frequency. `MAFSMITH` passes both.
   `tests/modules/mafsmith.nf.test` runs the real binary with `--skip-annotation` (via
   `task.ext.args`) to guard this
+- **`Mutation_Status` is `Somatic` (set by `MAFSMITH`; mafsmith leaves it empty) or `Germline` (CPSR rows)
+  and nothing else** — cBioPortal and `ml_format_mutation.R` tell the two apart by this column alone. RNA
+  evidence lives in `RNA.depth` / `RNA.vaf` / `RNA.ref_count` / `RNA.alt_count` / `RNA.expressed`
+  (namespace `RNA`, declared next to `HMF` in `meta_sequenced.txt`), never in `Mutation_Status`
+- **Every DNA subject reaches the MAF, with or without RNA.** `GENOMIC_MUTATIONS` joins the RNA-append
+  VCF with `remainder: true` and `INTEGRATE_RNA_VARIANTS` takes `[]` for a missing one; its MAF still
+  carries the (empty) `RNA.*` columns so the group merge stays rectangular
 - The `MAFSMITH` script locates the VCF sample columns by the `FORMAT` header and the
   MAF `Tumor_Sample_Barcode` column by name, rather than at fixed positions
 - **`--retain-ann` reads CSQ subfields only.** Every plain INFO field SAGE/PAVE writes
@@ -34,7 +41,7 @@ Requires Nextflow >= 26.04.4.
   the MAF despite being in the input VCF. `MAFSMITH` therefore runs
   `annotate_maf_with_vcf_info.py`, which joins ten INFO fields back in: `GND_FREQ` as
   `gnomAD_AF`, and `TIER`, `CLNSIG`, `CLNSIGCONF`, `PON_COUNT`, `MAPPABILITY`, `MSG`,
-  `TNC`, `REP_C`, `MH` under the `HMF.` prefix declared by `namespaces: HMF` in
+  `TNC`, `REP_C`, `MH` under the `HMF.` prefix declared by `namespaces: HMF,RNA` in
   `meta_sequenced.txt`. Two invariants hold it together: the join normalises the VCF
   side **exactly** the way mafsmith does (`src/vcf/normalization.rs` — strip the common
   REF/ALT prefix advancing POS, empty allele becomes `-`, `Start = pos-1` for an

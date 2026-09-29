@@ -43,7 +43,7 @@ workflow GENOMIC_MUTATIONS {
             ger_dna_vcf_with_index,
             ch_vep_data,
             ch_pcgr_data
-        )
+        ).tsv
 
         // add germinal_sample to somatic meta so mafsmith can set the normal sample column
         som_dna_vcf_input = som_dna_vcf

@@ -109,6 +109,8 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   `ImportCnaDiscreteLongData` has no try/catch. An absent (gene, sample) pair is
   the correct way to say "not profiled" — the importer folds DISCRETE_LONG into
   the wide DISCRETE form and renders a missing pair as an empty cell
+- `PCGR` publishes `<sample>.cpsr_debug/` (CPSR log, input/pass-VCF GT summary, CPSR's side outputs);
+  its outputs are named `tsv` and `debug`. `ext.args = '--debug'` keeps CPSR's intermediate VCFs
 - CPSR names its output after `--sample_id` (`<subject>-N`); `PCGR` renames it to the
   `<sample>` name downstream expects, and writes a header-only placeholder only when CPSR
   wrote nothing. `CONVERT_CPSR_TO_MAF` treats header-only input as "no germline calls"

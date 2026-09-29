@@ -29,6 +29,16 @@ nextflow_process {
             assert out.endsWith('T1-T.cpsr.grch38.classification.tsv.gz')
             // The real calls, not the header-only placeholder.
             assert path(out).linesGzip.size() == 2
+
+            // Debug folder: CPSR's log, what it was given, and its other outputs.
+            def debug = process.out.debug[0][1].toString()
+            assert debug.endsWith('T1-T.cpsr_debug')
+            assert path("${debug}/cpsr.log").text.contains('fake cpsr: sample_id=T1-N')
+            def summary = path("${debug}/input_summary.txt").text
+            assert summary.contains('samples: T1-N T1')
+            assert summary.contains('-- GT per sample')
+            assert summary.contains('## after CPSR validation')
+            assert path("${debug}/T1-N.cpsr.grch38.pass.vcf.gz").exists()
         }
     }
 
@@ -53,6 +63,7 @@ nextflow_process {
             def out = process.out[0][0][1].toString()
             assert out.endsWith('EMPTY-T.cpsr.grch38.classification.tsv.gz')
             assert path(out).linesGzip.size() == 1
+            assert path("${process.out.debug[0][1]}/cpsr.log").text.contains('header-only placeholder used')
         }
     }
 }

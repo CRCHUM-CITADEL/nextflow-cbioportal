@@ -47,6 +47,7 @@ nextflow_pipeline {
             params {
                 mode = 'both'
                 outdir = "$outputDir"
+                run_ml = true
             }
         }
 
@@ -127,6 +128,46 @@ nextflow_pipeline {
                     stable_name,
                     stable_path
                 ).match() }
+            )
+        }
+    }
+
+    // ML is opt-in: with run_ml at its default (false) no ML task may run and
+    // machine_learning/ must not be created, while the cBioPortal study is unaffected.
+    test("both mode — ML feature tables are skipped by default") {
+
+        config "tests/nextflow_both.config"
+
+        setup {
+            def precomputed = "${projectDir}/assets/test_data/precomputed"
+            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
+                def dir = new File("${outputDir}/TEST/${subject}")
+                dir.mkdirs()
+                new File(precomputed).listFiles()
+                    .findAll { it.name.startsWith("${sample}") && !it.name.contains('isofox_fusion') }
+                    .each { f ->
+                        java.nio.file.Files.copy(f.toPath(), new File(dir, f.name).toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    }
+            }
+        }
+
+        when {
+            params {
+                mode = 'both'
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            def tasks = workflow.trace.succeeded().collect { it.name }
+
+            assertAll(
+                { assert workflow.success },
+                { assert tasks.every { !(it =~ /_ML_/) } : "ML tasks ran without --run_ml: ${tasks.findAll { it =~ /_ML_/ }}" },
+                { assert !path("${params.outdir}/TEST/machine_learning").exists() : "machine_learning/ was created without --run_ml" },
+                { assert path("${params.outdir}/TEST/data_mutations_dna_rna_germline.txt").exists() },
+                { assert path("${params.outdir}/TEST.tar.gz").exists() },
             )
         }
     }

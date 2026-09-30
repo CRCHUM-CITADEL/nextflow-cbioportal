@@ -47,6 +47,12 @@
                     "enum": ["clinical", "genomic", "both"],
                     "fa_icon": "fas fa-folder-open"
                 },
+                "run_ml": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Also build the machine-learning feature tables (<group>/machine_learning/). Off by default; genomic and both modes only.",
+                    "fa_icon": "fas fa-brain"
+                },
                 "sample_registrations": {
                     "type": "string",
                     "description": "Path to sample_registrations.csv for template clinical output (used when no clinical_samplesheet is provided)."
@@ -96,7 +102,7 @@
                 },
                 "cosmic_data": {
                     "type": "string",
-                    "description": "Path to COSMIC fusion TSV for ML SV processing."
+                    "description": "Path to COSMIC fusion TSV for ML SV processing (only used with --run_ml)."
                 },
                 "mafsmith_retain_ann": {
                     "type": "string",

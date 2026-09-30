@@ -443,17 +443,19 @@ workflow GENOMIC {
             all_sigs_counts_id,
         )
 
-        // ── ML formatting ─────────────────────────────────────────────────────
+        // ── ML formatting (opt-in: --run_ml) ──────────────────────────────────
 
-        GENOMIC_ML(
-            GENOMIC_AGGREGATE_OUTPUT.out.cnv,
-            GENOMIC_AGGREGATE_OUTPUT.out.expression,
-            GENOMIC_AGGREGATE_OUTPUT.out.mutation,
-            GENOMIC_AGGREGATE_OUTPUT.out.sv,
-            cosmic_data,
-            chimer_data,
-            hotspots_data,
-        )
+        if (params.run_ml) {
+            GENOMIC_ML(
+                GENOMIC_AGGREGATE_OUTPUT.out.cnv,
+                GENOMIC_AGGREGATE_OUTPUT.out.expression,
+                GENOMIC_AGGREGATE_OUTPUT.out.mutation,
+                GENOMIC_AGGREGATE_OUTPUT.out.sv,
+                cosmic_data,
+                chimer_data,
+                hotspots_data,
+            )
+        }
 
         // ── Study-level metadata ──────────────────────────────────────────────
 

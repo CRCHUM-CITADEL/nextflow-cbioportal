@@ -74,7 +74,7 @@ PER-GROUP AGGREGATED FILES
 
     util_linking_file.txt  TSV mapping subject_id to sample_id
 
-  ML feature tables:
+  ML feature tables (machine_learning/, only with --run_ml):
 
     ML-formatted versions of CNV, expression, mutations, and SVs
     (with COSMIC/ChimerDB fusion annotations) for downstream analysis.

@@ -212,7 +212,8 @@ def validateInputParameters() {
         // FORMAT_PROCESS_ML_SV unions the COSMIC and ChimerKB fusion lists, so the two
         // are all-or-nothing. Setting only one used to reach the process with an empty
         // path input and abort the run with an unattributable "Path must not be empty".
-        if (params.cosmic_data) {
+        // Only checked when ML runs; otherwise the fusion files are never read.
+        if (params.run_ml && params.cosmic_data) {
             def cosmic_data = file(params.cosmic_data)
             if (!cosmic_data.exists()) {
                 error("ERROR: Cosmic data file does not exist: ${params.cosmic_data}")

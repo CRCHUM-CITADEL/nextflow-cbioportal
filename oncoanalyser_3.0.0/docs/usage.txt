@@ -41,7 +41,7 @@ Genomic mode processing steps:
   Mutational signatures (DBS)  PAVE somatic VCF             Contribution + counts
   Mutational signatures (ID)   PAVE somatic VCF             Contribution + counts
   ML feature tables            Merged group-level files     ML-formatted CNV, expression,
-                                                            mutation, SV
+  (only with --run_ml)                                      mutation, SV
 
 DNA SVs and RNA fusions share the same data_sv.txt file; they are
 distinguished by DNA_Support / RNA_Support flags and the Class column
@@ -93,7 +93,8 @@ Reference data:
 
   Any reference param set explicitly overrides the kit for that file.
   COSMIC fusions (cosmic_data) are licence-gated and not in the kit;
-  leave cosmic_data empty to skip the ML SV step. Kit contents and
+  they are only read with --run_ml, and leaving cosmic_data empty skips
+  the ML SV step. Kit contents and
   layout: docs/resources.md.
 
   Offline HPC nodes: Set NXF_OFFLINE=true and pre-pull all containers
@@ -299,6 +300,7 @@ GENOMIC INPUT PARAMETERS
   genomic_samplesheet      Yes       --        Path to genomic samplesheet CSV
   resources_dir            Yes       --        Extracted resource kit (all reference files)
   mafsmith_retain_ann      No        (10 CSQ)  Extra VEP fields kept as MAF columns
+  run_ml                   No        false     Also build the ML feature tables (machine_learning/)
   cosmic_data              No        --        COSMIC Fusion TSV for ML (licence-gated)
 
   A single kit file can be overridden by its param name (docs/resources.md).

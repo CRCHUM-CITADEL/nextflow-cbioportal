@@ -183,12 +183,18 @@ Isofox expression now maps Ensembl→Entrez through `ensembl_annotations` too.) 
 `.gitignore` has a `/nextflow_*.config` rule with an explicit negation for
 `nextflow_citadel.config`.
 
+`GENOMIC_ML` is **opt-in**: `workflows/genomic.nf` only calls it when
+`params.run_ml` is true (default `false`), so a default run writes no
+`<group>/machine_learning/`. `tests/both.nf.test` covers both sides — the snapshot
+test sets `run_ml = true`, a second test asserts no `_ML_` task runs without it.
+
 `cosmic_data` and `chimer_data` are **all-or-nothing** — `FORMAT_PROCESS_ML_SV`
 unions the two fusion lists, so one without the other reaches the process with an
 empty `path` input and aborts the run with a bare `Path must not be empty`. Only
 `cosmic_data` is site-specific (licence-gated); ChimerKB ships in the resource kit and is
-the portable default, so in practice setting `cosmic_data` is what switches the ML
-SV step on. `PIPELINE_INITIALISATION` rejects the half-configured case up front, and
+the portable default, so with `--run_ml` set, setting `cosmic_data` is what switches
+the ML SV step on. `PIPELINE_INITIALISATION` rejects the half-configured case up front
+(only when `run_ml` is set), and
 `GENOMIC_ML` gates on both. Note the `test` profile leaves `cosmic_data` empty, so
 the branch is only covered by the dedicated case in
 `tests/subworkflows/genomic_ml.nf.test`.

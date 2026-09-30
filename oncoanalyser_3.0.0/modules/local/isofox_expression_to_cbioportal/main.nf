@@ -18,7 +18,7 @@ process ISOFOX_EXPRESSION_TO_CBIOPORTAL {
 
     script:
     """
-    Rscript ${projectDir}/bin/gen_isofox_expression_to_cbioportal.R \\
+    gen_isofox_expression_to_cbioportal.R \\
         --input    ${exp_tsv} \\
         --gene_map ${ensembl_annotations} \\
         --sample_id ${meta.sample} \\

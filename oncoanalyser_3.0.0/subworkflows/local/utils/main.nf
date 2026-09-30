@@ -187,7 +187,8 @@ def validateInputParameters() {
             error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
         }
 
-        if (params.cosmic_data) {
+        // Only checked when ML runs; otherwise the fusion file is never read.
+        if (params.run_ml && params.cosmic_data) {
             def cosmic_data = file(params.cosmic_data)
             if (!cosmic_data.exists()) {
                 error("ERROR: Cosmic data file does not exist: ${params.cosmic_data}")

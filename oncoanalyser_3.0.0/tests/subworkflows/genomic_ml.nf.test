@@ -37,6 +37,7 @@ nextflow_workflow {
                 )
                 input[4] = ""   // cosmic_data (empty — skips FORMAT_PROCESS_ML_SV)
                 input[5] = file('${projectDir}/assets/test_data/annotations/ChimerKB4.xlsx')
+                input[6] = []   // hotspots_data (empty — PROCESS_ML_MUTATION falls back to a live fetch, stubbed here)
                 """
             }
         }

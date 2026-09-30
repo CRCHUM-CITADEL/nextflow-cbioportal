@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `combine_cbioportal_outputs.py`: `--strict` flag, and a warning listing any input file no merge strategy handles
 - `tests/test_combine_cbioportal_outputs.py` pytest suite, plus a pytest job in the linting workflow
 
+### Changed
+
+- **Breaking: the ML feature tables are opt-in.** `GENOMIC_ML` (every `FORMAT_ML_*` / `PROCESS_ML_*` step and `FORMAT_PROCESS_ML_SV`) now runs only with `--run_ml`; by default no `<group>/machine_learning/` directory is written. The cBioPortal study files are unchanged either way, and the `cosmic_data` start-up check only applies with `--run_ml`.
+- `PROCESS_ML_MUTATION` is ~83x faster (118s → 1.4s on a 150K-row/300-sample cohort) with byte-identical output: `ml_mutation_processor.R`'s encodings are vectorized. `cancer_hotspots_data` optionally points it at a pre-staged cancerhotspots.org snapshot instead of a live fetch.
+- Modules call `bin/` scripts by bare name instead of `Rscript ${projectDir}/bin/...`.
+
 ### Fixed
 
 - `<study>.tar.gz` in `both` mode was genomic-only: `PACKAGE_CBIOPORTAL` now runs from `main.nf` after `CLINICAL`, so the archive also carries the clinical files, `data_timeline.txt`, `meta_timeline.txt` and `util_linking_file.txt`

@@ -56,6 +56,8 @@ workflow {
 
         ch_chimer_data = params.chimer_data ? Channel.fromPath(params.chimer_data) : Channel.empty()
 
+        ch_hotspots_data = params.cancer_hotspots_data ? Channel.fromPath(params.cancer_hotspots_data).first() : Channel.value([])
+
         needs_vep_download  = !params.vep_data
         needs_pcgr_download = !params.pcgr_data
 
@@ -70,6 +72,7 @@ workflow {
             params.genome_reference,
             params.cosmic_data,
             params.chimer_data,
+            ch_hotspots_data,
         )
     }
 

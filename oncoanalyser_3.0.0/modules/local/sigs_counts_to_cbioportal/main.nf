@@ -17,7 +17,7 @@ process SIGS_COUNTS_TO_CBIOPORTAL {
 
     script:
     """
-    Rscript ${projectDir}/bin/gen_sigs_counts_to_cbioportal.R \\
+    gen_sigs_counts_to_cbioportal.R \\
         --input  ${snv_counts} \\
         --sample ${meta.sample} \\
         --output ${meta.sample}.data_mutational_signatures_counts_SBS.txt

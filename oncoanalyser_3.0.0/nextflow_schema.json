@@ -46,6 +46,12 @@
                     "description": "The pipeline mode you'd like to run. Either 'clinical', 'genomic', or 'both'",
                     "enum": ["clinical", "genomic", "both"],
                     "fa_icon": "fas fa-folder-open"
+                },
+                "run_ml": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Also build the machine-learning feature tables (<group>/machine_learning/). Off by default; genomic and both modes only.",
+                    "fa_icon": "fas fa-brain"
                 }
             }
         },
@@ -181,6 +187,10 @@
         "chimer_data": {
             "type": "string",
             "description": "Path to ChimerKB Excel file for ML SV processing."
+        },
+        "cancer_hotspots_data": {
+            "type": "string",
+            "description": "Path to a pre-staged copy of the cancerhotspots.org single-residue hotspots API response, used by PROCESS_ML_MUTATION. If empty, the pipeline fetches it live, which needs internet on the compute node."
         },
         "cosmic_reference": {
             "type": "string",

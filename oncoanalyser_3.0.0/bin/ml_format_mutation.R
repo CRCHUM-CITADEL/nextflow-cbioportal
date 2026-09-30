@@ -22,23 +22,24 @@ if (!file.exists(input_file)) {
 cat("Processing MAF file:", input_file, "\n\n")
 
 # --- Amino acid conversion ---
+aa_map <- c(
+  "Ala"="A","Arg"="R","Asn"="N","Asp"="D",
+  "Cys"="C","Gln"="Q","Glu"="E","Gly"="G",
+  "His"="H","Ile"="I","Leu"="L","Lys"="K",
+  "Met"="M","Phe"="F","Pro"="P","Ser"="S",
+  "Thr"="T","Trp"="W","Tyr"="Y","Val"="V",
+  "Ter"="*","Xxx"="X"
+)
+
+# Vectorized over the whole HGVSp_Short column: gsub() is already vectorized
+# per call, so this runs 22 gsub() calls total instead of 22 per row.
+# gsub() returns NA for NA input, matching the original's per-element early return.
 convert_aa_code <- function(aa_change) {
-  if (is.na(aa_change)) return(NA_character_)
-
-  aa_map <- c(
-    "Ala"="A","Arg"="R","Asn"="N","Asp"="D",
-    "Cys"="C","Gln"="Q","Glu"="E","Gly"="G",
-    "His"="H","Ile"="I","Leu"="L","Lys"="K",
-    "Met"="M","Phe"="F","Pro"="P","Ser"="S",
-    "Thr"="T","Trp"="W","Tyr"="Y","Val"="V",
-    "Ter"="*","Xxx"="X"
-  )
-
   result <- aa_change
   for (three in names(aa_map)) {
     result <- gsub(three, aa_map[[three]], result, ignore.case = TRUE)
   }
-  return(result)
+  result
 }
 
 # --- Read and process the MAF file ---
@@ -54,7 +55,7 @@ transformed <- maf %>%
     end = as.integer(End_Position),
     ref = as.character(Reference_Allele),
     alt = as.character(Tumor_Seq_Allele2),
-    Amino_Acid_Change = as.character(sapply(HGVSp_Short, convert_aa_code)),
+    Amino_Acid_Change = convert_aa_code(as.character(HGVSp_Short)),
     effect = as.character(Variant_Classification),
     callers = as.character(NA_character_),
     dna_vaf = as.double(ifelse(t_depth > 0, t_alt_count / t_depth, NA_real_)),

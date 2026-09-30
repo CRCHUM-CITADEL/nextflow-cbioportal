@@ -1,0 +1,12 @@
+sample	gene	chrom	start	end	ref	alt	Tumor_Sample_Barcode	Amino_Acid_Change	effect	callers	dna_vaf
+S1	TP53	chr17	100	100	C	T	S1	p.R248W	Missense_Mutation		0.40
+S1	TP53	chr17	101	101	C	T	S1	p.G245S	Nonsense_Mutation		0.60
+S2	TP53	chr17	102	102	C	T	S2	p.R249S	Missense_Mutation		0.30
+S3	KRAS	chr12	103	103	C	T	S3	p.G12D	Missense_Mutation		0.50
+S1	KRAS	chr12	104	104	C	T	S1		Splice_Site		0.20
+S2	PIK3CA	chr3	105	105	C	T	S2	p.H1047R	Missense_Mutation		0.45
+S1	ATRX	chrX	106	106	C	T	S1	p.X100Y	In_Frame_Ins		0.15
+S3	ATRX	chrX	107	107	C	T	S3	p.X100Y	Silent		0.10
+S2	GENEX	chr9	108	108	C	T	S2	p.A1B	Missense_Mutation		
+S2	GENEX	chr9	109	109	C	T	S2	p.A1B	Silent		0.20
+S1	RNAGENE	chr1	110	110	C	T	S1	p.Z1Z	RNA		0.99

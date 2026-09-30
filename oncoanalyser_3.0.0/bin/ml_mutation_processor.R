@@ -5,16 +5,24 @@ library(httr)
 library(jsonlite)
 
 #' Fetch and cache cancer hotspots data
+#' @param hotspots_json Optional path to a pre-staged copy of
+#'   https://www.cancerhotspots.org/api/hotspots/single. Compute nodes have no
+#'   internet, so pre-staging is preferred; an empty path keeps the live fetch.
 #' @return DataFrame of hotspot mutations
 #' @keywords internal
-fetch_hotspots <- function(){
+fetch_hotspots <- function(hotspots_json = NULL){
 
-  # Fetch data from cancerhotspots.org
-  message("Fetching hotspot data from cancerhotspots.org...")
+  if (!is.null(hotspots_json) && nzchar(hotspots_json)) {
+    message(sprintf("Reading pre-staged hotspot data from %s...", hotspots_json))
+    raw_json <- paste(readLines(hotspots_json, warn = FALSE), collapse = "\n")
+  } else {
+    message("Fetching hotspot data from cancerhotspots.org...")
+    response <- GET("https://www.cancerhotspots.org/api/hotspots/single", config=config(ssl_verifypeer = FALSE))
+    raw_json <- rawToChar(response$content)
+  }
 
   # Single residue hotspots
-  response <- GET("https://www.cancerhotspots.org/api/hotspots/single", config=config(ssl_verifypeer = FALSE))
-  single_hotspots <- fromJSON(rawToChar(response$content), flatten = TRUE)
+  single_hotspots <- fromJSON(raw_json, flatten = TRUE)
 
   # Process single hotspots data
   hotspots <- single_hotspots %>%
@@ -72,12 +80,13 @@ get_mutation_weight <- function(effect) {
 #' Process mutation data for deep learning input
 #' @param input_file Path to mutation result data
 #' @param min_freq Minimum mutation frequency across samples to include gene (default: 0.01)
+#' @param hotspots_json Optional path to a pre-staged cancerhotspots.org response
 #' @return DataFrame containing hybrid mutation encoding
 #' @export
-process_mutation_data <- function(input_file, min_freq = 0.01) {
+process_mutation_data <- function(input_file, min_freq = 0.01, hotspots_json = NULL) {
 
   # Fetch hotspot data
-  hotspots <- fetch_hotspots()
+  hotspots <- fetch_hotspots(hotspots_json)
 
   # Read mutation data
   mutations <- read_tsv(input_file, show_col_types = FALSE)
@@ -165,17 +174,42 @@ process_mutation_data <- function(input_file, min_freq = 0.01) {
   return(invisible(data.frame(matrices[["hybrid"]])))
 }
 
+#' Fill matrix cells with the running max of `v` at linear positions `pos`,
+#' reproducing base R's `max()` accumulation semantics (any NA input makes the
+#' cell NA) without a row-by-row loop.
+#' @param m Numeric matrix to fill, already initialized with the correct floor
+#' @param pos Integer vector of linear (row + (col-1)*nrow) positions, one per
+#'   contributing row; a repeated position accumulates a max as in the original loop
+#' @param v Numeric vector of candidate values, aligned with `pos`
+#' @param floor_zero Whether the matrix's pre-existing 0 participates in the max
+#'   (TRUE for effect/vaf, which ran a running max seeded at 0) or is simply
+#'   overwritten by the first contributing row (FALSE for integrated/hybrid,
+#'   which only max across rows sharing the top weight)
+#' @keywords internal
+fill_max <- function(m, pos, v, floor_zero) {
+  ok <- !is.na(v)
+  sel <- if (floor_zero) ok & v > 0 else ok
+  # Ascending assignment order: for repeated positions, the largest value
+  # (assigned last) is what survives - the same result as a running max().
+  o <- order(v[sel])
+  m[pos[sel][o]] <- v[sel][o]
+  # max() propagates NA unconditionally, so any NA-contributing row forces
+  # its cell to NA regardless of other rows' values or visit order.
+  m[pos[!ok]] <- NA_real_
+  m
+}
+
 #' Encode mutations using binary representation
 #' @keywords internal
 encode_binary_mutations <- function(mutations, samples, genes) {
   mutation_matrix <- matrix(0, nrow = length(samples), ncol = length(genes),
                           dimnames = list(samples, genes))
 
-  for (i in seq_len(nrow(mutations))) {
-    if (mutations$gene[i] %in% genes) {
-      mutation_matrix[mutations$sample[i], mutations$gene[i]] <- 1
-    }
-  }
+  gene_i <- match(mutations$gene, genes)
+  keep <- !is.na(gene_i)
+  sample_i <- match(mutations$sample, samples)
+  pos <- sample_i[keep] + (gene_i[keep] - 1L) * length(samples)
+  mutation_matrix[pos] <- 1
 
   as_tibble(mutation_matrix, rownames = "sample", .name_repair = "unique")
 }
@@ -186,13 +220,13 @@ encode_effect_mutations <- function(mutations, samples, genes) {
   mutation_matrix <- matrix(0, nrow = length(samples), ncol = length(genes),
                           dimnames = list(samples, genes))
 
-  for (i in seq_len(nrow(mutations))) {
-    if (mutations$gene[i] %in% genes) {
-      weight <- get_mutation_weight(mutations$effect[i])
-      current_weight <- mutation_matrix[mutations$sample[i], mutations$gene[i]]
-      mutation_matrix[mutations$sample[i], mutations$gene[i]] <- max(current_weight, weight)
-    }
-  }
+  gene_i <- match(mutations$gene, genes)
+  keep <- !is.na(gene_i)
+  sample_i <- match(mutations$sample, samples)
+  pos <- sample_i[keep] + (gene_i[keep] - 1L) * length(samples)
+  weight <- get_mutation_weight(mutations$effect[keep])
+
+  mutation_matrix <- fill_max(mutation_matrix, pos, weight, floor_zero = TRUE)
 
   as_tibble(mutation_matrix, rownames = "sample", .name_repair = "unique")
 }
@@ -203,15 +237,32 @@ encode_vaf_mutations <- function(mutations, samples, genes) {
   mutation_matrix <- matrix(0, nrow = length(samples), ncol = length(genes),
                           dimnames = list(samples, genes))
 
-  for (i in seq_len(nrow(mutations))) {
-    if (mutations$gene[i] %in% genes) {
-      current_vaf <- mutation_matrix[mutations$sample[i], mutations$gene[i]]
-      mutation_matrix[mutations$sample[i], mutations$gene[i]] <-
-        max(current_vaf, mutations$dna_vaf[i])
-    }
-  }
+  gene_i <- match(mutations$gene, genes)
+  keep <- !is.na(gene_i)
+  sample_i <- match(mutations$sample, samples)
+  pos <- sample_i[keep] + (gene_i[keep] - 1L) * length(samples)
+
+  mutation_matrix <- fill_max(mutation_matrix, pos, mutations$dna_vaf[keep], floor_zero = TRUE)
 
   as_tibble(mutation_matrix, rownames = "sample", .name_repair = "unique")
+}
+
+#' Fill matrix cells with the value from whichever contributing row(s) hold
+#' the maximum weight for that cell (ties broken by max value), mirroring the
+#' original stored-weight/stored-value running comparison.
+#' @keywords internal
+fill_weighted_max <- function(mutation_matrix, weight_matrix, pos, weight, value) {
+  # Resolve the per-cell max weight first (same ascending-assign trick).
+  o <- order(weight)
+  weight_matrix[pos[o]] <- weight[o]
+
+  # Keep only rows whose weight matches their cell's resolved maximum -
+  # exactly the rows the original `if (weight > stored) ... else if (==)` loop
+  # would have contributed to.
+  at_max <- weight == weight_matrix[pos]
+  mutation_matrix <- fill_max(mutation_matrix, pos[at_max], value[at_max], floor_zero = FALSE)
+
+  mutation_matrix
 }
 
 #' Encode mutations using integrated approach (effect * VAF)
@@ -223,26 +274,14 @@ encode_integrated_mutations <- function(mutations, samples, genes) {
   weight_matrix <- matrix(-1, nrow = length(samples), ncol = length(genes),
                           dimnames = list(samples, genes))
 
-  for (i in seq_len(nrow(mutations))) {
-    if (mutations$gene[i] %in% genes) {
-      weight <- get_mutation_weight(mutations$effect[i])
-      integrated_value <- weight * mutations$dna_vaf[i]
+  gene_i <- match(mutations$gene, genes)
+  keep <- !is.na(gene_i)
+  sample_i <- match(mutations$sample, samples)
+  pos <- sample_i[keep] + (gene_i[keep] - 1L) * length(samples)
+  weight <- get_mutation_weight(mutations$effect[keep])
+  integrated_value <- weight * mutations$dna_vaf[keep]
 
-      sample_id <- mutations$sample[i]
-      gene_id <- mutations$gene[i]
-      stored_weight <- weight_matrix[sample_id, gene_id]
-
-      if (weight > stored_weight) {
-        weight_matrix[sample_id, gene_id] <- weight
-        mutation_matrix[sample_id, gene_id] <- integrated_value
-      } else if (weight == stored_weight) {
-        mutation_matrix[sample_id, gene_id] <- max(
-          mutation_matrix[sample_id, gene_id],
-          integrated_value
-        )
-      }
-    }
-  }
+  mutation_matrix <- fill_weighted_max(mutation_matrix, weight_matrix, pos, weight, integrated_value)
 
   as_tibble(mutation_matrix, rownames = "sample", .name_repair = "unique")
 }
@@ -268,47 +307,34 @@ create_hybrid_encoding <- function(mutations, samples, genes, hotspots) {
                           ncol = length(features),
                           dimnames = list(samples, features))
 
-  for (i in seq_len(nrow(mutations))) {
-    if (mutations$gene[i] %in% genes) {
-      gene <- mutations$gene[i]
+  gene_i <- match(mutations$gene, genes)
+  keep <- !is.na(gene_i)
 
-      weight <- get_mutation_weight(mutations$effect[i])
-      integrated_value <- weight * mutations$dna_vaf[i]
+  gene <- mutations$gene[keep]
+  aa_change <- mutations$Amino_Acid_Change[keep]
+  residue <- sub("p\\.([A-Z]\\d+).*", "\\1", aa_change)
+  variant <- sub("p\\.[A-Z]*\\d+([A-Za-z0-9_=*])", "\\1", aa_change)
+  # An NA aa_change pastes to "GENE_NA_NA", which never matches a hotspot id
+  # (same as the original's explicit hotspot_id <- "NA" branch) and falls
+  # through to the gene's "_other" feature.
+  hotspot_id <- paste(gene, residue, variant, sep = "_")
 
-      feature_col <- NA
-      if (gene %in% hotspot_genes) {
-        aa_change <- mutations$Amino_Acid_Change[i]
+  is_hotspot_gene <- gene %in% hotspot_genes
+  feature_col <- ifelse(
+    is_hotspot_gene,
+    ifelse(hotspot_id %in% names(hotspot_lookup), hotspot_id, paste0(gene, "_other")),
+    gene
+  )
 
-        if (!is.na(aa_change)) {
-          residue <- sub("p\\.([A-Z]\\d+).*", "\\1", aa_change)
-          variant <- sub("p\\.[A-Z]*\\d+([A-Za-z0-9_=*])", "\\1", aa_change)
-          hotspot_id <- paste(gene, residue, variant, sep = "_")
-        } else {
-          hotspot_id <- "NA"
-        }
+  sample_i <- match(mutations$sample, samples)
+  feature_i <- match(feature_col, features)
+  stopifnot(!anyNA(feature_i))
+  pos <- sample_i[keep] + (feature_i - 1L) * length(samples)
 
-        if (hotspot_id %in% names(hotspot_lookup)) {
-          feature_col <- hotspot_id
-        } else {
-          feature_col <- paste0(gene, "_other")
-        }
-      } else {
-        feature_col <- gene
-      }
+  weight <- get_mutation_weight(mutations$effect[keep])
+  integrated_value <- weight * mutations$dna_vaf[keep]
 
-      stored_weight <- weight_matrix[mutations$sample[i], feature_col]
-
-      if (weight > stored_weight) {
-        weight_matrix[mutations$sample[i], feature_col] <- weight
-        mutation_matrix[mutations$sample[i], feature_col] <- integrated_value
-      } else if (weight == stored_weight) {
-        mutation_matrix[mutations$sample[i], feature_col] <- max(
-          mutation_matrix[mutations$sample[i], feature_col],
-          integrated_value
-        )
-      }
-    }
-  }
+  mutation_matrix <- fill_weighted_max(mutation_matrix, weight_matrix, pos, weight, integrated_value)
 
   total_hotspots <- sum(mutation_matrix[, hotspots$hotspot_id] > 0)
   total_other <- sum(mutation_matrix[, paste0(hotspot_genes, "_other")] > 0)
@@ -343,14 +369,15 @@ validate_mutation_data <- function(mutation_data) {
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) == 0){
-  stop("Usage: Rscript ml_mutation_processor.R <path to mutation result data>")
+  stop("Usage: Rscript ml_mutation_processor.R <path to mutation result data> [path to pre-staged cancerhotspots.org JSON]")
 }
 
 input_file <- args[1]
+hotspots_json <- if (length(args) >= 2) args[2] else NULL
 
 if (!file.exists(input_file)) {
   stop("Error : Input file does not exist: ", input_file)
 }
 
 # The invisible wrap prevents it from printing the dataframe object back to console
-invisible(process_mutation_data(input_file))
+invisible(process_mutation_data(input_file, hotspots_json = hotspots_json))

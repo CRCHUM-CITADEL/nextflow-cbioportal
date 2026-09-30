@@ -22,7 +22,7 @@ process SIGPROFILER_DBS {
     """
     python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1]).extract('COSMIC_Human_DBS-78_GRCh38_v3.6.csv')" ${cosmic_zip}
 
-    python3 ${projectDir}/bin/run_sigprofiler_dbs.py \\
+    run_sigprofiler_dbs.py \\
         --vcf             ${somatic_vcf} \\
         --signatures_db   COSMIC_Human_DBS-78_GRCh38_v3.6.csv \\
         --metadata        ${dbs_metadata} \\

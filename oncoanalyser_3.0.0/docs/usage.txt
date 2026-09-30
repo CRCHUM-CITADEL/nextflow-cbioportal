@@ -41,7 +41,7 @@ Genomic mode processing steps:
   Mutational signatures (DBS)  PAVE somatic VCF             Contribution + counts
   Mutational signatures (ID)   PAVE somatic VCF             Contribution + counts
   ML feature tables            Merged group-level files     ML-formatted CNV, expression,
-                                                            mutation, SV
+  (only with --run_ml)                                      mutation, SV
 
 DNA SVs and RNA fusions share the same data_sv.txt file; they are
 distinguished by DNA_Support / RNA_Support flags and the Class column
@@ -306,6 +306,7 @@ GENOMIC INPUT PARAMETERS
   vep_data                 No        (empty)   VEP cache directory
   vep_params               No        (default) Additional VEP CLI arguments
   pcgr_data                No        (empty)   PCGR reference data directory
+  run_ml                   No        false     Also build the ML feature tables (machine_learning/)
   cosmic_data              No        --        COSMIC Fusion TSV for ML
   chimer_data              No        bundled   ChimerKB4.xlsx
   cosmic_reference         No        bundled   COSMIC v3.6 signature ref ZIP

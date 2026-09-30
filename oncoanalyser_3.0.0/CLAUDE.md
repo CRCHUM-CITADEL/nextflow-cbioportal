@@ -21,6 +21,21 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   with no promoter allowance); no gene → `NA`. UTR/Promoter are not derivable —
   `pass_fusions.tsv` has no coding-type or CDS boundaries, and UTR bases are exonic
 - `ml_format_cnv.R` / `ml_format_expression.R` check `basename(input)` — inputs must be named `data_cna_long.txt` / `data_expression.txt`
+- `GENOMIC_ML` is **opt-in**: `workflows/genomic.nf` only calls it when `params.run_ml`
+  is true (default `false`), so a default run writes no `<group>/machine_learning/`, and
+  the `cosmic_data` start-up check only runs with it. `tests/both.nf.test` covers both
+  sides — the snapshot test sets `run_ml = true`, a second test asserts no `_ML_` task runs
+- `ml_mutation_processor.R`'s five encodings are deliberately vectorized (linear-index
+  `match()` + an ascending-assign `fill_max()`/`fill_weighted_max()` helper), not the
+  original row-by-row `for` loop — that loop was the slowest step in the pipeline
+  (~quadratic in cohort size). The vaf/effect running max must stay a bare
+  `max()`-equivalent, not `na.rm = TRUE`: any `NA` `dna_vaf` (from `t_depth == 0`) must
+  make the whole cell `NA`. `fetch_hotspots()` takes an optional pre-staged path
+  (`params.cancer_hotspots_data`); PROCESS_ML_MUTATION passes `[]` when unset, which
+  Groovy treats as falsy, so the script falls back to the live GET
+- Modules invoke `bin/` scripts by bare name (`gen_foo.R`, not
+  `Rscript ${projectDir}/bin/gen_foo.R`) — Nextflow puts `bin/` on `PATH` for every task,
+  and the shebang picks the interpreter. New `bin/` scripts must be `chmod +x`
 - No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes
 - VEP/PCGR data must be pre-staged
 

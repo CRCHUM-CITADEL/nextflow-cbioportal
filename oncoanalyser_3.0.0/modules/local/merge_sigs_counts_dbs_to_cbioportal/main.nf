@@ -14,7 +14,7 @@ process MERGE_SIGS_COUNTS_DBS_TO_CBIOPORTAL {
 
     script:
     """
-    Rscript ${projectDir}/bin/gen_merge_sigs_counts_to_cbioportal.R \\
+    gen_merge_sigs_counts_to_cbioportal.R \\
         --input_files ${sigs_counts_file_list.join(',')} \\
         --output_file data_mutational_signatures_counts_DBS.txt
     """

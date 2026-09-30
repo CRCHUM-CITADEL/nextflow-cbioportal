@@ -15,7 +15,7 @@ process ISOFOX_FUSION_TO_CBIOPORTAL {
 
     script:
     """
-    Rscript ${projectDir}/bin/gen_isofox_fusion_to_cbioportal.R \\
+    gen_isofox_fusion_to_cbioportal.R \\
         --input  ${fusion_tsv} \\
         --sample ${meta.sample} \\
         --output ${meta.sample}.isofox_fusion.data_sv.txt

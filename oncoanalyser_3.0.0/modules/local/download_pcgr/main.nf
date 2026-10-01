@@ -1,3 +1,4 @@
+// Bundle 20240927 matches the test profile's PCGR 2.1.2; production uses the kit's 20250314 (PCGR 2.2.5).
 process DOWNLOAD_PCGR {
     storeDir "${projectDir}/assets/"
 

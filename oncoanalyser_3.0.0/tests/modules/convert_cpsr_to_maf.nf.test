@@ -68,7 +68,7 @@ nextflow_process {
         }
     }
 
-    test("cpsr <= 2.1 output — falls back to FINAL_CLASSIFICATION") {
+    test("cpsr <= 2.2 output (PCGR 2.2.5) — falls back to FINAL_CLASSIFICATION") {
 
         config "tests/nextflow_mutations.config"
 

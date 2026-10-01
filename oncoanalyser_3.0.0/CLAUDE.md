@@ -122,10 +122,11 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   the final call is ClinVar's verdict when ClinVar has one and CPSR's own ACMG call otherwise,
   while `CLINVAR_CLASSIFICATION` is empty for any variant ClinVar has never seen, so filtering on
   it silently dropped every novel germline call. The column is found **by name** — `CLASSIFICATION`
-  in cpsr >= 2.3, `FINAL_CLASSIFICATION` in cpsr <= 2.1 (the `test` profile's PCGR 2.1.2) — and the
+  in cpsr >= 2.3, `FINAL_CLASSIFICATION` in cpsr <= 2.2 (production PCGR 2.2.5, `test` profile 2.1.2) — and the
   step fails if neither exists. Both `Likely_Pathogenic` and `Likely Pathogenic` are accepted
-- **PCGR 2.3.x only accepts bundle 20260620 and VEP 115** — bump `container_pcgr`, the kit's bundle
-  and its VEP cache together. The `test` profile stays on PCGR 2.1.2 to match its downloads
+- **PCGR 2.2.x only accepts bundle 20250314 and VEP 113** — bump `container_pcgr`, the kit's bundle
+  and its VEP cache together. PCGR 2.3.x needs VEP 115, so it is out while we stay on VEP 113.
+  The `test` profile stays on PCGR 2.1.2 to match its downloads
 - No internet on compute nodes — `NXF_OFFLINE=true`; pre-pull containers on login nodes
 - Reference data comes from the resource kit (`--resources_dir`); see Configuration Layout
 - Nextflow optional outputs: `optional: true` is an option on the whole output

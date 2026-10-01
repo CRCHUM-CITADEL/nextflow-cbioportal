@@ -22,8 +22,8 @@ nextflow run main.nf -profile apptainer --resources_dir $PWD/nextflow-cbioportal
 | `genomic/annotations/biomart_grch38_…_entrez_id.tsv` | `ensembl_annotations`                              | Ensembl 113 BioMart with Entrez IDs |
 | `genomic/annotations/ChimerKB4.xlsx`                 | `chimer_data`                                      | ChimerDB 4 known fusions            |
 | `genomic/annotations/cancerhotspots_single.json`     | `cancer_hotspots_data`                             | cancerhotspots.org snapshot         |
-| `genomic/vep/cache/`                                 | `vep_data`                                         | VEP 115 cache (used by PCGR)        |
-| `genomic/pcgr/`                                      | `pcgr_data`                                        | PCGR bundle 20260620                |
+| `genomic/vep/cache/`                                 | `vep_data`                                         | VEP 113 cache (used by PCGR)        |
+| `genomic/pcgr/`                                      | `pcgr_data`                                        | PCGR bundle 20250314                |
 | `genomic/mafsmith/mafsmith_0.1.0/`                   | `mafsmith_data`                                    | mafsmith home, fastVEP 0.3.0        |
 | `genomic/reference/Homo_sapiens_assembly38.fasta`    | `genome_reference`                                 | GATK hg38 FASTA (SigProfiler)       |
 | `genomic/cosmic_mutational_signatures/`              | `{sbs,dbs,id}_signatures`, `{sbs,dbs,id}_metadata` | COSMIC v3.6 signatures + metadata   |
@@ -31,7 +31,7 @@ nextflow run main.nf -profile apptainer --resources_dir $PWD/nextflow-cbioportal
 
 Notes:
 
-- PCGR 2.3.x only accepts bundle 20260620 and VEP 115, so all three change together.
+- PCGR 2.2.x only accepts bundle 20250314 and VEP 113, so all three change together.
 - mafsmith uses the kit's fastVEP 0.3.0, not the container's 0.4.0.
 
 ## How files are found

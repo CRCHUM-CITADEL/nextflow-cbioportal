@@ -16,6 +16,8 @@ process FILTER_MUTATIONS {
         NR==FNR { regions["chr" \$1 ":" \$2 "-" \$3] = 1; next }
         FNR==1  { print; next }
         \$5 ":" \$6 "-" \$7 in regions
-    ' "${tsv}" ${maf} > "${meta.sample_id}_mutations.txt"
+    ' "${tsv}" ${maf} > ${meta.sample_id}_mutations_non_filtered.txt
+
+    filter_mutations.R ${meta.sample_id}_mutations_non_filtered.txt ${meta.sample_id}_mutations.txt 
     """
 }

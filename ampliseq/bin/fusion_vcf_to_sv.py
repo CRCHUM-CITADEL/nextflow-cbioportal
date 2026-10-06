@@ -101,7 +101,7 @@ def main():
         if write_header:
             out.write('\t'.join([
                 'Sample_Id', 'SV_Status', 'Site1_Hugo_Symbol',
-                'Site1_Chromosome', 'Site1_Region', 'Site2_Hugo_Symbol',
+                'Site1_Chromosome', 'Site1_Position', 'Site2_Hugo_Symbol',
                 'Class', 'Event_Info', 'Tumor_Variant_Count', 'SV_Length',
             ]) + '\n')
         for row in rows:

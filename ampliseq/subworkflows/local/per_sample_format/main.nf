@@ -29,21 +29,24 @@ workflow PER_SAMPLE_FORMAT {
     // -------------------------------------------------------------------------
     // Mutations: VCF → MAF, then filter by TSV coordinates
     // -------------------------------------------------------------------------
-    if (params.skip_vcf2maf) {
+    // Nextflow 26 passes CLI values as strings (--skip_vcf2maf false → "false", which is truthy)
+    if (params.skip_vcf2maf.toString().toBoolean()) {
         STUB_MAF(ch_vcf_input)
         ch_maf = STUB_MAF.out
     } else {
         if (!params.mafsmith_container) {
             error "params.mafsmith_container must be set when skip_vcf2maf is false"
         }
-        ch_mafsmith_data = params.mafsmith_data
-            ? Channel.value(file(params.mafsmith_data))
+        // Unset, empty or a literal "null" (from --mafsmith_data null) all mean: fetch the bundle
+        def mafsmith_data = params.mafsmith_data?.toString()?.trim()
+        ch_mafsmith_data = mafsmith_data && mafsmith_data != 'null'
+            ? Channel.value(file(mafsmith_data, checkIfExists: true))
             : DOWNLOAD_MAFSMITH(ch_vcf_input.first().map { true }).data_dir.first()
         MAFSMITH(ch_vcf_input, ch_mafsmith_data)
         ch_maf = MAFSMITH.out
     }
 
-    if (params.filter_tsv_variants) {
+    if (params.filter_tsv_variants.toString().toBoolean()) {
         FILTER_MUTATIONS(ch_maf.join(ch_tsv))
         ch_mutations = FILTER_MUTATIONS.out
     } else {

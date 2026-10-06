@@ -27,7 +27,7 @@ workflow PER_SAMPLE_FORMAT {
     ch_seg = VCF_TO_SEG.out
 
     // -------------------------------------------------------------------------
-    // Mutations: VCF → MAF, then filter by TSV coordinates
+    // Mutations: VCF → MAF, then optionally keep only mutations overlapping TSV regions
     // -------------------------------------------------------------------------
     // Nextflow 26 passes CLI values as strings (--skip_vcf2maf false → "false", which is truthy)
     if (params.skip_vcf2maf.toString().toBoolean()) {

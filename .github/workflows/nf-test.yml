@@ -58,6 +58,8 @@ jobs:
     needs: [detect-changes]
     if: ${{ needs.detect-changes.outputs.ampliseq == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    env:
+      NXF_VER: "26.04.4" # ampliseq requires Nextflow >= 26.04.4 (nextflowVersion, nf-schema 2.8.0)
     defaults:
       run:
         working-directory: ampliseq

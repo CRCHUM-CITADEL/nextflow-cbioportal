@@ -30,4 +30,58 @@ nextflow_process {
             assert lines[1].startsWith('G1') && lines[2].startsWith('G2')
         }
     }
+
+    // TSV rows are regions (gene spans, CNV/SV intervals); a mutation is kept when its
+    // [Start_Position, End_Position] overlaps one, inclusive, on the same chromosome.
+    test("Keeps mutations overlapping a TSV region, drops the rest") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/filter_inputs").mkdirs()
+                file("${params.outdir}/filter_inputs/s.maf").text = 'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\n' +
+                    'IN_SNV\\tchr17\\t7571720\\t7571720\\n' +     // == region start
+                    'MID_SNV\\t17\\t7580000\\t7580000\\n' +       // inside region
+                    'END_SNV\\t17\\t7590868\\t7590868\\n' +       // == region end
+                    'AFTER\\t17\\t7590869\\t7590869\\n' +         // one past region end
+                    'BEFORE\\t17\\t7571719\\t7571719\\n' +        // one before region start
+                    'DEL_SPAN\\t12\\t25380270\\t25380280\\n' +    // indel straddling region start
+                    'OTHER_CHR\\t5\\t7580000\\t7580000\\n'        // right position, wrong chromosome
+                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tVariant Type\\n' +
+                    '17\\t7571720\\t7590868\\tSNP\\n' +
+                    '12\\t25380275\\t25403854\\tSNP\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
+            assert kept == ['IN_SNV', 'MID_SNV', 'END_SNV', 'DEL_SPAN']
+        }
+    }
+
+    test("Header-only TSV keeps only the MAF header") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/filter_inputs").mkdirs()
+                file("${params.outdir}/filter_inputs/s.maf").text = 'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\n' +
+                    'G1\\t1\\t100\\t100\\n'
+                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines == ['Hugo_Symbol\tChromosome\tStart_Position\tEnd_Position']
+        }
+    }
 }

@@ -9,8 +9,9 @@ Nextflow DSL2 pipeline converting Ampliseq VCFs + TSV exports + clinical files �
 ## Commands
 
 ```bash
-# Run tests (from ampliseq/ directory)
-nf-test test tests/modules/package_cbioportal.nf.test --profile test
+# Run tests (from ampliseq/ directory) — local ./nf-test binary; `+` appends to nf-test.config's `test` profile
+./nf-test test tests/modules --profile=+apptainer        # all 5 module tests; MAFSMITH pulls the private ghcr image
+./nf-test test tests/modules/package_cbioportal.nf.test --profile test   # what CI runs (no containers)
 
 # Run locally with test data (skips mafsmith)
 nextflow run main.nf -profile test,apptainer
@@ -30,6 +31,8 @@ nextflow run main.nf ... -resume
 ```
 
 The `test` profile sets `skip_vcf2maf=true` and uses stub MAFs from `assets/`, avoiding the need for the mafsmith reference bundle.
+
+Nextflow: **26.04.4 minimum** (`nextflowVersion '!>=26.04.4'`); the ampliseq CI job overrides `NXF_VER` to 26.04.4 (the workflow-wide default is still 25.10.2 for the other pipelines). See **Nextflow 26 notes** below before touching params or `publishDir`.
 
 ---
 
@@ -61,7 +64,7 @@ ch_samplesheet
   └─ PACKAGE_CBIOPORTAL (module) ── tar.gz all outputs for transfer
 ```
 
-**Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (mafsmith + fastVEP, GRCh37, PASS records only) and stub MAFs. `params.filter_tsv_variants` chooses between filtering mutations to TSV coordinates or passing all MAF rows through.
+**Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (mafsmith + fastVEP, GRCh37, PASS records only) and stub MAFs. `params.filter_tsv_variants` (default false) chooses between FILTER_MUTATIONS, which keeps MAF rows whose `[Start_Position, End_Position]` overlaps any `analysis_*_export.tsv` row's `Chr:Start-End` (inclusive, `chr` prefix ignored, all variant types), and passing all MAF rows through. It used to require an exact `Start-End` match, which dropped every SNV because TSV rows are regions.
 
 ---
 
@@ -70,6 +73,10 @@ ch_samplesheet
 - `analysis_*_export.tsv` — columns: `Chr, Start, End, Variant Type, Variant Subtype, Genes, Breakend Genes, Supporting Reads, Copy Number`
 - `*-basespace-pisces.final.vcf.gz` — somatic mutations VCF; filename prefix = `SAMPLE_ID`
 - `*-basespace-cnv.final.vcf` — CNV VCF; needs `CN` in FORMAT and `END` in INFO
+
+**Patient file** columns: `patient_id, moh_id, age, sex, os_status, os_months, smoking_history` (`moh_id` → `MOH_ID` in `data_clinical_patient.txt`; must be kept).
+**Sample file** columns: `sample_id, patient_id, cancer_type, cancer_type_detailed, sample_type, primary_tumor_site, metastatic_tumor_site, tumor_purity`.
+`bin/clinical_{patients,sample}_format.py` index these by name, so a missing column is a `KeyError`. Extra columns are ignored. Keep `assets/{patient,sample}_file.txt` in sync with the scripts.
 
 **Linking file** (`linking_file.txt`): maps anonymized → real IDs.
 ```
@@ -110,7 +117,17 @@ Two process labels control container assignment in `nextflow.config`:
 - `python` → `params.python_sif` (local Apptainer image built from `containers/python-ampliseq.def`)
 - `mafsmith` → `params.mafsmith_container` (mafsmith + fastVEP, built from `containers/mafsmith-fastvep_v0.1.0-0.4.0.def`)
 
-`params.mafsmith_data` (optional) is the mafsmith home with `GRCh37/{reference.fa,genes.gff3.gz}`; if null, `DOWNLOAD_MAFSMITH` fetches it once into `assets/mafsmith` (storeDir). mafsmith strips `chr` for the Ensembl reference; the MAFSMITH module restores it. Mutation_Status stays blank (tumor-only). `MERGE_MUTATIONS` merges per-sample files by column name, so older vcf2maf-era files (different columns) still merge correctly.
+`params.mafsmith_data` (optional) is the mafsmith home with `GRCh37/{reference.fa,genes.gff3.gz}`. If it is null, empty or the string `"null"`, `DOWNLOAD_MAFSMITH` fetches it once into `assets/mafsmith` (storeDir). `MAFSMITH` fails early if either reference file is missing or empty, unless `ext.args` contains `--skip-annotation` (the module test relies on this). **Gotcha:** `-stub-run` with `skip_vcf2maf=false` stores an *empty* `assets/mafsmith`, which storeDir then reuses; delete it after stub runs. mafsmith strips `chr` for the Ensembl reference; the MAFSMITH module restores it. Mutation_Status stays blank (tumor-only). `MERGE_MUTATIONS` merges per-sample files by column name, so older vcf2maf-era files (different columns) still merge correctly.
+
+Container definitions live in `containers/`. See `containers/README.md` for local build, `--mafsmith_container <local.sif>`, and the push/tag convention. ghcr images are private, so pulls need `apptainer registry login`.
+
+---
+
+## Nextflow 26 notes
+
+- **CLI params are Strings on NF 26**: `--skip_vcf2maf false` arrives as `"false"`, which is truthy. Boolean params are read as `params.x.toString().toBoolean()` (`skip_vcf2maf`, `filter_tsv_variants`, `anonymize`). Do the same for any new boolean param.
+- **`publishDir` paths that use `meta` must be closures**: `publishDir { "${params.outdir}/samples/${meta.sample_id}" }`. A plain GString fails on 26 with `No such variable: meta`.
+- **nf-schema 2.8.0** (requires NF >= 26.04): 2.5.1 warns `Unrecognized config option 'validation.*'` on 26. From 2.7 on, path params in `nextflow_schema.json`/config must default to `null`, not `""`.
 
 ---
 

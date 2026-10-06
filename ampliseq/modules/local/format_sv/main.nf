@@ -15,7 +15,7 @@ process FORMAT_SV {
     if [ -n "\$VCF" ]; then
         fusion_vcf_to_sv.py "\$VCF" "${meta.sample_id}"
     else
-        format_tsv.py "${tsv}" "${meta.sample_id}"
+        format_tsv_to_sv.py "${tsv}" "${meta.sample_id}"
     fi
     mv data_sv.txt "${meta.sample_id}_sv.txt"
     """

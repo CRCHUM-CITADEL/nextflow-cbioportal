@@ -13,14 +13,6 @@ process FILTER_MUTATIONS {
     # Build region set from TSV (\$1=Chr \$2=Start \$3=End). MAF columns are found by header
     # name, and the chr prefix is ignored on both sides so either contig naming matches.
     awk '
-<<<<<<< HEAD
-        NR==FNR { regions["chr" \$1 ":" \$2 "-" \$3] = 1; next }
-        FNR==1  { print; next }
-        \$5 ":" \$6 "-" \$7 in regions
-    ' "${tsv}" ${maf} > ${meta.sample_id}_mutations_non_filtered.txt
-
-    filter_mutations.R ${meta.sample_id}_mutations_non_filtered.txt ${meta.sample_id}_mutations.txt 
-=======
         function nochr(c) { sub(/^chr/, "", c); return c }
         BEGIN { FS = "\\t" }
         NR==FNR { regions[nochr(\$1) ":" \$2 "-" \$3] = 1; next }
@@ -35,6 +27,5 @@ process FILTER_MUTATIONS {
         }
         (nochr(\$c) ":" \$s "-" \$e) in regions
     ' "${tsv}" ${maf} > "${meta.sample_id}_mutations.txt"
->>>>>>> 3015a187e1e91a401619907b44ab9d15742d1b70
     """
 }

@@ -28,9 +28,9 @@ SAMPLE_001	PATIENT_001	PATIENT_001
 ```
 One patient may have multiple rows (one per sample). `deanon_patient_id` is used to filter `data_clinical_patient.txt` to only patients whose samples are in the samplesheet.
 
-**Patient file** (tab-separated): `patient_id`, `age`, `sex`, `os_status`, `os_months`, `smoking_history`
+**Patient file** (tab-separated): `patient_id`, `moh_id`, `age`, `sex`, `os_status`, `os_months`, `smoking_history`
 
-**Sample file** (tab-separated): `num_id`, `sample_id`, `patient_id`, `cancer_type`, `cancer_type_detailed`, `sample_type`, `tumor_site`, `tumor_purity`
+**Sample file** (tab-separated): `num_id`, `sample_id`, `patient_id`, `cancer_type`, `cancer_type_detailed`, `sample_type`, `primary_tumor_site`, `metastatic_tumor_site`, `tumor_purity`
 
 > The `sample_id` column in the sample file must use the **deanonymized** (real) sample IDs — the same values that appear in the `deanon_sample_id` column of the linking file. Outputs are scoped to the samplesheet: only samples present in the samplesheet appear in `data_clinical_sample.txt`, `data_clinical_patient.txt`, and `case_lists/`, even if the sample file and patient file contain additional entries.
 

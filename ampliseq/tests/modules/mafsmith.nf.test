@@ -41,4 +41,26 @@ nextflow_process {
             assert rows.every { it[col('Mutation_Status')] == '' }
         }
     }
+
+    // Without --skip-annotation an empty bundle (e.g. a stub-run leftover in assets/mafsmith) must fail
+    test("Rejects a mafsmith_data bundle without GRCh37 reference files") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'G', subject_id: 'S1', sample_id: 'SAMPLE_CHR'],
+                    file('${projectDir}/tests/modules/fixtures/SAMPLE_CHR')
+                ])
+                input[1] = file('${projectDir}/assets/samples')
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.stdout.any { it.contains('GRCh37/reference.fa missing or empty') } ||
+                   workflow.stdout.any { it.contains('GRCh37/reference.fa missing or empty') }
+        }
+    }
 }

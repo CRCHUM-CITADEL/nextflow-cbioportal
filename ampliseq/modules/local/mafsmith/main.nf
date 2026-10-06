@@ -22,6 +22,14 @@ process MAFSMITH {
     # Keep the header and PASS records only
     zcat -f "\$VCF" | awk 'BEGIN {FS="\\t"} /^#/ || \$7 == "PASS"' > "${meta.sample_id}.pass.vcf"
 
+    # An empty bundle (e.g. left in assets/mafsmith by a -stub-run of DOWNLOAD_MAFSMITH) would
+    # otherwise be reused by every later run; fail loudly unless annotation is skipped.
+    if [[ " ${args} " != *" --skip-annotation "* ]]; then
+        for f in GRCh37/reference.fa GRCh37/genes.gff3.gz; do
+            [ -s "${mafsmith_data}/\$f" ] || { echo "ERROR: ${mafsmith_data}/\$f missing or empty; delete the bundle (e.g. assets/mafsmith) to re-fetch, or fix --mafsmith_data" >&2; exit 1; }
+        done
+    fi
+
     # mafsmith looks under \$HOME/.mafsmith for its reference data
     export HOME=./
     ln -s ${mafsmith_data} .mafsmith

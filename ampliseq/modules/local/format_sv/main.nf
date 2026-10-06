@@ -1,7 +1,7 @@
 process FORMAT_SV {
     tag "${meta.sample_id}"
     label 'python'
-    publishDir "${params.outdir}/samples/${meta.sample_id}", mode: 'copy'
+    publishDir { "${params.outdir}/samples/${meta.sample_id}" }, mode: 'copy'
 
     input:
     tuple val(meta), path(tsv), path(sample_folder)

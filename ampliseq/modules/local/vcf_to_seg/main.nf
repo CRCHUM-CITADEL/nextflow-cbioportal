@@ -1,7 +1,7 @@
 process VCF_TO_SEG {
     tag "${meta.sample_id}"
     label 'python'
-    publishDir "${params.outdir}/samples/${meta.sample_id}", mode: 'copy'
+    publishDir { "${params.outdir}/samples/${meta.sample_id}" }, mode: 'copy'
 
     input:
     tuple val(meta), path(sample_folder)

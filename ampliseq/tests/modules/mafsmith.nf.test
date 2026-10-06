@@ -1,0 +1,44 @@
+nextflow_process {
+
+    name "Test MAFSMITH"
+    script "modules/local/mafsmith/main.nf"
+    process "MAFSMITH"
+    tag "module"
+    tag "mafsmith"
+
+    // Runs the real binary (--skip-annotation) on a chr-prefixed tumor-only Pisces VCF
+    test("PASS-only MAF with header on line 1, chr prefix and tumor depths") {
+
+        config "tests/nextflow_mafsmith.config"
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'G', subject_id: 'S1', sample_id: 'SAMPLE_CHR'],
+                    file('${projectDir}/tests/modules/fixtures/SAMPLE_CHR')
+                ])
+                input[1] = file('${projectDir}/assets/samples')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[0].split('\t', -1) as List
+            assert header[0] == 'Hugo_Symbol' : "line 1 must be the column header, got ${lines[0]}"
+            def rows = lines.drop(1).collect { it.split('\t', -1) }
+            def col = { String n -> assert header.indexOf(n) >= 0 : "no ${n} column"; header.indexOf(n) }
+
+            assert rows.size() == 2 : "non-PASS record must be dropped"
+            assert rows.every { it[col('Tumor_Sample_Barcode')] == 'SAMPLE_CHR' }
+            assert rows.every { it[col('Chromosome')].startsWith('chr') }
+            assert rows.every { it[col('NCBI_Build')] == 'GRCh37' }
+            assert rows[0][col('t_alt_count')] == '30'
+            assert rows[0][col('t_depth')] == '100'
+            assert rows.every { it[col('Mutation_Status')] == '' }
+        }
+    }
+}

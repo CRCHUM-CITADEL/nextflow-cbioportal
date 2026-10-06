@@ -1,0 +1,7 @@
+type_of_cancer: mixed
+cancer_study_identifier: test_study
+name: test_study
+short_name: test_study
+description: cBioPortal study for test_study
+add_global_case_list: true
+reference_genome: hg19

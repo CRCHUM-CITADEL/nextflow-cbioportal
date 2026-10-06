@@ -43,10 +43,11 @@ nextflow run main.nf \
   --patient_file patient_file.txt \
   --sample_file sample_file.txt \
   --linking_file linking_file.txt \
-  --vcf2maf_sif /path/to/vcf2maf_ensembl-vep.sif \
-  --vep_data /path/to/vep_data/ \
+  --mafsmith_data /path/to/mafsmith_home/ \
   --study_id my_study
 ```
+
+VCF → MAF uses [mafsmith](https://github.com/nf-osi/mafsmith) + fastVEP (GRCh37, PASS records only). `--mafsmith_data` is optional: when omitted, the GRCh37 reference bundle (Ensembl 113) is downloaded once into `assets/mafsmith/`. A pre-staged bundle must contain `GRCh37/reference.fa` and `GRCh37/genes.gff3.gz`.
 
 Skip VCF → MAF conversion if MAFs already exist:
 ```bash

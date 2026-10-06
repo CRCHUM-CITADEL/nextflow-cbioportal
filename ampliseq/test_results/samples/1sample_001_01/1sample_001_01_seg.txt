@@ -1,0 +1,3 @@
+ID	chrom	loc.start	loc.end	num.mark	seg.mean
+1sample_001_01	4	500000	600000	1	4
+1sample_001_01	3	700000	800000	1	1

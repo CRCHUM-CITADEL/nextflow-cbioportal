@@ -1,7 +1,8 @@
 include { FORMAT_SV             } from '../../../modules/local/format_sv/main.nf'
 include { FORMAT_CNA            } from '../../../modules/local/format_cna/main.nf'
 include { STUB_MAF              } from '../../../modules/local/stub_maf/main.nf'
-include { VCF_TO_MAF            } from '../../../modules/local/vcf_to_maf/main.nf'
+include { MAFSMITH              } from '../../../modules/local/mafsmith/main.nf'
+include { DOWNLOAD_MAFSMITH     } from '../../../modules/local/download_mafsmith/main.nf'
 include { FILTER_MUTATIONS      } from '../../../modules/local/filter_mutations/main.nf'
 include { PASSTHROUGH_MUTATIONS } from '../../../modules/local/passthrough_mutations/main.nf'
 include { VCF_TO_SEG            } from '../../../modules/local/vcf_to_seg/main.nf'
@@ -32,19 +33,14 @@ workflow PER_SAMPLE_FORMAT {
         STUB_MAF(ch_vcf_input)
         ch_maf = STUB_MAF.out
     } else {
-        if (!params.vcf2maf_container) {
-            error "params.vcf2maf_container must be set when skip_vcf2maf is false"
+        if (!params.mafsmith_container) {
+            error "params.mafsmith_container must be set when skip_vcf2maf is false"
         }
-        if (!params.ref_fasta) {
-            error "ref_fasta must be set when skip_vcf2maf is false"
-        }
-        if (!params.vep_data) {
-            error "params.vep_data must be set when skip_vcf2maf is false"
-        }
-        ch_vep       = Channel.value(file(params.vep_data))
-        ch_ref_fasta = Channel.value(file(params.ref_fasta))
-        VCF_TO_MAF(ch_vcf_input, ch_vep, ch_ref_fasta)
-        ch_maf = VCF_TO_MAF.out
+        ch_mafsmith_data = params.mafsmith_data
+            ? Channel.value(file(params.mafsmith_data))
+            : DOWNLOAD_MAFSMITH(ch_vcf_input.first().map { true }).data_dir.first()
+        MAFSMITH(ch_vcf_input, ch_mafsmith_data)
+        ch_maf = MAFSMITH.out
     }
 
     if (params.filter_tsv_variants) {

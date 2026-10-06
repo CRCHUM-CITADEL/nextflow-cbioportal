@@ -1,0 +1,33 @@
+nextflow_process {
+
+    name "Test FILTER_MUTATIONS"
+    script "modules/local/filter_mutations/main.nf"
+    process "FILTER_MUTATIONS"
+    tag "module"
+    tag "filter"
+
+    test("Matches TSV regions by column name, with or without chr prefix") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/filter_inputs").mkdirs()
+                file("${params.outdir}/filter_inputs/s.maf").text = 'Hugo_Symbol\\tEnd_Position\\tStart_Position\\tChromosome\\n' +
+                    'G1\\t150\\t100\\tchr1\\n' +
+                    'G2\\t250\\t200\\t2\\n' +
+                    'G3\\t350\\t300\\tchr3\\n'
+                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\n1\\t100\\t150\\n2\\t200\\t250\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines.size() == 3
+            assert lines[1].startsWith('G1') && lines[2].startsWith('G2')
+        }
+    }
+}

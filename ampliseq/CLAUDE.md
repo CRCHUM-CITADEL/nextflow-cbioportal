@@ -12,7 +12,7 @@ Nextflow DSL2 pipeline converting Ampliseq VCFs + TSV exports + clinical files �
 # Run tests (from ampliseq/ directory)
 nf-test test tests/modules/package_cbioportal.nf.test --profile test
 
-# Run locally with test data (skips vcf2maf)
+# Run locally with test data (skips mafsmith)
 nextflow run main.nf -profile test,apptainer
 
 # Run with real data
@@ -22,16 +22,14 @@ nextflow run main.nf -profile apptainer \
   --patient_file patient_file.txt \
   --sample_file sample_file.txt \
   --linking_file linking_file.txt \
-  --vcf2maf_container community.wave.seqera.io/library/vcf2maf_ensembl-vep:1b486a30e76e2908 \
-  --vep_data /path/to/vep_data/ \
-  --ref_fasta /path/to/hg19.fa \
+  --mafsmith_data /path/to/mafsmith_home/ \
   --study_id my_study
 
 # Resume a failed/interrupted run
 nextflow run main.nf ... -resume
 ```
 
-The `test` profile sets `skip_vcf2maf=true` and uses stub MAFs from `assets/`, avoiding the need for VEP data and reference FASTA.
+The `test` profile sets `skip_vcf2maf=true` and uses stub MAFs from `assets/`, avoiding the need for the mafsmith reference bundle.
 
 ---
 
@@ -48,7 +46,7 @@ ch_samplesheet
   │    ├─ FORMAT_SV         (TSV → _sv.txt)
   │    ├─ FORMAT_CNA        (TSV → _cna.txt)
   │    ├─ VCF_TO_SEG        (CNV VCF → _seg.txt)
-  │    └─ VCF_TO_MAF or STUB_MAF → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → _mutations.txt
+  │    └─ MAFSMITH (+ DOWNLOAD_MAFSMITH) or STUB_MAF → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → _mutations.txt
   │
   ├─ FILTER_LINKING (module) ── restrict linking file to samplesheet samples
   │
@@ -63,7 +61,7 @@ ch_samplesheet
   └─ PACKAGE_CBIOPORTAL (module) ── tar.gz all outputs for transfer
 ```
 
-**Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (VEP v113, GRCh37/hg19) and stub MAFs. `params.filter_tsv_variants` chooses between filtering mutations to TSV coordinates or passing all MAF rows through.
+**Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (mafsmith + fastVEP, GRCh37, PASS records only) and stub MAFs. `params.filter_tsv_variants` chooses between filtering mutations to TSV coordinates or passing all MAF rows through.
 
 ---
 
@@ -86,7 +84,7 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 **Per-sample** → published to `{outdir}/samples/{sample_id}/`:
 1. `analysis_*_export.tsv` → FORMAT_SV → `_sv.txt` (`Variant Subtype = FUSION`)
 2. `analysis_*_export.tsv` → FORMAT_CNA → `_cna.txt` (`DUPLICATION`/`DELETION`)
-3. VCF → VCF_TO_MAF (vcf2maf, VEP v113, GRCh37/hg19) → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → `_mutations.txt`
+3. VCF → MAFSMITH (mafsmith + fastVEP, GRCh37, PASS only; header on line 1, `chr` prefix kept) → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → `_mutations.txt`
 4. `*-cnv.final.vcf` → VCF_TO_SEG → `_seg.txt` (PASS only; `seg.mean = log2(CN/2)`; CN=0 → −3.0)
 
 **Downstream** (re-runs on every execution over all samples):
@@ -110,9 +108,9 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 
 Two process labels control container assignment in `nextflow.config`:
 - `python` → `params.python_sif` (local Apptainer image built from `containers/python-ampliseq.def`)
-- `vcf2maf` → `params.vcf2maf_container` (Wave-built image with vcf2maf + ensembl-vep)
+- `mafsmith` → `params.mafsmith_container` (mafsmith + fastVEP, built from `containers/mafsmith-fastvep_v0.1.0-0.4.0.def`)
 
-The vcf2maf container mounts `vep_data` as `/home/jbellavance/` inside the container.
+`params.mafsmith_data` (optional) is the mafsmith home with `GRCh37/{reference.fa,genes.gff3.gz}`; if null, `DOWNLOAD_MAFSMITH` fetches it once into `assets/mafsmith` (storeDir). mafsmith strips `chr` for the Ensembl reference; the MAFSMITH module restores it. Mutation_Status stays blank (tumor-only). `MERGE_MUTATIONS` merges per-sample files by column name, so older vcf2maf-era files (different columns) still merge correctly.
 
 ---
 

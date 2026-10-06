@@ -1,7 +1,11 @@
-### In order to create the vcf2maf container, you need to have wave installed.
+### mafsmith + fastVEP container (VCF → MAF)
 
-`wave --conda vcf2maf=1.6.22=hdfd78af_2 --conda-package ensembl-vep=113.4 --freeze`
+Built from `mafsmith-fastvep_v0.1.0-0.4.0.def` (same image as oncoanalyser):
 
-### This will create a link to a docker repo like so to use in the module (usable with apptainer): 
+`apptainer build mafsmith-fastvep_v0.1.0-0.4.0.sif mafsmith-fastvep_v0.1.0-0.4.0.def`
 
-community.wave.seqera.io/library/vcf2maf_ensembl-vep:1b486a30e76e2908
+Push it to `oras://ghcr.io/crchum-citadel/mafsmith-fastvep:0.1.0-0.4.0` (the default of `params.mafsmith_container`), or point `--mafsmith_container` at a local `.sif`.
+
+### Python container
+
+Built from `python-ampliseq.def` (`params.python_sif`).

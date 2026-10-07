@@ -22,7 +22,7 @@ process MAFSMITH {
     # An empty bundle (e.g. left in assets/mafsmith by a -stub-run of DOWNLOAD_MAFSMITH) would
     # otherwise be reused by every later run; fail loudly unless annotation is skipped.
     if [[ " ${args} " != *" --skip-annotation "* ]]; then
-        for f in GRCh37/reference.fa GRCh37/genes.gff3.gz; do
+        for f in GRCh37/reference.fa GRCh37/reference.fa.fai GRCh37/genes.gff3.gz; do
             [ -s "${mafsmith_data}/\$f" ] || { echo "ERROR: ${mafsmith_data}/\$f missing or empty; delete the bundle (e.g. assets/mafsmith) to re-fetch, or fix --mafsmith_data" >&2; exit 1; }
         done
     fi
@@ -30,6 +30,12 @@ process MAFSMITH {
     # The bundle uses mafsmith fetch (Ensembl) naming: 1, 2, X, MT. mafsmith refuses a VCF whose
     # contigs are not in the FASTA, and Pisces VCFs say chr1, so strip chr (chrM -> MT) from the
     # records and ##contig lines. Keep the header and PASS records only.
+    #
+    # Also drop pre-existing CSQ* INFO fields (headers and values). Ampliseq VCFs come
+    # Nirvana-annotated with CSQR/CSQT, and mafsmith 0.1.0 finds fastVEP's header with
+    # contains("ID=CSQ"), so it takes CSQR's 3-field layout as the CSQ format: every row then
+    # comes out Hugo_Symbol=Unknown, Variant_Classification=Targeted_Region. fastVEP adds a
+    # fresh CSQ of its own, so nothing is lost.
     VCF_HAS_CHR=0
     zcat -f "\$VCF" | grep -v '^#' | head -1 | grep -q '^chr' && VCF_HAS_CHR=1 || true
 
@@ -38,8 +44,15 @@ process MAFSMITH {
         BEGIN { FS = OFS = "\\t" }
         /^##contig=<ID=chrM[,>]/ { sub(/ID=chrM/, "ID=MT"); print; next }
         /^##contig=<ID=chr/      { sub(/ID=chr/, "ID="); print; next }
+        /^##INFO=<ID=CSQ[A-Za-z0-9_]*,/ { next }
         /^#/ { print; next }
-        \$7 == "PASS" { \$1 = no_chr(\$1); print }
+        \$7 == "PASS" {
+            \$1 = no_chr(\$1)
+            n = split(\$8, kv, ";"); info = ""
+            for (i = 1; i <= n; i++) if (kv[i] !~ /^CSQ[A-Za-z0-9_]*(=|\$)/) info = info (info == "" ? "" : ";") kv[i]
+            \$8 = (info == "" ? "." : info)
+            print
+        }
     ' > "${meta.sample_id}.pass.vcf"
 
     # mafsmith looks under \$HOME/.mafsmith for its reference data

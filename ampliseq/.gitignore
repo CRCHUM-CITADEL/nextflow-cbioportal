@@ -1,6 +1,5 @@
 test_results_vcf
 test_results_passthrough
 test_results
-assets/grch37_gene_loci.tsv.gz
 containers/*.sif
 assets/mafsmith

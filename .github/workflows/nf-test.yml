@@ -13,7 +13,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-  NXF_VER: "25.10.2"
+  NXF_VER: "26.04.4"
   NFT_VER: "0.9.3"
   NFT_WORKDIR: "~"
   NXF_ANSI_LOG: false
@@ -40,8 +40,12 @@ jobs:
         id: changes
         run: |
           BASE_SHA=${{ github.event.pull_request.base.sha || 'HEAD~1' }}
-          for pipeline in ampliseq oncoanalyser dragen; do
-            if git diff --quiet "$BASE_SHA" HEAD -- "$pipeline/"; then
+          # "<output key>:<directory>" — the directories carry a version suffix,
+          # but the output keys must stay valid job/output identifiers.
+          for entry in ampliseq:ampliseq oncoanalyser:oncoanalyser_3.0.0 dragen:dragen_4.4; do
+            pipeline="${entry%%:*}"
+            dir="${entry#*:}"
+            if git diff --quiet "$BASE_SHA" HEAD -- "$dir/"; then
               echo "${pipeline}=false" >> $GITHUB_OUTPUT
             else
               echo "${pipeline}=true" >> $GITHUB_OUTPUT
@@ -102,10 +106,13 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # oncoanalyser — 14 tests across modules, subworkflows, and pipeline levels
+  # oncoanalyser — tests across modules, subworkflows, and pipeline levels
   #
   # Pipeline tests:
   #   tests/clinical.nf.test              (R container)
+  #   tests/clinical_generated.nf.test    (R container)
+  #   tests/clinical_template.nf.test     (R container)
+  #   tests/both.nf.test                  (genomic + clinical, precomputed fixtures)
   #   tests/incremental.nf.test           (R container)
   #
   # Subworkflow tests:
@@ -118,6 +125,15 @@ jobs:
   #   tests/subworkflows/genomic_mutations.nf.test        (PCGR + vcf2maf — CI only)
   #
   # Module tests:
+  #   tests/modules/build_clinical_table.nf.test          (R container)
+  #   tests/modules/write_clinical_sample.nf.test         (R container)
+  #   tests/modules/write_clinical_patient.nf.test        (R container)
+  #   tests/modules/generate_timeline_surgery.nf.test     (R container)
+  #   tests/modules/generate_timeline_treatment.nf.test   (R container)
+  #   tests/modules/generate_timeline_status.nf.test      (R container)
+  #   tests/modules/generate_timeline_specimen.nf.test    (R container)
+  #   tests/modules/generate_timeline_lab_test.nf.test    (R container)
+  #   tests/modules/merge_timeline.nf.test                (R container)
   #   tests/modules/isofox_fusion_to_cbioportal.nf.test   (R container)
   #   tests/modules/package_cbioportal.nf.test            (stub — no containers)
   #   tests/modules/sigprofiler_sbs.nf.test               (SigProfiler container)
@@ -151,7 +167,7 @@ jobs:
           total_shards: ${{ needs.oncoanalyser-shards.outputs.total_shards }}
           github_token: ${{ secrets.GH_PAT }}
           nxf_version: ${{ env.NXF_VER }}
-          working_directory: oncoanalyser
+          working_directory: oncoanalyser_3.0.0
 
   oncoanalyser-shards:
     name: oncoanalyser-shards
@@ -173,7 +189,7 @@ jobs:
           NFT_VER: ${{ env.NFT_VER }}
         with:
           max_shards: 7
-          working_directory: oncoanalyser
+          working_directory: oncoanalyser_3.0.0
 
   # ---------------------------------------------------------------------------
   # dragen — 10 tests across modules, subworkflows, and pipeline levels
@@ -220,7 +236,7 @@ jobs:
           total_shards: ${{ needs.dragen-shards.outputs.total_shards }}
           github_token: ${{ secrets.GH_PAT }}
           nxf_version: ${{ env.NXF_VER }}
-          working_directory: dragen
+          working_directory: dragen_4.4
 
   dragen-shards:
     name: dragen-shards
@@ -242,7 +258,7 @@ jobs:
           NFT_VER: ${{ env.NFT_VER }}
         with:
           max_shards: 7
-          working_directory: dragen
+          working_directory: dragen_4.4
 
   # ---------------------------------------------------------------------------
   # Final gate — all pipeline jobs must pass

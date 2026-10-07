@@ -1,0 +1,74 @@
+nextflow_pipeline {
+
+    name "Test resource kit resolution"
+    script "../main.nf"
+    tag "pipeline"
+    tag "resources"
+
+    // Guards around resource-kit resolution; clinical mode keeps these fast.
+
+    test("kit with the wrong VERSION is rejected") {
+
+        config "tests/nextflow_clinical.config"
+        when {
+            params {
+                mode          = 'clinical'
+                outdir        = "$outputDir"
+                resources_dir = "${projectDir}/tests/fixtures/resource_kit_v0.9.0"
+            }
+        }
+
+        then {
+            def log = (workflow.stdout + workflow.stderr).join('\n')
+            assertAll(
+                { assert workflow.failed },
+                { assert log.contains("resource kit version '0.9.0'") },
+                { assert log.contains("needs '1.0.0'") }
+            )
+        }
+    }
+
+    test("no kit and no explicit maps — the missing MOHCCN maps are named") {
+
+        config "tests/nextflow_clinical.config"
+        when {
+            params {
+                mode          = 'clinical'
+                outdir        = "$outputDir"
+                resources_dir = null
+            }
+        }
+
+        then {
+            def log = (workflow.stdout + workflow.stderr).join('\n')
+            assertAll(
+                { assert workflow.failed },
+                { assert log.contains('mohccn_primary_site_map') },
+                { assert log.contains('mohccn_specimen_tissue_source_map') },
+                { assert log.contains('mohccn_treatment_intent_map') }
+            )
+        }
+    }
+
+    test("no kit, explicit maps — explicit params are enough") {
+
+        config "tests/nextflow_clinical.config"
+        when {
+            params {
+                mode                              = 'clinical'
+                outdir                            = "$outputDir"
+                resources_dir                     = null
+                mohccn_primary_site_map           = "${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv"
+                mohccn_specimen_tissue_source_map = "${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv"
+                mohccn_treatment_intent_map       = "${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv"
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert path("${params.outdir}/data_clinical_sample.txt").exists() }
+            )
+        }
+    }
+}

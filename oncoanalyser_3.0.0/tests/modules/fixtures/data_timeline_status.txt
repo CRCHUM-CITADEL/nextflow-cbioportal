@@ -1,0 +1,6 @@
+PATIENT_ID	START_DATE	STOP_DATE	EVENT_TYPE	STATUS	RELAPSE_TYPE	RELAPSE_DATE	METHOD_OF_PROGRESSION	SITE	SITE_LABEL
+T1	730		STATUS	No evidence of disease					
+T1	1826		STATUS	No evidence of disease					
+T2	600		STATUS	No evidence of disease					
+T2	900		STATUS	Relapse or recurrence	Biochemical progression	850	Tumor marker measurement (procedure)	C569	Ovary
+T2	1100		STATUS	Distant progression	Distant recurrence/metastasis	1050	Imaging (procedure)	C220	Liver and intrahepatic bile ducts

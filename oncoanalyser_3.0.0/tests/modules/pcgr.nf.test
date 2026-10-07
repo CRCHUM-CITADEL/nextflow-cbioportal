@@ -1,0 +1,91 @@
+nextflow_process {
+
+    name "Test PCGR module"
+    script "modules/local/pcgr/main.nf"
+    process "PCGR"
+    config "tests/nextflow_pcgr.config"
+    tag "module"
+    tag "pcgr"
+
+    test("PAVE INFO tags are stripped; CPSR's normal-named output is published under the tumour sample name") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'T1', sample: 'T1-T'],
+                    file('${projectDir}/tests/modules/fixtures/pave_germline_impact.vcf.gz'),
+                    file('${projectDir}/tests/modules/fixtures/pave_germline_impact.vcf.gz.tbi')
+                ])
+                input[1] = file('${projectDir}/assets/test_data/annotations')
+                input[2] = file('${projectDir}/assets/test_data/reference')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def out = process.out[0][0][1].toString()
+            assert out.endsWith('T1-T.cpsr.grch38.classification.tsv.gz')
+            // The real calls, not the header-only placeholder.
+            assert path(out).linesGzip.size() == 2
+
+            // Debug folder: CPSR's log, what it was given, and its other outputs.
+            def debug = process.out.debug[0][1].toString()
+            assert debug.endsWith('T1-T.cpsr_debug')
+            assert path("${debug}/cpsr.log").text.contains('fake cpsr: sample_id=T1-N')
+            def summary = path("${debug}/input_summary.txt").text
+            assert summary.contains('samples: T1-N T1')
+            assert summary.contains('-- GT per sample')
+            assert summary.contains('## after CPSR validation')
+            assert path("${debug}/T1-N.cpsr.grch38.pass.vcf.gz").exists()
+        }
+    }
+
+    test("CPSR finds nothing — a header-only placeholder, and the task still succeeds") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'EMPTY', sample: 'EMPTY-T'],
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz'),
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz.tbi')
+                ])
+                input[1] = file('${projectDir}/assets/test_data/annotations')
+                input[2] = file('${projectDir}/assets/test_data/reference')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def out = process.out[0][0][1].toString()
+            assert out.endsWith('EMPTY-T.cpsr.grch38.classification.tsv.gz')
+            assert path(out).linesGzip.size() == 1
+            assert path("${process.out.debug[0][1]}/cpsr.log").text.contains('header-only placeholder used')
+        }
+    }
+
+    test("CPSR logs an ERROR but exits 0 — the task fails instead of using the placeholder") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'BROKEN', sample: 'BROKEN-T'],
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz'),
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz.tbi')
+                ])
+                input[1] = file('${projectDir}/assets/test_data/annotations')
+                input[2] = file('${projectDir}/assets/test_data/reference')
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains('CPSR failed for BROKEN-T')
+        }
+    }
+}

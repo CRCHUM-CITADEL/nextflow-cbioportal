@@ -40,4 +40,4 @@ jobs:
 
       - name: Run pytest
         # Only test_*.py is collected, so the .nf.test files sitting alongside are ignored.
-        run: pytest oncoanalyser/tests ampliseq/tests dragen/tests -v
+        run: pytest oncoanalyser_3.0.0/tests ampliseq/tests dragen_4.4/tests -v

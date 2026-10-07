@@ -1,6 +1,6 @@
 {
-    "name": "CRCHUM-CITADEL/nextflow-sante-precision",
-    "homePage": "https://github.com/CRCHUM-CITADEL/nextflow-sante-precision",
+    "name": "CRCHUM-CITADEL/nextflow-cbioportal",
+    "homePage": "https://github.com/CRCHUM-CITADEL/nextflow-cbioportal",
     "repos": {
         "https://github.com/nf-core/modules.git": {
             "modules": {
@@ -18,11 +18,6 @@
                     "ensemblvep/vep": {
                         "branch": "master",
                         "git_sha": "0567eee9276d4a358e5f9f01c810a149fbd241f8",
-                        "installed_by": ["modules"]
-                    },
-                    "vcf2maf": {
-                        "branch": "master",
-                        "git_sha": "41dfa3f7c0ffabb96a6a813fe321c6d1cc5b6e46",
                         "installed_by": ["modules"]
                     }
                 }

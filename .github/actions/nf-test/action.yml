@@ -23,7 +23,7 @@ inputs:
     description: "Tags to pass as argument for nf-test --tag parameter"
     required: false
   working_directory:
-    description: "Pipeline subdirectory to run tests from (e.g., 'oncoanalyser')"
+    description: "Pipeline subdirectory to run tests from (e.g., 'oncoanalyser_3.0.0')"
     required: false
     default: "."
 

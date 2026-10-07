@@ -13,13 +13,19 @@ process INTEGRATE_RNA_VARIANTS {
         tuple val(dna_meta), path("${dna_meta.sample}.somatic_rna.maf")
 
     script:
+    // som_rna_vcf is [] for a subject without RNA: its MAF still gets the (empty) RNA columns.
+    def rna_arg = som_rna_vcf ? "-r tmp.${dna_meta.sample}.vcf" : ''
     """
-    zcat $som_rna_vcf | grep "#" > tmp.${dna_meta.sample}.vcf
-    zcat $som_rna_vcf | grep PASS >> tmp.${dna_meta.sample}.vcf
+    ${som_rna_vcf ? "zcat $som_rna_vcf | awk -F'\\t' '/^#/ || \$7 == \"PASS\"' > tmp.${dna_meta.sample}.vcf" : ''}
     gen_integrate_rna_variants.R \
         -d $som_dna_maf \
-        -r tmp.${dna_meta.sample}.vcf \
+        ${rna_arg} \
         -o ${dna_meta.sample}.somatic_rna.maf \
         --min_depth=3 --min_vaf=0.05
+    """
+
+    stub:
+    """
+    touch "${dna_meta.sample}.somatic_rna.maf"
     """
 }

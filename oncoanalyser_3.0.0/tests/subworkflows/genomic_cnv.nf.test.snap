@@ -2,18 +2,20 @@
     "Two subjects \u2014 CNV SEG and long files are produced": {
         "content": [
             [
-                "T1_data_cna_hg38.seg:md5,162927901e4f8a2c1ffe56d5a4cf3ed5",
-                "T2_data_cna_hg38.seg:md5,534806f0a9491fc2b9adf434699d3466"
+                "T1_data_cna_hg38.seg:md5,32f7d94e667933e90fc5a789ed788f57",
+                "T1_nopurity_data_cna_hg38.seg:md5,dffe490dd8dd12e3ff3737493d74519c",
+                "T2_data_cna_hg38.seg:md5,bffc5d7e2ac19e6686fc9ad513ca400f"
             ],
             [
-                "T1_data_cna_long.txt:md5,93092122741d461463c3fe352888ad00",
-                "T2_data_cna_long.txt:md5,3b19dbb9eda71113c88fea53bc65ea23"
+                "T1_data_cna_long.txt:md5,8c054806d52fafc0ace3bafe7e193563",
+                "T1_nopurity_data_cna_long.txt:md5,6d49850a16e4bc97e175e0f0d76d86be",
+                "T2_data_cna_long.txt:md5,823dcf0563222169fbfc116d2ff562b1"
             ]
         ],
-        "timestamp": "2026-04-10T16:18:36.316339926",
+        "timestamp": "2026-09-21T11:02:17.625951495",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "25.10.4"
+            "nextflow": "26.04.4"
         }
     }
 }

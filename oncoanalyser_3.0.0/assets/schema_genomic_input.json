@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-sante-precision/assets/schema_genomic_input.json",
-    "title": "CRCHUM-CITADEL/nextflow-sante-precision genomic pipeline parameters",
+    "$id": "https://raw.githubusercontent.com/CRCHUM-CITADEL/nextflow-cbioportal/assets/schema_genomic_input.json",
+    "title": "CRCHUM-CITADEL/nextflow-cbioportal genomic pipeline parameters",
     "description": "One row per subject. The folder column points to the oncoanalyser output directory for that subject; all modality files are resolved relative to it.",
     "type": "array",
     "items": {

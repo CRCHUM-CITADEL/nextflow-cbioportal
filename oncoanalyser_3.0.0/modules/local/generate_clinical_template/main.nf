@@ -21,4 +21,9 @@ process GENERATE_CLINICAL_TEMPLATE {
         printf '%s\\t%s\\t%s\\n' "\$patient" "\$sample" "\${sample_type:-Primary}" >> data_clinical_sample.txt
     done
     """
+
+    stub:
+    """
+    touch data_clinical_sample.txt
+    """
 }

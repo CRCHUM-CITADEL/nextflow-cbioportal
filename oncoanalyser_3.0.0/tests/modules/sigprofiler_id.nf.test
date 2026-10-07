@@ -24,8 +24,8 @@ nextflow_process {
                         file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/pave/somatic/T2-T.pave.somatic.vcf.gz')
                     ]
                 )
-                input[1] = file('${projectDir}/assets/COSMIC_Human_v3.6.zip')
-                input[2] = file('${projectDir}/assets/cosmic_id_metadata.tsv')
+                input[1] = file('${projectDir}/assets/test_data/resources/genomic/cosmic_mutational_signatures/COSMIC_Human_ID-83_GRCh38_v3.6.csv')
+                input[2] = file('${projectDir}/assets/test_data/resources/genomic/cosmic_mutational_signatures/cosmic_id_metadata.tsv')
                 input[3] = file('${projectDir}/assets/test_data/reference/Homo_sapiens_assembly38_chr21.fasta')
                 """
             }

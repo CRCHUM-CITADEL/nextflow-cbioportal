@@ -1,8 +1,0 @@
-nextflow run main.nf -profile slurm,apptainer \
-      --mode both \
-      --genomic_samplesheet samplesheet_mohq-cm-1.csv \
-      --study_id MoHQ-CM_oncoanalyser_3_0_0 \
-      --project_description 'Marathon of Hope CHUM' \
-      --clinical_samplesheet clinical_samplesheet_mohq-cm-1.csv \
-      --cancer_type 'mohq_cm' \
-      --incremental

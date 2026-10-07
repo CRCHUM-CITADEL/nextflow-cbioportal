@@ -1,5 +1,5 @@
 //
-// Subworkflow with functionality specific to the CRCHUM-CITADEL/nextflow-sante-precision pipeline
+// Subworkflow with functionality specific to the CRCHUM-CITADEL/nextflow-cbioportal pipeline
 //
 
 /*
@@ -73,8 +73,8 @@ workflow PIPELINE_INITIALISATION {
     ch_clinical_samplesheet = Channel.empty()
 
     if (mode in ['genomic', 'both']){
-        if (!params.ensembl_annotations){
-            error("ERROR: Missing ensembl_annotations file (tsv format). Check input in nextflow.config")
+        if (!resource('ensembl_annotations')){
+            error("ERROR: Missing ensembl_annotations (BioMart TSV). Set --resources_dir to the resource kit, pass --ensembl_annotations, or use -profile citadel at CRCHUM.")
         }
 
         ch_genomic_samplesheet = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))
@@ -176,22 +176,56 @@ def validateInputParameters() {
         error("ERROR: Could not find genomic samplesheet. Not running any tests. Check input in nextflow.config")
     }
 
+    // The resource kit must match the version this release was validated against.
+    if (params.resources_dir) {
+        def kit = file(params.resources_dir)
+        if (!kit.isDirectory()) {
+            error("ERROR: resources_dir does not exist or is not a directory: ${params.resources_dir}")
+        }
+        def version_file = file("${params.resources_dir}/VERSION")
+        def kit_version  = version_file.exists() ? version_file.text.trim() : 'none'
+        if (kit_version != params.resources_version) {
+            error("ERROR: resources_dir holds resource kit version '${kit_version}', but this pipeline release needs '${params.resources_version}'. Download nextflow-cbioportal-resources-v${params.resources_version} (see docs/resources.md).")
+        }
+
+        // Warn about kit files that are missing and not overridden by a param.
+        def absent = resourceLayout().findAll { name, rel ->
+            !explicitParam(name) && !file("${params.resources_dir}/${rel}").exists()
+        }.keySet()
+        if (absent) {
+            log.warn "Resource kit ${params.resources_dir} is missing, and no param overrides: ${absent.join(', ')}"
+        }
+    }
+
     if (params.mode in ["genomic", "both"]) {
-        if (!params.genome_reference) {
-            error("ERROR: genome_reference parameter is required for genomic mode")
+        def genome_reference = resource('genome_reference')
+        if (!genome_reference) {
+            error("ERROR: genome_reference is required for genomic mode. Set --resources_dir to the resource kit, or pass --genome_reference.")
         }
 
-        def genome_file = file(params.genome_reference)
-
-        if (!genome_file.exists()) {
-            error("ERROR: Genome reference file does not exist: ${params.genome_reference}")
+        if (!file(genome_reference).exists()) {
+            error("ERROR: Genome reference file does not exist: ${genome_reference}")
         }
 
-        // Only checked when ML runs; otherwise the fusion file is never read.
+        requireResources(['sbs_signatures', 'dbs_signatures', 'id_signatures', 'sbs_metadata', 'dbs_metadata', 'id_metadata'], 'genomic mode')
+
+        // FORMAT_PROCESS_ML_SV unions the COSMIC and ChimerKB fusion lists, so the two
+        // are all-or-nothing. Setting only one used to reach the process with an empty
+        // path input and abort the run with an unattributable "Path must not be empty".
+        // Only checked when ML runs; otherwise the fusion files are never read.
         if (params.run_ml && params.cosmic_data) {
             def cosmic_data = file(params.cosmic_data)
             if (!cosmic_data.exists()) {
                 error("ERROR: Cosmic data file does not exist: ${params.cosmic_data}")
+            }
+
+            def chimer_data = resource('chimer_data')
+            if (!chimer_data) {
+                error("ERROR: cosmic_data is set but chimer_data is empty. The ML SV step needs both fusion databases — set chimer_data (or --resources_dir), or clear cosmic_data to skip FORMAT_PROCESS_ML_SV.")
+            }
+
+            if (!file(chimer_data).exists()) {
+                error("ERROR: Chimer data file does not exist: ${chimer_data}")
             }
         }
 
@@ -199,6 +233,11 @@ def validateInputParameters() {
 
     if (params.mode in ["clinical", "both"] && !params.clinical_samplesheet){
         log.warn "No clinical samplesheet provided. Template clinical files will be generated from the linking file."
+    }
+
+    // MOHCCN maps are only read when a clinical samplesheet is given.
+    if (params.mode in ["clinical", "both"] && params.clinical_samplesheet) {
+        requireResources(['mohccn_primary_site_map', 'mohccn_specimen_tissue_source_map', 'mohccn_treatment_intent_map'], 'clinical output')
     }
 
     if (params.mode == "clinical" && !params.clinical_samplesheet && params.sample_registrations) {
@@ -209,4 +248,67 @@ def validateInputParameters() {
     }
 
 
+}
+
+
+// Path of every reference file inside the resource kit (cosmic_data is licence-gated, never in the kit).
+def resourceLayout() {
+    def sigs = 'genomic/cosmic_mutational_signatures'
+    def moh  = 'clinical/MoH/dictionary'
+    return [
+        ensembl_annotations               : 'genomic/annotations/biomart_grch38_ensembl_113_with_entrez_id.tsv',
+        chimer_data                       : 'genomic/annotations/ChimerKB4.xlsx',
+        cancer_hotspots_data              : 'genomic/annotations/cancerhotspots_single.json',
+        vep_data                          : 'genomic/vep/cache',
+        pcgr_data                         : 'genomic/pcgr',
+        mafsmith_data                     : 'genomic/mafsmith/mafsmith_0.1.0',
+        genome_reference                  : 'genomic/reference/Homo_sapiens_assembly38.fasta',
+        sbs_signatures                    : "${sigs}/COSMIC_Human_SBS-96_GRCh38_v3.6.csv",
+        dbs_signatures                    : "${sigs}/COSMIC_Human_DBS-78_GRCh38_v3.6.csv",
+        id_signatures                     : "${sigs}/COSMIC_Human_ID-83_GRCh38_v3.6.csv",
+        sbs_metadata                      : "${sigs}/cosmic_sbs_metadata.tsv",
+        dbs_metadata                      : "${sigs}/cosmic_dbs_metadata.tsv",
+        id_metadata                       : "${sigs}/cosmic_id_metadata.tsv",
+        mohccn_primary_site_map           : "${moh}/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv",
+        mohccn_specimen_tissue_source_map : "${moh}/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv",
+        mohccn_treatment_intent_map       : "${moh}/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv",
+    ]
+}
+
+
+// Explicit param, else the kit file if it exists, else ''; resolved at run time so a profile-set resources_dir is seen.
+def resource(String name) {
+    assert name in resourceLayout() : "Unknown resource '${name}'"
+    if (explicitParam(name)) {
+        return explicitParam(name).toString()
+    }
+    if (!params.resources_dir) {
+        return ''
+    }
+    def path = "${params.resources_dir}/${resourceLayout()[name]}".toString()
+    return file(path).exists() ? path : ''
+}
+
+
+// Kit-backed params are not declared in nextflow.config; containsKey avoids the "undefined parameter" warning.
+def explicitParam(String name) {
+    return params.containsKey(name) ? params.get(name) : null
+}
+
+
+def helpRequested() {
+    return ['help', 'helpFull'].any { name -> explicitParam(name) }
+}
+
+
+// Fail up front, naming every missing reference file.
+def requireResources(List names, String purpose) {
+    def missing = names.findAll { name ->
+        def path = resource(name)
+        !path || !file(path).exists()
+    }
+    if (missing) {
+        def detail = missing.collect { name -> "  ${name}: ${resource(name) ?: '(not set)'}" }.join('\n')
+        error("ERROR: Reference files needed for ${purpose} are missing. Set --resources_dir to the resource kit, or pass each one explicitly:\n${detail}")
+    }
 }

@@ -62,7 +62,7 @@ Software:
 
   Software      Version     Notes
   ----------    --------    ----------------------------------------
-  Nextflow      >= 24.10.2  module load nextflow/25.10.2 on most HPC
+  Nextflow      >= 26.04.4  module load nextflow/26.04.4 on most HPC
   Apptainer     >= 1.0      Required for containers. Not Docker.
   htslib        Any recent  Provides bcftools and tabix
 
@@ -71,13 +71,13 @@ Container images:
   Five Apptainer containers are used. They are pulled automatically on
   first run and cached in containers/:
 
-  Container                Purpose
-  -----------------------  ----------------------------------------
-  sdp-r:4.5.1              R scripts (CNV, SV, expression, aggregation)
-  sdp-python:3.12          Python scripts
-  vcf2maf + ensembl-vep    VCF-to-MAF conversion
-  pcgr:2.2.5               Germline variant annotation (PCGR/CPSR)
-  sdp-sigprofiler:1.1.3    Mutational signature fitting
+  Container                      Purpose
+  -----------------------------  ----------------------------------------
+  sdp-r:4.5.1                    R scripts (CNV, SV, expression, aggregation)
+  sdp-python:3.12                Python scripts
+  mafsmith-fastvep:0.1.0-0.4.0   VCF-to-MAF conversion (mafsmith + fastVEP)
+  pcgr:2.2.5                     Germline variant annotation (PCGR/CPSR)
+  sigprofiler:1.1.3              Mutational signature fitting
 
   GHCR authentication: Containers at ghcr.io/crchum-citadel require
   membership in the crchum-citadel GitHub organization and a PAT:
@@ -86,28 +86,16 @@ Container images:
 
 Reference data:
 
-  These must be pre-staged before running, especially on HPC compute
-  nodes that lack internet access.
+  All reference files ship in one download, the resource kit
+  (nextflow-cbioportal-resources-v1.0.0.tar.gz). Extract it and pass:
 
-  Reference                  Parameter                Description
-  -------------------------  -----------------------  --------------------------
-  GRCh38 FASTA               genome_reference         Human reference genome with
-                                                      .fai index. For vcf2maf.
-  VEP cache                  vep_data                 Ensembl VEP cache dir (v113).
-                                                      Empty = auto-download test.
-  PCGR reference             pcgr_data                PCGR reference data dir.
-                                                      Empty = auto-download.
-  Ensembl annotations        ensembl_annotations      BioMart TSV (Ensembl 113)
-  (CNV/SV)                                            with entrez_ncbi_id column.
-  (expression)                                        for Isofox ID mapping.
-  COSMIC fusion data         cosmic_data              COSMIC Fusion TSV for ML SV.
-  ChimerKB data              chimer_data              ChimerDB KnownFusions Excel.
-                                                      Bundled in assets/.
-  COSMIC v3.6 signatures     cosmic_reference         Bundled in assets/. No action
-                                                      needed unless overriding.
-  Signature metadata         sbs_metadata,            Bundled in assets/. No action
-                             dbs_metadata,            needed unless overriding.
-                             id_metadata
+    --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0
+
+  Any reference param set explicitly overrides the kit for that file.
+  COSMIC fusions (cosmic_data) are licence-gated and not in the kit;
+  they are only read with --run_ml, and leaving cosmic_data empty skips
+  the ML SV step. Kit contents and
+  layout: docs/resources.md.
 
   Offline HPC nodes: Set NXF_OFFLINE=true and pre-pull all containers
   on a login node before submitting jobs:
@@ -287,6 +275,15 @@ Configuration reference
 All parameters are set in nextflow.config or overridden on the command
 line with --param_name value.
 
+The pipeline prints its own parameter reference from nextflow_schema.json:
+
+    nextflow run main.nf --help              # main parameters, by group
+    nextflow run main.nf --help resources_dir  # full help for one parameter
+    nextflow run main.nf --help --showHidden # include the kit-file overrides
+
+  Nextflow reports the help run as cancelled (exit status 1); that is
+  how the nf-schema plugin stops after printing, not an error.
+
 CORE PARAMETERS
 
   Parameter              Required  Default                   Description
@@ -301,18 +298,12 @@ GENOMIC INPUT PARAMETERS
   Parameter                Required  Default   Description
   -----------------------  --------  --------  ----------------------------
   genomic_samplesheet      Yes       --        Path to genomic samplesheet CSV
-  ensembl_annotations      Yes       --        BioMart TSV (Ensembl 113)
-  genome_reference         Yes       --        GRCh38 reference FASTA
-  vep_data                 No        (empty)   VEP cache directory
-  vep_params               No        (default) Additional VEP CLI arguments
-  pcgr_data                No        (empty)   PCGR reference data directory
+  resources_dir            Yes       --        Extracted resource kit (all reference files)
+  mafsmith_retain_ann      No        (10 CSQ)  Extra VEP fields kept as MAF columns
   run_ml                   No        false     Also build the ML feature tables (machine_learning/)
-  cosmic_data              No        --        COSMIC Fusion TSV for ML
-  chimer_data              No        bundled   ChimerKB4.xlsx
-  cosmic_reference         No        bundled   COSMIC v3.6 signature ref ZIP
-  sbs_metadata             No        bundled   SBS signature metadata TSV
-  dbs_metadata             No        bundled   DBS signature metadata TSV
-  id_metadata              No        bundled   ID signature metadata TSV
+  cosmic_data              No        --        COSMIC Fusion TSV for ML (licence-gated)
+
+  A single kit file can be overridden by its param name (docs/resources.md).
 
 CLINICAL INPUT PARAMETERS
 
@@ -320,9 +311,8 @@ CLINICAL INPUT PARAMETERS
   --------------------------------  --------  -----------    ----------------------------
   clinical_samplesheet              Yes       --             Path to clinical samplesheet CSV
   sample_registrations              No        (empty)        sample_registrations.csv for template mode
-  mohccn_primary_site_map           No        assets/ CSV    MOHCCN primary site mapping (ICD-O codes)
-  mohccn_specimen_tissue_source_map No        assets/ CSV    MOHCCN specimen tissue source mapping
-  mohccn_treatment_intent_map       No        assets/ CSV    MOHCCN treatment intent mapping
+
+  MOHCCN mapping tables come from resources_dir.
 
 CONTAINER PARAMETERS
 
@@ -330,8 +320,8 @@ CONTAINER PARAMETERS
   ---------------------  -----------------  ----------------------------
   container_r            ORAS or local SIF  R 4.5.1 container
   container_python       ORAS or local SIF  Python 3.12 container
-  container_vcf2maf      Wave container     vcf2maf + Ensembl-VEP
-  container_pcgr         ORAS or local SIF  PCGR 2.2.5
+  container_mafsmith     ORAS or local SIF  mafsmith 0.1.0 + fastVEP 0.4.0
+  container_pcgr         ORAS or local SIF  PCGR 2.2.5 (needs kit bundle + VEP 113)
   container_sigprofiler  ORAS or local SIF  SigProfiler 1.1.3
 
 NOTIFICATION PARAMETERS
@@ -353,33 +343,88 @@ PROFILES
 
   Profile      Purpose
   -----------  ------------------------------------------------
-  apptainer    REQUIRED. Enables Apptainer, sets cache dir.
-  slurm        Submits jobs to SLURM. Edit clusterOptions for
-               your allocation.
+  apptainer    REQUIRED. Enables Apptainer. Images are cached in
+               containers/ unless a site config sets apptainer.cacheDir.
+  slurm        Submits jobs to SLURM. Set clusterOptions for
+               your allocation (see SITE CONFIGURATION below).
+  citadel      CRCHUM/CITADEL site settings: resource kit location,
+               prebuilt .sif containers, SLURM account, scratch and
+               Apptainer cache. List it LAST. It does not set outdir
+               or email; put those in a -params-file.
   debug        Dumps process hashes, prints hostname, keeps work dir.
-  gpu          Adds --nv flag for GPU passthrough.
   local        Uses local SIF paths instead of ORAS URIs.
   test         Uses bundled test data with reduced resources.
 
+
+SITE CONFIGURATION
+
+  At CRCHUM, add the citadel profile (list it LAST). It sets the kit
+  location, cosmic_data, containers and the SLURM account:
+
+    nextflow run main.nf -profile slurm,apptainer,citadel ...
+
+  Elsewhere, pass the kit yourself:
+
+    nextflow run main.nf -profile apptainer \
+      --mode genomic \
+      --genomic_samplesheet samplesheet.csv \
+      --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0
+
+  or copy nextflow_citadel.config as a template and pass it with -c.
+
+  mafsmith reference data
+
+    Use the kit's mafsmith home. It ships its own fastVEP (0.3.0),
+    which mafsmith uses instead of the container's.
+
+  MAF columns
+
+    mafsmith writes 53 standard MAF columns where vcf2maf wrote ~133,
+    so the VEP annotations cBioPortal displays are opt-in. VEP packs
+    them into the VCF's INFO/CSQ field and declares the layout in the
+    header ("... Format: Allele|Consequence|IMPACT|..."); mafsmith's
+    --retain-ann names subfields to pull out and append as extra MAF
+    columns, in the order given.
+
+    mafsmith_retain_ann drives that flag. Its default is
+
+      Consequence,IMPACT,SYMBOL,Feature_type,CCDS,EXON,INTRON,
+      Existing_variation,CLIN_SIG,AF
+
+    Names must match fastVEP's CSQ field list exactly. A name fastVEP
+    does not emit is not an error -- you get a column of empty strings.
+    The full list fastVEP writes is its DEFAULT_CSQ_FIELDS: Allele,
+    Consequence, IMPACT, SYMBOL, Gene, Feature_type, Feature, BIOTYPE,
+    EXON, INTRON, HGVSc, HGVSp, cDNA_position, CDS_position,
+    Protein_position, Amino_acids, Codons, Existing_variation,
+    REF_ALLELE, UPLOADED_ALLELE, DISTANCE, STRAND, FLAGS, CANONICAL,
+    SYMBOL_SOURCE, HGNC_ID, MANE, MANE_SELECT, MANE_PLUS_CLINICAL, TSL,
+    APPRIS, CCDS, ENSP, SOURCE, HGVS_OFFSET, SIFT, PolyPhen, AF,
+    CLIN_SIG, SOMATIC, PHENO, PUBMED, MOTIF_NAME, MOTIF_POS,
+    HIGH_INF_POS, MOTIF_SCORE_CHANGE, TRANSCRIPTION_FACTORS, ACMG,
+    ACMG_CRITERIA. Some of these (Allele, Gene, Feature, BIOTYPE,
+    CANONICAL, SIFT, PolyPhen, HGVSc, HGVSp) are already standard MAF
+    columns and do not need retaining.
+
+    vcf2maf's RefSeq and VARIANT_CLASS have no fastVEP counterpart and
+    cannot be restored this way. Set mafsmith_retain_ann to "" to drop
+    back to the 53 standard columns.
+
 GENOMIC MODE
 
-  module load nextflow/25.10.2 apptainer/1.3.5 htslib/1.22.1
+  module load nextflow/26.04.4 apptainer/1.3.5 htslib/1.22.1
 
   nextflow run main.nf \
-      -profile slurm,apptainer \
+      -profile slurm,apptainer,citadel \
       --mode genomic \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
-      --genomic_samplesheet samplesheet.csv \
-      --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
-      --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
-      --vep_data /path/to/vep_cache \
-      --pcgr_data /path/to/pcgr_ref_data
+      --genomic_samplesheet samplesheet.csv
 
 CLINICAL MODE
 
   nextflow run main.nf \
-      -profile slurm,apptainer \
+      -profile slurm,apptainer,citadel \
       --mode clinical \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
@@ -392,16 +437,12 @@ BOTH MODE
   clinical workflow, so --sample_registrations is not needed.
 
   nextflow run main.nf \
-      -profile slurm,apptainer \
+      -profile slurm,apptainer,citadel \
       --mode both \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
       --genomic_samplesheet samplesheet.csv \
-      --clinical_samplesheet clinical_samplesheet.csv \
-      --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
-      --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
-      --vep_data /path/to/vep_cache \
-      --pcgr_data /path/to/pcgr_ref_data
+      --clinical_samplesheet clinical_samplesheet.csv
 
 USING A PARAMS FILE
 
@@ -413,17 +454,14 @@ USING A PARAMS FILE
     study_id: "MY_STUDY"
     project_description: "Description of my study"
     genomic_samplesheet: "/data/samplesheet.csv"
-    ensembl_annotations: "/path/to/biomart_grch38_ensembl_113.tsv"
-    genome_reference: "/path/to/Homo_sapiens_assembly38.fasta"
-    vep_data: "/path/to/vep_cache"
-    pcgr_data: "/path/to/pcgr_ref_data"
+    resources_dir: "/path/to/nextflow-cbioportal-resources-v1.0.0"
     cosmic_data: "/path/to/Cosmic_Fusion_v103_GRCh38.tsv"
     outdir: "output_my_study"
     email: "user@example.com"
 
   Then run:
 
-    nextflow run main.nf -profile slurm,apptainer -params-file params.yaml
+    nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml
 
   Note: Use -params-file (not -c) for parameters. Custom config files
   via -c should only be used for process resource tuning.
@@ -450,7 +488,7 @@ RESUMING A FAILED RUN
   Nextflow caches intermediate results. If a run fails, fix the issue
   and resume:
 
-    nextflow run main.nf -profile slurm,apptainer -params-file params.yaml -resume
+    nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml -resume
 
   Nextflow reuses cached results from completed steps and only re-runs
   what failed. The pipeline's incremental processing also skips subjects
@@ -460,11 +498,28 @@ RUNNING TESTS
 
   Verify your installation with the bundled test data:
 
-    ./nf-test test tests/clinical.nf.test tests/subworkflows/ tests/modules/ \
+    ./nf-test test tests/ --profile test,apptainer
+
+  Or a subset -- the clinical pipeline tests, for example:
+
+    ./nf-test test tests/clinical.nf.test tests/clinical_generated.nf.test \
+        tests/clinical_template.nf.test tests/both.nf.test \
         --profile test,apptainer
 
     ./nf-test test tests/subworkflows/genomic_cnv.nf.test \
         --profile test,apptainer
+
+  Regenerate snapshots after an intended output change:
+
+    ./nf-test test <test> --profile test,apptainer --update-snapshot
+
+  CI runs with --ci --changed-since HEAD^, which never updates snapshots,
+  so commit any snapshot change together with the change that caused it.
+
+  The Python suites (samplesheet generator, output combiner) run under
+  pytest:
+
+    python3 -m pytest tests/ -v
 
 
 Troubleshooting
@@ -487,17 +542,22 @@ VEP/PCGR DOWNLOAD FAILURES
 
   Symptom: VEP or PCGR steps fail trying to download reference data.
 
-  Fix: Pre-stage VEP cache and PCGR data on a login node with internet
-  access, then set vep_data and pcgr_data to the staged paths.
+  Fix: Use the resource kit (--resources_dir), which carries the VEP
+  cache and PCGR bundle; the downloads only run when neither the kit
+  nor vep_data / pcgr_data supplies them.
 
 SLURM ACCOUNT ERRORS
 
   Symptom: "sbatch: error: invalid account" or similar.
 
-  Fix: Edit nextflow.config and change clusterOptions in the slurm
-  profile to your allocation:
+  Fix: At CRCHUM, add the citadel profile, which sets the account:
 
-    clusterOptions = '--account=your-allocation'
+    nextflow run main.nf -profile slurm,apptainer,citadel ...
+
+  Elsewhere, set clusterOptions to your own allocation in your site
+  config (see SITE CONFIGURATION) rather than editing nextflow.config:
+
+    process.clusterOptions = '--account=your-allocation'
 
 "ALL SUBJECTS IN SAMPLESHEET ALREADY PROCESSED"
 
@@ -535,7 +595,7 @@ MEMORY OR TIME ERRORS
 
     // custom.config
     process {
-        withName: 'VCF2MAF' {
+        withName: 'MAFSMITH' {
             memory = '100.GB'
             time   = '24.h'
         }
@@ -563,5 +623,5 @@ RUNNING IN THE BACKGROUND
   Use screen, tmux, or submit Nextflow itself as a SLURM job:
 
     screen -S nf-run
-    nextflow run main.nf -profile slurm,apptainer -params-file params.yaml
+    nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml
     # Ctrl+A, D to detach; screen -r nf-run to reattach

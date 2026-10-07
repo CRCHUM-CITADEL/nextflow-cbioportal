@@ -79,7 +79,7 @@ PER-GROUP AGGREGATED FILES
     ML-formatted versions of CNV, expression, mutations, and SVs
     (with COSMIC/ChimerDB fusion annotations) for downstream analysis.
 
-  Cancer type (only when --generate_cancer_type is set):
+  Cancer type (skipped when --incremental is set):
 
     cancer_type.txt        One headerless row: type id, name, colour, parent
     meta_cancer_type.txt   Metadata for the cancer type file
@@ -117,6 +117,22 @@ Clinical mode outputs are saved in <outdir>/<group>/:
 
   All event types are merged into a single file, distinguished by the
   EVENT_TYPE column: SURGERY, TREATMENT, STATUS, SPECIMEN, LAB_TEST.
+  Each event type is produced by its own process and unioned by
+  MERGE_TIMELINE; an event type with no rows contributes nothing.
+
+  ICD-O label columns in data_clinical_sample.txt:
+
+  Code column           Label column
+  --------------------  -----------------------------
+  RELAPSE_SITE          RELAPSE_SITE_LABEL
+  CANCER_TYPE_CODE      CANCER_TYPE_LABEL
+  TUMOR_TISSUE_SITE     TUMOR_TISSUE_SITE_LABEL
+
+  The source data carries these as ICD-O topography codes (e.g. C22.0);
+  the label is looked up through the MOHCCN primary-site table. Labels
+  resolve to the C+2-digit PARENT code, since that table only holds
+  parent codes -- C22.0 and C22.1 both label as "Liver and intrahepatic
+  bile ducts".
 
   Common columns: PATIENT_ID, START_DATE, STOP_DATE, EVENT_TYPE.
   Event-specific columns (alphabetical): AGENT, RESULT,

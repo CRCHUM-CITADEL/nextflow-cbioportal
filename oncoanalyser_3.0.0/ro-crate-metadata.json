@@ -23,7 +23,7 @@
             "@type": "Dataset",
             "creativeWorkStatus": "InProgress",
             "datePublished": "2025-09-17T12:54:38+00:00",
-            "description": "# CRCHUM-CITADEL/nextflow-sante-precision\n\n## Introduction\n\n**CRCHUM-CITADEL/nextflow-sante-precision** is a bioinformatics pipeline that ...\n\n<!-- TODO nf-core:\n   Complete this sentence with a 2-3 sentence summary of what types of data the pipeline ingests, a brief overview of the\n   major pipeline sections and the types of output it produces. You're giving an overview to someone new\n   to nf-core here, in 15-20 seconds. For an example, see https://github.com/nf-core/rnaseq/blob/master/README.md#introduction\n-->\n\n<!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core\n     workflows use the \"tube map\" design for that. See https://nf-co.re/docs/guidelines/graphic_design/workflow_diagrams#examples for examples.   -->\n<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->\n\n## Usage\n\n> [!NOTE]\n> If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/usage/installation) on how to set-up Nextflow.\n\n<!-- TODO nf-core: Describe the minimum required steps to execute the pipeline, e.g. how to prepare samplesheets.\n     Explain what rows and columns represent. For instance (please edit as appropriate):\n\nFirst, prepare a samplesheet with your input data that looks as follows:\n\n`samplesheet.csv`:\n\n```csv\nsample,fastq_1,fastq_2\nCONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz\n```\n\nEach row represents a fastq file (single-end) or a pair of fastq files (paired end).\n\n-->\n\nNow, you can run the pipeline using:\n\n<!-- TODO nf-core: update the following command to include all required parameters for a minimal example -->\n\n```bash\nnextflow run CRCHUM-CITADEL/nextflow-sante-precision \\\n   -profile <docker/singularity/.../institute> \\\n   --input samplesheet.csv \\\n   --outdir <OUTDIR>\n```\n\n> [!WARNING]\n> Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).\n\n## Credits\n\nCRCHUM-CITADEL/nextflow-sante-precision was originally written by Justin.\n\nWe thank the following people for their extensive assistance in the development of this pipeline:\n\n<!-- TODO nf-core: If applicable, make list of people who have also contributed -->\n\n## Contributions and Support\n\nIf you would like to contribute to this pipeline, please see the [contributing guidelines](.github/CONTRIBUTING.md).\n\n## Citations\n\n<!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->\n<!-- If you use CRCHUM-CITADEL/nextflow-sante-precision for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->\n\nThis pipeline uses code and infrastructure developed and maintained by the [nf-core](https://nf-co.re) community, reused here under the [MIT license](https://github.com/nf-core/tools/blob/main/LICENSE).\n\n> **The nf-core framework for community-curated bioinformatics pipelines.**\n>\n> Philip Ewels, Alexander Peltzer, Sven Fillinger, Harshil Patel, Johannes Alneberg, Andreas Wilm, Maxime Ulysse Garcia, Paolo Di Tommaso & Sven Nahnsen.\n>\n> _Nat Biotechnol._ 2020 Feb 13. doi: [10.1038/s41587-020-0439-x](https://dx.doi.org/10.1038/s41587-020-0439-x).\n",
+            "description": "# CRCHUM-CITADEL/nextflow-cbioportal\n\n## Introduction\n\n**CRCHUM-CITADEL/nextflow-cbioportal** is a bioinformatics pipeline that ...\n\n<!-- TODO nf-core:\n   Complete this sentence with a 2-3 sentence summary of what types of data the pipeline ingests, a brief overview of the\n   major pipeline sections and the types of output it produces. You're giving an overview to someone new\n   to nf-core here, in 15-20 seconds. For an example, see https://github.com/nf-core/rnaseq/blob/master/README.md#introduction\n-->\n\n<!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core\n     workflows use the \"tube map\" design for that. See https://nf-co.re/docs/guidelines/graphic_design/workflow_diagrams#examples for examples.   -->\n<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->\n\n## Usage\n\n> [!NOTE]\n> If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/usage/installation) on how to set-up Nextflow.\n\n<!-- TODO nf-core: Describe the minimum required steps to execute the pipeline, e.g. how to prepare samplesheets.\n     Explain what rows and columns represent. For instance (please edit as appropriate):\n\nFirst, prepare a samplesheet with your input data that looks as follows:\n\n`samplesheet.csv`:\n\n```csv\nsample,fastq_1,fastq_2\nCONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz\n```\n\nEach row represents a fastq file (single-end) or a pair of fastq files (paired end).\n\n-->\n\nNow, you can run the pipeline using:\n\n<!-- TODO nf-core: update the following command to include all required parameters for a minimal example -->\n\n```bash\nnextflow run CRCHUM-CITADEL/nextflow-cbioportal \\\n   -profile <docker/singularity/.../institute> \\\n   --input samplesheet.csv \\\n   --outdir <OUTDIR>\n```\n\n> [!WARNING]\n> Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).\n\n## Credits\n\nCRCHUM-CITADEL/nextflow-cbioportal was originally written by Justin.\n\nWe thank the following people for their extensive assistance in the development of this pipeline:\n\n<!-- TODO nf-core: If applicable, make list of people who have also contributed -->\n\n## Contributions and Support\n\nIf you would like to contribute to this pipeline, please see the [contributing guidelines](.github/CONTRIBUTING.md).\n\n## Citations\n\n<!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->\n<!-- If you use CRCHUM-CITADEL/nextflow-cbioportal for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->\n\nThis pipeline uses code and infrastructure developed and maintained by the [nf-core](https://nf-co.re) community, reused here under the [MIT license](https://github.com/nf-core/tools/blob/main/LICENSE).\n\n> **The nf-core framework for community-curated bioinformatics pipelines.**\n>\n> Philip Ewels, Alexander Peltzer, Sven Fillinger, Harshil Patel, Johannes Alneberg, Andreas Wilm, Maxime Ulysse Garcia, Paolo Di Tommaso & Sven Nahnsen.\n>\n> _Nat Biotechnol._ 2020 Feb 13. doi: [10.1038/s41587-020-0439-x](https://dx.doi.org/10.1038/s41587-020-0439-x).\n",
             "hasPart": [
                 {
                     "@id": "main.nf"
@@ -83,7 +83,7 @@
                     "@id": ".prettierignore"
                 }
             ],
-            "isBasedOn": "https://github.com/CRCHUM-CITADEL/nextflow-sante-precision",
+            "isBasedOn": "https://github.com/CRCHUM-CITADEL/nextflow-cbioportal",
             "mainEntity": {
                 "@id": "main.nf"
             },
@@ -92,7 +92,7 @@
                     "@id": "#280310c6-8276-4f56-9e76-8cadd00bc916"
                 }
             ],
-            "name": "CRCHUM-CITADEL/nextflow-sante-precision"
+            "name": "CRCHUM-CITADEL/nextflow-cbioportal"
         },
         {
             "@id": "ro-crate-metadata.json",
@@ -127,7 +127,7 @@
                 null
             ],
             "name": [
-                "CRCHUM-CITADEL/nextflow-sante-precision"
+                "CRCHUM-CITADEL/nextflow-cbioportal"
             ],
             "programmingLanguage": {
                 "@id": "https://w3id.org/workflowhub/workflow-ro-crate#nextflow"
@@ -136,8 +136,8 @@
                 "@id": "https://nf-co.re/"
             },
             "url": [
-                "https://github.com/CRCHUM-CITADEL/nextflow-sante-precision",
-                "https://nf-co.re/CRCHUM-CITADEL/nextflow-sante-precision/dev/"
+                "https://github.com/CRCHUM-CITADEL/nextflow-cbioportal",
+                "https://nf-co.re/CRCHUM-CITADEL/nextflow-cbioportal/dev/"
             ],
             "version": [
                 "0.1.0dev"
@@ -166,13 +166,13 @@
             "mainEntity": {
                 "@id": "main.nf"
             },
-            "name": "Test suite for CRCHUM-CITADEL/nextflow-sante-precision"
+            "name": "Test suite for CRCHUM-CITADEL/nextflow-cbioportal"
         },
         {
             "@id": "#838d644a-4ad6-46a5-9c5e-174ef20b512a",
             "@type": "TestInstance",
-            "name": "GitHub Actions workflow for testing CRCHUM-CITADEL/nextflow-sante-precision",
-            "resource": "repos/CRCHUM-CITADEL/nextflow-sante-precision/actions/workflows/nf-test.yml",
+            "name": "GitHub Actions workflow for testing CRCHUM-CITADEL/nextflow-cbioportal",
+            "resource": "repos/CRCHUM-CITADEL/nextflow-cbioportal/actions/workflows/nf-test.yml",
             "runsOn": {
                 "@id": "https://w3id.org/ro/terms/test#GithubService"
             },

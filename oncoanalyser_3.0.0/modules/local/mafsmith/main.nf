@@ -4,19 +4,25 @@ process MAFSMITH {
     container "${params.container_mafsmith}"
 
     input:
-        tuple val(meta), path(vcf) // Now accepts both compressed (.vcf.gz) and uncompressed (.vcf) files
-        path mafsmith_data         // Required for VEP running. 
+        tuple val(meta), path(vcf) // compressed (.vcf.gz) or uncompressed (.vcf)
+        path mafsmith_data         // mafsmith home: reference data (+ optionally fastvep)
 
     output:
         tuple val(meta), path("${meta.sample}.maf"), emit: maf
-        // path "versions.yml"           , emit: versions
 
     when:
         task.ext.when == null || task.ext.when
 
     script:
+    // Extra CSQ subfields to carry through as trailing MAF columns. mafsmith's 53
+    // standard columns drop most of what VEP annotates, and cBioPortal displays some
+    // of it. Names must match fastVEP's DEFAULT_CSQ_FIELDS exactly — an unknown name
+    // is not an error, it just yields an empty column.
+    def retain_ann = params.mafsmith_retain_ann ? "--retain-ann ${params.mafsmith_retain_ann}" : ''
+    def args       = task.ext.args ?: ''
     """
-    # mafsmith will look here for its pre-fetched data and fastvep executable
+    # mafsmith looks under \$HOME/.mafsmith for its reference data, so point HOME at the
+    # task directory and link the bundle in.
     export HOME=./
     ln -s ${mafsmith_data} .mafsmith
 
@@ -33,19 +39,59 @@ process MAFSMITH {
     cat \$INPUT_VCF | grep "#" > tmp.${meta.sample}.somatic.vcf
     cat \$INPUT_VCF | grep PASS >> tmp.${meta.sample}.somatic.vcf
 
-    TMP_NORMAL_ID=\$(grep '^#CHROM' \$INPUT_VCF | awk '{print \$10}')
-    TMP_TUMOR_ID=\$(grep '^#CHROM' \$INPUT_VCF | awk '{print \$11}')
+    # Sample columns are the two that follow FORMAT on the #CHROM line (normal, then
+    # tumor). Locating them by that header keeps this correct regardless of how many
+    # fixed columns the VCF carries.
+    SAMPLE_IDS=\$(awk 'BEGIN {FS=OFS="\\t"} /^#CHROM/ {
+        for (i = 1; i <= NF; i++) if (\$i == "FORMAT") { print \$(i+1), \$(i+2); exit }
+    }' \$INPUT_VCF)
+    TMP_NORMAL_ID=\$(printf '%s' "\$SAMPLE_IDS" | cut -f1)
+    TMP_TUMOR_ID=\$(printf '%s' "\$SAMPLE_IDS" | cut -f2)
 
+    # --tumor-id / --normal-id only set the MAF barcodes. Unlike vcf2maf.pl, mafsmith does
+    # not default --vcf-tumor-id to --tumor-id: without the --vcf-* flags it takes the FIRST
+    # sample column as the tumor, which here is the normal. t_ref_count / t_alt_count /
+    # t_depth -- what cBioPortal computes allele frequency from -- then come from the normal.
     ID_ARGS=""
-    [ -n "\$TMP_TUMOR_ID" ] && ID_ARGS="\$ID_ARGS --tumor-id \$TMP_TUMOR_ID"
-    [ -n "\$TMP_NORMAL_ID" ] && ID_ARGS="\$ID_ARGS --normal-id \$TMP_NORMAL_ID"
+    [ -n "\$TMP_TUMOR_ID" ] && ID_ARGS="\$ID_ARGS --tumor-id \$TMP_TUMOR_ID --vcf-tumor-id \$TMP_TUMOR_ID"
+    [ -n "\$TMP_NORMAL_ID" ] && ID_ARGS="\$ID_ARGS --normal-id \$TMP_NORMAL_ID --vcf-normal-id \$TMP_NORMAL_ID"
 
     mafsmith vcf2maf \\
         \$ID_ARGS \\
+        ${retain_ann} \\
+        ${args} \\
         --input-vcf tmp.${meta.sample}.somatic.vcf \\
         --output-maf tmp.${meta.sample}.maf
 
+    # mafsmith's --retain-ann only reads CSQ subfields, so every plain INFO field SAGE
+    # and PAVE wrote -- GND_FREQ (gnomAD), TIER, CLNSIG, PON_COUNT, ... -- is dropped.
+    # Join them back on the MAF's own coordinate convention. Columns are always added,
+    # even when the VCF declares none of them, so every per-subject MAF keeps the same
+    # width and the group-level collectFile merge cannot go ragged.
+    annotate_maf_with_vcf_info.py \\
+        --vcf tmp.${meta.sample}.somatic.vcf \\
+        --maf tmp.${meta.sample}.maf \\
+        --output tmp.${meta.sample}.annotated.maf
+    mv tmp.${meta.sample}.annotated.maf tmp.${meta.sample}.maf
+
+    # Set Tumor_Sample_Barcode to the cBioPortal sample id and Mutation_Status to Somatic (mafsmith
+    # leaves it empty; cBioPortal tells somatic from germline by it). Columns are found by name on line 2.
+    col_of() { sed -n '2p' tmp.${meta.sample}.maf | awk -F"\\t" -v name="\$1" '{for (i = 1; i <= NF; i++) if (\$i == name) { print i; exit }}'; }
+    SAMPLE_COL=\$(col_of Tumor_Sample_Barcode)
+    STATUS_COL=\$(col_of Mutation_Status)
+    if [ -z "\$SAMPLE_COL" ] || [ -z "\$STATUS_COL" ]; then
+        echo "ERROR: no Tumor_Sample_Barcode or Mutation_Status column in the header of tmp.${meta.sample}.maf" >&2
+        exit 1
+    fi
+
     head -2 tmp.${meta.sample}.maf > ${meta.sample}.maf
-    tail -n +3 tmp.${meta.sample}.maf | awk -v col16="${meta.sample}" 'BEGIN {FS=OFS="\\t"} {\$16=col16; print}' >> ${meta.sample}.maf
+    tail -n +3 tmp.${meta.sample}.maf \\
+        | awk -v col="\$SAMPLE_COL" -v scol="\$STATUS_COL" -v sample="${meta.sample}" 'BEGIN {FS=OFS="\\t"} {\$col=sample; \$scol="Somatic"; print}' \\
+        >> ${meta.sample}.maf
+    """
+
+    stub:
+    """
+    touch ${meta.sample}.maf
     """
 }

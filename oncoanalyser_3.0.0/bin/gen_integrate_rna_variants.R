@@ -10,7 +10,7 @@ library(optparse)
 # Set up command line arguments
 option_list <- list(
   make_option(c("-d", "--dna"), type="character", help="DNA MAF file path"),
-  make_option(c("-r", "--rna"), type="character", help="RNA VCF file path"),
+  make_option(c("-r", "--rna"), type="character", help="RNA VCF file path (optional: without it every RNA field is empty)"),
   make_option(c("-o", "--output"), type="character", help="Output MAF file path"),
   make_option(c("--min_depth"), type="integer", default=10, help="Minimum RNA read depth to consider a variant expressed [default: %default]"),
   make_option(c("--min_vaf"), type="double", default=0.03, help="Minimum RNA VAF to consider a variant expressed [default: %default]")
@@ -38,7 +38,7 @@ if (length(args) >= 3 && is.null(opt$dna) && is.null(opt$rna) && is.null(opt$out
 }
 
 # Check that required arguments are provided
-if (is.null(opt$dna) || is.null(opt$rna) || is.null(opt$output)) {
+if (is.null(opt$dna) || is.null(opt$output)) {
   stop("Missing required arguments. Use --help for usage information.")
 }
 
@@ -61,81 +61,93 @@ message("Reading DNA MAF file...")
 dna_maf <- fread(dna_maf_file, sep="\t", header=TRUE, stringsAsFactors=FALSE,
                  quote="", fill=TRUE, skip="Hugo_Symbol", data.table=FALSE)
 
-# Read RNA VCF file
-message("Reading RNA VCF file...")
-vcf_lines <- readLines(rna_vcf_file)
-header_line_idx <- grep("^#CHROM", vcf_lines)
-vcf_header <- vcf_lines[header_line_idx]
-vcf_data <- vcf_lines[(header_line_idx+1):length(vcf_lines)]
-
-# Parse VCF header and data
-vcf_columns <- unlist(strsplit(vcf_header, "\t"))
-vcf_data_table <- data.table::fread(
-  text = paste(vcf_data, collapse = "\n"),
-  sep = "\t",
-  header = FALSE,
-  col.names = gsub("^#", "", vcf_columns),
-  stringsAsFactors = FALSE
-)
-
-message("Processing ", nrow(vcf_data_table), " RNA variants...")
-
-# Function to extract FORMAT field values
-extract_format_value <- function(format_def, format_val, field_name) {
-  # Split both fields
-  format_fields <- unlist(strsplit(format_def, ":"))
-  sample_values <- unlist(strsplit(format_val, ":"))
-
-  # Find the position of the desired field
-  field_pos <- which(format_fields == field_name)
-
-  # Return NA if field not found or if the sample data doesn't contain the field
-  if (length(field_pos) == 0 || field_pos > length(sample_values)) {
-    return(NA)
-  }
-
-  # Return the value
-  return(sample_values[field_pos])
+# Read RNA VCF file. No file, or no records, leaves every RNA field empty.
+vcf_data <- character(0)
+if (!is.null(rna_vcf_file) && nzchar(rna_vcf_file)) {
+  message("Reading RNA VCF file...")
+  vcf_lines <- readLines(rna_vcf_file)
+  header_line_idx <- grep("^#CHROM", vcf_lines)
+  vcf_header <- vcf_lines[header_line_idx]
+  vcf_data <- vcf_lines[-seq_len(header_line_idx)]
 }
 
-# Extract basic information from VCF
-rna_variants <- vcf_data_table %>%
-  rename(FORMAT_COL = ncol(vcf_data_table)) %>%
-  mutate(
-    # Prepare for matching with both chromosome formats
-    chr_raw = CHROM,
-    Chromosome = gsub("^chr", "", CHROM),
-    Start_Position = as.numeric(POS),
-    Reference_Allele = REF,
-    Variant_Allele = ALT
+if (length(vcf_data) == 0) {
+  message("No RNA variants: RNA fields stay empty.")
+  rna_variants <- data.frame(
+    chr_raw = character(), Chromosome = character(), Start_Position = numeric(),
+    Reference_Allele = character(), Variant_Allele = character(),
+    t_depth_rna = numeric(), t_vaf_rna = numeric(), t_ref_count_rna = numeric(), t_alt_count_rna = numeric()
+  )
+} else {
+  # Parse VCF header and data
+  vcf_columns <- unlist(strsplit(vcf_header, "\t"))
+  vcf_data_table <- data.table::fread(
+    text = paste(vcf_data, collapse = "\n"),
+    sep = "\t",
+    header = FALSE,
+    col.names = gsub("^#", "", vcf_columns),
+    stringsAsFactors = FALSE
   )
 
-# Extract depth, VAF, and ref/alt counts
-message("Extracting RNA values...")
-rna_variants$t_depth_rna <- sapply(1:nrow(rna_variants), function(i) {
-  dp_str <- extract_format_value(rna_variants$FORMAT[i], rna_variants$FORMAT_COL[i], "DP")
-  return(as.numeric(dp_str))
-})
+  message("Processing ", nrow(vcf_data_table), " RNA variants...")
 
-rna_variants$t_vaf_rna <- sapply(1:nrow(rna_variants), function(i) {
-  af_str <- extract_format_value(rna_variants$FORMAT[i], rna_variants$FORMAT_COL[i], "AF")
-  return(as.numeric(af_str))
-})
+  # Function to extract FORMAT field values
+  extract_format_value <- function(format_def, format_val, field_name) {
+    # Split both fields
+    format_fields <- unlist(strsplit(format_def, ":"))
+    sample_values <- unlist(strsplit(format_val, ":"))
 
-rna_variants$ad_str <- sapply(1:nrow(rna_variants), function(i) {
-  ad_str <- extract_format_value(rna_variants$FORMAT[i], rna_variants$FORMAT_COL[i], "AD")
-  return(ad_str)
-})
+    # Find the position of the desired field
+    field_pos <- which(format_fields == field_name)
 
-# Process AD (allele depth) strings to get ref/alt counts
-rna_variants <- rna_variants %>%
-  mutate(
-    ad_split = strsplit(ad_str, ","),
-    t_ref_count_rna = sapply(ad_split, function(x) if(length(x) >= 1) as.numeric(x[1]) else NA),
-    t_alt_count_rna = sapply(ad_split, function(x) if(length(x) >= 2) as.numeric(x[2]) else NA)
-  ) %>%
-  select(chr_raw, Chromosome, Start_Position, Reference_Allele, Variant_Allele,
-         t_depth_rna, t_vaf_rna, t_ref_count_rna, t_alt_count_rna)
+    # Return NA if field not found or if the sample data doesn't contain the field
+    if (length(field_pos) == 0 || field_pos > length(sample_values)) {
+      return(NA)
+    }
+
+    # Return the value
+    return(sample_values[field_pos])
+  }
+
+  # Extract basic information from VCF
+  rna_variants <- vcf_data_table %>%
+    rename(FORMAT_COL = ncol(vcf_data_table)) %>%
+    mutate(
+      # Prepare for matching with both chromosome formats
+      chr_raw = CHROM,
+      Chromosome = gsub("^chr", "", CHROM),
+      Start_Position = as.numeric(POS),
+      Reference_Allele = REF,
+      Variant_Allele = ALT
+    )
+
+  # Extract depth, VAF, and ref/alt counts
+  message("Extracting RNA values...")
+  rna_variants$t_depth_rna <- sapply(1:nrow(rna_variants), function(i) {
+    dp_str <- extract_format_value(rna_variants$FORMAT[i], rna_variants$FORMAT_COL[i], "DP")
+    return(as.numeric(dp_str))
+  })
+
+  rna_variants$t_vaf_rna <- sapply(1:nrow(rna_variants), function(i) {
+    af_str <- extract_format_value(rna_variants$FORMAT[i], rna_variants$FORMAT_COL[i], "AF")
+    return(as.numeric(af_str))
+  })
+
+  rna_variants$ad_str <- sapply(1:nrow(rna_variants), function(i) {
+    ad_str <- extract_format_value(rna_variants$FORMAT[i], rna_variants$FORMAT_COL[i], "AD")
+    return(ad_str)
+  })
+
+  # Process AD (allele depth) strings to get ref/alt counts
+  rna_variants <- rna_variants %>%
+    mutate(
+      ad_split = strsplit(ad_str, ","),
+      t_ref_count_rna = sapply(ad_split, function(x) if(length(x) >= 1) as.numeric(x[1]) else NA),
+      t_alt_count_rna = sapply(ad_split, function(x) if(length(x) >= 2) as.numeric(x[2]) else NA)
+    ) %>%
+    select(chr_raw, Chromosome, Start_Position, Reference_Allele, Variant_Allele,
+           t_depth_rna, t_vaf_rna, t_ref_count_rna, t_alt_count_rna)
+}
 
 # Also normalize chromosome in DNA data
 message("Preparing DNA data for matching...")
@@ -174,41 +186,8 @@ matched_variants <- matched_variants %>%
     )
   )
 
-# Add RNA info to Mutation_Status
-message("Adding RNA information to Mutation_Status column...")
-matched_variants$rna_info <- sapply(1:nrow(matched_variants), function(i) {
-  depth <- matched_variants$t_depth_rna[i]
-  vaf <- matched_variants$t_vaf_rna[i]
-  expressed <- matched_variants$Flag_RNA_Expressed[i]
-  if(is.na(expressed)) {
-  	expressed=0
-  }
-
-  if (!is.na(depth)) {
-    paste0(
-      "RNA(d=", depth,
-      ",v=", ifelse(is.na(vaf), "NA", round(as.numeric(vaf), 2)),
-      ",filt=", ifelse(expressed == 1, "YES", "NO"), ")"
-    )
-  } else {
-    "RNA(data=NO)"
-  }
-})
-
-# Update Mutation_Status column
-if ("Mutation_Status" %in% colnames(matched_variants)) {
-  message("Found existing Mutation_Status column, appending RNA information")
-  matched_variants$Mutation_Status <- ifelse(
-    is.na(matched_variants$Mutation_Status) | matched_variants$Mutation_Status == "",
-    matched_variants$rna_info,
-    paste0(matched_variants$Mutation_Status, ";", matched_variants$rna_info)
-  )
-} else {
-  matched_variants$Mutation_Status <- matched_variants$rna_info
-}
-
+# RNA evidence stays in its own columns: Mutation_Status carries the Somatic/Germline label cBioPortal filters on.
 # Remove temporary columns
-matched_variants$rna_info <- NULL
 matched_variants$chr_raw <- NULL
 
 # Write the extended MAF file
@@ -217,24 +196,17 @@ message("Writing integrated MAF file...")
 maf_header_lines <- readLines(dna_maf_file, n = 2)
 
 # Create output columns list (keep original plus new columns)
-output_cols <- c(names(dna_maf), "t_depth_rna", "t_vaf_rna", "t_ref_count_rna", "t_alt_count_rna", "Flag_RNA_Expressed")
-output_cols <- unique(output_cols[!output_cols %in% c("chr_raw")]) # Remove any duplicates and temp columns
+# RNA evidence is written under the RNA namespace (namespaces: HMF,RNA) so cBioPortal can show it.
+rna_cols <- c(t_depth_rna = "RNA.depth", t_vaf_rna = "RNA.vaf", t_ref_count_rna = "RNA.ref_count",
+              t_alt_count_rna = "RNA.alt_count", Flag_RNA_Expressed = "RNA.expressed")
+dna_cols <- setdiff(names(dna_maf), "chr_raw")
+out <- matched_variants[, c(dna_cols, names(rna_cols)), drop = FALSE]
+names(out) <- c(dna_cols, unname(rna_cols))
 
-# Add Mutation_Status if present and not already included
-if ("Mutation_Status" %in% names(matched_variants) && !("Mutation_Status" %in% output_cols)) {
-  output_cols <- c(output_cols, "Mutation_Status")
-}
+writeLines(c(maf_header_lines[1], paste(names(out), collapse = "\t")), output_maf_file)
 
-# Make sure all columns exist in the data frame
-output_cols <- output_cols[output_cols %in% names(matched_variants)]
-
-# Write the new header
-new_header <- c(maf_header_lines[1], paste(output_cols, collapse = "\t"))
-writeLines(new_header, output_maf_file)
-
-# Append data
 fwrite(
-  matched_variants[, output_cols, drop = FALSE],
+  out,
   output_maf_file,
   sep = "\t",
   append = TRUE,

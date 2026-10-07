@@ -211,20 +211,25 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
 
             // create meta files and case lists ---------------------------------------------------------
 
+            // toList(), not collect(): collect() emits NOTHING for an empty channel,
+            // which would shorten case_sample_lists and silently pair the wrong sample
+            // list with the wrong case-list label below. An incremental run can leave a
+            // modality empty, so the lists must stay positionally aligned.
+            // unique(): a sample must never be listed twice in a case list.
             cnv_sample_list = cnv_results_seg
                 .map {meta, filepath -> meta.sample}
-                .collect()
-                .map { it.sort(false).join('\t') }
+                .toList()
+                .map { it.unique().sort(false).join('\t') }
 
             mutation_sample_list = mutation_results
                 .map {meta, filepath -> meta.sample}
-                .collect()
-                .map { it.sort(false).join('\t') }
+                .toList()
+                .map { it.unique().sort(false).join('\t') }
 
             sv_sample_list = sv_results
                 .map {meta, filepath -> meta.sample}
-                .collect()
-                .map { it.sort(false).join('\t') }
+                .toList()
+                .map { it.unique().sort(false).join('\t') }
 
             case_name_all = channel.of("cnv", "sequenced", "sv")
             case_sample_lists = cnv_sample_list.concat(mutation_sample_list).concat(sv_sample_list)
@@ -284,6 +289,7 @@ show_profile_in_analysis_tab: true
 profile_description: ADD TEXT
 profile_name: Mutations
 data_filename: data_mutations_dna_rna_germline.txt
+namespaces: HMF,RNA
     """
 
             meta_text_sigs = """cancer_study_identifier: add_text

@@ -2,7 +2,7 @@ include { PURPLE_CNV_TO_CBIOPORTAL } from '../../../modules/local/purple_cnv_to_
 
 workflow GENOMIC_CNV {
     take:
-        purple_cnv          // tuple (meta, purple_cnv_somatic.tsv, purple_cnv_gene.tsv)
+        purple_cnv          // tuple (meta, purple_cnv_somatic.tsv, purple_cnv_gene.tsv, purple_purity.tsv or [])
         ensembl_annotations // path
 
     main:

@@ -8,7 +8,7 @@ process SIGPROFILER_SBS {
 
     input:
         tuple val(meta), path(snv_counts)
-        path cosmic_zip
+        path signatures_db  // COSMIC v3.6 SBS-96 reference CSV
         path sbs_metadata
 
     output:
@@ -19,11 +19,9 @@ process SIGPROFILER_SBS {
 
     script:
     """
-    python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1]).extract('COSMIC_Human_SBS-96_GRCh38_v3.6.csv')" ${cosmic_zip}
-
     run_sigprofiler_sbs.py \\
         --snv_counts    ${snv_counts} \\
-        --signatures_db COSMIC_Human_SBS-96_GRCh38_v3.6.csv \\
+        --signatures_db ${signatures_db} \\
         --metadata      ${sbs_metadata} \\
         --sample        ${meta.sample} \\
         --output        ${meta.sample}.data_mutational_signatures_contribution_SBS.txt

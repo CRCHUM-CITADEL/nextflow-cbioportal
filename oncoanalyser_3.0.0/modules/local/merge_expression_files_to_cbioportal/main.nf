@@ -17,4 +17,9 @@ process MERGE_EXPRESSION_FILES_TO_CBIOPORTAL {
     --fill_missing 0 \
     --strict
     """
+
+    stub:
+    """
+    touch data_expression.txt
+    """
 }

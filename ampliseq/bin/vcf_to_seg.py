@@ -9,8 +9,8 @@ Columns: ID, chrom, loc.start, loc.end, num.mark, seg.mean
 Only PASS records are included.
 seg.mean = log2(CN/2); CN=0 yields -3.0 (homozygous deletion sentinel).
 """
+import gzip
 import sys
-import math
 import os
 
 
@@ -24,7 +24,8 @@ def main():
     out_file = "data_seg.txt"
 
     rows = []
-    with open(vcf_file) as fh:
+    opener = gzip.open if vcf_file.endswith('.gz') else open
+    with opener(vcf_file, 'rt') as fh:
         format_idx = None
         sample_idx = None
         for line in fh:
@@ -64,10 +65,11 @@ def main():
                         end = int(field.split('=', 1)[1])
                         break
 
-            # Parse CN value from FORMAT/sample columns
+            # CN from the sample column, looked up by its FORMAT key (FORMAT may be CN alone or
+            # e.g. GT:CN:...)
             try:
-                cn = int(sample)
-            except (IndexError, ValueError):
+                cn = int(dict(zip(fmt.split(':'), sample.split(':')))['CN'])
+            except (KeyError, ValueError):
                 print(f"WARNING: could not parse CN at {chrom}:{pos}, skipping", file=sys.stderr)
                 continue
 

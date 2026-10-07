@@ -14,28 +14,21 @@ process WRITE_CASE_LISTS {
 
     IDS_TAB=\$(awk 'NR>1 {printf "%s\\t", \$2}' ${linking_file} | sed 's/\\t\$//')
 
-    {
-        echo "cancer_study_identifier: ${study_id}"
-        echo "stable_id: ${study_id}_sequenced"
-        echo "case_list_name: all mutations"
-        echo "case_list_description: all mutations of ${study_id}"
-        echo "case_list_ids: \${IDS_TAB}"
-    } > case_lists/cases_sequenced.txt
-
-    {
-        echo "cancer_study_identifier: ${study_id}"
-        echo "stable_id: ${study_id}_sv"
-        echo "case_list_name: all sv"
-        echo "case_list_description: all sv of ${study_id}"
-        echo "case_list_ids: \${IDS_TAB}"
-    } > case_lists/cases_sv.txt
-
-    {
-        echo "cancer_study_identifier: ${study_id}"
-        echo "stable_id: ${study_id}_cna"
-        echo "case_list_name: all cna"
-        echo "case_list_description: all cna of ${study_id}"
-        echo "case_list_ids: \${IDS_TAB}"
-    } > case_lists/cases_cna.txt
+    # case_list_category marks these as cBioPortal's standard lists (OncoPrint and the query
+    # page pick them by category); every samplesheet sample is profiled for all three types.
+    write_list() {  # <file> <stable_id suffix> <category> <name> <description>
+        {
+            echo "cancer_study_identifier: ${study_id}"
+            echo "stable_id: ${study_id}_\$2"
+            echo "case_list_category: \$3"
+            echo "case_list_name: \$4"
+            echo "case_list_description: \$5"
+            echo "case_list_ids: \${IDS_TAB}"
+        } > "case_lists/\$1"
+    }
+    write_list cases_sequenced.txt sequenced all_cases_with_mutation_data "Samples with mutation data" "All samples with mutation data in ${study_id}"
+    write_list cases_cna.txt cna all_cases_with_cna_data "Samples with CNA data" "All samples with copy number alteration data in ${study_id}"
+    write_list cases_sv.txt sv all_cases_with_sv_data "Samples with SV data" "All samples with structural variant data in ${study_id}"
+    write_list cases_cnaseq.txt cnaseq all_cases_with_mutation_and_cna_data "Samples with mutation and CNA data" "All samples with both mutation and copy number alteration data in ${study_id}"
     """
 }

@@ -1,0 +1,40 @@
+nextflow_process {
+
+    name "Test MERGE_SV"
+    script "modules/local/merge_sv/main.nf"
+    process "MERGE_SV"
+    tag "module"
+    tag "sv"
+
+    // Per-sample files from older runs (or the other writer) have different columns; rows must be
+    // mapped by column name, not concatenated positionally under the first file's header.
+    test("Merges SV files with different column sets by name") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/sv_inputs").mkdirs()
+                file("${params.outdir}/sv_inputs/A_sv.txt").text = 'Sample_Id\\tSV_Status\\tSite1_Hugo_Symbol\\tSite1_Position\\tLength\\n' +
+                    'A\\tSOMATIC\\tALK\\t100\\t50\\n'
+                file("${params.outdir}/sv_inputs/B_sv.txt").text = 'Sample_Id\\tSV_Status\\tSite1_Hugo_Symbol\\tSite1_Region\\tSV_Length\\n' +
+                    'B\\tSomatic\\tROS1\\t200\\t70\\n'
+                file("${params.outdir}/sv_inputs/C_sv.txt").text = 'Sample_Id\\tSV_Status\\tSite1_Hugo_Symbol\\n'
+                input[0] = Channel.fromPath("${params.outdir}/sv_inputs/*_sv.txt").collect()
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            def header = lines[0].split('\t') as List
+            assert header == ['Sample_Id', 'SV_Status', 'Site1_Hugo_Symbol', 'Site1_Position', 'Length', 'Site1_Region', 'SV_Length']
+            def rows = lines.drop(1).collect { l -> [header, l.split('\t', -1) as List].transpose().collectEntries() }
+            assert rows.size() == 2
+            assert rows.find { it.Sample_Id == 'A' }.Site1_Position == '100'
+            assert rows.find { it.Sample_Id == 'B' }.Site1_Region == '200'
+            assert rows.find { it.Sample_Id == 'B' }.Site1_Position == ''
+        }
+    }
+}

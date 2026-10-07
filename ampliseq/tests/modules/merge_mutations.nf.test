@@ -1,0 +1,29 @@
+nextflow_process {
+
+    name "Test MERGE_MUTATIONS"
+    script "modules/local/merge_mutations/main.nf"
+    process "MERGE_MUTATIONS"
+    tag "module"
+    tag "merge"
+
+    test("Merges files with different column sets onto the union of columns") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/merge_inputs").mkdirs()
+                file("${params.outdir}/merge_inputs/a_mutations.txt").text = 'A\\tB\\tC\\n1\\t2\\t3\\n'
+                file("${params.outdir}/merge_inputs/b_mutations.txt").text = 'C\\tD\\tA\\nc\\td\\ta\\n'
+                input[0] = [file("${params.outdir}/merge_inputs/a_mutations.txt"), file("${params.outdir}/merge_inputs/b_mutations.txt")]
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines == ['A\tB\tC\tD', '1\t2\t3\t', 'a\t\tc\td']
+        }
+    }
+}

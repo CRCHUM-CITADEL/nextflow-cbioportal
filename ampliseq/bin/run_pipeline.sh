@@ -2,7 +2,7 @@ BASE_DIR="/data/optilab/patients/Cohorte_10_patients_new"
 SCRIPTS_DIR="/shared/cbioportal/formatting"
 DATA_DIR="/data/optilab/cbioportal"
 
-FORMAT_SCRIPT="${SCRIPTS_DIR}/format_tsv.py"
+FORMAT_SCRIPT="${SCRIPTS_DIR}/format_tsv_to_sv.py"
 FORMAT_CNA="${SCRIPTS_DIR}/format_cna.py"
 CLINICAL_PATIENT_SCRIPT="${SCRIPTS_DIR}/clinical_patients_format.py"
 CLINICAL_SAMPLE_SCRIPT="${SCRIPTS_DIR}/clinical_sample_format.py"

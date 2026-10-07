@@ -9,10 +9,8 @@ process MERGE_SEG {
 
     script:
     """
-    files=( *_seg.txt )
-    head -1 "\${files[0]}" > data_seg.txt
-    for f in "\${files[@]}"; do
-        tail -n +2 "\$f" >> data_seg.txt
-    done
+    # Header-aware merge: per-sample files may differ in columns (older pipeline versions,
+    # different writers), so rows are mapped onto the union of columns by name.
+    merge_tsv_by_header.sh data_seg.txt *_seg.txt
     """
 }

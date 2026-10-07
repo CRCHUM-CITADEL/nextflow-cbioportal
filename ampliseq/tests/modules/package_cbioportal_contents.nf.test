@@ -1,0 +1,40 @@
+nextflow_process {
+
+    name "Test PACKAGE_CBIOPORTAL contents"
+    script "modules/local/package_cbioportal/main.nf"
+    process "PACKAGE_CBIOPORTAL"
+    tag "module"
+    tag "package"
+
+    // The staged case_lists input is a symlink to another work dir; `cp -r` used to copy the
+    // link itself, so the tarball carried a dangling link and no case lists.
+    test("Tarball contains the case list files, not a link to them") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                def d = file("${params.outdir}/test_inputs")
+                file("\${d}/case_lists").mkdirs()
+                file("\${d}/data_mutations.txt").text = 'Hugo_Symbol\\tTumor_Sample_Barcode\\n'
+                file("\${d}/meta_study.txt").text = 'cancer_study_identifier: test_study\\n'
+                file("\${d}/case_lists/cases_sequenced.txt").text = 'cancer_study_identifier: test_study\\n'
+                file("\${d}/case_lists/cases_cna.txt").text = 'cancer_study_identifier: test_study\\n'
+                input[0] = 'test_study'
+                input[1] = [file("\${d}/data_mutations.txt")]
+                input[2] = [file("\${d}/meta_study.txt")]
+                input[3] = file("\${d}/case_lists")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def tarball = process.out[0][0].toString()
+            def listing = ['tar', 'tvzf', tarball].execute().text.readLines()
+            assert listing.any { it.endsWith('test_study/case_lists/cases_sequenced.txt') }
+            assert listing.any { it.endsWith('test_study/case_lists/cases_cna.txt') }
+            assert !listing.any { it.startsWith('l') } : "tarball must not contain symlinks:\n${listing.join('\n')}"
+        }
+    }
+}

@@ -9,10 +9,8 @@ process MERGE_SV {
 
     script:
     """
-    files=( *_sv.txt )
-    head -1 "\${files[0]}" > data_sv.txt
-    for f in "\${files[@]}"; do
-        tail -n +2 "\$f" >> data_sv.txt
-    done
+    # Header-aware merge: per-sample files may differ in columns (older pipeline versions,
+    # different writers), so rows are mapped onto the union of columns by name.
+    merge_tsv_by_header.sh data_sv.txt *_sv.txt
     """
 }

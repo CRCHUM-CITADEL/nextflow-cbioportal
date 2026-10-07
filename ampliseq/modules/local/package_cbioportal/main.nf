@@ -16,7 +16,7 @@ process PACKAGE_CBIOPORTAL {
     mkdir -p "${study_id}"
     cp ${data_files} "${study_id}/"
     cp ${meta_files} "${study_id}/"
-    cp -r case_lists "${study_id}/"
+    cp -rL case_lists "${study_id}/"   # -L: the staged case_lists is a symlink; copy its contents
     tar -czf "${study_id}.tar.gz" "${study_id}"
     """
 

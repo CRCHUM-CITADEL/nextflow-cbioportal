@@ -105,11 +105,24 @@ nextflow_process {
             def rows = lines.drop(1).collect { it.split('\t', -1) }
             def col = { String n -> assert header.indexOf(n) >= 0 : "no ${n} column"; header.indexOf(n) }
 
-            assert rows.size() == 2
+            assert rows.size() == 3
             assert rows.every { it[col('Hugo_Symbol')] == 'TESTG' } : "genes not linked: ${rows.collect { it[col('Hugo_Symbol')] }}"
             assert rows.every { it[col('Variant_Classification')] != 'Targeted_Region' }
-            assert rows.find { it[col('Start_Position')] == '1500' }[col('Variant_Classification')] == 'Nonsense_Mutation'
             assert rows.every { it[col('Chromosome')] == 'chr1' }
+
+            def at = { String pos -> def r = rows.find { it[col('Start_Position')] == pos }; assert r : "no MAF row at ${pos}"; r }
+            assert at('1500')[col('Variant_Classification')] == 'Nonsense_Mutation'
+            assert at('1500')[col('t_alt_count')] == '100' && at('1500')[col('t_ref_count')] == '400'
+
+            // dbSNP / ClinVar / COSMIC / 1000G come from the VCF ID column and Nirvana INFO
+            assert at('1500')[col('dbSNP_RS')] == 'rs1881421'
+            assert at('1500')[col('Existing_variation')] == 'rs1881421,COSM3758201,COSM5653840'
+            assert at('1500')[col('CLIN_SIG')] == 'benign'
+            assert at('1500')[col('AF')] == '0.572883'
+            assert at('1301')[col('Variant_Type')] == 'DEL' : "deletion must be matched at its MAF start"
+            assert at('1301')[col('Existing_variation')] == 'COSM999'
+            assert at('1301')[col('dbSNP_RS')] == ''
+            assert at('1200')[col('dbSNP_RS')] == '' && at('1200')[col('CLIN_SIG')] == ''
         }
     }
 

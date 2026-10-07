@@ -11,7 +11,7 @@ process VCF_TO_SEG {
 
     script:
     """
-    VCF=\$(find -L "${sample_folder}" -maxdepth 1 -name '*-basespace-cnv.final.vcf' | head -1)
+    VCF=\$(find -L "${sample_folder}" -maxdepth 1 \\( -name '*-basespace-cnv.final.vcf' -o -name '*-basespace-cnv.final.vcf.gz' \\) | head -1)
     if [ -n "\$VCF" ]; then
         vcf_to_seg.py "\$VCF" "${meta.sample_id}"
     else

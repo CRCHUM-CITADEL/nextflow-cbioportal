@@ -2,3 +2,4 @@ test_results_vcf
 test_results_passthrough
 test_results
 containers/*.sif
+assets/mafsmith

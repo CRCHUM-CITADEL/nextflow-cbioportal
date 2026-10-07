@@ -105,7 +105,13 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 
 ## Key Implementation Notes
 
-- CNA copy-number mapping: `0→-2, 1→-1, 3→1, ≥4→2`; CN=2 is normal and dropped.
+- **SV columns:** both writers (`format_tsv.py` for the export TSV, `fusion_vcf_to_sv.py` for `*-star-fusion.final.vcf`) emit exactly `cbio_sv.SV_COLUMNS`, the full cBioPortal SV layout modelled on oncoanalyser's writers (5'/3' sites, `Length` = `NA` for translocations, split/discordant counts, RNA/DNA support, `Event_Info`, `Annotation`, Nirvana `ANNOTATION` → `External_Annotation`). Add a column in `cbio_sv.py`, never in one writer only. STAR-Fusion `_1`/`_2` breakend records are paired into one row (each site's `EXON_NUM` → `Site*_Region_Number`).
+- **Merges** (`MERGE_{MUTATIONS,SV,CNA,SEG}`) all use `bin/merge_tsv_by_header.sh`, which maps rows onto the union of columns **by name** and tolerates header-only and 0-byte files. Never concatenate positionally: per-sample files from older runs or different writers have different columns. The old inline awk dropped a whole sample's rows when any input file was empty.
+- **Mutation enrichment:** fastVEP has no dbSNP/ClinVar/COSMIC/1000G, so `MAFSMITH` runs `bin/maf_add_vcf_annotations.py`, which fills `dbSNP_RS`, `Existing_variation`, `CLIN_SIG` and `AF` from the VCF ID column and Nirvana `clinvar`/`cosmic`/`AF1000G` (rows matched on chrom + MAF-style start + alt; indels included). Tumor-only: `Matched_Norm_Sample_Barcode` and `Match_Norm_Seq_Allele1/2` are blanked (mafsmith writes `NORMAL` + the ref allele).
+- **Deanon scripts** read with `dtype=str, keep_default_na=False`, so values (including `NA`) round-trip unchanged and numeric-looking IDs don't crash `.str.upper()`.
+- **Case lists** carry `case_list_category`; `cases_cnaseq.txt` (`all_cases_with_mutation_and_cna_data`) is written for OncoPrint. `PACKAGE_CBIOPORTAL` copies `case_lists` with `cp -rL`: it is staged as a symlink, and plain `cp -r` packed a dangling link instead of the files.
+- CNA copy-number mapping: the copy number is rounded half-up, then `≤0→-2, 1→-1, 3→1, ≥4→2`; CN=2 is normal and dropped. Multi-gene `Genes` cells (`,`/`;`) give one row per gene; duplicate genes keep the most extreme value.
+- `vcf_to_seg.py` reads `CN` by its FORMAT key (FORMAT may be `CN` or e.g. `GT:CN`) and accepts `.vcf.gz`. **Open question:** it writes the raw copy number as `seg.mean`, while `meta_seg.txt` and the docstring say `log2(CN/2)`.
 - `data_cna.txt` is long format (`Hugo_Symbol, Sample_Id, Value`); `meta_cna.txt` uses `datatype: DISCRETE_LONG`.
 - All deanon scripts warn on unmatched IDs but leave them unchanged.
 - `vcf_to_seg.py` sets `num.mark=1` (ampliseq VCFs carry no probe-count).

@@ -70,15 +70,26 @@ process MAFSMITH {
 
     # Downstream expects the column header on line 1 (drop mafsmith's #version line) and the
     # original VCF's contig naming, so put chr back (MT -> chrM) for chr-prefixed VCFs.
+    # Ampliseq is tumor-only: mafsmith still writes Matched_Norm_Sample_Barcode=NORMAL and
+    # copies the reference allele into Match_Norm_Seq_Allele1/2, which would present the calls
+    # as tumor/normal pairs, so those three columns are blanked.
     grep -v '^#' "tmp.${meta.sample_id}.maf" \\
         | awk -v addchr="\$VCF_HAS_CHR" 'BEGIN { FS = OFS = "\\t" }
             NR == 1 {
-                for (i = 1; i <= NF; i++) if (\$i == "Chromosome") col = i
+                for (i = 1; i <= NF; i++) {
+                    if (\$i == "Chromosome") col = i
+                    if (\$i ~ /^(Matched_Norm_Sample_Barcode|Match_Norm_Seq_Allele[12])\$/) blank[i] = 1
+                }
                 if (!col) { print "ERROR: no Chromosome column in mafsmith output" > "/dev/stderr"; exit 1 }
                 print; next
             }
             addchr == 1 && \$col !~ /^chr/ { \$col = (\$col == "MT" ? "chrM" : "chr" \$col) }
-            { print }' > "${meta.sample_id}.maf"
+            { for (i in blank) \$i = ""; print }' > "${meta.sample_id}.restored.maf"
+
+    # fastVEP has no dbSNP/ClinVar/COSMIC/1000G sources, so mafsmith leaves dbSNP_RS,
+    # Existing_variation, CLIN_SIG and AF empty; fill them from the VCF ID column and the
+    # Nirvana INFO fields (clinvar, cosmic, AF1000G) the Pisces VCFs already carry.
+    maf_add_vcf_annotations.py "${meta.sample_id}.restored.maf" "${meta.sample_id}.pass.vcf" "${meta.sample_id}.maf"
     """
 
     stub:

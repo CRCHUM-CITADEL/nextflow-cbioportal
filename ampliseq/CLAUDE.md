@@ -10,7 +10,7 @@ Nextflow DSL2 pipeline converting Ampliseq VCFs + TSV exports + clinical files �
 
 ```bash
 # Run tests (from ampliseq/ directory) — local ./nf-test binary; `+` appends to nf-test.config's `test` profile
-./nf-test test tests/modules --profile=+apptainer        # all 5 module tests; MAFSMITH pulls the private ghcr image
+./nf-test test tests/modules --profile=+apptainer        # all module tests; MAFSMITH pulls the private ghcr image
 ./nf-test test tests/modules/package_cbioportal.nf.test --profile test   # what CI runs (no containers)
 
 # Run locally with test data (skips mafsmith)
@@ -117,7 +117,7 @@ Two process labels control container assignment in `nextflow.config`:
 - `python` → `params.python_sif` (local Apptainer image built from `containers/python-ampliseq.def`)
 - `mafsmith` → `params.mafsmith_container` (mafsmith + fastVEP, built from `containers/mafsmith-fastvep_v0.1.0-0.4.0.def`)
 
-`params.mafsmith_data` (optional) is the mafsmith home with `GRCh37/{reference.fa,genes.gff3.gz}`. If it is null, empty or the string `"null"`, `DOWNLOAD_MAFSMITH` fetches it once into `assets/mafsmith` (storeDir). `MAFSMITH` fails early if either reference file is missing or empty, unless `ext.args` contains `--skip-annotation` (the module test relies on this). **Gotcha:** `-stub-run` with `skip_vcf2maf=false` stores an *empty* `assets/mafsmith`, which storeDir then reuses; delete it after stub runs. mafsmith strips `chr` for the Ensembl reference; the MAFSMITH module restores it. Mutation_Status stays blank (tumor-only). `MERGE_MUTATIONS` merges per-sample files by column name, so older vcf2maf-era files (different columns) still merge correctly.
+`params.mafsmith_data` (optional) is the mafsmith home with `GRCh37/{reference.fa,genes.gff3.gz}`. If it is null, empty or the string `"null"`, `DOWNLOAD_MAFSMITH` fetches it once into `assets/mafsmith` (storeDir). `MAFSMITH` fails early if either reference file is missing or empty, unless `ext.args` contains `--skip-annotation` (the module test relies on this). **Gotcha:** `-stub-run` with `skip_vcf2maf=false` stores an *empty* `assets/mafsmith`, which storeDir then reuses; delete it after stub runs. **Contig naming:** the bundle is assumed to use `mafsmith fetch` (Ensembl) naming: `1, 2, X, MT`. mafsmith refuses a VCF whose contigs are not in the FASTA (`VCF chromosome 'chr1' was not found in the FASTA index`); the GFF's naming does not matter (verified on real Ensembl GRCh37 chr12). `MAFSMITH` therefore strips `chr` from the PASS VCF (records + `##contig`, `chrM`→`MT`) and puts it back on the MAF `Chromosome` column (`MT`→`chrM`) when the source VCF was chr-prefixed, as Pisces VCFs are. A pre-staged `--mafsmith_data` with chr-named FASTA is not supported. `Entrez_Gene_Id` is always 0 with mafsmith/fastVEP (no Entrez source); only `Hugo_Symbol = Unknown` signals missing annotation. Mutation_Status stays blank (tumor-only). `MERGE_MUTATIONS` merges per-sample files by column name, so older vcf2maf-era files (different columns) still merge correctly.
 
 Container definitions live in `containers/`. See `containers/README.md` for local build, `--mafsmith_container <local.sif>`, and the push/tag convention. ghcr images are private, so pulls need `apptainer registry login`.
 

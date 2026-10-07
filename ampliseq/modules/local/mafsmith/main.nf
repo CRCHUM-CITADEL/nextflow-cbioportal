@@ -19,9 +19,6 @@ process MAFSMITH {
     VCF=\$(find -L "${sample_folder}" -maxdepth 1 \\( -name '*-basespace-pisces.final.vcf.gz' -o -name '*-basespace-pisces.final.vcf' \\) | head -1)
     [ -n "\$VCF" ] || { echo "ERROR: No VCF found in ${sample_folder}" >&2; exit 1; }
 
-    # Keep the header and PASS records only
-    zcat -f "\$VCF" | awk 'BEGIN {FS="\\t"} /^#/ || \$7 == "PASS"' > "${meta.sample_id}.pass.vcf"
-
     # An empty bundle (e.g. left in assets/mafsmith by a -stub-run of DOWNLOAD_MAFSMITH) would
     # otherwise be reused by every later run; fail loudly unless annotation is skipped.
     if [[ " ${args} " != *" --skip-annotation "* ]]; then
@@ -29,6 +26,21 @@ process MAFSMITH {
             [ -s "${mafsmith_data}/\$f" ] || { echo "ERROR: ${mafsmith_data}/\$f missing or empty; delete the bundle (e.g. assets/mafsmith) to re-fetch, or fix --mafsmith_data" >&2; exit 1; }
         done
     fi
+
+    # The bundle uses mafsmith fetch (Ensembl) naming: 1, 2, X, MT. mafsmith refuses a VCF whose
+    # contigs are not in the FASTA, and Pisces VCFs say chr1, so strip chr (chrM -> MT) from the
+    # records and ##contig lines. Keep the header and PASS records only.
+    VCF_HAS_CHR=0
+    zcat -f "\$VCF" | grep -v '^#' | head -1 | grep -q '^chr' && VCF_HAS_CHR=1 || true
+
+    zcat -f "\$VCF" | awk '
+        function no_chr(c) { if (c !~ /^chr/) return c; sub(/^chr/, "", c); return (c == "M" ? "MT" : c) }
+        BEGIN { FS = OFS = "\\t" }
+        /^##contig=<ID=chrM[,>]/ { sub(/ID=chrM/, "ID=MT"); print; next }
+        /^##contig=<ID=chr/      { sub(/ID=chr/, "ID="); print; next }
+        /^#/ { print; next }
+        \$7 == "PASS" { \$1 = no_chr(\$1); print }
+    ' > "${meta.sample_id}.pass.vcf"
 
     # mafsmith looks under \$HOME/.mafsmith for its reference data
     export HOME=./
@@ -43,20 +55,16 @@ process MAFSMITH {
         --input-vcf "${meta.sample_id}.pass.vcf" \\
         --output-maf "tmp.${meta.sample_id}.maf"
 
-    # Downstream expects the column header on line 1 (drop mafsmith's #version line) and
-    # the VCF's contig naming. mafsmith reads Ensembl-named references (1, 2, X), so it
-    # strips "chr" from a chr-prefixed VCF; put it back to match what vcf2maf.pl wrote.
-    VCF_HAS_CHR=0
-    grep -v '^#' "${meta.sample_id}.pass.vcf" | head -1 | grep -q '^chr' && VCF_HAS_CHR=1 || true
-
+    # Downstream expects the column header on line 1 (drop mafsmith's #version line) and the
+    # original VCF's contig naming, so put chr back (MT -> chrM) for chr-prefixed VCFs.
     grep -v '^#' "tmp.${meta.sample_id}.maf" \\
-        | awk -v addchr="\$VCF_HAS_CHR" 'BEGIN {FS=OFS="\\t"}
+        | awk -v addchr="\$VCF_HAS_CHR" 'BEGIN { FS = OFS = "\\t" }
             NR == 1 {
                 for (i = 1; i <= NF; i++) if (\$i == "Chromosome") col = i
                 if (!col) { print "ERROR: no Chromosome column in mafsmith output" > "/dev/stderr"; exit 1 }
                 print; next
             }
-            addchr == 1 && \$col !~ /^chr/ { \$col = "chr" \$col }
+            addchr == 1 && \$col !~ /^chr/ { \$col = (\$col == "MT" ? "chrM" : "chr" \$col) }
             { print }' > "${meta.sample_id}.maf"
     """
 

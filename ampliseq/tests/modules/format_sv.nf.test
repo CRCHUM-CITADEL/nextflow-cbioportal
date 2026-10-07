@@ -27,6 +27,7 @@ nextflow_process {
                     file('${projectDir}/assets/samples/SAMPLE_001/analysis_001_export.tsv'),
                     file('${projectDir}/assets/samples/SAMPLE_001')
                 ])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 """
             }
         }
@@ -60,6 +61,7 @@ nextflow_process {
                     file('${projectDir}/assets/samples/SAMPLE_002/analysis_002_export.tsv'),
                     file('${projectDir}/assets/samples/SAMPLE_002')
                 ])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 """
             }
         }
@@ -73,6 +75,77 @@ nextflow_process {
             def egfr = rows[0]
             assert egfr.Site2_Hugo_Symbol == 'BRAF' && egfr.Site1_Chromosome == '7' && egfr.Site2_Chromosome == '7'
             assert egfr.Length == '189841' && egfr.Tumor_Variant_Count == '22'
+        }
+    }
+
+    test("Filter mode: TSV even with a STAR-Fusion VCF, reads summed per gene pair >= 1000") {
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                filter_tsv_variants = true
+            }
+            process {
+                """
+                def dir = file("${params.outdir}/sv_inputs/S3")
+                dir.mkdirs()
+                file('${projectDir}/assets/samples/SAMPLE_001/SAMPLE_001-star-fusion.final.vcf').copyTo(dir.resolve('S3-star-fusion.final.vcf'))
+                def tsv = file("${params.outdir}/sv_inputs/export.tsv")
+                tsv.text =
+                    'Chr\\tStart\\tEnd\\tLength\\tVariant Type\\tVariant Subtype\\tGenes\\tVAF\\tConfidence\\tDepth\\tCopy Number\\tSupporting Reads\\tBreakend Genes\\tBreakend Exon\\n' +
+                    '6\\t117710982\\t149784294\\t-1\\tCNV\\tFUSION\\tROS1\\tN/A\\tMEDIUM\\tN/A\\tN/A\\t600\\tCD74\\t6\\n' +
+                    '6\\t117632253\\t149784294\\t-1\\tCNV\\tFUSION\\tROS1\\tN/A\\tMEDIUM\\tN/A\\tN/A\\t500\\tCD74\\t6\\n' +
+                    '6\\t117632000\\t149784294\\t-1\\tCNV\\tFUSION\\tROS1\\tN/A\\tMEDIUM\\tN/A\\tN/A\\tN/A\\tCD74\\t6\\n' +
+                    '2\\t29416572\\t42522656\\t-1\\tCNV\\tFUSION\\tALK\\tN/A\\tHIGH\\tN/A\\tN/A\\t999\\tEML4\\t13\\n' +
+                    '1\\t162724506\\t162724506\\t1\\tSNP\\tSNP\\tDDR2\\t0.0866\\tMEDIUM\\t866\\tN/A\\tN/A\\tN/A\\tN/A\\n'
+                input[0] = Channel.of([[sample_id: 'S3'], tsv, dir])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0].split('\t') as List == SV_COLUMNS
+            def rows = lines.drop(1).collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
+            assert rows*.Site1_Hugo_Symbol == ['ROS1', 'ROS1', 'ROS1'] : "VCF ignored; ALK-EML4 (999) dropped"
+            assert rows*.Site2_Hugo_Symbol.unique() == ['CD74']
+            assert rows*.Tumor_Variant_Count == ['600', '500', 'NA']
+            assert rows*.Site2_Chromosome.unique() == ['5']
+        }
+    }
+
+    // The export has one Chr: End is the partner's position on its own chromosome (CD74 is chr5)
+    test("Analysis export TSV: partner chromosome from gene loci, exons as region numbers") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                def dir = file("${params.outdir}/sv_inputs/S4")
+                dir.mkdirs()
+                def tsv = file("${params.outdir}/sv_inputs/export.tsv")
+                tsv.text =
+                    'Chr\\tStart\\tEnd\\tLength\\tVariant Type\\tVariant Subtype\\tGenes\\tExons\\tSupporting Reads\\tBreakend Genes\\tBreakend Exon\\n' +
+                    '6\\t117710982\\t149784294\\t-1\\tCNV\\tFUSION\\tROS1\\t34\\t42\\tCD74\\t6\\n' +
+                    '2\\t29446394\\t42522656\\t-1\\tCNV\\tFUSION\\tALK\\t20\\t500\\tEML4\\t13\\n' +
+                    '7\\t100\\t200\\t-1\\tCNV\\tFUSION\\tFOO\\tN/A\\t5\\tNOTAGENE\\tN/A\\n'
+                input[0] = Channel.of([[sample_id: 'S4'], tsv, dir])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            def rows = lines.drop(1).collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
+            def ros1 = rows[0], alk = rows[1], unknown = rows[2]
+            assert ros1.Site1_Chromosome == '6' && ros1.Site2_Chromosome == '5' && ros1.Length == 'NA'
+            assert ros1.Site1_Region_Number == '34' && ros1.Site2_Region_Number == '6' && ros1.Class == 'FUSION'
+            assert alk.Site2_Chromosome == '2' && alk.Length == '13076262'
+            assert unknown.Site2_Chromosome == 'NA' && unknown.Length == 'NA' && unknown.Site1_Region_Number == 'NA'
         }
     }
 }

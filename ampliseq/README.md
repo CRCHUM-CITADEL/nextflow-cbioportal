@@ -60,10 +60,18 @@ Skip VCF → MAF conversion if MAFs already exist:
 nextflow run main.nf ... --skip_vcf2maf true
 ```
 
-Keep only mutations whose position overlaps a region (`Chr`, `Start`, `End`, inclusive) in the sample's `analysis_*_export.tsv`. Rows of every variant type count, and a `chr` prefix is ignored. By default, all PASS mutations are kept:
+Filter mode applies QC thresholds using the sample's `analysis_*_export.tsv`. By default it is off and everything is kept:
 ```bash
 nextflow run main.nf ... --filter_tsv_variants true
 ```
+
+| Data | Kept in filter mode | Params (default) |
+|---|---|---|
+| Mutations | Position overlaps a TSV row with `Depth` ≥ 250 and `VAF` > 0.03 (`chr` prefix ignored) | `--mutation_min_depth` (250), `--mutation_min_vaf` (0.03) |
+| CNAs | `Confidence` = HIGH and raw `Copy Number` ≥ 6, so all deletions are dropped | `--cna_confidence` (HIGH), `--cna_min_copy_number` (6) |
+| Fusions | Taken from the TSV, even when a `*-star-fusion.final.vcf` exists. `Supporting Reads` summed per gene pair ≥ 1000 | `--sv_min_supporting_reads` (1000) |
+
+`data_seg.txt` is not filtered. Filter mode runs per sample, so samples already in `--outdir` are not re-filtered. Use a fresh `--outdir` when you turn it on or change a threshold.
 
 Boolean flags accept `true`/`false` on the command line. Nextflow 26 passes CLI values as strings, so the pipeline converts them explicitly.
 

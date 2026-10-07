@@ -16,7 +16,7 @@ workflow PER_SAMPLE_FORMAT {
 
     main:
     ch_sv_input = ch_tsv.join(ch_vcf_input)  // → tuple(meta, tsv, sample_folder)
-    FORMAT_SV(ch_sv_input)
+    FORMAT_SV(ch_sv_input, file("${projectDir}/assets/grch37_gene_loci.tsv.gz", checkIfExists: true))
     FORMAT_CNA(ch_tsv)
     ch_sv = FORMAT_SV.out
     ch_cna = FORMAT_CNA.out

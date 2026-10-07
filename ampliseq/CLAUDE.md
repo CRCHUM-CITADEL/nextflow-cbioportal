@@ -64,13 +64,17 @@ ch_samplesheet
   └─ PACKAGE_CBIOPORTAL (module) ── tar.gz all outputs for transfer
 ```
 
-**Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (mafsmith + fastVEP, GRCh37, PASS records only) and stub MAFs. `params.filter_tsv_variants` (default false) chooses between FILTER_MUTATIONS, which keeps MAF rows whose `[Start_Position, End_Position]` overlaps any `analysis_*_export.tsv` row's `Chr:Start-End` (inclusive, `chr` prefix ignored, all variant types), and passing all MAF rows through. It used to require an exact `Start-End` match, which dropped every SNV because TSV rows are regions.
+**Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (mafsmith + fastVEP, GRCh37, PASS records only) and stub MAFs. `params.filter_tsv_variants` (default false) turns on **filter mode**, which applies QC thresholds (all params, defaults shown) to three data types; with it off everything is kept:
+- **Mutations** → FILTER_MUTATIONS instead of PASSTHROUGH_MUTATIONS: keep a MAF row only if its `[Start_Position, End_Position]` overlaps (inclusive, `chr` ignored) a TSV row with numeric `Depth >= mutation_min_depth` (250) and `VAF > mutation_min_vaf` (0.03). Depth/VAF come from the TSV. CNV/fusion rows have `N/A` there, so they are never match regions: a fusion row can span tens of Mb. Alleles are not compared.
+- **CNA** → `format_cna.py --min-copy-number --confidence`: keep rows with `Confidence == cna_confidence` (HIGH, case-insensitive) and raw `Copy Number >= cna_min_copy_number` (6, before the half-up rounding). Every deletion is dropped and every kept gene is Value 2.
+- **Fusions** → FORMAT_SV ignores any `*-star-fusion.final.vcf` and runs `format_tsv.py --min-supporting-reads`: `Supporting Reads` summed per `(Genes, Breakend Genes)` pair (`N/A` = 0), and every row of a pair whose total is `>= sv_min_supporting_reads` (1000) is kept.
+- A missing `Depth`/`VAF`/`Confidence` column fails the task in filter mode. `data_seg.txt` is never filtered.
 
 ---
 
 ## Input Files (per-sample folder)
 
-- `analysis_*_export.tsv` — columns: `Chr, Start, End, Variant Type, Variant Subtype, Genes, Breakend Genes, Supporting Reads, Copy Number`
+- `analysis_*_export.tsv` — real export columns: `Chr, Start, End, Length, Variant Type, Variant Subtype, Ref, Alt, Genes, Cdot, Pdot, Exons, VAF, Confidence, Depth, Depth_Ref, Depth_Alt, Region, Effect, Germline Classification, Somatic Classification, Clinical Significance, In Report, Aggregated Normal Frequency, Copy Number, Included in TMB calculation, Possibly germline variant, Supporting Reads, Breakend Genes, Breakend Exon`. Missing values are the literal `N/A`; SNP rows are points (`Start == End`), CNV/fusion rows are regions. Small variants are `Variant Type = SNP` (subtype `SNP`/`INDEL`); fusions are `CNV`/`SV` + `FUSION`, one row per breakpoint. Scripts read columns by name; `assets/samples/*` uses this layout.
 - `*-basespace-pisces.final.vcf.gz` — somatic mutations VCF; filename prefix = `SAMPLE_ID`
 - `*-basespace-cnv.final.vcf` — CNV VCF; needs `CN` in FORMAT and `END` in INFO
 
@@ -105,7 +109,7 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 
 ## Key Implementation Notes
 
-- **SV columns:** both writers (`format_tsv.py` for the export TSV, `fusion_vcf_to_sv.py` for `*-star-fusion.final.vcf`) emit exactly `cbio_sv.SV_COLUMNS`, the full cBioPortal SV layout modelled on oncoanalyser's writers (5'/3' sites, `Length` = `NA` for translocations, split/discordant counts, RNA/DNA support, `Event_Info`, `Annotation`, Nirvana `ANNOTATION` → `External_Annotation`). Add a column in `cbio_sv.py`, never in one writer only. STAR-Fusion `_1`/`_2` breakend records are paired into one row (each site's `EXON_NUM` → `Site*_Region_Number`).
+- **SV columns:** both writers (`format_tsv.py` for the export TSV, `fusion_vcf_to_sv.py` for `*-star-fusion.final.vcf`) emit exactly `cbio_sv.SV_COLUMNS`, the full cBioPortal SV layout modelled on oncoanalyser's writers (5'/3' sites, `Length` = `NA` for translocations, split/discordant counts, RNA/DNA support, `Event_Info`, `Annotation`, Nirvana `ANNOTATION` → `External_Annotation`). Add a column in `cbio_sv.py`, never in one writer only. STAR-Fusion `_1`/`_2` breakend records are paired into one row (each site's `EXON_NUM` → `Site*_Region_Number`). TSV fusion rows have one `Chr`, but `End` is the partner's position on *its* chromosome (ROS1 chr6 → CD74 `149784294` is chr5): `format_tsv.py --gene-loci` places it with `assets/grch37_gene_loci.tsv.gz` (`Name`/chrom/start/end of every `gene` record in the mafsmith GRCh37 `genes.gff3.gz`), taking the `Breakend Genes` locus containing `End` (±10 kb), else the gene's only chromosome, else `NA` + warning. `Class` is always `FUSION`, `Exons`/`Breakend Exon` → `Site1/2_Region_Number`.
 - **Merges** (`MERGE_{MUTATIONS,SV,CNA,SEG}`) all use `bin/merge_tsv_by_header.sh`, which maps rows onto the union of columns **by name** and tolerates header-only and 0-byte files. Never concatenate positionally: per-sample files from older runs or different writers have different columns. The old inline awk dropped a whole sample's rows when any input file was empty.
 - **Mutation enrichment:** fastVEP has no dbSNP/ClinVar/COSMIC/1000G, so `MAFSMITH` runs `bin/maf_add_vcf_annotations.py`, which fills `dbSNP_RS`, `Existing_variation`, `CLIN_SIG` and `AF` from the VCF ID column and Nirvana `clinvar`/`cosmic`/`AF1000G` (rows matched on chrom + MAF-style start + alt; indels included). Tumor-only: `Matched_Norm_Sample_Barcode` and `Match_Norm_Seq_Allele1/2` are blanked (mafsmith writes `NORMAL` + the ref allele).
 - **Deanon scripts** read with `dtype=str, keep_default_na=False`, so values (including `NA`) round-trip unchanged and numeric-looking IDs don't crash `.str.upper()`.
@@ -143,6 +147,8 @@ A sample is skipped if all four per-sample files exist under `{outdir}/samples/{
 `{id}_sv.txt`, `{id}_cna.txt`, `{id}_seg.txt`, `{id}_mutations.txt`
 
 Merge/deanon/clinical steps always re-run over all samples combined. Use the same `--outdir` across runs.
+
+**Filter mode is applied per sample**, so switching `--filter_tsv_variants` or changing a threshold does not touch samples already in `--outdir`: use a fresh `--outdir` (or delete `samples/<id>/`) to re-filter them.
 
 ---
 

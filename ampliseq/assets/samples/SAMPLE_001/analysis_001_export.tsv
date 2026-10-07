@@ -1,6 +1,9 @@
-Chr	Start	End	Variant Type	Variant Subtype	Genes	Breakend Genes	Supporting Reads	Copy Number
-1	150000	250000	SV	FUSION	BRAF	EGFR	15	2
-2	300000	400000	CNV	FUSION	ALK	ROS1	12	3
-4	500000	600000	CNV	DUPLICATION	MYC		10	4
-3	700000	800000	CNV	DELETION	PTEN		8	1
-17	7571720	7590868	SNP	SNP	TP53		20	2
+Chr	Start	End	Length	Variant Type	Variant Subtype	Ref	Alt	Genes	Cdot	Pdot	Exons	VAF	Confidence	Depth	Depth_Ref	Depth_Alt	Region	Effect	Germline Classification	Somatic Classification	Clinical Significance	In Report	Aggregated Normal Frequency	Copy Number	Included in TMB calculation	Possibly germline variant	Supporting Reads	Breakend Genes	Breakend Exon
+1	150000	250000	-1	SV	FUSION	N/A	N/A	BRAF	N/A	N/A	1	N/A	MEDIUM	N/A	N/A	N/A	Exonic	N/A	N/A	N/A	N/A	false	N/A	N/A	N/A	N/A	15	EGFR	1
+2	300000	400000	-1	CNV	FUSION	N/A	N/A	ALK	N/A	N/A	1	N/A	MEDIUM	N/A	N/A	N/A	Exonic	N/A	N/A	N/A	N/A	false	N/A	N/A	N/A	N/A	12	ROS1	1
+6	117710982	149784294	-1	CNV	FUSION	N/A	N/A	ROS1	N/A	N/A	34	N/A	MEDIUM	N/A	N/A	N/A	Exonic	N/A	N/A	N/A	N/A	false	N/A	N/A	N/A	N/A	600	CD74	6
+6	117632253	149784294	-1	CNV	FUSION	N/A	N/A	ROS1	N/A	N/A	32	N/A	MEDIUM	N/A	N/A	N/A	Exonic	N/A	N/A	N/A	N/A	false	N/A	N/A	N/A	N/A	500	CD74	6
+4	500000	600000	100001	CNV	DUPLICATION	N/A	N/A	MYC	N/A	N/A	N/A	N/A	HIGH	N/A	N/A	N/A	N/A	N/A	N/A	N/A	N/A	false	N/A	7	N/A	N/A	N/A	N/A	N/A
+3	700000	800000	100001	CNV	DELETION	N/A	N/A	PTEN	N/A	N/A	N/A	N/A	HIGH	N/A	N/A	N/A	N/A	N/A	N/A	N/A	N/A	false	N/A	1	N/A	N/A	N/A	N/A	N/A
+17	7571720	7571720	1	SNP	SNP	G	A	TP53	N/A	N/A	N/A	0.0553	HIGH	1321	1248	73	Exonic	N/A	N/A	N/A	N/A	false	N/A	N/A	false	false	N/A	N/A	N/A
+1	150000	150000	1	SNP	SNP	A	T	BRAF	N/A	N/A	N/A	0.30	LOW	100	70	30	Exonic	N/A	N/A	N/A	N/A	false	N/A	N/A	false	false	N/A	N/A	N/A

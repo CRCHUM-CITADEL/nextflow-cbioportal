@@ -17,7 +17,7 @@ nextflow_process {
                     'G1\\t150\\t100\\tchr1\\n' +
                     'G2\\t250\\t200\\t2\\n' +
                     'G3\\t350\\t300\\tchr3\\n'
-                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\n1\\t100\\t150\\n2\\t200\\t250\\n'
+                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tDepth\\tVAF\\n1\\t100\\t150\\t500\\t0.10\\n2\\t200\\t250\\t500\\t0.10\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
                 """
             }
@@ -48,9 +48,9 @@ nextflow_process {
                     'BEFORE\\t17\\t7571719\\t7571719\\n' +        // one before region start
                     'DEL_SPAN\\t12\\t25380270\\t25380280\\n' +    // indel straddling region start
                     'OTHER_CHR\\t5\\t7580000\\t7580000\\n'        // right position, wrong chromosome
-                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tVariant Type\\n' +
-                    '17\\t7571720\\t7590868\\tSNP\\n' +
-                    '12\\t25380275\\t25403854\\tSNP\\n'
+                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tVariant Type\\tDepth\\tVAF\\n' +
+                    '17\\t7571720\\t7590868\\tSNP\\t500\\t0.10\\n' +
+                    '12\\t25380275\\t25403854\\tSNP\\t500\\t0.10\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
                 """
             }
@@ -72,7 +72,7 @@ nextflow_process {
                 file("${params.outdir}/filter_inputs").mkdirs()
                 file("${params.outdir}/filter_inputs/s.maf").text = 'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\n' +
                     'G1\\t1\\t100\\t100\\n'
-                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\n'
+                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tDepth\\tVAF\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
                 """
             }
@@ -82,6 +82,62 @@ nextflow_process {
             assert process.success
             def lines = path(process.out[0][0].toString()).readLines()
             assert lines == ['Hugo_Symbol\tChromosome\tStart_Position\tEnd_Position']
+        }
+    }
+
+    // N/A Depth/VAF rows (CNV/fusion) must not act as match regions
+    test("Keeps only mutations matching a TSV row with Depth >= 250 and VAF > 0.03") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/filter_inputs").mkdirs()
+                file("${params.outdir}/filter_inputs/s.maf").text = 'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\n' +
+                    'DEPTH_249\\tchr1\\t100\\t100\\n' +
+                    'DEPTH_250\\tchr1\\t200\\t200\\n' +
+                    'VAF_0.03\\tchr1\\t300\\t300\\n' +
+                    'VAF_0.031\\tchr1\\t400\\t400\\n' +
+                    'IN_FUSION\\tchr6\\t120000000\\t120000000\\n' +
+                    'IN_CNV\\tchr4\\t550000\\t550000\\n'
+                file("${params.outdir}/filter_inputs/s.tsv").text =
+                    'Chr\\tStart\\tEnd\\tVariant Type\\tVariant Subtype\\tVAF\\tConfidence\\tDepth\\tCopy Number\\n' +
+                    '1\\t100\\t100\\tSNP\\tSNP\\t0.20\\tHIGH\\t249\\tN/A\\n' +
+                    '1\\t200\\t200\\tSNP\\tSNP\\t0.20\\tHIGH\\t250\\tN/A\\n' +
+                    '1\\t300\\t300\\tSNP\\tSNP\\t0.03\\tHIGH\\t1000\\tN/A\\n' +
+                    '1\\t400\\t400\\tSNP\\tINDEL\\t0.031\\tLOW\\t1000\\tN/A\\n' +
+                    '6\\t117710982\\t149784294\\tCNV\\tFUSION\\tN/A\\tMEDIUM\\tN/A\\tN/A\\n' +
+                    '4\\t500000\\t600000\\tCNV\\tDUPLICATION\\tN/A\\tHIGH\\tN/A\\t8\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
+            assert kept == ['DEPTH_250', 'VAF_0.031']
+        }
+    }
+
+    test("Fails when the TSV has no Depth column") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/filter_inputs").mkdirs()
+                file("${params.outdir}/filter_inputs/s.maf").text = 'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\n' +
+                    'G1\\t1\\t100\\t100\\n'
+                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tVAF\\n1\\t100\\t100\\t0.5\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert workflow.stdout.any { it.contains('lacks one of Chr/Start/End/Depth/VAF') }
         }
     }
 }

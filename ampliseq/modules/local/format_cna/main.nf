@@ -10,8 +10,12 @@ process FORMAT_CNA {
     path("${meta.sample_id}_cna.txt")
 
     script:
+    // Filter mode: HIGH-confidence CN >= 6 only (toBoolean: NF 26 CLI params are strings)
+    def filter_args = params.filter_tsv_variants.toString().toBoolean()
+        ? "--min-copy-number ${params.cna_min_copy_number} --confidence '${params.cna_confidence}'"
+        : ''
     """
-    format_cna.py "${tsv}" "${meta.sample_id}"
+    format_cna.py "${tsv}" "${meta.sample_id}" ${filter_args}
     mv data_cna.txt "${meta.sample_id}_cna.txt"
     """
 }

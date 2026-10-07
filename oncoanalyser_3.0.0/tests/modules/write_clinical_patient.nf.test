@@ -1,0 +1,44 @@
+nextflow_process {
+
+    name "Test WRITE_CLINICAL_PATIENT module"
+    script "modules/local/write_clinical_patient/main.nf"
+    process "WRITE_CLINICAL_PATIENT"
+    tag "module"
+    tag "write_clinical_patient"
+
+    test("Merged clinical table — data_clinical_patient.txt is produced, one row per patient") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple('TEST', file('${projectDir}/tests/modules/fixtures/clinical_merged.tsv'))
+                )
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.ch_clinical_patient.size() == 1
+
+            def f = path(process.out.ch_clinical_patient.collect { group, file -> file }[0].toString())
+            def lines = f.readLines()
+
+            assert lines[0].startsWith('#')
+            assert lines[3].startsWith('#')
+            assert lines[4].split('\t').contains('PATIENT_ID')
+
+            def data_rows = lines.drop(5)
+            def cols      = lines[4].split('\t') as List
+            def pat_idx   = cols.indexOf('PATIENT_ID')
+            // The fixture has 2 sample-level rows for 2 distinct patients (T1, T2);
+            // the patient file must have exactly one row each, deduplicated.
+            assert data_rows.size() == 2
+            assert data_rows.collect { it.split('\t')[pat_idx] }.sort() == ['T1', 'T2']
+        }
+    }
+}

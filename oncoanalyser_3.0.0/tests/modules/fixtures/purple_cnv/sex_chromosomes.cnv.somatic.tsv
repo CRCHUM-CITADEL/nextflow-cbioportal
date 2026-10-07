@@ -1,0 +1,4 @@
+chromosome	start	end	copyNumber	bafCount	observedBAF
+chr21	1	1000	2.0	100	0.5
+chrX	1	1000	1.0	50	0.0
+chrY	1	1000	1.0	10	0.0

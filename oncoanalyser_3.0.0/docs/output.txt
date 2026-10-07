@@ -1,0 +1,229 @@
+Output Reference
+================
+
+This document describes every output file produced by the pipeline.
+All paths are relative to the output directory (--outdir).
+
+
+Genomic mode
+------------
+
+PER-SUBJECT FILES
+
+  Intermediate files for each subject are saved in <outdir>/<group>/<subject>/:
+
+  File                                                Description
+  --------------------------------------------------  ----------------------------
+  <sample>_data_cna_hg38.seg                          Copy-number segments (SEG).
+  <sample>_data_cna_long.txt                          Gene-level discrete CNAs.
+  <sample>.data_sv.txt                                DNA structural variants.
+  <sample>.isofox_fusion.data_sv.txt                  RNA gene fusions (Isofox).
+  <sample>.tpm.tsv                                    Gene expression in TPM.
+  <subject>.somatic_rna_germline.maf                  Merged mutation file (MAF).
+  <sample>.data_mutational_signatures_contribution_SBS.txt   SBS signature contributions.
+  <sample>.data_mutational_signatures_counts_SBS.txt         SBS trinucleotide counts.
+  <sample>.data_mutational_signatures_contribution_DBS.txt   DBS signature contributions.
+  <sample>.data_mutational_signatures_counts_DBS.txt         DBS dinucleotide counts.
+  <sample>.data_mutational_signatures_contribution_ID.txt    ID signature contributions.
+  <sample>.data_mutational_signatures_counts_ID.txt          ID classification counts.
+
+PER-GROUP AGGREGATED FILES
+
+  All per-subject files are merged into group-level cBioPortal data
+  files in <outdir>/<group>/:
+
+  Data files:
+
+    File                                               cBioPortal type
+    -------------------------------------------------  -------------------------
+    data_cna_hg38.seg                                  COPY_NUMBER_ALTERATION/SEG
+    data_cna_long.txt                                  COPY_NUMBER_ALTERATION/
+                                                       DISCRETE_LONG
+    data_sv.txt                                        STRUCTURAL_VARIANT/SV
+    data_expression.txt                                MRNA_EXPRESSION/CONTINUOUS
+    data_mutations_dna_rna_germline.txt                MUTATION_EXTENDED/MAF
+    data_mutational_signatures_contribution_SBS.txt    GENERIC_ASSAY/
+                                                       MUTATIONAL_SIGNATURE
+    data_mutational_signatures_counts_SBS.txt          GENERIC_ASSAY/
+                                                       MUTATIONAL_SIGNATURE
+    data_mutational_signatures_contribution_DBS.txt    (same)
+    data_mutational_signatures_counts_DBS.txt          (same)
+    data_mutational_signatures_contribution_ID.txt     (same)
+    data_mutational_signatures_counts_ID.txt           (same)
+
+  Meta files:
+
+    Each data file has a corresponding meta file required by cBioPortal:
+
+    meta_study.txt, meta_cna_hg38.txt, meta_cna_long.txt, meta_sv.txt,
+    meta_expression.txt, meta_sequenced.txt,
+    meta_mutational_signatures_contribution_SBS.txt,
+    meta_mutational_signatures_counts_SBS.txt,
+    meta_mutational_signatures_contribution_DBS.txt,
+    meta_mutational_signatures_counts_DBS.txt,
+    meta_mutational_signatures_contribution_ID.txt,
+    meta_mutational_signatures_counts_ID.txt
+
+  Case lists (in <outdir>/<group>/case_lists/):
+
+    cases_cnv.txt          Samples with copy-number data
+    cases_sequenced.txt    Samples with mutation data
+    cases_sv.txt           Samples with structural-variant data
+
+  Utility files:
+
+    util_linking_file.txt  TSV mapping subject_id to sample_id
+
+  ML feature tables (machine_learning/, only with --run_ml):
+
+    ML-formatted versions of CNV, expression, mutations, and SVs
+    (with COSMIC/ChimerDB fusion annotations) for downstream analysis.
+
+  Cancer type (skipped when --incremental is set):
+
+    cancer_type.txt        One headerless row: type id, name, colour, parent
+    meta_cancer_type.txt   Metadata for the cancer type file
+
+  Package:
+
+    <group>.tar.gz         All cBioPortal files packaged for import.
+
+    The archive mirrors the loadable part of <outdir>/<group>/: data files,
+    meta files, case_lists/, util_linking_file.txt and — in "both" mode —
+    the clinical and timeline files. Per-subject folders and
+    machine_learning/ are intentionally left out; cBioPortal does not read
+    them. Only genomic and both modes produce an archive: clinical-only
+    mode publishes its files flat into <outdir> with no study folder.
+
+
+Clinical mode
+-------------
+
+Clinical mode outputs are saved in <outdir>/<group>/:
+
+  File                         Description
+  ---------------------------  ----------------------------
+  data_clinical_patient.txt    Patient attributes (one row per patient)
+  data_clinical_sample.txt     Sample attributes (one row per sample)
+  meta_clinical_patient.txt    Metadata for patient attributes
+  meta_clinical_sample.txt     Metadata for sample attributes
+
+  Timeline (generated when source clinical data is available):
+
+  File                         Description
+  ---------------------------  ----------------------------
+  data_timeline.txt            Combined timeline with all event types
+  meta_timeline.txt            Metadata for the timeline file
+
+  All event types are merged into a single file, distinguished by the
+  EVENT_TYPE column: SURGERY, TREATMENT, STATUS, SPECIMEN, LAB_TEST.
+  Each event type is produced by its own process and unioned by
+  MERGE_TIMELINE; an event type with no rows contributes nothing.
+
+  ICD-O label columns in data_clinical_sample.txt:
+
+  Code column           Label column
+  --------------------  -----------------------------
+  RELAPSE_SITE          RELAPSE_SITE_LABEL
+  CANCER_TYPE_CODE      CANCER_TYPE_LABEL
+  TUMOR_TISSUE_SITE     TUMOR_TISSUE_SITE_LABEL
+
+  The source data carries these as ICD-O topography codes (e.g. C22.0);
+  the label is looked up through the MOHCCN primary-site table. Labels
+  resolve to the C+2-digit PARENT code, since that table only holds
+  parent codes -- C22.0 and C22.1 both label as "Liver and intrahepatic
+  bile ducts".
+
+  Common columns: PATIENT_ID, START_DATE, STOP_DATE, EVENT_TYPE.
+  Event-specific columns (alphabetical): AGENT, RESULT,
+  SAMPLE_TYPE, SITE, SITE_LABEL, SPECIMEN_SITE, SPECIMEN_SITE_LABEL,
+  SPECIMEN_TISSUE_SOURCE, SPECIMEN_TISSUE_SOURCE_CODE, SPECIMEN_TYPE,
+  STATUS, SUBTYPE, TEST, TREATMENT_INTENT, TREATMENT_INTENT_CODE,
+  TREATMENT_TYPE. Columns not applicable to a given EVENT_TYPE are
+  empty.
+
+  START_DATE defaults to 0 (diagnosis day) when the source date is
+  missing.
+
+  MOHCCN code columns (SITE_LABEL, TREATMENT_INTENT_CODE,
+  SPECIMEN_TISSUE_SOURCE_CODE) are populated when the corresponding
+  mapping CSVs are provided via params. Missing mappings produce empty
+  values.
+
+
+Pipeline info
+-------------
+
+Nextflow execution reports are saved in <outdir>/pipeline_info/:
+
+  File                                    Description
+  --------------------------------------  ----------------------------
+  execution_report_<timestamp>.html       Task-level metrics (CPU, mem, time)
+  execution_timeline_<timestamp>.html     Visual timeline of all tasks
+  execution_trace_<timestamp>.txt         Tab-separated trace for debugging
+  pipeline_dag_<timestamp>.html           Workflow DAG
+  software_versions.yml                   Tool versions
+  params.json                             Parameters used
+  samplesheet.valid.csv                   Validated samplesheet
+
+
+Importing into cBioPortal
+-------------------------
+
+The pipeline produces a <group>.tar.gz archive. To import:
+
+  1. Extract the archive:
+
+       tar -xzf COHORT1.tar.gz
+
+  2. Validate the study:
+
+       python importer/validateData.py -s COHORT1/ -n
+
+  3. Import the study:
+
+       python importer/metaImport.py -s COHORT1/ -u http://localhost:8080 -o
+
+     Or using the newer importer:
+
+       python importer/cbioportalImporter.py -s COHORT1/ -u http://localhost:8080
+
+  See: https://docs.cbioportal.org/file-formats/
+
+
+Combining two runs
+------------------
+
+bin/combine_cbioportal_outputs.py merges two study folders (or two
+.tar.gz archives) into one — for adding a new batch of samples to a study
+that is already loaded.
+
+  bin/combine_cbioportal_outputs.py \
+      --input_dir_1 results_batch1/COHORT1 \
+      --input_dir_2 results_batch2/COHORT1 \
+      --output_dir  results_merged/COHORT1 \
+      --strict
+
+  Options:
+
+    --study_id ID   Rewrite cancer_study_identifier in every meta and case
+                    list file. Also lifts the requirement that both inputs
+                    share the same study ID.
+    --strict        Exit non-zero if either input holds a file no merge
+                    strategy handles, instead of only warning.
+
+  Setting --output_dir to one of the inputs merges in place, so a study
+  folder can be accumulated batch by batch.
+
+  Sample IDs must not overlap between the two inputs; that is a hard error.
+  Patient rows are appended as-is and never deduplicated, so a patient that
+  contributed samples to both batches keeps one row per batch.
+
+  machine_learning/ is NOT merged: expression_processed_log2.tsv and
+  expression_processed_standardized.tsv are normalised across the cohort,
+  so appending rows would give wrong values. Regenerate those tables by
+  re-running the pipeline over the combined cohort.
+
+  Prefer the study DIRECTORY over the .tar.gz as input — the directory also
+  carries the per-subject folders, which the merged folder needs to stay
+  usable as an incremental-resume target.

@@ -1,0 +1,18 @@
+{
+    "Hand-built somatic fixture with pre-staged hotspots \u2014 all five encodings": {
+        "content": [
+            [
+                "mutations_processed_binary.tsv:md5,5140cf344d2778ce9aff3e2a6184e916",
+                "mutations_processed_effect.tsv:md5,0ca68f340519464a224b0b60dc287c89",
+                "mutations_processed_hybrid.tsv:md5,6633ee6ffaa074cd0193888f2584f5d6",
+                "mutations_processed_integrated.tsv:md5,8734e1b925af1c5188169928dd9f7874",
+                "mutations_processed_vaf.tsv:md5,96871bc1dc31cbee0726d8f667cdf8d7"
+            ]
+        ],
+        "timestamp": "2026-09-21T11:47:28.366554432",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.4"
+        }
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "Two subjects \u2014 isofox_fusion.data_sv.txt files are produced": {
+        "content": [
+            [
+                "T1.isofox_fusion.data_sv.txt:md5,d8e81c7b6c14c416301186f9fba7109c",
+                "T2.isofox_fusion.data_sv.txt:md5,50b3852ebd42c9742426dc7775f0d34f"
+            ]
+        ],
+        "timestamp": "2026-09-03T15:27:47.946190636",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

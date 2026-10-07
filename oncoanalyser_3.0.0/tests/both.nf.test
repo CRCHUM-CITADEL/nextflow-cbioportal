@@ -1,0 +1,174 @@
+nextflow_pipeline {
+
+    name "Test both mode pipeline"
+    script "../main.nf"
+    tag "pipeline"
+    tag "both"
+
+    test("both mode — genomic + clinical combined output") {
+
+        config "tests/nextflow_both.config"
+
+        setup {
+            // Pre-stage precomputed genomic output files so the incremental processing
+            // detects them and skips actual genomic processing (avoids VEP/PCGR downloads).
+            def precomputed = "${projectDir}/assets/test_data/precomputed"
+            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
+                def dir = new File("${outputDir}/TEST/${subject}")
+                dir.mkdirs()
+                // Exactly the files a real run publishes per subject — the set the
+                // incremental gate looks for. <sample>.isofox_fusion.data_sv.txt is
+                // deliberately NOT staged: ISOFOX_FUSION_TO_CBIOPORTAL does not
+                // publish it, and its rows already live in <sample>.data_sv.txt.
+                def fixtures = [
+                    "${sample}_data_cna_hg38.seg",
+                    "${sample}_data_cna_long.txt",
+                    "${sample}.data_sv.txt",
+                    "${sample}.tpm.tsv",
+                    "${sample}.somatic_rna_germline.maf",
+                    "${sample}.data_mutational_signatures_contribution_SBS.txt",
+                    "${sample}.data_mutational_signatures_counts_SBS.txt",
+                    "${sample}.data_mutational_signatures_contribution_DBS.txt",
+                    "${sample}.data_mutational_signatures_counts_DBS.txt",
+                    "${sample}.data_mutational_signatures_contribution_ID.txt",
+                    "${sample}.data_mutational_signatures_counts_ID.txt",
+                ]
+                fixtures.each { name ->
+                    java.nio.file.Files.copy(
+                        new File("${precomputed}/${name}").toPath(),
+                        new File("${dir}/${name}").toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                    )
+                }
+            }
+        }
+
+        when {
+            params {
+                mode = 'both'
+                outdir = "$outputDir"
+                run_ml = true
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            // TEST.tar.gz is excluded from stable_path via tests/.nftignore: tar embeds
+            // per-file mtimes, so its md5 differs on every run. Its contents are
+            // asserted explicitly below instead.
+            def stable_path = getAllFilesFromDir(params.outdir, ignoreFile: 'tests/.nftignore')
+
+            println "Test: Stable names: ${stable_name}"
+            println "Test: Output dir: ${params.outdir}"
+
+            // Verify linking file content — should have both T1 and T2
+            def linking = path("${params.outdir}/TEST/util_linking_file.txt").readLines()
+            def linking_subjects = linking.findAll { !it.startsWith('subject_id') }.collect { it.split('\t')[0] }.sort()
+
+            // Study archive must mirror the study directory: genomic + clinical + timeline
+            def tarball = "${params.outdir}/TEST.tar.gz"
+            def tar_entries = ["tar", "-tzf", tarball].execute().text
+                .readLines()
+                .findAll { it && !it.endsWith('/') }
+                .collect { it.split('/').last() }
+
+            // Clinical sample file — T1's two DNA tumour registrations dedupe to one
+            // (T1-1DT); T2 has one tumour, remapped to the genomic sample ID (T2-T) by
+            // the linking file. Germline normals are not sample rows.
+            def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
+                .findAll { !it.startsWith('#') && it.trim() }
+            // sample_lines[0] is column header, rest are data rows
+            def data_rows   = sample_lines.drop(1)
+            def sample_cols = sample_lines[0].split('\t') as List
+            def sample_ids  = data_rows.collect { it.split('\t', -1)[sample_cols.indexOf('SAMPLE_ID')] }
+
+            // Every modality cached per subject must reach the group-level file.
+            // The ID signatures used to be gated but never loaded, so cached subjects
+            // silently vanished from the two ID files on any incremental run.
+            def sig_files = [
+                'data_mutational_signatures_contribution_SBS.txt',
+                'data_mutational_signatures_counts_SBS.txt',
+                'data_mutational_signatures_contribution_DBS.txt',
+                'data_mutational_signatures_counts_DBS.txt',
+                'data_mutational_signatures_contribution_ID.txt',
+                'data_mutational_signatures_counts_ID.txt',
+            ]
+
+            assertAll(
+                { assert workflow.success },
+                { assert linking_subjects == ['T1', 'T2'] : "Linking file should contain T1 and T2, got: ${linking_subjects}" },
+                { assert data_rows.size() == 2 : "Expected 2 sample rows (T1-1DT, T2-T), got ${data_rows.size()}" },
+                { assert data_rows.count { it.startsWith('T1') } == 1 : "Expected 1 T1 row (deduped tumour)" },
+                { assert data_rows.count { it.startsWith('T2') } == 1 : "Expected 1 T2 row" },
+                // The tumour SAMPLE_IDs must still adopt the genomic IDs from
+                // util_linking_file.txt (T2-T, not the clinical T2-2FDT), otherwise the
+                // clinical table matches no sample in data_mutations / data_cna_long.
+                { assert sample_ids.sort() == ['T1-1DT', 'T2-T'] : "Unexpected SAMPLE_IDs: ${sample_ids}" },
+                { assert tar_entries.contains('data_clinical_sample.txt') : "Archive missing data_clinical_sample.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('data_clinical_patient.txt') : "Archive missing data_clinical_patient.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('data_timeline.txt') : "Archive missing data_timeline.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('meta_timeline.txt') : "Archive missing meta_timeline.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('util_linking_file.txt') : "Archive missing util_linking_file.txt, got: ${tar_entries}" },
+                { assert tar_entries.contains('cases_sequenced.txt') : "Archive missing case lists, got: ${tar_entries}" },
+                // The cached per-subject data_sv.txt is passed through untouched now
+                // that MERGE_SAMPLE_SV is bypassed, so its RNA fusion rows (merged in
+                // when the subject was first processed) must still reach the study.
+                { assert path("${params.outdir}/TEST/data_sv.txt").readLines().count { it.contains('\tFUSION\tNo\tYes\t') } == 4
+                         : "RNA fusion rows were lost from the cached SV files" },
+                { assert path("${params.outdir}/TEST/data_sv.txt").readLines().count { it.contains('\tYes\tNo\t') } == 2
+                         : "DNA SV rows were lost from the cached SV files" },
+                { assert sig_files.every { path("${params.outdir}/TEST/${it}").exists() }
+                         : "Missing group-level signature file(s): " + sig_files.findAll { !path("${params.outdir}/TEST/${it}").exists() } },
+                { assert sig_files.every { f ->
+                        def header = path("${params.outdir}/TEST/${f}").readLines()[0]
+                        header.contains('T1-1DT') && header.contains('T2-T')
+                  } : "A cached subject is missing from a group-level signature file" },
+                { assert snapshot(
+                    workflow.trace.succeeded().size(),
+                    stable_name,
+                    stable_path
+                ).match() }
+            )
+        }
+    }
+
+    // ML is opt-in: with run_ml at its default (false) no ML task may run and
+    // machine_learning/ must not be created, while the cBioPortal study is unaffected.
+    test("both mode — ML feature tables are skipped by default") {
+
+        config "tests/nextflow_both.config"
+
+        setup {
+            def precomputed = "${projectDir}/assets/test_data/precomputed"
+            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
+                def dir = new File("${outputDir}/TEST/${subject}")
+                dir.mkdirs()
+                new File(precomputed).listFiles()
+                    .findAll { it.name.startsWith("${sample}") && !it.name.contains('isofox_fusion') }
+                    .each { f ->
+                        java.nio.file.Files.copy(f.toPath(), new File(dir, f.name).toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    }
+            }
+        }
+
+        when {
+            params {
+                mode = 'both'
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            def tasks = workflow.trace.succeeded().collect { it.name }
+
+            assertAll(
+                { assert workflow.success },
+                { assert tasks.every { !(it =~ /_ML_/) } : "ML tasks ran without --run_ml: ${tasks.findAll { it =~ /_ML_/ }}" },
+                { assert !path("${params.outdir}/TEST/machine_learning").exists() : "machine_learning/ was created without --run_ml" },
+                { assert path("${params.outdir}/TEST/data_mutations_dna_rna_germline.txt").exists() },
+                { assert path("${params.outdir}/TEST.tar.gz").exists() },
+            )
+        }
+    }
+}

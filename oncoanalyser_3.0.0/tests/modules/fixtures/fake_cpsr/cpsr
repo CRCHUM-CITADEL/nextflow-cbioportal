@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Stand-in for CPSR: names its outputs after --sample_id, as CPSR does. Like CPSR 2.3 it rejects an
+# input INFO tag that clashes with its own (IMPACT) by logging ERROR and still exiting 0.
+# A sample_id containing EMPTY finds nothing; one containing BROKEN logs a generic ERROR.
+set -euo pipefail
+id=""; vcf=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --sample_id) id="$2"; shift 2 ;;
+        --input_vcf) vcf="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+echo "fake cpsr: sample_id=${id}"
+log() { echo "$(date '+%F %T') - cpsr-validate-input-arguments - ERROR - $1"; }
+if zcat "$vcf" | grep -q '^##INFO=<ID=IMPACT,'; then
+    log "INFO tag IMPACT in the input VCF coincides with a VCF annotation tag produced by PCGR/CPSR"
+    exit 0
+fi
+[[ "$id" == *BROKEN* ]] && { log "simulated failure"; exit 0; }
+[[ "$id" == *EMPTY* ]] && exit 0
+cp "$vcf" "${id}.cpsr.grch38.pass.vcf.gz"
+printf 'VAR_ID\tCLASSIFICATION\n17_43045677_G_A\tPathogenic\n' | gzip > "${id}.cpsr.grch38.classification.tsv.gz"

@@ -1,0 +1,3 @@
+ENTITY_STABLE_ID	NAME	DESCRIPTION	T1-1DT
+ID1	ID1	Slippage during DNA replication	0.2500
+ID2	ID2	Slippage during DNA replication	0.3000

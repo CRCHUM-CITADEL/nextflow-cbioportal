@@ -1,0 +1,242 @@
+nextflow_workflow {
+
+    name "Test CLINICAL_AGGREGATE subworkflow"
+    script "subworkflows/local/clinical_aggregate/main.nf"
+    workflow "CLINICAL_AGGREGATE"
+    tag "subworkflow"
+    tag "clinical"
+
+    test("All file types — clinical output files are produced") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                // Each tuple: (meta with group/pipeline/extraction_date, csv_file)
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', pipeline: 'donors',               extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/donors.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'primary_diagnoses',    extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/primary_diagnoses.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'treatments',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/treatments.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'surgeries',            extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/surgeries.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'systemic_therapies',   extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/systemic_therapies.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'specimens',            extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/specimens.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'radiations',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/radiations.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'follow_ups',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/follow_ups.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'sample_registrations', extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'biomarkers',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/biomarkers.csv')
+                    ]
+                )
+                input[1] = Channel.value("")
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            assert path("${params.outdir}/TEST/data_clinical_sample.txt").exists()
+            assert path("${params.outdir}/TEST/data_clinical_patient.txt").exists()
+
+            // Verify clinical sample file format
+            def sample_header = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()[0]
+            assert sample_header.startsWith('#')
+
+            // Verify meta files are created
+            assert path("${params.outdir}/TEST/meta_clinical_sample.txt").exists()
+            assert path("${params.outdir}/TEST/meta_clinical_patient.txt").exists()
+
+            // Verify combined timeline data and meta files are created
+            assert path("${params.outdir}/TEST/data_timeline.txt").exists()
+            assert path("${params.outdir}/TEST/meta_timeline.txt").exists()
+
+            // ── Only tumour samples become sample rows ──
+            // The fixture registers a Buffy coat normal (T1-1DN) and a Whole blood
+            // normal (T2-1DN); neither belongs in data_clinical_sample.txt.
+            def sample_rows = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
+                .findAll { !it.startsWith('#') && it.trim() }
+            def sample_cols = sample_rows[0].split('\t') as List
+            def rows_by_id  = sample_rows.drop(1).collectEntries { line ->
+                def f = line.split('\t', -1) as List
+                [(f[sample_cols.indexOf('SAMPLE_ID')]), [sample_cols, f].transpose().collectEntries()]
+            }
+
+            assert !rows_by_id.containsKey('T1-1DN') : "Buffy coat normal T1-1DN should be excluded"
+            assert !rows_by_id.containsKey('T2-1DN') : "Whole blood normal T2-1DN should be excluded"
+            assert rows_by_id.keySet().sort() == ['T1-1DT', 'T2-2FDT'] : "Unexpected SAMPLE_IDs: ${rows_by_id.keySet()}"
+            assert rows_by_id.values().every { it['TUMOUR_NORMAL_DESIGNATION'] == 'Tumour' } :
+                "Non-tumour row in data_clinical_sample.txt: ${rows_by_id}"
+
+            // ── Multiple primary diagnoses: the sequenced specimen decides ──
+            // T1 has two diagnoses (T1-DX Liver, T1-DX2 Pancreas); its sequenced
+            // specimen T1-SP points at the second one, so the sample row must carry
+            // T1-DX2 even though T1-DX comes first in primary_diagnoses.csv.
+            def t1_tumour = rows_by_id['T1-1DT']
+            assert t1_tumour['PRIMARY_SITE']      == 'Pancreas'   : "Wrong diagnosis picked: ${t1_tumour['PRIMARY_SITE']}"
+            assert t1_tumour['PRIMARY_SITE_CODE'] == 'C25'
+            assert t1_tumour['CANCER_TYPE_CODE']  == 'C25.0'
+            assert t1_tumour['CLINICAL_STAGE']    == 'Stage IV'
+
+            // T2 has a single diagnosis, reached through its own specimen link
+            def t2_tumour = rows_by_id['T2-2FDT']
+            assert t2_tumour['PRIMARY_SITE']     == 'Ovary'
+            assert t2_tumour['CANCER_TYPE_CODE'] == 'C56'
+
+            // T1's treatment/surgery hangs off T1-DX -- the diagnosis that was NOT
+            // sequenced -- and is still reported on the sample row
+            assert t1_tumour['TREATMENT_TYPE'] == 'Surgery'
+            assert t1_tumour['SURGERY_TYPE']   == 'partial hepatectomy (procedure)'
+
+            // Patient-level data is kept in full for both patients
+            def patient_rows = path("${params.outdir}/TEST/data_clinical_patient.txt").readLines()
+                .findAll { !it.startsWith('#') && it.trim() }
+            assert patient_rows.drop(1).collect { it.split('\t')[0] } == ['T1', 'T2']
+
+            // The T1 SPECIMEN event still reports the tumour registration, not the normal
+            def tl_rows = path("${params.outdir}/TEST/data_timeline.txt").readLines()
+            def tl_cols = tl_rows[0].split('\t') as List
+            def t1_spec = tl_rows.drop(1)
+                .collect { [tl_cols, it.split('\t', -1) as List].transpose().collectEntries() }
+                .findAll { it['EVENT_TYPE'] == 'SPECIMEN' && it['PATIENT_ID'] == 'T1' &&
+                           it['SPECIMEN_TISSUE_SOURCE'] }
+            assert t1_spec.every { it['SPECIMEN_TISSUE_SOURCE'] == 'Solid tissue' &&
+                                   it['SPECIMEN_TYPE'] == 'Primary tumour' } :
+                "Normal registration leaked into the SPECIMEN event: ${t1_spec}"
+
+            // Every patient-level event type is still emitted, including T1's SURGERY,
+            // which is attached to the diagnosis that was not sequenced
+            def tl_events = tl_rows.drop(1)
+                .collect { [tl_cols, it.split('\t', -1) as List].transpose().collectEntries() }
+            assert tl_events.collect { it['EVENT_TYPE'] }.unique().sort() ==
+                ['LAB_TEST', 'SPECIMEN', 'STATUS', 'SURGERY', 'TREATMENT']
+            assert tl_events.any { it['EVENT_TYPE'] == 'SURGERY' && it['PATIENT_ID'] == 'T1' } :
+                "T1 SURGERY event lost"
+
+            snapshot(
+                path("${params.outdir}/TEST/data_clinical_sample.txt"),
+                path("${params.outdir}/TEST/data_clinical_patient.txt"),
+                path("${params.outdir}/TEST/data_timeline.txt")
+            ).match()
+        }
+    }
+
+    test("Genomic subject filtering — only subjects in genomic linking file appear in output") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', pipeline: 'donors',               extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/donors.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'primary_diagnoses',    extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/primary_diagnoses.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'treatments',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/treatments.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'surgeries',            extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/surgeries.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'systemic_therapies',   extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/systemic_therapies.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'specimens',            extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/specimens.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'radiations',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/radiations.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'follow_ups',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/follow_ups.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'sample_registrations', extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv')
+                    ],
+                    [
+                        [group: 'TEST', pipeline: 'biomarkers',           extraction_date: '2025-05-20'],
+                        file('${projectDir}/assets/test_data/clinical/biomarkers.csv')
+                    ]
+                )
+                input[1] = Channel.value('${projectDir}/assets/test_data/samplesheet/test_genomic_subjects.tsv')
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            assert path("${params.outdir}/TEST/data_clinical_sample.txt").exists()
+            assert path("${params.outdir}/TEST/data_clinical_patient.txt").exists()
+
+            // cBioPortal format: 4 comment lines (#), 1 column header, then data rows.
+            // Only T1 should appear (T2 filtered out because not in genomic subjects).
+            def patient_lines = path("${params.outdir}/TEST/data_clinical_patient.txt").readLines()
+                .findAll { !it.startsWith('#') && it.trim() }
+            // patient_lines[0] is the column header (PATIENT_ID\t...), patient_lines[1] is the data row
+            assert patient_lines.size() == 2 : "Expected column header + 1 patient data row (T1 only), got ${patient_lines.size()} non-comment lines"
+            assert patient_lines[1].startsWith('T1') : "Expected T1 data row, got: ${patient_lines[1]}"
+
+            def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
+                .findAll { !it.startsWith('#') && it.trim() }
+            // T1 has 2 DNA tumour samples (T1-1DT, T1-2DT) sharing the same specimen;
+            // dedup keeps only T1-1DT (lowest DT number). The T1-1DN buffy coat normal
+            // is not a sample row.
+            assert sample_lines.size() == 2 : "Expected column header + 1 sample data row (T1 tumour), got ${sample_lines.size()} non-comment lines"
+            assert sample_lines.drop(1).every { it.startsWith('T1') } : "Expected T1 data rows, got: ${sample_lines.drop(1)}"
+
+            // A patient with a single clinical sample adopts the genomic sample ID, so
+            // the clinical table matches the sample names in the genomic data files.
+            def sc_cols = sample_lines[0].split('\t') as List
+            def ids     = sample_lines.drop(1).collect { it.split('\t', -1)[sc_cols.indexOf('SAMPLE_ID')] }
+            assert ids.sort() == ['T1-WGS'] : "Expected the tumour remapped to T1-WGS, got: ${ids}"
+
+            // Timeline file should also be filtered to T1 only
+            def tl_lines = path("${params.outdir}/TEST/data_timeline.txt").readLines()
+                .findAll { !it.startsWith('PATIENT_ID') && it.trim() }
+            assert tl_lines.every { it.startsWith('T1') } : "Timeline contains non-T1 rows: ${tl_lines}"
+        }
+    }
+}

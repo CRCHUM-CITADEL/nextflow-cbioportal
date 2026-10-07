@@ -1,0 +1,52 @@
+nextflow_process {
+
+    name "Test ESVEE_SV_TO_CBIOPORTAL module"
+    script "modules/local/esvee_sv_to_cbioportal/main.nf"
+    process "ESVEE_SV_TO_CBIOPORTAL"
+    tag "module"
+    tag "esvee_sv"
+
+    test("SVs that differ only by fragment count dedupe to the highest-read-count call") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T3', sample: 'T3', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T3/esvee/T3-T.esvee.unfiltered.vcf.gz')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_chr21.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sv.size() == 1
+
+            def sv_path = process.out.sv.collect { meta, f -> f }[0]
+            def lines = path(sv_path.toString()).readLines()
+
+            // The fixture VCF has two BND pairs at identical breakpoint
+            // coordinates (chr21:41850000 / chr21:44250000) but different
+            // BVF:VF fragment-count FORMAT values: BND_T3_*a = 3:5 (total 8),
+            // BND_T3_*b = 9:12 (total 21). These must collapse to a single SV
+            // row, keeping the call with the most total read support.
+            assert lines.size() == 2 : "Duplicate-coordinate BND pairs should dedupe to one row, got ${lines.size() - 1} rows"
+
+            def cols = lines[0].split('\t') as List
+            def row = lines[1].split('\t', -1)
+            assert row[cols.indexOf('Site1_Hugo_Symbol')] == 'PRDM15'
+            assert row[cols.indexOf('Site2_Hugo_Symbol')] == 'DNMT3L'
+            assert row[cols.indexOf('Site1_Position')] == '41850000'
+            assert row[cols.indexOf('Site2_Position')] == '44250000'
+            assert row[cols.indexOf('Tumor_Split_Read_Count')] == '9' : "Should keep the higher-read-count call (9:12), not the first one seen (3:5)"
+            assert row[cols.indexOf('Tumor_Paired_End_Read_Count')] == '12'
+        }
+    }
+}

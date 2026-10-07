@@ -43,8 +43,7 @@ runs:
           nftest_output=$(nf-test test \
             $(if [ -n "${{ inputs.tags }}" ]; then echo "--tag ${{ inputs.tags }}"; fi) \
             --dry-run \
-            --ci \
-            --changed-since HEAD^) && break
+            --ci) && break
           rc=$?
           echo "nf-test command failed with exit code $rc"
           echo "Full output: $nftest_output"

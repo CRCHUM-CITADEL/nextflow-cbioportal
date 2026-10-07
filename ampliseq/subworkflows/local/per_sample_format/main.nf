@@ -3,6 +3,7 @@ include { FORMAT_CNA            } from '../../../modules/local/format_cna/main.n
 include { STUB_MAF              } from '../../../modules/local/stub_maf/main.nf'
 include { MAFSMITH              } from '../../../modules/local/mafsmith/main.nf'
 include { DOWNLOAD_MAFSMITH     } from '../../../modules/local/download_mafsmith/main.nf'
+include { PREPARE_MAFSMITH      } from '../../../modules/local/prepare_mafsmith/main.nf'
 include { FILTER_MUTATIONS      } from '../../../modules/local/filter_mutations/main.nf'
 include { PASSTHROUGH_MUTATIONS } from '../../../modules/local/passthrough_mutations/main.nf'
 include { VCF_TO_SEG            } from '../../../modules/local/vcf_to_seg/main.nf'
@@ -39,9 +40,13 @@ workflow PER_SAMPLE_FORMAT {
         }
         // Unset, empty or a literal "null" (from --mafsmith_data null) all mean: fetch the bundle
         def mafsmith_data = params.mafsmith_data?.toString()?.trim()
-        ch_mafsmith_data = mafsmith_data && mafsmith_data != 'null'
+        ch_bundle = mafsmith_data && mafsmith_data != 'null'
             ? Channel.value(file(mafsmith_data, checkIfExists: true))
-            : DOWNLOAD_MAFSMITH(ch_vcf_input.first().map { true }).data_dir.first()
+            : DOWNLOAD_MAFSMITH(ch_vcf_input.first().map { true }).data_dir
+        // Complete the bundle once (FASTA index, decompressed GFF) before the parallel MAFSMITH
+        // tasks share it; gated on there being new samples so empty incremental runs skip it.
+        PREPARE_MAFSMITH(ch_vcf_input.first().combine(ch_bundle).map { it[-1] })
+        ch_mafsmith_data = PREPARE_MAFSMITH.out.data_dir.first()
         MAFSMITH(ch_vcf_input, ch_mafsmith_data)
         ch_maf = MAFSMITH.out
     }

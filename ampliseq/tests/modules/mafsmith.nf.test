@@ -78,6 +78,41 @@ nextflow_process {
         }
     }
 
+    // Ampliseq VCFs come Nirvana-annotated (INFO CSQR/CSQT). mafsmith 0.1.0 matches fastVEP's
+    // header with contains("ID=CSQ") and took CSQR's layout, so every row came out Unknown /
+    // Targeted_Region. The module drops pre-existing CSQ* fields before running mafsmith.
+    test("Links genes in a Nirvana-annotated VCF (CSQR/CSQT INFO fields)") {
+
+        when {
+            process {
+                """
+                def bundle = file('${outputDir}/bundle_nirvana')
+                file('${projectDir}/tests/modules/fixtures/mafsmith_bundle_nochr').copyTo(bundle)
+                input[0] = Channel.of([
+                    [group: 'G', subject_id: 'S1', sample_id: 'SAMPLE_NIRVANA'],
+                    file('${projectDir}/tests/modules/fixtures/SAMPLE_NIRVANA')
+                ])
+                input[1] = bundle
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[0].split('\t', -1) as List
+            def rows = lines.drop(1).collect { it.split('\t', -1) }
+            def col = { String n -> assert header.indexOf(n) >= 0 : "no ${n} column"; header.indexOf(n) }
+
+            assert rows.size() == 2
+            assert rows.every { it[col('Hugo_Symbol')] == 'TESTG' } : "genes not linked: ${rows.collect { it[col('Hugo_Symbol')] }}"
+            assert rows.every { it[col('Variant_Classification')] != 'Targeted_Region' }
+            assert rows.find { it[col('Start_Position')] == '1500' }[col('Variant_Classification')] == 'Nonsense_Mutation'
+            assert rows.every { it[col('Chromosome')] == 'chr1' }
+        }
+    }
+
     // Without --skip-annotation an empty bundle (e.g. a stub-run leftover in assets/mafsmith) must fail
     test("Rejects a mafsmith_data bundle without GRCh37 reference files") {
 

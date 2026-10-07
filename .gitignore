@@ -1,5 +1,5 @@
-.nextflow*
-.nf-test
+*.nextflow*
+*.nf-test*
 .nf-test.log
 
 work
@@ -16,6 +16,9 @@ containers/*.img*
 output/
 output_*/
 tmp/
+command.txt
+
+assets/mafsmith/
 
 *.swp
 
@@ -34,3 +37,7 @@ util_*.txt
 modified_code
 bin/new/
 test.*
+
+ampliseq/containers/python-ampliseq.sif
+ampliseq/test_results/
+oncoanalyser_3.0.0/pancan_pcawg_2020.tar.gz

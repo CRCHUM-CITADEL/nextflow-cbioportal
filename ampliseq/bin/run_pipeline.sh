@@ -71,7 +71,7 @@ echo "Deanonymising clinical and data files..."
 (cd "$OUT_DIR" && python3.12 "$CLINICAL_SAMPLE_SCRIPT"  ${BASE_DIR}/Sample_file_cohort_test.txt)
 ( cd "$OUT_DIR" && python3.12 "$FORMAT_MUTATIONS_SCRIPT" data_mutations.txt "$LINKING_FILE")
 ( cd "$OUT_DIR" && python3.12 "$FORMAT_SV_SCRIPT"        data_sv.txt        "$LINKING_FILE")
-( cd "$OUT_DIR" && python3.12 "$FORMAT_CNA_DEANON_SCRIPT" data_cna.txt 	 "$LINKING_FILE") 
+( cd "$OUT_DIR" && python3.12 "$FORMAT_CNA_DEANON_SCRIPT" data_cna.txt 	 "$LINKING_FILE")
 
 # and in the deanonymisation block at the bottom:
 # Write case_lists files using deanonymised sample IDs from linking file

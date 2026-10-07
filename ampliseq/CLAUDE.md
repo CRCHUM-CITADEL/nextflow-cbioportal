@@ -1,12 +1,14 @@
-# CLAUDE.md
+# CLAUDE.md — ampliseq
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Ampliseq VCFs + TSV exports + clinical files → cBioPortal. HPC-only (SLURM + Apptainer).
 
-Nextflow DSL2 pipeline converting Ampliseq VCFs + TSV exports + clinical files → cBioPortal-ready files. HPC-only (SLURM + Apptainer — **no Docker, no sudo**).
+## Structural Differences from oncoanalyser/dragen
 
----
+- No `conf/` directory (config inline in `nextflow.config`), no `modules/nf-core/`
+- Test data in `assets/` (no `test_data/` subdirectory)
+- Container labels: `python` → `params.python_sif`; `vcf2maf` → `params.vcf2maf_container`
 
-## Commands
+## Key Rules
 
 ```bash
 # Run tests (from ampliseq/ directory) — local ./nf-test binary; `+` appends to nf-test.config's `test` profile
@@ -152,7 +154,7 @@ Merge/deanon/clinical steps always re-run over all samples combined. Use the sam
 
 ---
 
-## Standalone Scripts (`bin/`)
+## Standalone Scripts
 
 All Python scripts write output relative to `os.getcwd()` — run from the target output directory:
 ```bash

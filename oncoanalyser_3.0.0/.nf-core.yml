@@ -1,0 +1,24 @@
+nf_core_version: 3.3.2
+repository_type: pipeline
+template:
+  author: Justin
+  description: oncoanalyser 3.0 WGS/WTS output and clinical CSVs to cBioPortal
+  force: false
+  is_nfcore: false
+  name: nextflow-cbioportal
+  org: CRCHUM-CITADEL
+  outdir: .
+  skip_features:
+    - github_badges
+    - license
+    - test_config
+    - fastqc
+    - nf_schema
+    - seqera_platform
+    - gpu
+    - gitpod
+    - codespaces
+    - vscode
+    - citations
+    - slackreport
+  version: 4.1.0

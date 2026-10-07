@@ -1,0 +1,2 @@
+ca125,ca125_not_available,cea,cea_not_available,er_percent_positive,er_percent_positive_not_available,er_status,her2_ihc_status,her2_ish_status,hpv_ihc_status,hpv_pcr_status,hpv_strain,pr_percent_positive,pr_percent_positive_not_available,pr_status,program_id,psa_level,psa_level_not_available,submitter_donor_id,submitter_follow_up_id,submitter_primary_diagnosis_id,submitter_specimen_id,submitter_treatment_id,test_date
+10,False,,False,,False,,,,,,,,False,,TEST,,False,T2,T2-FU,T2-DX,T2-SP,T2-TR,"{""day_interval"": 170, ""month_interval"": 5}"

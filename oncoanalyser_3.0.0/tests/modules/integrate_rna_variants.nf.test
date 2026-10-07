@@ -1,0 +1,79 @@
+nextflow_process {
+
+    name "Test INTEGRATE_RNA_VARIANTS"
+    script "modules/local/integrate_rna_variants/main.nf"
+    process "INTEGRATE_RNA_VARIANTS"
+    config "tests/nextflow_integrate_rna_variants.config"
+    tag "module"
+    tag "integrate_rna_variants"
+
+    // mafsmith_somatic.maf is real MAFSMITH output for T1; the RNA VCF supports its first SNV.
+    test("RNA evidence goes to the RNA namespace; Mutation_Status stays Somatic") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    'T1',
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/tests/modules/fixtures/sage_append_rna.vcf.gz'),
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/tests/modules/fixtures/mafsmith_somatic.maf')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[1].split('\t', -1) as List
+            def rows = lines.drop(2).collect { it.split('\t', -1) }
+            def col = { String name -> def i = header.indexOf(name); assert i >= 0 : "no ${name} column"; i }
+
+            assert rows.size() == 9
+            assert rows.every { it[col('Mutation_Status')] == 'Somatic' }
+
+            def supported = rows.find { it[col('Start_Position')] == '10000100' }
+            assert supported[col('RNA.depth')] == '18'
+            assert supported[col('RNA.vaf')] == '0.44'
+            assert supported[col('RNA.expressed')] == '1'
+            assert rows.count { it[col('RNA.depth')] } == 1
+        }
+    }
+
+    test("no RNA-append VCF — the MAF passes through with empty RNA columns") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    'T1',
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    [],
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/tests/modules/fixtures/mafsmith_somatic.maf')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[1].split('\t', -1) as List
+            def rows = lines.drop(2).collect { it.split('\t', -1) }
+
+            assert rows.size() == 9
+            assert rows.every { it[header.indexOf('Mutation_Status')] == 'Somatic' }
+            // Same columns as a subject with RNA, so the group-level merge stays rectangular.
+            ['RNA.depth', 'RNA.vaf', 'RNA.ref_count', 'RNA.alt_count', 'RNA.expressed'].each { name ->
+                def i = header.indexOf(name)
+                assert i >= 0 : "no ${name} column"
+                assert rows.every { it[i] == '' }
+            }
+        }
+    }
+}

@@ -10,22 +10,38 @@ Requires Nextflow >= 26.04.4 and Apptainer.
 
 ### 1. Prepare input files
 
+#### Generating a samplesheet
+
+A helper script can automatically generate the samplesheet from a directory of sample folders:
+
+```bash
+python3 bin/generate_samplesheet.py /path/to/sample_data -o samplesheet.csv
+```
+
+The input directory can contain either cohort subdirectories (each with per-sample folders) or sample folders directly. Each sample folder must contain `*-basespace-pisces.final.vcf.gz` and `analysis_*_export.tsv`. The cohort subdirectory name becomes the `group` column, the `sample_id` is extracted from the VCF filename prefix (before `-basespace-`), and the `subject_id` is derived from the sample*id (part before the first `*`). Samples missing required files are skipped with warnings.
+
+#### Samplesheet format
+
 **Samplesheet** (`samplesheet.csv`):
+
 ```csv
 group,subject_id,sample_id,folder_location
 cohort_A,PATIENT_001,SAMPLE_001,path/to/samples/SAMPLE_001
 ```
 
 Each sample folder must contain:
+
 - `analysis_*_export.tsv` — structural variant / CNA export
 - `*-basespace-pisces.final.vcf.gz` — compressed VCF for mutation calling
 - `*-basespace-cnv.final.vcf` — CNV VCF for segmentation (`CN` FORMAT field required)
 
 **Linking file** (`linking_file.txt`, tab-separated) — maps anonymized → real IDs:
+
 ```
 sample_id	deanon_sample_id	deanon_patient_id
 SAMPLE_001	PATIENT_001	PATIENT_001
 ```
+
 One patient may have multiple rows (one per sample). `deanon_patient_id` is used to filter `data_clinical_patient.txt` to only patients whose samples are in the samplesheet.
 
 **Patient file** (tab-separated): `patient_id`, `moh_id`, `age`, `sex`, `os_status`, `os_months`, `smoking_history`. `moh_id` is carried through to the `MOH_ID` column of `data_clinical_patient.txt`.
@@ -56,6 +72,7 @@ VCF → MAF uses [mafsmith](https://github.com/nf-osi/mafsmith) + fastVEP (GRCh3
 > A `-stub-run` with `--skip_vcf2maf false` stores an **empty** `assets/mafsmith/`. Delete it afterwards, or later real runs will reuse it and fail on the missing reference files.
 
 Skip VCF → MAF conversion if MAFs already exist:
+
 ```bash
 nextflow run main.nf ... --skip_vcf2maf true
 ```
@@ -76,6 +93,7 @@ nextflow run main.nf ... --filter_tsv_variants true
 Boolean flags accept `true`/`false` on the command line. Nextflow 26 passes CLI values as strings, so the pipeline converts them explicitly.
 
 Resume a previous run:
+
 ```bash
 nextflow run main.nf ... -resume
 ```

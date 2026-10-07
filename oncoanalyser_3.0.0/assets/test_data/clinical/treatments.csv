@@ -1,0 +1,3 @@
+is_primary_treatment,program_id,response_to_treatment,response_to_treatment_criteria_method,status_of_treatment,submitter_donor_id,submitter_primary_diagnosis_id,submitter_treatment_id,treatment_end_date,treatment_intent,treatment_start_date,treatment_type
+Yes,TEST,Not available,Not available,Not available,T1,T1-DX,T1-TR,"{""day_interval"": 76, ""month_interval"": 2}",Curative,"{""day_interval"": 76, ""month_interval"": 2}","[""Surgery""]"
+Yes,TEST,Not available,Not available,Not available,T2,T2-DX,T2-TR,"{""day_interval"": 366, ""month_interval"": 12}",Curative,"{""day_interval"": 200, ""month_interval"": 6}","[""Systemic therapy""]"

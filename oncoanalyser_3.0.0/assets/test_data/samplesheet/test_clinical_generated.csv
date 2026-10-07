@@ -1,0 +1,11 @@
+group_id,filetype,filepath,extraction_date,info
+TEST,donors,assets/test_data/clinical/donors.csv,2025-05-20,
+TEST,primary_diagnoses,assets/test_data/clinical/primary_diagnoses.csv,2025-05-20,
+TEST,treatments,assets/test_data/clinical/treatments.csv,2025-05-20,
+TEST,surgeries,assets/test_data/clinical/surgeries.csv,2025-05-20,
+TEST,systemic_therapies,assets/test_data/clinical/systemic_therapies.csv,2025-05-20,
+TEST,specimens,assets/test_data/clinical/specimens.csv,2025-05-20,
+TEST,radiations,assets/test_data/clinical/radiations.csv,2025-05-20,
+TEST,follow_ups,assets/test_data/clinical/follow_ups.csv,2025-05-20,
+TEST,sample_registrations,assets/test_data/clinical/sample_registrations.csv,2025-05-20,
+TEST,biomarkers,assets/test_data/clinical/biomarkers.csv,2025-05-20,

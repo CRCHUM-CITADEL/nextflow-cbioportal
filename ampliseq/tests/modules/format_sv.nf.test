@@ -1,0 +1,78 @@
+nextflow_process {
+
+    name "Test FORMAT_SV"
+    script "modules/local/format_sv/main.nf"
+    process "FORMAT_SV"
+    tag "module"
+    tag "sv"
+
+    // Both writers must emit the same full cBioPortal SV layout (bin/cbio_sv.py) so MERGE_SV can
+    // combine samples with and without a STAR-Fusion VCF.
+    def SV_COLUMNS = ['Sample_Id', 'SV_Status', 'Site1_Hugo_Symbol', 'Site1_Ensembl_Transcript_Id',
+        'Site1_Region_Number', 'Site1_Region', 'Site1_Chromosome', 'Site1_Position', 'Site1_Description',
+        'Site2_Hugo_Symbol', 'Site2_Ensembl_Transcript_Id', 'Site2_Region_Number', 'Site2_Region',
+        'Site2_Chromosome', 'Site2_Position', 'Site2_Description', 'Site2_Effect_On_Frame', 'NCBI_Build',
+        'Class', 'Length', 'DNA_Support', 'RNA_Support', 'Tumor_Variant_Count', 'Tumor_Split_Read_Count',
+        'Tumor_Paired_End_Read_Count', 'Tumor_Read_Count', 'Connection_Type', 'Breakpoint_Type',
+        'Event_Info', 'Annotation', 'External_Annotation', 'Comments']
+
+    test("STAR-Fusion VCF: one row per breakend pair, both sites populated") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = Channel.of([
+                    [sample_id: 'S1'],
+                    file('${projectDir}/assets/samples/SAMPLE_001/analysis_001_export.tsv'),
+                    file('${projectDir}/assets/samples/SAMPLE_001')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0].split('\t') as List == SV_COLUMNS
+            def rows = lines.drop(1).collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
+            assert rows.size() == 2 : "one row per _1/_2 breakend pair"
+            def myc = rows.find { it.Site2_Hugo_Symbol == 'MYC' }
+            assert myc.Site1_Hugo_Symbol == 'ITGB7'
+            assert myc.Site1_Chromosome == '12' && myc.Site1_Position == '53586114'
+            assert myc.Site2_Chromosome == '8'  && myc.Site2_Position == '128751238'
+            assert myc.Length == 'NA' : "translocation has no length"
+            assert myc.Tumor_Split_Read_Count == '33' && myc.Tumor_Paired_End_Read_Count == '0'
+            assert myc.Tumor_Variant_Count == '33'
+            assert myc.SV_Status == 'SOMATIC' && myc.RNA_Support == 'Yes' && myc.NCBI_Build == 'GRCh37'
+            assert myc.Event_Info == 'RNA-seq Fusion: ITGB7--MYC'
+        }
+    }
+
+    test("Analysis export TSV: FUSION rows only, same-chromosome length") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = Channel.of([
+                    [sample_id: 'S2'],
+                    file('${projectDir}/assets/samples/SAMPLE_002/analysis_002_export.tsv'),
+                    file('${projectDir}/assets/samples/SAMPLE_002')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0].split('\t') as List == SV_COLUMNS
+            def rows = lines.drop(1).collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
+            assert rows*.Site1_Hugo_Symbol == ['EGFR', 'CDKN2A']
+            def egfr = rows[0]
+            assert egfr.Site2_Hugo_Symbol == 'BRAF' && egfr.Site1_Chromosome == '7' && egfr.Site2_Chromosome == '7'
+            assert egfr.Length == '189841' && egfr.Tumor_Variant_Count == '22'
+        }
+    }
+}

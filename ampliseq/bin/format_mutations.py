@@ -16,8 +16,8 @@ def main():
 
     input_tsv, linking_file = sys.argv[1], sys.argv[2]
 
-    df      = pd.read_csv(input_tsv, sep="\t", dtype=str)
-    linking = pd.read_csv(linking_file, sep="\t", dtype=str)
+    df      = pd.read_csv(input_tsv, sep="\t", dtype=str, keep_default_na=False)
+    linking = pd.read_csv(linking_file, sep="\t", dtype=str, keep_default_na=False)
 
     # Build mapping with uppercase keys for case-insensitive matching
     mapping = {k.upper(): v for k, v in

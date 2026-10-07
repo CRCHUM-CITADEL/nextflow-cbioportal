@@ -16,12 +16,12 @@ def main():
 
     seg_file, linking_file = sys.argv[1], sys.argv[2]
 
-    linking = pd.read_csv(linking_file, sep='\t', header=0, usecols=[0, 1])
+    linking = pd.read_csv(linking_file, sep='\t', header=0, usecols=[0, 1], dtype=str, keep_default_na=False)
     linking.columns = ['Anon_Id', 'Real_Id']
     # Uppercase keys for case-insensitive matching
     id_map = {k.upper(): v for k, v in zip(linking['Anon_Id'], linking['Real_Id'])}
 
-    df = pd.read_csv(seg_file, sep='\t')
+    df = pd.read_csv(seg_file, sep='\t', dtype=str, keep_default_na=False)
 
     unmatched = set(df['ID'].str.upper()) - set(id_map)
     for uid in sorted(unmatched):

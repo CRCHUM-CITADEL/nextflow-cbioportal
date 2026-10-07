@@ -126,7 +126,7 @@ Or run individual scripts from within the output directory:
 ```bash
 cd /path/to/output
 
-python3 /path/to/bin/format_tsv.py       <analysis_export.tsv> <SAMPLE_ID>
+python3 /path/to/bin/format_tsv_to_sv.py       <analysis_export.tsv> <SAMPLE_ID>
 python3 /path/to/bin/format_cna.py       <analysis_export.tsv> <SAMPLE_ID>
 python3 /path/to/bin/format_mutations.py data_mutations.txt    <linking_file>
 python3 /path/to/bin/format_sv.py        data_sv.txt           <linking_file>

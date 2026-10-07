@@ -14,7 +14,7 @@ process FORMAT_SV {
     // Filter mode: always the TSV (its Supporting Reads), even with a STAR-Fusion VCF
     if (params.filter_tsv_variants.toString().toBoolean()) {
         """
-        format_tsv.py "${tsv}" "${meta.sample_id}" --gene-loci "${gene_loci}" --min-supporting-reads ${params.sv_min_supporting_reads}
+        format_tsv_to_sv.py "${tsv}" "${meta.sample_id}" --gene-loci "${gene_loci}" --min-supporting-reads ${params.sv_min_supporting_reads}
         mv data_sv.txt "${meta.sample_id}_sv.txt"
         """
     } else {
@@ -23,7 +23,7 @@ process FORMAT_SV {
         if [ -n "\$VCF" ]; then
             fusion_vcf_to_sv.py "\$VCF" "${meta.sample_id}"
         else
-            format_tsv.py "${tsv}" "${meta.sample_id}" --gene-loci "${gene_loci}"
+            format_tsv_to_sv.py "${tsv}" "${meta.sample_id}" --gene-loci "${gene_loci}"
         fi
         mv data_sv.txt "${meta.sample_id}_sv.txt"
         """

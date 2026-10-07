@@ -1,6 +1,6 @@
 """
 Shared cBioPortal structural-variant (data_sv.txt) column layout for the ampliseq SV writers
-(format_tsv.py, fusion_vcf_to_sv.py).
+(format_tsv_to_sv.py, fusion_vcf_to_sv.py).
 
 Every per-sample _sv.txt is written with exactly SV_COLUMNS, in this order, so per-sample files
 from either writer can be merged into one data_sv.txt. The set follows oncoanalyser's

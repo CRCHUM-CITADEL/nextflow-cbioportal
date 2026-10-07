@@ -1,7 +1,0 @@
-#Patient Identifier	Age	Sex	Overall Survival Status	Overall Survival (Months)	Smoking History
-#Patient identifier	Age at which the condition was first diagnosed, in years	Sex	Overall Survival Status	Overall survival in months since initial diagnosis	Smoking history
-#STRING	NUMBER	STRING	STRING	NUMBER	STRING
-#1	1	1	1	1	1
-PATIENT_ID	AGE	SEX	OS_STATUS	OS_MONTHS	SMOKING_HISTORY
-REAL_001	55	Male	0:LIVING	24	Never
-REAL_002	70	Female	1:DECEASED	12	Daily

@@ -1,3 +1,0 @@
-Hugo_Symbol	Sample_Id	Value
-MYC	1sample_001_01	2
-PTEN	1sample_001_01	-1

@@ -1,3 +1,0 @@
-Sample_Id	SV_Status	Site1_Hugo_Symbol	Site1_Chromosome	Site1_Region	Site2_Hugo_Symbol	Class	Event_Info	Tumor_Variant_Count	SV_Length
-1sample_001_01	Somatic	BRAF	1	150000	EGFR	FUSION	RNA-Seq FUSION : BRAF-EGFR	15	100000
-1sample_001_01	Somatic	ALK	2	300000	ROS1	FUSION	RNA-Seq FUSION : ALK-ROS1	12	100000

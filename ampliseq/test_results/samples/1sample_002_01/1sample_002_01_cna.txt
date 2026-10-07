@@ -1,3 +1,0 @@
-Hugo_Symbol	Sample_Id	Value
-PIK3CA	1sample_002_01	2
-APC	1sample_002_01	-2

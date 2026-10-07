@@ -1,7 +1,0 @@
-#Patient Identifier	Sample Identifier	Cancer Type	Cancer Type Detailed	Sample Type	Tumor site	Tumor Purity
-#Patient identifier	Sample Identifier	Cancer type	Sub-type of the specified	Type of cancer sample	Tumor site of cancer sample	Purity of tumor sample (%)
-#STRING	STRING	STRING	STRING	STRING	STRING	STRING
-#1	1	1	1	1	1	1
-PATIENT_ID	SAMPLE_ID	CANCER_TYPE	CANCER_TYPE_DETAILED	SAMPLE_TYPE	TUMOR_SITE	TUMOR_PURITY
-REAL_001	REAL_001_01	Non-Small Cell Lung Cancer	Lung Adenocarcinoma	Primary	Lung	0.75
-REAL_002	REAL_002_01	Non-Small Cell Lung Cancer	Lung Adenocarcinoma	Recurrent	Lung	0.65

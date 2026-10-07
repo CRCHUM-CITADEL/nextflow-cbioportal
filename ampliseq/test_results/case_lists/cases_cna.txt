@@ -1,5 +1,0 @@
-cancer_study_identifier: test_study
-stable_id: test_study_cna
-case_list_name: all cna
-case_list_description: all cna of test_study
-case_list_ids: REAL_001_01	REAL_002_01

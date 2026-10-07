@@ -16,7 +16,7 @@ def main():
 
     df      = pd.read_csv(input_tsv, sep="\t", dtype=str)
 
-    
+
 
     out_file = os.path.join(os.getcwd(), os.path.basename(output_file))
     df.to_csv(out_path, sep="\t", index=False)

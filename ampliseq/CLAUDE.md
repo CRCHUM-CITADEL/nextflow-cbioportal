@@ -67,6 +67,7 @@ ch_samplesheet
 ```
 
 **Key branching logic:** `params.skip_vcf2maf` chooses between real VCF→MAF conversion (mafsmith + fastVEP, GRCh37, PASS records only) and stub MAFs. `params.filter_tsv_variants` (default false) turns on **filter mode**, which applies QC thresholds (all params, defaults shown) to three data types; with it off everything is kept:
+
 - **Mutations** → FILTER_MUTATIONS instead of PASSTHROUGH_MUTATIONS: keep a MAF row only if its `[Start_Position, End_Position]` overlaps (inclusive, `chr` ignored) a TSV row with numeric `Depth >= mutation_min_depth` (250) and `VAF > mutation_min_vaf` (0.03). Depth/VAF come from the TSV. CNV/fusion rows have `N/A` there, so they are never match regions: a fusion row can span tens of Mb. Alleles are not compared.
 - **CNA** → `format_cna.py --min-copy-number --confidence`: keep rows with `Confidence == cna_confidence` (HIGH, case-insensitive) and raw `Copy Number >= cna_min_copy_number` (6, before the half-up rounding). Every deletion is dropped and every kept gene is Value 2.
 - **Fusions** → FORMAT_SV ignores any `*-star-fusion.final.vcf` and runs `format_tsv_to_sv.py --min-supporting-reads`: `Supporting Reads` summed per `(Genes, Breakend Genes)` pair (`N/A` = 0), and every row of a pair whose total is `>= sv_min_supporting_reads` (1000) is kept.
@@ -85,9 +86,11 @@ ch_samplesheet
 `bin/clinical_{patients,sample}_format.py` index these by name, so a missing column is a `KeyError`. Extra columns are ignored. Keep `assets/{patient,sample}_file.txt` in sync with the scripts.
 
 **Linking file** (`linking_file.txt`): maps anonymized → real IDs.
+
 ```
 sample_id   deanon_sample_id   deanon_patient_id
 ```
+
 The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon_sample_id`), not anonymized ones.
 
 ---
@@ -95,23 +98,19 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 ## Data Flow
 
 **Per-sample** → published to `{outdir}/samples/{sample_id}/`:
+
 1. `analysis_*_export.tsv` → FORMAT_SV → `_sv.txt` (`Variant Subtype = FUSION`)
 2. `analysis_*_export.tsv` → FORMAT_CNA → `_cna.txt` (`DUPLICATION`/`DELETION`)
 3. VCF → MAFSMITH (mafsmith + fastVEP, GRCh37, PASS only; header on line 1, `chr` prefix kept) → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → `_mutations.txt`
 4. `*-cnv.final.vcf` → VCF_TO_SEG → `_seg.txt` (PASS only; `seg.mean = log2(CN/2)`; CN=0 → −3.0)
 
-**Downstream** (re-runs on every execution over all samples):
-5. FILTER_LINKING → linking filtered to samplesheet samples only
-6. MERGE → DEANON → `data_mutations.txt`, `data_sv.txt`, `data_cna.txt`, `data_seg.txt`
-7. CLINICAL_PATIENTS / CLINICAL_SAMPLES → filtered to samplesheet patients/samples
-8. WRITE_CASE_LISTS + WRITE_META
-9. PACKAGE_CBIOPORTAL → `{study_id}.tar.gz`
+**Downstream** (re-runs on every execution over all samples): 5. FILTER_LINKING → linking filtered to samplesheet samples only 6. MERGE → DEANON → `data_mutations.txt`, `data_sv.txt`, `data_cna.txt`, `data_seg.txt` 7. CLINICAL_PATIENTS / CLINICAL_SAMPLES → filtered to samplesheet patients/samples 8. WRITE_CASE_LISTS + WRITE_META 9. PACKAGE_CBIOPORTAL → `{study_id}.tar.gz`
 
 ---
 
 ## Key Implementation Notes
 
-- **SV columns:** both writers (`format_tsv_to_sv.py` for the export TSV, `fusion_vcf_to_sv.py` for `*-star-fusion.final.vcf`) emit exactly `cbio_sv.SV_COLUMNS`, the full cBioPortal SV layout modelled on oncoanalyser's writers (5'/3' sites, `Length` = `NA` for translocations, split/discordant counts, RNA/DNA support, `Event_Info`, `Annotation`, Nirvana `ANNOTATION` → `External_Annotation`). Add a column in `cbio_sv.py`, never in one writer only. STAR-Fusion `_1`/`_2` breakend records are paired into one row (each site's `EXON_NUM` → `Site*_Region_Number`). TSV fusion rows have one `Chr`, but `End` is the partner's position on *its* chromosome (ROS1 chr6 → CD74 `149784294` is chr5): `format_tsv_to_sv.py --gene-loci` places it with `assets/grch37_gene_loci.tsv.gz` (`Name`/chrom/start/end of every `gene` record in the mafsmith GRCh37 `genes.gff3.gz`), taking the `Breakend Genes` locus containing `End` (±10 kb), else the gene's only chromosome, else `NA` + warning. `Class` is always `FUSION`, `Exons`/`Breakend Exon` → `Site1/2_Region_Number`.
+- **SV columns:** both writers (`format_tsv_to_sv.py` for the export TSV, `fusion_vcf_to_sv.py` for `*-star-fusion.final.vcf`) emit exactly `cbio_sv.SV_COLUMNS`, the full cBioPortal SV layout modelled on oncoanalyser's writers (5'/3' sites, `Length` = `NA` for translocations, split/discordant counts, RNA/DNA support, `Event_Info`, `Annotation`, Nirvana `ANNOTATION` → `External_Annotation`). Add a column in `cbio_sv.py`, never in one writer only. STAR-Fusion `_1`/`_2` breakend records are paired into one row (each site's `EXON_NUM` → `Site*_Region_Number`). TSV fusion rows have one `Chr`, but `End` is the partner's position on _its_ chromosome (ROS1 chr6 → CD74 `149784294` is chr5): `format_tsv_to_sv.py --gene-loci` places it with `assets/grch37_gene_loci.tsv.gz` (`Name`/chrom/start/end of every `gene` record in the mafsmith GRCh37 `genes.gff3.gz`), taking the `Breakend Genes` locus containing `End` (±10 kb), else the gene's only chromosome, else `NA` + warning. `Class` is always `FUSION`, `Exons`/`Breakend Exon` → `Site1/2_Region_Number`.
 - **Merges** (`MERGE_{MUTATIONS,SV,CNA,SEG}`) all use `bin/merge_tsv_by_header.sh`, which maps rows onto the union of columns **by name** and tolerates header-only and 0-byte files. Never concatenate positionally: per-sample files from older runs or different writers have different columns. The old inline awk dropped a whole sample's rows when any input file was empty.
 - **Mutation enrichment:** fastVEP has no dbSNP/ClinVar/COSMIC/1000G, so `MAFSMITH` runs `bin/maf_add_vcf_annotations.py`, which fills `dbSNP_RS`, `Existing_variation`, `CLIN_SIG` and `AF` from the VCF ID column and Nirvana `clinvar`/`cosmic`/`AF1000G` (rows matched on chrom + MAF-style start + alt; indels included). Tumor-only: `Matched_Norm_Sample_Barcode` and `Match_Norm_Seq_Allele1/2` are blanked (mafsmith writes `NORMAL` + the ref allele).
 - **Deanon scripts** read with `dtype=str, keep_default_na=False`, so values (including `NA`) round-trip unchanged and numeric-looking IDs don't crash `.str.upper()`.
@@ -126,10 +125,11 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 ## Container Labels
 
 Two process labels control container assignment in `nextflow.config`:
+
 - `python` → `params.python_sif` (local Apptainer image built from `containers/python-ampliseq.def`)
 - `mafsmith` → `params.mafsmith_container` (mafsmith + fastVEP, built from `containers/mafsmith-fastvep_v0.1.0-0.4.0.def`)
 
-`params.mafsmith_data` (optional) is the mafsmith home with `GRCh37/{reference.fa,genes.gff3.gz}`. If it is null, empty or the string `"null"`, `DOWNLOAD_MAFSMITH` fetches it once into `assets/mafsmith` (storeDir). Either bundle then goes through **`PREPARE_MAFSMITH`** once per run, before any `MAFSMITH` task, which completes it in place: (1) it writes `GRCh37/reference.fa.fai` with an awk faidx, because `mafsmith fetch` never writes one and `mafsmith vcf2maf` fails without it (`Cannot read FASTA index`); (2) it decompresses `genes.gff3.gz` → `genes.gff3` atomically, and redoes it when the size doesn't match the `.gz`. mafsmith decompresses on first use only if `genes.gff3` is absent, non-atomically, so parallel tasks used to read a half-written GFF and silently lose annotation (`-`/`IGR`, no error). The rewrite's new mtime makes fastVEP rebuild `genes.gff3.fastvep.cache`, whose writes are atomic and checked by mtime. Both steps write into the bundle, so it must be writable. `MAFSMITH` fails early if `reference.fa`, `reference.fa.fai` or `genes.gff3.gz` is missing or empty, unless `ext.args` contains `--skip-annotation` (the module test relies on this). **Gotcha:** `-stub-run` with `skip_vcf2maf=false` stores an *empty* `assets/mafsmith`, which storeDir then reuses; delete it after stub runs. **Contig naming:** the bundle is assumed to use `mafsmith fetch` (Ensembl) naming: `1, 2, X, MT`. mafsmith refuses a VCF whose contigs are not in the FASTA (`VCF chromosome 'chr1' was not found in the FASTA index`); the GFF's naming does not matter (verified on real Ensembl GRCh37 chr12). `MAFSMITH` therefore strips `chr` from the PASS VCF (records + `##contig`, `chrM`→`MT`) and puts it back on the MAF `Chromosome` column (`MT`→`chrM`) when the source VCF was chr-prefixed, as Pisces VCFs are. A pre-staged `--mafsmith_data` with chr-named FASTA is not supported. `Entrez_Gene_Id` is always 0 with mafsmith/fastVEP (no Entrez source). **Nirvana CSQ fields:** ampliseq/Pisces VCFs come Nirvana-annotated with INFO `CSQR`/`CSQT`. mafsmith 0.1.0 finds fastVEP's header with `contains("ID=CSQ")` (first match wins), so it parsed fastVEP's annotations with CSQR's 3-field layout and every row came out `Hugo_Symbol=Unknown` / `Targeted_Region`. `MAFSMITH` therefore drops all `CSQ*` INFO headers and values from the PASS VCF. fastVEP writes a fresh `CSQ` of its own, so nothing is lost; the `SAMPLE_NIRVANA` fixture covers this. Otherwise, all-`Unknown`/`Targeted_Region` output means `--skip-annotation` (no CSQ header). With annotation on, a record without CSQ is dropped, an intergenic one gets `-`/`IGR`, and a transcript without SYMBOL gets its `ENST` ID. Incremental runs never re-annotate: samples whose four per-sample files exist in `--outdir` are skipped and their old `_mutations.txt` merged as-is. Mutation_Status stays blank (tumor-only). `MERGE_MUTATIONS` merges per-sample files by column name, so older vcf2maf-era files (different columns) still merge correctly.
+`params.mafsmith_data` (optional) is the mafsmith home with `GRCh37/{reference.fa,genes.gff3.gz}`. If it is null, empty or the string `"null"`, `DOWNLOAD_MAFSMITH` fetches it once into `assets/mafsmith` (storeDir). Either bundle then goes through **`PREPARE_MAFSMITH`** once per run, before any `MAFSMITH` task, which completes it in place: (1) it writes `GRCh37/reference.fa.fai` with an awk faidx, because `mafsmith fetch` never writes one and `mafsmith vcf2maf` fails without it (`Cannot read FASTA index`); (2) it decompresses `genes.gff3.gz` → `genes.gff3` atomically, and redoes it when the size doesn't match the `.gz`. mafsmith decompresses on first use only if `genes.gff3` is absent, non-atomically, so parallel tasks used to read a half-written GFF and silently lose annotation (`-`/`IGR`, no error). The rewrite's new mtime makes fastVEP rebuild `genes.gff3.fastvep.cache`, whose writes are atomic and checked by mtime. Both steps write into the bundle, so it must be writable. `MAFSMITH` fails early if `reference.fa`, `reference.fa.fai` or `genes.gff3.gz` is missing or empty, unless `ext.args` contains `--skip-annotation` (the module test relies on this). **Gotcha:** `-stub-run` with `skip_vcf2maf=false` stores an _empty_ `assets/mafsmith`, which storeDir then reuses; delete it after stub runs. **Contig naming:** the bundle is assumed to use `mafsmith fetch` (Ensembl) naming: `1, 2, X, MT`. mafsmith refuses a VCF whose contigs are not in the FASTA (`VCF chromosome 'chr1' was not found in the FASTA index`); the GFF's naming does not matter (verified on real Ensembl GRCh37 chr12). `MAFSMITH` therefore strips `chr` from the PASS VCF (records + `##contig`, `chrM`→`MT`) and puts it back on the MAF `Chromosome` column (`MT`→`chrM`) when the source VCF was chr-prefixed, as Pisces VCFs are. A pre-staged `--mafsmith_data` with chr-named FASTA is not supported. `Entrez_Gene_Id` is always 0 with mafsmith/fastVEP (no Entrez source). **Nirvana CSQ fields:** ampliseq/Pisces VCFs come Nirvana-annotated with INFO `CSQR`/`CSQT`. mafsmith 0.1.0 finds fastVEP's header with `contains("ID=CSQ")` (first match wins), so it parsed fastVEP's annotations with CSQR's 3-field layout and every row came out `Hugo_Symbol=Unknown` / `Targeted_Region`. `MAFSMITH` therefore drops all `CSQ*` INFO headers and values from the PASS VCF. fastVEP writes a fresh `CSQ` of its own, so nothing is lost; the `SAMPLE_NIRVANA` fixture covers this. Otherwise, all-`Unknown`/`Targeted_Region` output means `--skip-annotation` (no CSQ header). With annotation on, a record without CSQ is dropped, an intergenic one gets `-`/`IGR`, and a transcript without SYMBOL gets its `ENST` ID. Incremental runs never re-annotate: samples whose four per-sample files exist in `--outdir` are skipped and their old `_mutations.txt` merged as-is. Mutation_Status stays blank (tumor-only). `MERGE_MUTATIONS` merges per-sample files by column name, so older vcf2maf-era files (different columns) still merge correctly.
 
 Container definitions live in `containers/`. See `containers/README.md` for local build, `--mafsmith_container <local.sif>`, and the push/tag convention. ghcr images are private, so pulls need `apptainer registry login`.
 
@@ -157,6 +157,7 @@ Merge/deanon/clinical steps always re-run over all samples combined. Use the sam
 ## Standalone Scripts
 
 All Python scripts write output relative to `os.getcwd()` — run from the target output directory:
+
 ```bash
 cd /path/to/output
 python3 /path/to/bin/format_tsv_to_sv.py    <export.tsv>  <SAMPLE_ID>
@@ -167,4 +168,5 @@ python3 /path/to/bin/format_sv.py       data_sv.txt         <linking_file>
 python3 /path/to/bin/format_cna_deanon.py data_cna.txt      <linking_file>
 python3 /path/to/bin/seg_deanon.py     data_seg.txt         <linking_file>
 ```
+
 `bin/run_pipeline.sh` orchestrates all of the above — contains **hardcoded cluster paths** that must be updated before use.

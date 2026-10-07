@@ -78,15 +78,16 @@ nextflow run main.nf ... --skip_vcf2maf true
 ```
 
 Filter mode applies QC thresholds using the sample's `analysis_*_export.tsv`. By default it is off and everything is kept:
+
 ```bash
 nextflow run main.nf ... --filter_tsv_variants true
 ```
 
-| Data | Kept in filter mode | Params (default) |
-|---|---|---|
-| Mutations | Position overlaps a TSV row with `Depth` ≥ 250 and `VAF` > 0.03 (`chr` prefix ignored) | `--mutation_min_depth` (250), `--mutation_min_vaf` (0.03) |
-| CNAs | `Confidence` = HIGH and raw `Copy Number` ≥ 6, so all deletions are dropped | `--cna_confidence` (HIGH), `--cna_min_copy_number` (6) |
-| Fusions | Taken from the TSV, even when a `*-star-fusion.final.vcf` exists. `Supporting Reads` summed per gene pair ≥ 1000 | `--sv_min_supporting_reads` (1000) |
+| Data      | Kept in filter mode                                                                                              | Params (default)                                          |
+| --------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Mutations | Position overlaps a TSV row with `Depth` ≥ 250 and `VAF` > 0.03 (`chr` prefix ignored)                           | `--mutation_min_depth` (250), `--mutation_min_vaf` (0.03) |
+| CNAs      | `Confidence` = HIGH and raw `Copy Number` ≥ 6, so all deletions are dropped                                      | `--cna_confidence` (HIGH), `--cna_min_copy_number` (6)    |
+| Fusions   | Taken from the TSV, even when a `*-star-fusion.final.vcf` exists. `Supporting Reads` summed per gene pair ≥ 1000 | `--sv_min_supporting_reads` (1000)                        |
 
 `data_seg.txt` is not filtered. Filter mode runs per sample, so samples already in `--outdir` are not re-filtered. Use a fresh `--outdir` when you turn it on or change a threshold.
 
@@ -100,9 +101,9 @@ nextflow run main.nf ... -resume
 
 ### Containers
 
-| Label | Param | Default | Definition |
-|---|---|---|---|
-| `python` | `--python_sif` | local `.sif` | `containers/python-ampliseq.def` |
+| Label      | Param                  | Default                                                      | Definition                                     |
+| ---------- | ---------------------- | ------------------------------------------------------------ | ---------------------------------------------- |
+| `python`   | `--python_sif`         | local `.sif`                                                 | `containers/python-ampliseq.def`               |
 | `mafsmith` | `--mafsmith_container` | `oras://ghcr.io/crchum-citadel/mafsmith-fastvep:0.1.0-0.4.0` | `containers/mafsmith-fastvep_v0.1.0-0.4.0.def` |
 
 The ghcr images are private; log in first with `apptainer registry login`. To build locally instead, see [`containers/README.md`](containers/README.md).

@@ -1,0 +1,150 @@
+nextflow_process {
+
+    name "Test MAFSMITH"
+    script "modules/local/mafsmith/main.nf"
+    process "MAFSMITH"
+    tag "module"
+    tag "mafsmith"
+
+    // Runs the real binary (--skip-annotation) on a chr-prefixed tumor-only Pisces VCF
+    test("PASS-only MAF with header on line 1, chr prefix and tumor depths") {
+
+        config "tests/nextflow_mafsmith.config"
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'G', subject_id: 'S1', sample_id: 'SAMPLE_CHR'],
+                    file('${projectDir}/tests/modules/fixtures/SAMPLE_CHR')
+                ])
+                input[1] = file('${projectDir}/assets/samples')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[0].split('\t', -1) as List
+            assert header[0] == 'Hugo_Symbol' : "line 1 must be the column header, got ${lines[0]}"
+            def rows = lines.drop(1).collect { it.split('\t', -1) }
+            def col = { String n -> assert header.indexOf(n) >= 0 : "no ${n} column"; header.indexOf(n) }
+
+            assert rows.size() == 2 : "non-PASS record must be dropped"
+            assert rows.every { it[col('Tumor_Sample_Barcode')] == 'SAMPLE_CHR' }
+            assert rows.every { it[col('Chromosome')].startsWith('chr') }
+            assert rows.every { it[col('NCBI_Build')] == 'GRCh37' }
+            assert rows[0][col('t_alt_count')] == '30'
+            assert rows[0][col('t_depth')] == '100'
+            assert rows.every { it[col('Mutation_Status')] == '' }
+        }
+    }
+
+    // Pisces VCF says chr1, the Ensembl bundle (as fetched by DOWNLOAD_MAFSMITH) says 1. mafsmith
+    // refuses a VCF/FASTA naming mismatch, so the module renames the VCF to the FASTA's naming
+    // and the MAF back to chr. The bundle is copied because mafsmith writes its GFF cache into it.
+    test("Annotates a chr-prefixed VCF against a 1-named reference bundle") {
+
+        when {
+            process {
+                """
+                def bundle = file('${outputDir}/bundle_nochr')
+                file('${projectDir}/tests/modules/fixtures/mafsmith_bundle_nochr').copyTo(bundle)
+                input[0] = Channel.of([
+                    [group: 'G', subject_id: 'S1', sample_id: 'SAMPLE_TOY'],
+                    file('${projectDir}/tests/modules/fixtures/SAMPLE_TOY')
+                ])
+                input[1] = bundle
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[0].split('\t', -1) as List
+            def rows = lines.drop(1).collect { it.split('\t', -1) }
+            def col = { String n -> assert header.indexOf(n) >= 0 : "no ${n} column"; header.indexOf(n) }
+
+            assert rows.size() == 2
+            assert rows.every { it[col('Chromosome')] == 'chr1' } : "MAF must keep the VCF's chr naming"
+            assert rows[0][col('Start_Position')] == '1500'
+            assert rows[0][col('Hugo_Symbol')] == 'TESTG' : "variant inside TESTG must be annotated, got ${rows[0][col('Hugo_Symbol')]}"
+            assert rows[0][col('Variant_Classification')] == 'Nonsense_Mutation'
+            assert rows[1][col('Variant_Classification')] == "3'Flank" // 800 bp downstream of TESTG
+        }
+    }
+
+    // Ampliseq VCFs come Nirvana-annotated (INFO CSQR/CSQT). mafsmith 0.1.0 matches fastVEP's
+    // header with contains("ID=CSQ") and took CSQR's layout, so every row came out Unknown /
+    // Targeted_Region. The module drops pre-existing CSQ* fields before running mafsmith.
+    test("Links genes in a Nirvana-annotated VCF (CSQR/CSQT INFO fields)") {
+
+        when {
+            process {
+                """
+                def bundle = file('${outputDir}/bundle_nirvana')
+                file('${projectDir}/tests/modules/fixtures/mafsmith_bundle_nochr').copyTo(bundle)
+                input[0] = Channel.of([
+                    [group: 'G', subject_id: 'S1', sample_id: 'SAMPLE_NIRVANA'],
+                    file('${projectDir}/tests/modules/fixtures/SAMPLE_NIRVANA')
+                ])
+                input[1] = bundle
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[0].split('\t', -1) as List
+            def rows = lines.drop(1).collect { it.split('\t', -1) }
+            def col = { String n -> assert header.indexOf(n) >= 0 : "no ${n} column"; header.indexOf(n) }
+
+            assert rows.size() == 3
+            assert rows.every { it[col('Hugo_Symbol')] == 'TESTG' } : "genes not linked: ${rows.collect { it[col('Hugo_Symbol')] }}"
+            assert rows.every { it[col('Variant_Classification')] != 'Targeted_Region' }
+            assert rows.every { it[col('Chromosome')] == 'chr1' }
+
+            def at = { String pos -> def r = rows.find { it[col('Start_Position')] == pos }; assert r : "no MAF row at ${pos}"; r }
+            assert at('1500')[col('Variant_Classification')] == 'Nonsense_Mutation'
+            assert at('1500')[col('t_alt_count')] == '100' && at('1500')[col('t_ref_count')] == '400'
+
+            // dbSNP / ClinVar / COSMIC / 1000G come from the VCF ID column and Nirvana INFO
+            assert at('1500')[col('dbSNP_RS')] == 'rs1881421'
+            assert at('1500')[col('Existing_variation')] == 'rs1881421,COSM3758201,COSM5653840'
+            assert at('1500')[col('CLIN_SIG')] == 'benign'
+            assert at('1500')[col('AF')] == '0.572883'
+            assert at('1301')[col('Variant_Type')] == 'DEL' : "deletion must be matched at its MAF start"
+            assert at('1301')[col('Existing_variation')] == 'COSM999'
+            assert at('1301')[col('dbSNP_RS')] == ''
+            assert at('1200')[col('dbSNP_RS')] == '' && at('1200')[col('CLIN_SIG')] == ''
+        }
+    }
+
+    // Without --skip-annotation an empty bundle (e.g. a stub-run leftover in assets/mafsmith) must fail
+    test("Rejects a mafsmith_data bundle without GRCh37 reference files") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'G', subject_id: 'S1', sample_id: 'SAMPLE_CHR'],
+                    file('${projectDir}/tests/modules/fixtures/SAMPLE_CHR')
+                ])
+                input[1] = file('${projectDir}/assets/samples')
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.stdout.any { it.contains('GRCh37/reference.fa missing or empty') } ||
+                   workflow.stdout.any { it.contains('GRCh37/reference.fa missing or empty') }
+        }
+    }
+}

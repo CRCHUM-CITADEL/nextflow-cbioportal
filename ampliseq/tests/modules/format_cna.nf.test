@@ -1,0 +1,96 @@
+nextflow_process {
+
+    name "Test FORMAT_CNA"
+    script "modules/local/format_cna/main.nf"
+    process "FORMAT_CNA"
+    tag "module"
+    tag "cna"
+
+    // Fractional copy numbers used to be dropped (only exact 0/1/3/>=4 matched), a multi-gene
+    // Genes cell became one invalid symbol, and duplicate gene rows break the cBioPortal import.
+    test("Rounds fractional copy number, splits multi-gene cells, one row per gene") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/cna_inputs").mkdirs()
+                file("${params.outdir}/cna_inputs/export.tsv").text =
+                    'Chr\\tStart\\tEnd\\tVariant Type\\tVariant Subtype\\tGenes\\tBreakend Genes\\tSupporting Reads\\tCopy Number\\n' +
+                    '9\\t1\\t2\\tCNV\\tDELETION\\tCDKN2A,MTAP\\t\\t0\\t0.4\\n' +
+                    '10\\t1\\t2\\tCNV\\tDELETION\\tPTEN\\t\\t0\\t1.2\\n' +
+                    '8\\t1\\t2\\tCNV\\tDUPLICATION\\tMYC\\t\\t0\\t3.4\\n' +
+                    '8\\t3\\t4\\tCNV\\tDUPLICATION\\tMYC\\t\\t0\\t6.0\\n' +
+                    '7\\t1\\t2\\tCNV\\tDUPLICATION\\tEGFR\\t\\t0\\t2.2\\n' +
+                    '1\\t1\\t2\\tCNV\\tFUSION\\tALK\\tEML4\\t5\\t2\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/cna_inputs/export.tsv")])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0] == 'Hugo_Symbol\tSample_Id\tValue'
+            def values = lines.drop(1).collectEntries { l -> def f = l.split('\t'); [f[0], f[2]] }
+            assert values == [CDKN2A: '-2', MTAP: '-2', PTEN: '-1', MYC: '2']
+        }
+    }
+
+    // Raw CN (before rounding) is compared, so 5.9 is dropped
+    test("Filter mode keeps HIGH-confidence rows with Copy Number >= 6 only") {
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                filter_tsv_variants = true
+            }
+            process {
+                """
+                file("${params.outdir}/cna_inputs").mkdirs()
+                file("${params.outdir}/cna_inputs/export.tsv").text =
+                    'Chr\\tStart\\tEnd\\tVariant Type\\tVariant Subtype\\tGenes\\tVAF\\tConfidence\\tDepth\\tCopy Number\\tSupporting Reads\\tBreakend Genes\\n' +
+                    '8\\t1\\t2\\tCNV\\tDUPLICATION\\tMYC\\tN/A\\tHIGH\\tN/A\\t6\\tN/A\\tN/A\\n' +
+                    '17\\t1\\t2\\tCNV\\tDUPLICATION\\tERBB2\\tN/A\\thigh\\tN/A\\t12.5\\tN/A\\tN/A\\n' +
+                    '7\\t1\\t2\\tCNV\\tDUPLICATION\\tEGFR\\tN/A\\tHIGH\\tN/A\\t5.9\\tN/A\\tN/A\\n' +
+                    '12\\t1\\t2\\tCNV\\tDUPLICATION\\tCDK4\\tN/A\\tMEDIUM\\tN/A\\t8\\tN/A\\tN/A\\n' +
+                    '9\\t1\\t2\\tCNV\\tDELETION\\tCDKN2A\\tN/A\\tHIGH\\tN/A\\t0\\tN/A\\tN/A\\n' +
+                    '1\\t1\\t2\\tSNP\\tSNP\\tALK\\t0.5\\tHIGH\\t1000\\tN/A\\tN/A\\tN/A\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/cna_inputs/export.tsv")])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0] == 'Hugo_Symbol\tSample_Id\tValue'
+            def values = lines.drop(1).collectEntries { l -> def f = l.split('\t'); [f[0], f[2]] }
+            assert values == [MYC: '2', ERBB2: '2']
+        }
+    }
+
+    test("Filter mode fails when the TSV has no Confidence column") {
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                filter_tsv_variants = true
+            }
+            process {
+                """
+                file("${params.outdir}/cna_inputs").mkdirs()
+                file("${params.outdir}/cna_inputs/export.tsv").text =
+                    'Chr\\tStart\\tEnd\\tVariant Type\\tVariant Subtype\\tGenes\\tBreakend Genes\\tSupporting Reads\\tCopy Number\\n' +
+                    '8\\t1\\t2\\tCNV\\tDUPLICATION\\tMYC\\t\\t0\\t8\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/cna_inputs/export.tsv")])
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert workflow.stdout.any { it.contains('lacks column(s) Confidence') }
+        }
+    }
+}

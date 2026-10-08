@@ -9,10 +9,8 @@ process MERGE_MUTATIONS {
 
     script:
     """
-    files=( *_mutations.txt )
-    head -1 "\${files[0]}" > data_mutations.txt
-    for f in "\${files[@]}"; do
-        tail -n +2 "\$f" >> data_mutations.txt
-    done
+    # Header-aware merge: per-sample files may differ in columns (older pipeline versions,
+    # different writers), so rows are mapped onto the union of columns by name.
+    merge_tsv_by_header.sh data_mutations.txt *_mutations.txt
     """
 }

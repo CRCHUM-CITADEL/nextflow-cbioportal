@@ -18,7 +18,7 @@ workflow STUDY_METADATA {
     CLINICAL_PATIENTS(ch_patient_file, ch_orig_linking)
     CLINICAL_SAMPLES(ch_sample_file, ch_orig_linking)
 
-    if (params.anonymize) {
+    if (params.anonymize?.toString()?.toBoolean()) {
         ANON_PATIENT(CLINICAL_PATIENTS.out, ch_orig_linking, ch_output_linking)
         ANON_SAMPLE(CLINICAL_SAMPLES.out, ch_orig_linking, ch_output_linking)
         ch_clinical_patient = ANON_PATIENT.out

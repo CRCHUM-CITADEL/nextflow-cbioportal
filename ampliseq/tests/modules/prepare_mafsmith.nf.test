@@ -1,0 +1,71 @@
+nextflow_process {
+
+    name "Test PREPARE_MAFSMITH"
+    script "modules/local/prepare_mafsmith/main.nf"
+    process "PREPARE_MAFSMITH"
+    tag "module"
+    tag "mafsmith"
+
+    // `mafsmith fetch` writes no reference.fa.fai, which mafsmith vcf2maf requires. The bundle is
+    // copied because the process completes it in place.
+    test("Builds a samtools-compatible FASTA index and decompresses the GFF") {
+
+        when {
+            process {
+                """
+                def bundle = file('${outputDir}/bundle_fresh')
+                file('${projectDir}/tests/modules/fixtures/mafsmith_bundle_nochr').copyTo(bundle)
+                file("\${bundle}/GRCh37/reference.fa.fai").delete()
+                input[0] = bundle
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def g = "${outputDir}/bundle_fresh/GRCh37"
+            assert path("${g}/reference.fa.fai").text ==
+                   path("${projectDir}/tests/modules/fixtures/mafsmith_bundle_nochr/GRCh37/reference.fa.fai").text
+            assert path("${g}/genes.gff3").text == path("${g}/genes.gff3.gz").linesGzip.join('\n') + '\n'
+        }
+    }
+
+    // Parallel MAFSMITH tasks used to race mafsmith's non-atomic GFF decompression and silently
+    // lose annotation; a half-written genes.gff3 must be detected and redone.
+    test("Replaces a half-written genes.gff3") {
+
+        when {
+            process {
+                """
+                def bundle = file('${outputDir}/bundle_partial')
+                file('${projectDir}/tests/modules/fixtures/mafsmith_bundle_nochr').copyTo(bundle)
+                file("\${bundle}/GRCh37/genes.gff3").text = '##gff-version 3\\n1\\tensembl'
+                input[0] = bundle
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def g = "${outputDir}/bundle_partial/GRCh37"
+            assert path("${g}/genes.gff3").text == path("${g}/genes.gff3.gz").linesGzip.join('\n') + '\n'
+            assert path("${g}/genes.gff3").text.contains('Name=TESTG')
+        }
+    }
+
+    test("Fails on a bundle without a reference FASTA") {
+
+        when {
+            process {
+                """
+                input[0] = file('${projectDir}/assets/samples')
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert workflow.stdout.any { it.contains('GRCh37/reference.fa missing or empty') }
+        }
+    }
+}

@@ -91,6 +91,32 @@ nextflow run main.nf ... --filter_tsv_variants true
 
 `data_seg.txt` is not filtered. Filter mode runs per sample, so samples already in `--outdir` are not re-filtered. Use a fresh `--outdir` when you turn it on or change a threshold.
 
+Optional filters on the merged data. They are off by default and, unlike filter mode, also apply to samples already in `--outdir`:
+
+| Filter       | Drops                                                                                                                                                            | Params (default)                                                                                       |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| gnomAD       | Mutations with gnomAD allele frequency > 0.5 (higher of exome and genome), fetched from Genome Nexus (see [gnomAD frequencies](#gnomad-frequencies))              | `--filter_gnomad_af` (false), `--max_gnomad_af` (0.5), `--gnomad_af_columns` (`gnomADe_AF,gnomADg_AF`) |
+| VAF          | Mutations with VAF (`t_alt_count / t_depth`) > 0.5                                                                                                               | `--filter_vaf` (false), `--max_vaf` (0.5)                                                              |
+| CNV depth QC | A sample's CNV calls, unless ≥ 95% of its PASS Pisces variants have depth ≥ 250. The sample is left out of the CNA case lists; mutations and SVs are kept | `--filter_cnv_depth` (false), `--cnv_min_depth` (250), `--cnv_min_depth_fraction` (0.95), `--cnv_depth_pass_only` (true) |
+
+Values equal to a threshold are kept, and missing values never drop a mutation. The CNV depth QC writes `qc/cnv_depth_qc.tsv`.
+
+Segment data (`data_seg.txt`, `meta_seg.txt`) is off by default. cBioPortal computes *Fraction Genome Altered* from it, which is not meaningful for an amplicon panel:
+
+```bash
+nextflow run main.nf ... --include_seg true [--seg_mean_mode log2|cn]
+```
+
+`log2` (default) writes `log2(CN/2)` and keeps CN=2 segments; `cn` writes the raw copy number and drops CN=2. After changing the mode, delete `{outdir}/samples/*/*_seg.txt`. A study already imported with segment data keeps its FGA values until it is deleted and re-imported.
+
+#### gnomAD frequencies
+
+With `--filter_gnomad_af true`, the pipeline looks up each mutation in [Genome Nexus](https://www.genomenexus.org), the service cBioPortal uses for its own gnomAD column, and adds two columns to `data_mutations.txt`: `gnomADe_AF` (gnomAD v2.1.1 exomes) and `gnomADg_AF` (genomes). A mutation is dropped when the higher of the two is above `--max_gnomad_af`; one gnomAD has never seen is kept.
+
+- The step needs **outbound HTTPS** from the node it runs on. If Genome Nexus can't be reached, the run fails rather than keeping every mutation.
+- Only the variant (chromosome, positions, alleles) is sent, never sample or patient IDs.
+- To use a self-hosted Genome Nexus (GRCh37), set `--genome_nexus_url`.
+
 Boolean flags accept `true`/`false` on the command line. Nextflow 26 passes CLI values as strings, so the pipeline converts them explicitly.
 
 Resume a previous run:

@@ -13,7 +13,7 @@ process VCF_TO_SEG {
     """
     VCF=\$(find -L "${sample_folder}" -maxdepth 1 \\( -name '*-basespace-cnv.final.vcf' -o -name '*-basespace-cnv.final.vcf.gz' \\) | head -1)
     if [ -n "\$VCF" ]; then
-        vcf_to_seg.py "\$VCF" "${meta.sample_id}"
+        vcf_to_seg.py "\$VCF" "${meta.sample_id}" --mode ${params.seg_mean_mode}
     else
         printf 'ID\\tchrom\\tloc.start\\tloc.end\\tnum.mark\\tseg.mean\\n' > data_seg.txt
     fi

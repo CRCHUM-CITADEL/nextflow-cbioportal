@@ -53,10 +53,15 @@ ch_samplesheet
   │    ├─ VCF_TO_SEG        (CNV VCF → _seg.txt)
   │    └─ MAFSMITH (+ DOWNLOAD_MAFSMITH → PREPARE_MAFSMITH) or STUB_MAF → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → _mutations.txt
   │
+  ├─ CNV_DEPTH_QC (module, filter_cnv_depth) ── all samples incl. cached → qc/cnv_depth_qc.tsv + failed IDs
+  │
   ├─ FILTER_LINKING (module) ── restrict linking file to samplesheet samples
   │
   ├─ MERGE_DEANON (subworkflow) ── merge all per-sample files + deanonymise
-  │    ├─ MERGE_{SV,CNA,MUTATIONS,SEG}
+  │    ├─ MERGE_{SV,CNA,MUTATIONS,SEG}       (MERGE_SEG… only with include_seg)
+  │    ├─ ANNOTATE_GNOMAD                    (filter_gnomad_af; Genome Nexus API)
+  │    ├─ FILTER_MUTATIONS_AF                (filter_gnomad_af / filter_vaf)
+  │    ├─ FILTER_CNV_SAMPLES_{CNA,SEG}       (filter_cnv_depth)
   │    └─ DEANON_{MUTATIONS,SV,CNA,SEG}
   │
   ├─ STUDY_METADATA (subworkflow) ── clinical files + meta + case lists
@@ -72,6 +77,15 @@ ch_samplesheet
 - **CNA** → `format_cna.py --min-copy-number --confidence`: keep rows with `Confidence == cna_confidence` (HIGH, case-insensitive) and raw `Copy Number >= cna_min_copy_number` (6, before the half-up rounding). Every deletion is dropped and every kept gene is Value 2.
 - **Fusions** → FORMAT_SV ignores any `*-star-fusion.final.vcf` and runs `format_tsv_to_sv.py --min-supporting-reads`: `Supporting Reads` summed per `(Genes, Breakend Genes)` pair (`N/A` = 0), and every row of a pair whose total is `>= sv_min_supporting_reads` (1000) is kept.
 - A missing `Depth`/`VAF`/`Confidence` column fails the task in filter mode. `data_seg.txt` is never filtered.
+
+FILTER_MUTATIONS runs `bin/filter_mutations.py` (it used to be an inline awk program).
+
+**Post-merge filters** (all off by default; each a param). They run in MERGE_DEANON on the merged, not yet remapped files, so unlike filter mode they also re-filter samples cached in `--outdir`:
+
+- **gnomAD** (`filter_gnomad_af`, `max_gnomad_af` 0.5, `gnomad_af_columns` `gnomADe_AF,gnomADg_AF`): ANNOTATE_GNOMAD fetches the frequencies from Genome Nexus (see **gnomAD** below), then FILTER_MUTATIONS_AF (`bin/filter_mutations_af.py`) drops a mutation whose highest listed gnomAD AF is `> max_gnomad_af`.
+- **VAF** (`filter_vaf`, `max_vaf` 0.5): drops a mutation whose `t_alt_count / t_depth > max_vaf`.
+- Both: thresholds are strict (`=` is kept); blank/`.`/non-numeric values and `t_depth` 0 never drop a row; a missing column (stub MAF, older cached samples) skips that criterion with a warning.
+- **CNV depth QC** (`filter_cnv_depth`, `cnv_min_depth` 250, `cnv_min_depth_fraction` 0.95, `cnv_depth_pass_only` true): CNV_DEPTH_QC (`bin/cnv_depth_qc.py`) runs on **every** samplesheet sample (cheap: reads the Pisces VCF) and writes `qc/cnv_depth_qc.tsv`. A sample passes when at least that fraction of its (PASS) Pisces records have depth (FORMAT/DP, else INFO/DP) `>= cnv_min_depth`; no countable records = FAIL. FILTER_CNV_SAMPLES drops a failed sample's rows from `data_cna.txt` / `data_seg.txt` (sample column found by header name) and WRITE_CASE_LISTS leaves it out of `cases_cna.txt` and `cases_cnaseq.txt` only, so cBioPortal shows it as not profiled for CNA. Mutations and SVs are kept. The failed IDs travel as a `val` list (no file), `[]` when the filter is off.
 
 ---
 
@@ -102,9 +116,9 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 1. `analysis_*_export.tsv` → FORMAT_SV → `_sv.txt` (`Variant Subtype = FUSION`)
 2. `analysis_*_export.tsv` → FORMAT_CNA → `_cna.txt` (`DUPLICATION`/`DELETION`)
 3. VCF → MAFSMITH (mafsmith + fastVEP, GRCh37, PASS only; header on line 1, `chr` prefix kept) → FILTER_MUTATIONS or PASSTHROUGH_MUTATIONS → `_mutations.txt`
-4. `*-cnv.final.vcf` → VCF_TO_SEG → `_seg.txt` (PASS only; `seg.mean = log2(CN/2)`; CN=0 → −3.0)
+4. `*-cnv.final.vcf` → VCF_TO_SEG → `_seg.txt` (PASS only; `seg.mean` per `seg_mean_mode`, see below)
 
-**Downstream** (re-runs on every execution over all samples): 5. FILTER_LINKING → linking filtered to samplesheet samples only 6. MERGE → DEANON → `data_mutations.txt`, `data_sv.txt`, `data_cna.txt`, `data_seg.txt` 7. CLINICAL_PATIENTS / CLINICAL_SAMPLES → filtered to samplesheet patients/samples 8. WRITE_CASE_LISTS + WRITE_META 9. PACKAGE_CBIOPORTAL → `{study_id}.tar.gz`
+**Downstream** (re-runs on every execution over all samples): 5. FILTER_LINKING → linking filtered to samplesheet samples only 6. MERGE → post-merge filters → DEANON → `data_mutations.txt`, `data_sv.txt`, `data_cna.txt`, `data_seg.txt` (only with `include_seg`) 7. CLINICAL_PATIENTS / CLINICAL_SAMPLES → filtered to samplesheet patients/samples 8. WRITE_CASE_LISTS + WRITE_META 9. PACKAGE_CBIOPORTAL → `{study_id}.tar.gz`
 
 ---
 
@@ -116,7 +130,8 @@ The `sample_id` column in the **sample file** must use deanonymized IDs (`deanon
 - **Deanon scripts** read with `dtype=str, keep_default_na=False`, so values (including `NA`) round-trip unchanged and numeric-looking IDs don't crash `.str.upper()`.
 - **Case lists** carry `case_list_category`; `cases_cnaseq.txt` (`all_cases_with_mutation_and_cna_data`) is written for OncoPrint. `PACKAGE_CBIOPORTAL` copies `case_lists` with `cp -rL`: it is staged as a symlink, and plain `cp -r` packed a dangling link instead of the files.
 - CNA copy-number mapping: the copy number is rounded half-up, then `≤0→-2, 1→-1, 3→1, ≥4→2`; CN=2 is normal and dropped. Multi-gene `Genes` cells (`,`/`;`) give one row per gene; duplicate genes keep the most extreme value.
-- `vcf_to_seg.py` reads `CN` by its FORMAT key (FORMAT may be `CN` or e.g. `GT:CN`) and accepts `.vcf.gz`. **Open question:** it writes the raw copy number as `seg.mean`, while `meta_seg.txt` and the docstring say `log2(CN/2)`.
+- `vcf_to_seg.py` reads `CN` by its FORMAT key (FORMAT may be `CN` or e.g. `GT:CN`) and accepts `.vcf.gz`. `--mode` (`seg_mean_mode`): `log2` (default) writes `log2(CN/2)` (CN=0 → −3.0) and **keeps CN=2 segments** (seg.mean 0); `cn` writes the raw copy number and drops CN=2 (the previous behaviour). Per-sample `_seg.txt` files are cached: delete `{outdir}/samples/*/*_seg.txt` after changing the mode.
+- **SEG export is off by default** (`include_seg=false`). cBioPortal computes the *Fraction Genome Altered* sample attribute from SEG data on import (no importer switch; the validator rejects a `FRACTION_GENOME_ALTERED` clinical column). With raw-CN `seg.mean` and CN=2 dropped every segment exceeds the 0.2 threshold, so FGA was 1 for every sample; and for a ~19-gene amplicon panel FGA is not meaningful anyway. With `include_seg=false`, VCF_TO_SEG still runs (the incremental check needs `_seg.txt`), but MERGE_SEG/DEANON_SEG are skipped and `format_meta.py --no-seg` skips `meta_seg.txt`. A study already imported with SEG keeps its FGA values until it is deleted and re-imported.
 - `data_cna.txt` is long format (`Hugo_Symbol, Sample_Id, Value`); `meta_cna.txt` uses `datatype: DISCRETE_LONG`.
 - All deanon scripts warn on unmatched IDs but leave them unchanged.
 - `vcf_to_seg.py` sets `num.mark=1` (ampliseq VCFs carry no probe-count).
@@ -130,6 +145,14 @@ Two process labels control container assignment in `nextflow.config`:
 - `mafsmith` → `params.mafsmith_container` (mafsmith + fastVEP, built from `containers/mafsmith-fastvep_v0.1.0-0.4.0.def`)
 
 `params.mafsmith_data` (optional) is the mafsmith home with `GRCh37/{reference.fa,genes.gff3.gz}`. If it is null, empty or the string `"null"`, `DOWNLOAD_MAFSMITH` fetches it once into `assets/mafsmith` (storeDir). Either bundle then goes through **`PREPARE_MAFSMITH`** once per run, before any `MAFSMITH` task, which completes it in place: (1) it writes `GRCh37/reference.fa.fai` with an awk faidx, because `mafsmith fetch` never writes one and `mafsmith vcf2maf` fails without it (`Cannot read FASTA index`); (2) it decompresses `genes.gff3.gz` → `genes.gff3` atomically, and redoes it when the size doesn't match the `.gz`. mafsmith decompresses on first use only if `genes.gff3` is absent, non-atomically, so parallel tasks used to read a half-written GFF and silently lose annotation (`-`/`IGR`, no error). The rewrite's new mtime makes fastVEP rebuild `genes.gff3.fastvep.cache`, whose writes are atomic and checked by mtime. Both steps write into the bundle, so it must be writable. `MAFSMITH` fails early if `reference.fa`, `reference.fa.fai` or `genes.gff3.gz` is missing or empty, unless `ext.args` contains `--skip-annotation` (the module test relies on this). **Gotcha:** `-stub-run` with `skip_vcf2maf=false` stores an _empty_ `assets/mafsmith`, which storeDir then reuses; delete it after stub runs. **Contig naming:** the bundle is assumed to use `mafsmith fetch` (Ensembl) naming: `1, 2, X, MT`. mafsmith refuses a VCF whose contigs are not in the FASTA (`VCF chromosome 'chr1' was not found in the FASTA index`); the GFF's naming does not matter (verified on real Ensembl GRCh37 chr12). `MAFSMITH` therefore strips `chr` from the PASS VCF (records + `##contig`, `chrM`→`MT`) and puts it back on the MAF `Chromosome` column (`MT`→`chrM`) when the source VCF was chr-prefixed, as Pisces VCFs are. A pre-staged `--mafsmith_data` with chr-named FASTA is not supported. `Entrez_Gene_Id` is always 0 with mafsmith/fastVEP (no Entrez source). **Nirvana CSQ fields:** ampliseq/Pisces VCFs come Nirvana-annotated with INFO `CSQR`/`CSQT`. mafsmith 0.1.0 finds fastVEP's header with `contains("ID=CSQ")` (first match wins), so it parsed fastVEP's annotations with CSQR's 3-field layout and every row came out `Hugo_Symbol=Unknown` / `Targeted_Region`. `MAFSMITH` therefore drops all `CSQ*` INFO headers and values from the PASS VCF. fastVEP writes a fresh `CSQ` of its own, so nothing is lost; the `SAMPLE_NIRVANA` fixture covers this. Otherwise, all-`Unknown`/`Targeted_Region` output means `--skip-annotation` (no CSQ header). With annotation on, a record without CSQ is dropped, an intergenic one gets `-`/`IGR`, and a transcript without SYMBOL gets its `ENST` ID. Incremental runs never re-annotate: samples whose four per-sample files exist in `--outdir` are skipped and their old `_mutations.txt` merged as-is. Mutation_Status stays blank (tumor-only). `MERGE_MUTATIONS` merges per-sample files by column name, so older vcf2maf-era files (different columns) still merge correctly.
+
+### gnomAD
+
+fastVEP has no population-frequency source, so with `filter_gnomad_af` the merged MAF goes through **ANNOTATE_GNOMAD** (`bin/annotate_gnomad.py`) before FILTER_MUTATIONS_AF. It POSTs each distinct variant (MAF `Chromosome` without `chr`, `Start_Position`, `End_Position`, `Reference_Allele`, `Tumor_Seq_Allele2`; MAF-style `-` alleles work) in batches of 200 to `${genome_nexus_url}/annotation/genomic?fields=my_variant_info`, the service cBioPortal uses for its own gnomAD column. Results are matched back on `originalVariantQuery` (`chrom,start,end,ref,alt`) and written as `gnomADe_AF` / `gnomADg_AF` (`my_variant_info.annotation.gnomad{Exome,Genome}.alleleFrequency.af`, gnomAD v2.1.1, GRCh37; empty when gnomAD never saw the variant). The columns stay in `data_mutations.txt`.
+
+- **Network:** the task needs outbound HTTPS. Only coordinates and alleles leave the cluster, never sample IDs. After 3 failed attempts it exits non-zero instead of writing an unannotated file (an empty gnomAD column would let everything through). A header-only MAF makes no request.
+- **Server:** `genome_nexus_url` defaults to the public `https://www.genomenexus.org` (GRCh37); a self-hosted Genome Nexus also works.
+- **Re-fetched every run** over the merged file, so cached samples are covered. Test: `tests/modules/annotate_gnomad.nf.test` (tag `network`, public TP53 P72R).
 
 Container definitions live in `containers/`. See `containers/README.md` for local build, `--mafsmith_container <local.sif>`, and the push/tag convention. ghcr images are private, so pulls need `apptainer registry login`.
 
@@ -150,7 +173,7 @@ A sample is skipped if all four per-sample files exist under `{outdir}/samples/{
 
 Merge/deanon/clinical steps always re-run over all samples combined. Use the same `--outdir` across runs.
 
-**Filter mode is applied per sample**, so switching `--filter_tsv_variants` or changing a threshold does not touch samples already in `--outdir`: use a fresh `--outdir` (or delete `samples/<id>/`) to re-filter them.
+**Filter mode is applied per sample**, so switching `--filter_tsv_variants` or changing a threshold does not touch samples already in `--outdir`: use a fresh `--outdir` (or delete `samples/<id>/`) to re-filter them. The post-merge filters (gnomAD, VAF, CNV depth QC), the gnomAD lookup and `include_seg` apply to cached samples too.
 
 ---
 
@@ -162,7 +185,10 @@ All Python scripts write output relative to `os.getcwd()` — run from the targe
 cd /path/to/output
 python3 /path/to/bin/format_tsv_to_sv.py    <export.tsv>  <SAMPLE_ID>
 python3 /path/to/bin/format_cna.py    <export.tsv>  <SAMPLE_ID>
-python3 /path/to/bin/vcf_to_seg.py    <cnv.vcf>     <SAMPLE_ID>
+python3 /path/to/bin/vcf_to_seg.py    <cnv.vcf>     <SAMPLE_ID> [--mode log2|cn]
+python3 /path/to/bin/filter_mutations.py <maf> <export.tsv> <out> <min_depth> <min_vaf>
+python3 /path/to/bin/filter_mutations_af.py <maf> --out <out> [--max-gnomad-af X] [--max-vaf Y]
+python3 /path/to/bin/cnv_depth_qc.py  <pisces.vcf[.gz]> <SAMPLE_ID> [--min-depth 250] [--min-fraction 0.95] [--pass-only]
 python3 /path/to/bin/format_mutations.py data_mutations.txt <linking_file>
 python3 /path/to/bin/format_sv.py       data_sv.txt         <linking_file>
 python3 /path/to/bin/format_cna_deanon.py data_cna.txt      <linking_file>

@@ -9,7 +9,8 @@ process WRITE_META {
     path("meta_*.txt")
 
     script:
+    def no_seg = params.include_seg.toString().toBoolean() ? '' : '--no-seg'
     """
-    format_meta.py "${study_id}"
+    format_meta.py "${study_id}" ${no_seg}
     """
 }

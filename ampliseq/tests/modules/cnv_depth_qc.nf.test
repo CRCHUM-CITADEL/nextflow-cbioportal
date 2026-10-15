@@ -1,0 +1,61 @@
+nextflow_process {
+
+    name "Test CNV_DEPTH_QC"
+    script "modules/local/cnv_depth_qc/main.nf"
+    process "CNV_DEPTH_QC"
+    tag "module"
+    tag "cna"
+
+    // 20 PASS records: 19 at DP 300 and 1 at DP 100 → 0.95 at >= 250, exactly the threshold.
+    // A non-PASS record at DP 10 is ignored with cnv_depth_pass_only (default).
+    test("PASS at exactly 95% of PASS variants with depth >= 250") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                def dir = file("${params.outdir}/S_PASS")
+                dir.mkdirs()
+                def records = (1..19).collect { "chr1\\t\${it}\\t.\\tA\\tT\\t50\\tPASS\\t.\\tGT:DP\\t0/1:300" } +
+                    ["chr1\\t100\\t.\\tA\\tT\\t50\\tPASS\\t.\\tGT:DP\\t0/1:100",
+                     "chr1\\t101\\t.\\tA\\tT\\t50\\tLowDP\\t.\\tGT:DP\\t0/1:10"]
+                file("\${dir}/S_PASS-basespace-pisces.final.vcf").text =
+                    '##fileformat=VCFv4.2\\n#CHROM\\tPOS\\tID\\tREF\\tALT\\tQUAL\\tFILTER\\tINFO\\tFORMAT\\tS\\n' +
+                    records.join('\\n') + '\\n'
+                input[0] = Channel.of([[sample_id: 'S_PASS'], dir])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).text.trim() == 'S_PASS\t20\t19\t0.9500\tPASS'
+        }
+    }
+
+    test("FAIL below the threshold; depth falls back to INFO/DP") {
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                cnv_depth_pass_only = false
+            }
+            process {
+                """
+                def dir = file("${params.outdir}/S_FAIL")
+                dir.mkdirs()
+                file("\${dir}/S_FAIL-basespace-pisces.final.vcf").text =
+                    '##fileformat=VCFv4.2\\n#CHROM\\tPOS\\tID\\tREF\\tALT\\tQUAL\\tFILTER\\tINFO\\tFORMAT\\tS\\n' +
+                    'chr1\\t1\\t.\\tA\\tT\\t50\\tPASS\\tDP=400\\tGT\\t0/1\\n' +
+                    'chr1\\t2\\t.\\tA\\tT\\t50\\tLowDP\\t.\\tGT:DP\\t0/1:10\\n'
+                input[0] = Channel.of([[sample_id: 'S_FAIL'], dir])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).text.trim() == 'S_FAIL\t2\t1\t0.5000\tFAIL'
+        }
+    }
+}

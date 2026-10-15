@@ -10,6 +10,7 @@ include { STUDY_METADATA     } from '../subworkflows/local/study_metadata/main'
 include { FILTER_LINKING     } from '../modules/local/filter_linking/main'
 include { BUILD_ANON_LINKING } from '../modules/local/build_anon_linking/main'
 include { PACKAGE_CBIOPORTAL } from '../modules/local/package_cbioportal/main'
+include { CNV_DEPTH_QC       } from '../modules/local/cnv_depth_qc/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,6 +101,35 @@ workflow AMPLISEQ_CBIOPORTAL {
     ch_output_linking = ch_filtered_linking
 
     // -------------------------------------------------------------------------
+    // CNV depth QC (all samples, incl. cached ones): samples where fewer than
+    // cnv_min_depth_fraction of Pisces variants reach cnv_min_depth have their
+    // CNV calls dropped and are left out of the CNA case lists
+    // -------------------------------------------------------------------------
+    if (params.filter_cnv_depth.toString().toBoolean()) {
+        CNV_DEPTH_QC(ch_samples.map { meta, tsv, folder -> tuple(meta, folder) })
+
+        CNV_DEPTH_QC.out.collectFile(
+            name: 'cnv_depth_qc.tsv',
+            storeDir: "${params.outdir}/qc",
+            seed: "sample_id\tn_variants\tn_ge_min_depth\tfraction\tstatus\n",
+            sort: { it.name }
+        )
+
+        ch_cnv_failed_ids = CNV_DEPTH_QC.out
+            .map { f -> f.text.trim().split('\t') }
+            .filter { cols -> cols[4] == 'FAIL' }
+            .map { cols -> cols[0] }
+
+        ch_cnv_failed_ids.subscribe { id ->
+            log.info "CNV depth QC failed, dropping CNV calls for: ${id}"
+        }
+
+        ch_cnv_failed = ch_cnv_failed_ids.collect().ifEmpty([])
+    } else {
+        ch_cnv_failed = Channel.value([])
+    }
+
+    // -------------------------------------------------------------------------
     // Collect: merge new + existing outputs, then remap sample IDs
     // -------------------------------------------------------------------------
     MERGE_DEANON(
@@ -107,7 +137,8 @@ workflow AMPLISEQ_CBIOPORTAL {
         PER_SAMPLE_FORMAT.out.cna.mix(ch_existing_cna).collect(),
         PER_SAMPLE_FORMAT.out.mutations.mix(ch_existing_mutations).collect(),
         PER_SAMPLE_FORMAT.out.seg.mix(ch_existing_seg).collect(),
-        ch_output_linking
+        ch_output_linking,
+        ch_cnv_failed
     )
 
     // -------------------------------------------------------------------------
@@ -118,6 +149,7 @@ workflow AMPLISEQ_CBIOPORTAL {
         Channel.fromPath(params.sample_file),
         ch_filtered_linking,
         ch_output_linking,
+        ch_cnv_failed,
         params.study_id
     )
 

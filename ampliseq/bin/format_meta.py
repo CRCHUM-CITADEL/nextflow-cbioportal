@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
 Generate cBioPortal meta files for all data types.
-Usage: python3 format_meta.py <study_id> [out_dir]
+Usage: python3 format_meta.py <study_id> [out_dir] [--no-seg]
+
+--no-seg skips meta_seg.txt. Without segment data cBioPortal does not compute
+Fraction Genome Altered.
 """
 
-import sys
+import argparse
 import os
 
 TEMPLATES = {
@@ -74,16 +77,20 @@ reference_genome_id: hg19
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <study_id> [out_dir]", file=sys.stderr)
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('study_id')
+    parser.add_argument('out_dir', nargs='?', default='.')
+    parser.add_argument('--no-seg', action='store_true')
+    args = parser.parse_args()
 
-    study_id = sys.argv[1]
-    out_dir = sys.argv[2] if len(sys.argv) > 2 else "."
+    study_id = args.study_id
+    out_dir = args.out_dir
 
     os.makedirs(out_dir, exist_ok=True)
 
     for filename, template in TEMPLATES.items():
+        if args.no_seg and filename == "meta_seg.txt":
+            continue
         path = os.path.join(out_dir, filename)
         with open(path, "w") as f:
             f.write(template.format(study_id=study_id))

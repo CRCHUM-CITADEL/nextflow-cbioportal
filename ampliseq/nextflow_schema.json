@@ -132,6 +132,70 @@
             "type": "string",
             "format": "file-path",
             "description": "Path to reference FASTA for VEP annotation (hg19)."
+        },
+        "filter_gnomad_af": {
+            "type": "boolean",
+            "default": false,
+            "description": "Drop mutations whose gnomAD allele frequency is above max_gnomad_af. Frequencies (gnomAD v2.1.1 exomes and genomes) are fetched from Genome Nexus; only variant coordinates and alleles are sent."
+        },
+        "max_gnomad_af": {
+            "type": "number",
+            "default": 0.5,
+            "description": "gnomAD AF threshold for filter_gnomad_af (rows with AF > this are removed)."
+        },
+        "gnomad_af_columns": {
+            "type": "string",
+            "default": "gnomADe_AF,gnomADg_AF",
+            "description": "Comma-separated MAF columns compared by filter_gnomad_af (highest value present)."
+        },
+        "genome_nexus_url": {
+            "type": "string",
+            "default": "https://www.genomenexus.org",
+            "description": "Genome Nexus base URL (GRCh37) used to fetch gnomAD frequencies for filter_gnomad_af."
+        },
+        "filter_vaf": {
+            "type": "boolean",
+            "default": false,
+            "description": "Drop mutations whose VAF (t_alt_count / t_depth) is above max_vaf."
+        },
+        "max_vaf": {
+            "type": "number",
+            "default": 0.5,
+            "description": "VAF threshold for filter_vaf (rows with VAF > this are removed)."
+        },
+        "filter_cnv_depth": {
+            "type": "boolean",
+            "default": false,
+            "description": "Drop a sample's CNV calls unless cnv_min_depth_fraction of its Pisces variants have depth >= cnv_min_depth."
+        },
+        "cnv_min_depth": {
+            "type": "integer",
+            "default": 250,
+            "description": "Minimum variant depth for the CNV depth QC."
+        },
+        "cnv_min_depth_fraction": {
+            "type": "number",
+            "default": 0.95,
+            "description": "Fraction of variants that must reach cnv_min_depth for a sample's CNV calls to be kept."
+        },
+        "cnv_depth_pass_only": {
+            "type": "boolean",
+            "default": true,
+            "description": "Count only PASS records of the Pisces VCF in the CNV depth QC."
+        },
+        "include_seg": {
+            "type": "boolean",
+            "default": false,
+            "description": "Write data_seg.txt and meta_seg.txt. cBioPortal derives Fraction Genome Altered from SEG data, so this is off by default."
+        },
+        "seg_mean_mode": {
+            "type": "string",
+            "default": "log2",
+            "enum": [
+                "log2",
+                "cn"
+            ],
+            "description": "seg.mean: 'log2' = log2(CN/2) with CN=2 segments kept; 'cn' = raw CN with CN=2 dropped."
         }
     }
 }

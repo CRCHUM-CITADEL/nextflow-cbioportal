@@ -110,28 +110,15 @@
             "type": "string",
             "description": "Path to python-ampliseq Apptainer SIF image."
         },
-        "skip_vcf2maf": {
+        "skip_mafsmith": {
             "type": "boolean",
             "default": false,
-            "description": "Skip VCF to MAF conversion and use stub MAFs instead."
+            "description": "Skip mafsmith VCF to MAF conversion and use stub MAFs instead."
         },
         "filter_tsv_variants": {
             "type": "boolean",
             "default": false,
             "description": "When true, filter mutations by TSV coordinates; when false, pass all MAF mutations through."
-        },
-        "vcf2maf_container": {
-            "type": "string",
-            "description": "Container image for vcf2maf + ensembl-vep."
-        },
-        "vep_data": {
-            "type": "string",
-            "description": "Path to VEP cache data directory."
-        },
-        "ref_fasta": {
-            "type": "string",
-            "format": "file-path",
-            "description": "Path to reference FASTA for VEP annotation (hg19)."
         },
         "filter_gnomad_af": {
             "type": "boolean",

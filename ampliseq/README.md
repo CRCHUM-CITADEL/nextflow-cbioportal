@@ -69,12 +69,12 @@ VCF → MAF uses [mafsmith](https://github.com/nf-osi/mafsmith) + fastVEP (GRCh3
 
 `--mafsmith_data` is optional. When it is omitted, empty or `null`, the GRCh37 reference bundle (Ensembl 113) is downloaded once into `assets/mafsmith/` and reused by later runs. A pre-staged bundle must contain `GRCh37/reference.fa` and `GRCh37/genes.gff3.gz`. `MAFSMITH` fails if either file is missing or empty.
 
-> A `-stub-run` with `--skip_vcf2maf false` stores an **empty** `assets/mafsmith/`. Delete it afterwards, or later real runs will reuse it and fail on the missing reference files.
+> A `-stub-run` with `--skip_mafsmith false` stores an **empty** `assets/mafsmith/`. Delete it afterwards, or later real runs will reuse it and fail on the missing reference files.
 
 Skip VCF → MAF conversion if MAFs already exist:
 
 ```bash
-nextflow run main.nf ... --skip_vcf2maf true
+nextflow run main.nf ... --skip_mafsmith true
 ```
 
 Filter mode applies QC thresholds using the sample's `analysis_*_export.tsv`. By default it is off and everything is kept:
@@ -86,7 +86,7 @@ nextflow run main.nf ... --filter_tsv_variants true
 | Data      | Kept in filter mode                                                                                              | Params (default)                                          |
 | --------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Mutations | Position overlaps a TSV row with `Depth` ≥ 250 and `VAF` > 0.03 (`chr` prefix ignored)                           | `--mutation_min_depth` (250), `--mutation_min_vaf` (0.03) |
-| CNAs      | `Confidence` = HIGH and raw `Copy Number` ≥ 6, so all deletions are dropped                                      | `--cna_confidence` (HIGH), `--cna_min_copy_number` (6)    |
+| CNAs      | Raw `Copy Number` ≥ 6, so all deletions are dropped                                                              | `--cna_min_copy_number` (6)                               |
 | Fusions   | Taken from the TSV, even when a `*-star-fusion.final.vcf` exists. `Supporting Reads` summed per gene pair ≥ 1000 | `--sv_min_supporting_reads` (1000)                        |
 
 `data_seg.txt` is not filtered. Filter mode runs per sample, so samples already in `--outdir` are not re-filtered. Use a fresh `--outdir` when you turn it on or change a threshold.
@@ -138,7 +138,7 @@ The ghcr images are private; log in first with `apptainer registry login`. To bu
 
 ```bash
 ./nf-test test tests/modules --profile=+apptainer   # all module tests (MAFSMITH pulls the mafsmith image)
-nextflow run main.nf -profile test,apptainer        # end-to-end on assets/ test data (skip_vcf2maf=true)
+nextflow run main.nf -profile test,apptainer        # end-to-end on assets/ test data (skip_mafsmith=true)
 ```
 
 ### Incremental runs

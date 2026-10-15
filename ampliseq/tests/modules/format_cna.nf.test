@@ -37,8 +37,8 @@ nextflow_process {
         }
     }
 
-    // Raw CN (before rounding) is compared, so 5.9 is dropped
-    test("Filter mode keeps HIGH-confidence rows with Copy Number >= 6 only") {
+    // Raw CN (before rounding) is compared, so 5.9 is dropped. Confidence is not used.
+    test("Filter mode keeps rows with Copy Number >= 6 only") {
 
         when {
             params {
@@ -66,11 +66,11 @@ nextflow_process {
             def lines = path(process.out[0][0].toString()).readLines()
             assert lines[0] == 'Hugo_Symbol\tSample_Id\tValue'
             def values = lines.drop(1).collectEntries { l -> def f = l.split('\t'); [f[0], f[2]] }
-            assert values == [MYC: '2', ERBB2: '2']
+            assert values == [MYC: '2', ERBB2: '2', CDK4: '2']
         }
     }
 
-    test("Filter mode fails when the TSV has no Confidence column") {
+    test("Filter mode does not need a Confidence column") {
 
         when {
             params {
@@ -89,8 +89,8 @@ nextflow_process {
         }
 
         then {
-            assert process.failed
-            assert workflow.stdout.any { it.contains('lacks column(s) Confidence') }
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tSample_Id\tValue', 'MYC\tS\t2']
         }
     }
 }

@@ -93,15 +93,15 @@ nextflow run main.nf ... --filter_tsv_variants true
 
 Optional filters on the merged data. They are off by default and, unlike filter mode, also apply to samples already in `--outdir`:
 
-| Filter       | Drops                                                                                                                                                            | Params (default)                                                                                       |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| gnomAD       | Mutations with gnomAD allele frequency > 0.5 (higher of exome and genome), fetched from Genome Nexus (see [gnomAD frequencies](#gnomad-frequencies))              | `--filter_gnomad_af` (false), `--max_gnomad_af` (0.5), `--gnomad_af_columns` (`gnomADe_AF,gnomADg_AF`) |
-| VAF          | Mutations with VAF (`t_alt_count / t_depth`) > 0.5                                                                                                               | `--filter_vaf` (false), `--max_vaf` (0.5)                                                              |
+| Filter       | Drops                                                                                                                                                     | Params (default)                                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| gnomAD       | Mutations with gnomAD allele frequency > 0.5 (exomes + genomes combined), fetched from Genome Nexus (see [gnomAD frequencies](#gnomad-frequencies))       | `--filter_gnomad_af` (false), `--max_gnomad_af` (0.5), `--gnomad_af_columns` (`gnomAD.AF`)                               |
+| VAF          | Mutations with VAF (`t_alt_count / t_depth`) > 0.5                                                                                                        | `--filter_vaf` (false), `--max_vaf` (0.5)                                                                                |
 | CNV depth QC | A sample's CNV calls, unless ≥ 95% of its PASS Pisces variants have depth ≥ 250. The sample is left out of the CNA case lists; mutations and SVs are kept | `--filter_cnv_depth` (false), `--cnv_min_depth` (250), `--cnv_min_depth_fraction` (0.95), `--cnv_depth_pass_only` (true) |
 
 Values equal to a threshold are kept, and missing values never drop a mutation. The CNV depth QC writes `qc/cnv_depth_qc.tsv`.
 
-Segment data (`data_seg.txt`, `meta_seg.txt`) is off by default. cBioPortal computes *Fraction Genome Altered* from it, which is not meaningful for an amplicon panel:
+Segment data (`data_seg.txt`, `meta_seg.txt`) is off by default. cBioPortal computes _Fraction Genome Altered_ from it, which is not meaningful for an amplicon panel:
 
 ```bash
 nextflow run main.nf ... --include_seg true [--seg_mean_mode log2|cn]
@@ -111,7 +111,9 @@ nextflow run main.nf ... --include_seg true [--seg_mean_mode log2|cn]
 
 #### gnomAD frequencies
 
-With `--filter_gnomad_af true`, the pipeline looks up each mutation in [Genome Nexus](https://www.genomenexus.org), the service cBioPortal uses for its own gnomAD column, and adds two columns to `data_mutations.txt`: `gnomADe_AF` (gnomAD v2.1.1 exomes) and `gnomADg_AF` (genomes). A mutation is dropped when the higher of the two is above `--max_gnomad_af`; one gnomAD has never seen is kept.
+With `--filter_gnomad_af true`, the pipeline looks up each mutation in [Genome Nexus](https://www.genomenexus.org), the service cBioPortal uses for its own gnomAD column, and adds three columns to `data_mutations.txt`: `gnomADe_AF` (gnomAD v2.1.1 exomes), `gnomADg_AF` (genomes) and `gnomAD.AF` (both combined, the value cBioPortal shows). `gnomAD.AF` also appears as a column in the cBioPortal mutation table. A mutation is dropped when `gnomAD.AF` is above `--max_gnomad_af`; one gnomAD has never seen is kept. Use `--gnomad_af_columns gnomADe_AF,gnomADg_AF` to drop on the higher of exomes and genomes instead.
+
+- Genome Nexus sometimes answers without the gnomAD data. Such variants are asked again (up to two more times) before being treated as absent from gnomAD, which can add up to 30 s to the step.
 
 - The step needs **outbound HTTPS** from the node it runs on. If Genome Nexus can't be reached, the run fails rather than keeping every mutation.
 - Only the variant (chromosome, positions, alleles) is sent, never sample or patient IDs.

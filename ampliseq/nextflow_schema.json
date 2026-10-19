@@ -132,8 +132,8 @@
         },
         "gnomad_af_columns": {
             "type": "string",
-            "default": "gnomADe_AF,gnomADg_AF",
-            "description": "Comma-separated MAF columns compared by filter_gnomad_af (highest value present)."
+            "default": "gnomAD.AF",
+            "description": "Comma-separated MAF columns compared by filter_gnomad_af (highest value present). gnomAD.AF is exomes + genomes combined, as cBioPortal shows it; gnomADe_AF,gnomADg_AF uses the higher of the two."
         },
         "genome_nexus_url": {
             "type": "string",
@@ -178,10 +178,7 @@
         "seg_mean_mode": {
             "type": "string",
             "default": "log2",
-            "enum": [
-                "log2",
-                "cn"
-            ],
+            "enum": ["log2", "cn"],
             "description": "seg.mean: 'log2' = log2(CN/2) with CN=2 segments kept; 'cn' = raw CN with CN=2 dropped."
         }
     }

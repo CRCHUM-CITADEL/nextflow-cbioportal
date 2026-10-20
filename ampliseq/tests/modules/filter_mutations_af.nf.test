@@ -6,15 +6,16 @@ nextflow_process {
     tag "module"
     tag "filter"
 
-    // Thresholds are strict: AF / VAF equal to the threshold are kept. The higher of the
-    // exome and genome AF counts. Missing values (blank, '.') and t_depth 0 never remove a row.
+    // Thresholds are strict: AF / VAF equal to the threshold are kept. With both columns listed
+    // the higher of exome and genome AF counts. Missing values (blank, '.') and t_depth 0 never remove a row.
     test("Drops mutations with gnomAD AF > 0.5 or VAF > 0.5") {
 
         when {
             params {
-                outdir           = "$outputDir"
-                filter_gnomad_af = true
-                filter_vaf       = true
+                outdir            = "$outputDir"
+                filter_gnomad_af  = true
+                filter_vaf        = true
+                gnomad_af_columns = 'gnomADe_AF,gnomADg_AF'
             }
             process {
                 """
@@ -36,6 +37,34 @@ nextflow_process {
             assert process.success
             def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
             assert kept == ['AT_THRESHOLD', 'MISSING', 'ZERO_DEPTH']
+        }
+    }
+
+    // Default: the combined exomes + genomes value (gnomAD.AF), as cBioPortal shows it
+    test("Filters on the combined gnomAD.AF by default") {
+
+        when {
+            params {
+                outdir           = "$outputDir"
+                filter_gnomad_af = true
+            }
+            process {
+                """
+                file("${params.outdir}/af_inputs").mkdirs()
+                file("${params.outdir}/af_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tgnomADe_AF\\tgnomADg_AF\\tgnomAD.AF\\n' +
+                    'COMBINED_HIGH\\t0.668165\\t0.620657\\t0.662887\\n' +
+                    'COMBINED_AT\\t0.52\\t0.4\\t0.5\\n' +
+                    'NOT_IN_GNOMAD\\t\\t\\t\\n'
+                input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
+            assert kept == ['COMBINED_AT', 'NOT_IN_GNOMAD']
         }
     }
 

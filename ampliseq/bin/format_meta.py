@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
 Generate cBioPortal meta files for all data types.
-Usage: python3 format_meta.py <study_id> [out_dir] [--no-seg]
+Usage: python3 format_meta.py <study_id> [out_dir] [--no-seg] [--namespaces a,b]
 
 --no-seg skips meta_seg.txt. Without segment data cBioPortal does not compute
 Fraction Genome Altered.
+--namespaces adds "namespaces: a,b" to meta_mutations.txt, so cBioPortal imports
+and shows the MAF columns prefixed "a." / "b." (e.g. gnomAD.AF).
 """
 
 import argparse
@@ -81,6 +83,7 @@ def main():
     parser.add_argument('study_id')
     parser.add_argument('out_dir', nargs='?', default='.')
     parser.add_argument('--no-seg', action='store_true')
+    parser.add_argument('--namespaces', default='')
     args = parser.parse_args()
 
     study_id = args.study_id
@@ -92,8 +95,11 @@ def main():
         if args.no_seg and filename == "meta_seg.txt":
             continue
         path = os.path.join(out_dir, filename)
+        content = template.format(study_id=study_id)
+        if args.namespaces and filename == "meta_mutations.txt":
+            content += f"namespaces: {args.namespaces}\n"
         with open(path, "w") as f:
-            f.write(template.format(study_id=study_id))
+            f.write(content)
         print(f"Written: {path}")
 
 

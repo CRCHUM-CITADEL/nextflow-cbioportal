@@ -12,6 +12,7 @@ workflow STUDY_METADATA {
     ch_sample_file    // channel: sample file path
     ch_orig_linking   // value channel: original filtered linking file (real IDs)
     ch_output_linking // value channel: linking file for output IDs (anon or orig)
+    ch_cnv_failed     // channel: list of sample IDs that failed CNV depth QC
     study_id          // val: study ID string
 
     main:
@@ -28,7 +29,7 @@ workflow STUDY_METADATA {
         ch_clinical_sample  = CLINICAL_SAMPLES.out
     }
 
-    WRITE_CASE_LISTS(ch_output_linking, study_id)
+    WRITE_CASE_LISTS(ch_output_linking, ch_cnv_failed, study_id)
     WRITE_META(study_id)
 
     emit:

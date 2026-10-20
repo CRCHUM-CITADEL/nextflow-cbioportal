@@ -2,14 +2,14 @@
 """
 Format DUPLICATION/DELETION rows of analysis_<number>_export.tsv into cBioPortal discrete long
 CNA format (Hugo_Symbol, Sample_Id, Value).
-Usage: python format_cna.py <input.tsv> <Sample_Id> [--min-copy-number N --confidence LEVEL]
+Usage: python format_cna.py <input.tsv> <Sample_Id> [--min-copy-number N]
 
 Copy number -> discrete value, after rounding to the nearest integer copy (half-up):
 0 -> -2 (homozygous deletion), 1 -> -1, 2 -> neutral (dropped), 3 -> 1, >=4 -> 2.
 A `Genes` cell listing several genes (comma/semicolon separated) gives one row per gene, and a
 gene seen twice in a sample keeps its most extreme value (cBioPortal rejects duplicate rows).
 
-Filter mode: keep rows with raw Copy Number >= N and Confidence == LEVEL (case-insensitive).
+Filter mode: keep rows with raw Copy Number >= N.
 """
 import argparse
 import math
@@ -38,18 +38,15 @@ def main():
     parser.add_argument('input_file')
     parser.add_argument('sample_id')
     parser.add_argument('--min-copy-number', type=float, default=None)
-    parser.add_argument('--confidence', default=None)
     args = parser.parse_args()
 
     df = pd.read_csv(args.input_file, sep='\t', dtype=str, keep_default_na=False)
     df.columns = df.columns.str.strip()
-    needed = ['Variant Subtype', 'Genes', 'Copy Number'] + (['Confidence'] if args.confidence else [])
+    needed = ['Variant Subtype', 'Genes', 'Copy Number']
     missing = [c for c in needed if c not in df.columns]
     if missing:
         sys.exit(f"ERROR: {args.input_file} lacks column(s) {', '.join(missing)}")
     filtered = df[df['Variant Subtype'].isin(['DUPLICATION', 'DELETION'])]
-    if args.confidence:
-        filtered = filtered[filtered['Confidence'].str.strip().str.upper() == args.confidence.strip().upper()]
 
     best = {}  # gene -> value, most extreme wins
     for _, row in filtered.iterrows():

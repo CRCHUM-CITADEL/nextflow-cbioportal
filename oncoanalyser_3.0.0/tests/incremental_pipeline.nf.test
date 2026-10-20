@@ -93,7 +93,10 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
                 { assert tasks.any { it.contains('MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL') }
                          : "MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL never ran" },
                 // the linking file always describes the full samplesheet cohort
-                { assert path("${params.outdir}/TEST/util_linking_file.txt").readLines().size() == 3 }
+                { assert path("${params.outdir}/TEST/util_linking_file.txt").readLines().size() == 3 },
+                // --incremental: cBioPortal already holds the study and cancer type
+                { assert ['meta_study.txt', 'cancer_type.txt', 'meta_cancer_type.txt'].every { !path("${params.outdir}/TEST/${it}").exists() }
+                         : "--incremental still wrote study-level files" }
             )
         }
     }

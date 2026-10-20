@@ -69,12 +69,12 @@ VCF → MAF uses [mafsmith](https://github.com/nf-osi/mafsmith) + fastVEP (GRCh3
 
 `--mafsmith_data` is optional. When it is omitted, empty or `null`, the GRCh37 reference bundle (Ensembl 113) is downloaded once into `assets/mafsmith/` and reused by later runs. A pre-staged bundle must contain `GRCh37/reference.fa` and `GRCh37/genes.gff3.gz`. `MAFSMITH` fails if either file is missing or empty.
 
-> A `-stub-run` with `--skip_vcf2maf false` stores an **empty** `assets/mafsmith/`. Delete it afterwards, or later real runs will reuse it and fail on the missing reference files.
+> A `-stub-run` with `--skip_mafsmith false` stores an **empty** `assets/mafsmith/`. Delete it afterwards, or later real runs will reuse it and fail on the missing reference files.
 
 Skip VCF → MAF conversion if MAFs already exist:
 
 ```bash
-nextflow run main.nf ... --skip_vcf2maf true
+nextflow run main.nf ... --skip_mafsmith true
 ```
 
 Filter mode applies QC thresholds using the sample's `analysis_*_export.tsv`. By default it is off and everything is kept:
@@ -86,10 +86,38 @@ nextflow run main.nf ... --filter_tsv_variants true
 | Data      | Kept in filter mode                                                                                              | Params (default)                                          |
 | --------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Mutations | Position overlaps a TSV row with `Depth` ≥ 250 and `VAF` > 0.03 (`chr` prefix ignored)                           | `--mutation_min_depth` (250), `--mutation_min_vaf` (0.03) |
-| CNAs      | `Confidence` = HIGH and raw `Copy Number` ≥ 6, so all deletions are dropped                                      | `--cna_confidence` (HIGH), `--cna_min_copy_number` (6)    |
+| CNAs      | Raw `Copy Number` ≥ 6, so all deletions are dropped                                                              | `--cna_min_copy_number` (6)                               |
 | Fusions   | Taken from the TSV, even when a `*-star-fusion.final.vcf` exists. `Supporting Reads` summed per gene pair ≥ 1000 | `--sv_min_supporting_reads` (1000)                        |
 
 `data_seg.txt` is not filtered. Filter mode runs per sample, so samples already in `--outdir` are not re-filtered. Use a fresh `--outdir` when you turn it on or change a threshold.
+
+Optional filters on the merged data. They are off by default and, unlike filter mode, also apply to samples already in `--outdir`:
+
+| Filter       | Drops                                                                                                                                                     | Params (default)                                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| gnomAD       | Mutations with gnomAD allele frequency > 0.5 (exomes + genomes combined), fetched from Genome Nexus (see [gnomAD frequencies](#gnomad-frequencies))       | `--filter_gnomad_af` (false), `--max_gnomad_af` (0.5), `--gnomad_af_columns` (`gnomAD.AF`)                               |
+| VAF          | Mutations with VAF (`t_alt_count / t_depth`) > 0.5                                                                                                        | `--filter_vaf` (false), `--max_vaf` (0.5)                                                                                |
+| CNV depth QC | A sample's CNV calls, unless ≥ 95% of its PASS Pisces variants have depth ≥ 250. The sample is left out of the CNA case lists; mutations and SVs are kept | `--filter_cnv_depth` (false), `--cnv_min_depth` (250), `--cnv_min_depth_fraction` (0.95), `--cnv_depth_pass_only` (true) |
+
+Values equal to a threshold are kept, and missing values never drop a mutation. The CNV depth QC writes `qc/cnv_depth_qc.tsv`.
+
+Segment data (`data_seg.txt`, `meta_seg.txt`) is off by default. cBioPortal computes _Fraction Genome Altered_ from it, which is not meaningful for an amplicon panel:
+
+```bash
+nextflow run main.nf ... --include_seg true [--seg_mean_mode log2|cn]
+```
+
+`log2` (default) writes `log2(CN/2)` and keeps CN=2 segments; `cn` writes the raw copy number and drops CN=2. After changing the mode, delete `{outdir}/samples/*/*_seg.txt`. A study already imported with segment data keeps its FGA values until it is deleted and re-imported.
+
+#### gnomAD frequencies
+
+With `--filter_gnomad_af true`, the pipeline looks up each mutation in [Genome Nexus](https://www.genomenexus.org), the service cBioPortal uses for its own gnomAD column, and adds three columns to `data_mutations.txt`: `gnomADe_AF` (gnomAD v2.1.1 exomes), `gnomADg_AF` (genomes) and `gnomAD.AF` (both combined, the value cBioPortal shows). `gnomAD.AF` also appears as a column in the cBioPortal mutation table. A mutation is dropped when `gnomAD.AF` is above `--max_gnomad_af`; one gnomAD has never seen is kept. Use `--gnomad_af_columns gnomADe_AF,gnomADg_AF` to drop on the higher of exomes and genomes instead.
+
+- Genome Nexus sometimes answers without the gnomAD data. Such variants are asked again (up to two more times) before being treated as absent from gnomAD, which can add up to 30 s to the step.
+
+- The step needs **outbound HTTPS** from the node it runs on. If Genome Nexus can't be reached, the run fails rather than keeping every mutation.
+- Only the variant (chromosome, positions, alleles) is sent, never sample or patient IDs.
+- To use a self-hosted Genome Nexus (GRCh37), set `--genome_nexus_url`.
 
 Boolean flags accept `true`/`false` on the command line. Nextflow 26 passes CLI values as strings, so the pipeline converts them explicitly.
 
@@ -112,7 +140,7 @@ The ghcr images are private; log in first with `apptainer registry login`. To bu
 
 ```bash
 ./nf-test test tests/modules --profile=+apptainer   # all module tests (MAFSMITH pulls the mafsmith image)
-nextflow run main.nf -profile test,apptainer        # end-to-end on assets/ test data (skip_vcf2maf=true)
+nextflow run main.nf -profile test,apptainer        # end-to-end on assets/ test data (skip_mafsmith=true)
 ```
 
 ### Incremental runs

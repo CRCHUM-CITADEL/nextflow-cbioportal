@@ -1,0 +1,123 @@
+nextflow_process {
+
+    name "Test FILTER_MUTATIONS_AF"
+    script "modules/local/filter_mutations_af/main.nf"
+    process "FILTER_MUTATIONS_AF"
+    tag "module"
+    tag "filter"
+
+    // Thresholds are strict: AF / VAF equal to the threshold are kept. With both columns listed
+    // the higher of exome and genome AF counts. Missing values (blank, '.') and t_depth 0 never remove a row.
+    test("Drops mutations with gnomAD AF > 0.5 or VAF > 0.5") {
+
+        when {
+            params {
+                outdir            = "$outputDir"
+                filter_gnomad_af  = true
+                filter_vaf        = true
+                gnomad_af_columns = 'gnomADe_AF,gnomADg_AF'
+            }
+            process {
+                """
+                file("${params.outdir}/af_inputs").mkdirs()
+                file("${params.outdir}/af_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tTumor_Sample_Barcode\\tt_depth\\tt_alt_count\\tgnomADe_AF\\tgnomADg_AF\\n' +
+                    'AT_THRESHOLD\\tS\\t100\\t50\\t0.5\\t0.4\\n' +
+                    'EXOME_HIGH\\tS\\t100\\t10\\t0.51\\t\\n' +
+                    'GENOME_HIGH\\tS\\t100\\t10\\t0.2\\t0.62\\n' +
+                    'VAF_HIGH\\tS\\t100\\t51\\t\\t\\n' +
+                    'MISSING\\tS\\t\\t\\t.\\t\\n' +
+                    'ZERO_DEPTH\\tS\\t0\\t0\\t0.01\\t0.01\\n'
+                input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
+            assert kept == ['AT_THRESHOLD', 'MISSING', 'ZERO_DEPTH']
+        }
+    }
+
+    // Default: the combined exomes + genomes value (gnomAD.AF), as cBioPortal shows it
+    test("Filters on the combined gnomAD.AF by default") {
+
+        when {
+            params {
+                outdir           = "$outputDir"
+                filter_gnomad_af = true
+            }
+            process {
+                """
+                file("${params.outdir}/af_inputs").mkdirs()
+                file("${params.outdir}/af_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tgnomADe_AF\\tgnomADg_AF\\tgnomAD.AF\\n' +
+                    'COMBINED_HIGH\\t0.668165\\t0.620657\\t0.662887\\n' +
+                    'COMBINED_AT\\t0.52\\t0.4\\t0.5\\n' +
+                    'NOT_IN_GNOMAD\\t\\t\\t\\n'
+                input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
+            assert kept == ['COMBINED_AT', 'NOT_IN_GNOMAD']
+        }
+    }
+
+    test("VAF filter only, with a custom threshold") {
+
+        when {
+            params {
+                outdir     = "$outputDir"
+                filter_vaf = true
+                max_vaf    = 0.3
+            }
+            process {
+                """
+                file("${params.outdir}/af_inputs").mkdirs()
+                file("${params.outdir}/af_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tt_depth\\tt_alt_count\\tgnomADe_AF\\n' +
+                    'VAF_0.2\\t100\\t20\\t0.9\\n' +
+                    'VAF_0.4\\t100\\t40\\t0.0\\n'
+                input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
+            assert kept == ['VAF_0.2']   // gnomAD 0.9 kept: gnomAD filter off
+        }
+    }
+
+    // Stub MAFs have no gnomAD / depth columns
+    test("Passes rows through when the filter columns are missing") {
+
+        when {
+            params {
+                outdir           = "$outputDir"
+                filter_gnomad_af = true
+                filter_vaf       = true
+            }
+            process {
+                """
+                file("${params.outdir}/af_inputs").mkdirs()
+                file("${params.outdir}/af_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tChromosome\\n' +
+                    'G1\\tchr1\\n'
+                input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tChromosome', 'G1\tchr1']
+        }
+    }
+}

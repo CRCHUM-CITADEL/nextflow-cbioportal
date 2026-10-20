@@ -1,0 +1,56 @@
+nextflow_process {
+
+    name "Test FILTER_CNV_SAMPLES"
+    script "modules/local/filter_cnv_samples/main.nf"
+    process "FILTER_CNV_SAMPLES"
+    tag "module"
+    tag "cna"
+
+    test("Drops rows of failed samples, found by column name") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/cnv_inputs").mkdirs()
+                file("${params.outdir}/cnv_inputs/data_cna.txt").text =
+                    'Hugo_Symbol\\tSample_Id\\tValue\\n' +
+                    'MYC\\tS1\\t2\\n' +
+                    'PTEN\\tS2\\t-1\\n' +
+                    'EGFR\\tS3\\t2\\n'
+                input[0] = file("${params.outdir}/cnv_inputs/data_cna.txt")
+                input[1] = ['S1', 'S3']
+                input[2] = 'Sample_Id'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tSample_Id\tValue', 'PTEN\tS2\t-1']
+        }
+    }
+
+    test("Keeps everything when no sample failed") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/cnv_inputs").mkdirs()
+                file("${params.outdir}/cnv_inputs/data_seg.txt").text =
+                    'ID\\tchrom\\tloc.start\\tloc.end\\tnum.mark\\tseg.mean\\n' +
+                    'S1\\t4\\t500000\\t600000\\t1\\t1.0\\n'
+                input[0] = file("${params.outdir}/cnv_inputs/data_seg.txt")
+                input[1] = []
+                input[2] = 'ID'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines().size() == 2
+        }
+    }
+}

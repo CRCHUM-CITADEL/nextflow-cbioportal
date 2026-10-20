@@ -1,6 +1,4 @@
 process MERGE_MUTATIONS {
-    publishDir "${params.outdir}", mode: 'copy'
-
     input:
     path(mutation_files)
 

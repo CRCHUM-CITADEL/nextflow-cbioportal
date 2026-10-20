@@ -30,13 +30,16 @@ workflow PER_SAMPLE_FORMAT {
     // -------------------------------------------------------------------------
     // Mutations: VCF → MAF, then optionally keep only mutations overlapping TSV regions
     // -------------------------------------------------------------------------
-    // Nextflow 26 passes CLI values as strings (--skip_vcf2maf false → "false", which is truthy)
-    if (params.skip_vcf2maf.toString().toBoolean()) {
+    if (params.containsKey('skip_vcf2maf')) {
+        error "--skip_vcf2maf was renamed to --skip_mafsmith"
+    }
+    // Nextflow 26 passes CLI values as strings (--skip_mafsmith false → "false", which is truthy)
+    if (params.skip_mafsmith.toString().toBoolean()) {
         STUB_MAF(ch_vcf_input)
         ch_maf = STUB_MAF.out
     } else {
         if (!params.mafsmith_container) {
-            error "params.mafsmith_container must be set when skip_vcf2maf is false"
+            error "params.mafsmith_container must be set when skip_mafsmith is false"
         }
         // Unset, empty or a literal "null" (from --mafsmith_data null) all mean: fetch the bundle
         def mafsmith_data = params.mafsmith_data?.toString()?.trim()

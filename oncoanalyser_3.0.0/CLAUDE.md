@@ -201,8 +201,8 @@ the branch is only covered by the dedicated case in
 `tests/subworkflows/genomic_ml.nf.test`.
 
 `--incremental` marks a follow-up load into a study cBioPortal already holds: it
-skips `cancer_type.txt` / `meta_cancer_type.txt` so the cancer type is not registered
-twice. It is unrelated to per-subject output caching, which is automatic.
+skips `meta_study.txt`, `cancer_type.txt` and `meta_cancer_type.txt` so the study and
+cancer type are not registered twice. It is unrelated to per-subject output caching, which is automatic.
 
 ## Clinical Module Layout
 
@@ -352,6 +352,8 @@ unhandled; `--strict` makes that a non-zero exit. Add new outputs to a dispatch 
 script and cover them in `tests/test_combine_cbioportal_outputs.py`.
 
 Overlapping sample IDs are a hard error. Patient rows are appended without deduplication.
+`meta_study.txt` need only be in one input — an `--incremental` run writes none, so its
+study ID is read from its other meta files for the mismatch check.
 
 ## Study Archive
 

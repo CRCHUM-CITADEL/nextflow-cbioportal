@@ -1,26 +1,33 @@
 #!/usr/bin/env python3
 """
 Convert a CNV VCF file to cBioPortal .seg format.
-Usage: vcf_to_seg.py <vcf_file> <sample_id>
+Usage: vcf_to_seg.py <vcf_file> <sample_id> [--mode log2|cn]
 
 Output: data_seg.txt (tab-separated, appended)
 Columns: ID, chrom, loc.start, loc.end, num.mark, seg.mean
 
 Only PASS records are included.
-seg.mean = log2(CN/2); CN=0 yields -3.0 (homozygous deletion sentinel).
+--mode log2 (default): seg.mean = log2(CN/2); CN=0 yields -3.0 (homozygous deletion
+                       sentinel). CN=2 segments are kept (seg.mean 0), so cBioPortal's
+                       Fraction Genome Altered counts them as unaltered.
+--mode cn:             seg.mean = raw CN; CN=2 segments are dropped.
 """
+import argparse
 import gzip
+import math
 import sys
 import os
 
 
 def main():
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <vcf_file> <sample_id>", file=sys.stderr)
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('vcf_file')
+    parser.add_argument('sample_id')
+    parser.add_argument('--mode', choices=['log2', 'cn'], default='log2')
+    args = parser.parse_args()
 
-    vcf_file = sys.argv[1]
-    sample_id = sys.argv[2]
+    vcf_file = args.vcf_file
+    sample_id = args.sample_id
     out_file = "data_seg.txt"
 
     rows = []
@@ -73,11 +80,13 @@ def main():
                 print(f"WARNING: could not parse CN at {chrom}:{pos}, skipping", file=sys.stderr)
                 continue
 
-            ## Usually seg mean is this :
-            # seg.mean = log2(CN/2); CN=0 → homozygous deletion sentinel
-            # but we will just put the copy number for ampliseq data
-            seg_mean = cn
-            if seg_mean != 2:
+            if args.mode == 'cn':
+                # Raw copy number; CN=2 (normal) segments are dropped
+                if cn != 2:
+                    rows.append((sample_id, chrom, pos, end, 1, cn))
+            else:
+                # seg.mean = log2(CN/2); CN=0 → homozygous deletion sentinel
+                seg_mean = -3.0 if cn == 0 else round(math.log2(cn / 2), 4)
                 rows.append((sample_id, chrom, pos, end, 1, seg_mean))
 
     write_header = not os.path.exists(out_file)

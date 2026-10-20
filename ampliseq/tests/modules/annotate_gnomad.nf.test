@@ -1,0 +1,129 @@
+nextflow_process {
+
+    name "Test ANNOTATE_GNOMAD"
+    script "modules/local/annotate_gnomad/main.nf"
+    process "ANNOTATE_GNOMAD"
+    tag "module"
+    tag "filter"
+    tag "network"   // queries the public Genome Nexus API
+
+    // Public variants only: TP53 P72R (rs1042522) is common in gnomAD v2.1.1 (exome AF 0.668165,
+    // genome AF 0.620657); the EGFR insertion is not in gnomAD.
+    test("Adds gnomAD exome and genome AF from Genome Nexus") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gn_inputs").mkdirs()
+                file("${params.outdir}/gn_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\tReference_Allele\\tTumor_Seq_Allele2\\tTumor_Sample_Barcode\\n' +
+                    'TP53\\tchr17\\t7579472\\t7579472\\tG\\tC\\tS1\\n' +
+                    'TP53\\tchr17\\t7579472\\t7579472\\tG\\tC\\tS2\\n' +
+                    'EGFR\\t7\\t55248998\\t55248999\\t-\\tGGCT\\tS1\\n'
+                input[0] = file("${params.outdir}/gn_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            def header = lines[0].split('\t', -1) as List
+            def rows = lines.drop(1).collect { it.split('\t', -1) }
+            def col = { String n -> assert header.indexOf(n) >= 0 : "no ${n} column"; header.indexOf(n) }
+
+            assert rows.size() == 3
+            assert rows[0][col('gnomADe_AF')] == '0.668165' && rows[0][col('gnomADg_AF')] == '0.620657'
+            assert rows[0][col('gnomAD.AF')] == '0.662887'   // (167398 + 19434) / (250534 + 31312)
+            assert rows[1][col('gnomADe_AF')] == '0.668165'
+            assert rows[2][col('gnomADe_AF')] == '' && rows[2][col('gnomADg_AF')] == '' && rows[2][col('gnomAD.AF')] == ''
+        }
+    }
+
+    // Offline: tests/modules/fixtures/fake_genome_nexus.py drops TP53's gnomAD block on the first request
+    // and gives KRAS AC/AN without a frequency; an existing (stale) value is overwritten
+    test("Asks again for variants returned without gnomAD and falls back to AC/AN") {
+
+        when {
+            params {
+                outdir           = "$outputDir"
+                genome_nexus_url = 'http://127.0.0.1:18765'
+            }
+            process {
+                """
+                ['python3', '${projectDir}/tests/modules/fixtures/fake_genome_nexus.py', '18765', '--lifetime', '90'].execute()
+                file("${params.outdir}/gn_inputs").mkdirs()
+                file("${params.outdir}/gn_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\tReference_Allele\\tTumor_Seq_Allele2\\tgnomADe_AF\\n' +
+                    'TP53\\tchr17\\t7579472\\t7579472\\tG\\tC\\t0.01\\n' +
+                    'KRAS\\tchr12\\t25368462\\t25368462\\tC\\tT\\t\\n' +
+                    'EGFR\\t7\\t55248998\\t55248999\\t-\\tGGCT\\t\\n'
+                input[0] = file("${params.outdir}/gn_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            def header = lines[0].split('\t', -1) as List
+            def rows = lines.drop(1).collect { it.split('\t', -1) }
+            def af = { int r, String n -> rows[r][header.indexOf(n)] }
+
+            assert [af(0, 'gnomADe_AF'), af(0, 'gnomADg_AF'), af(0, 'gnomAD.AF')] == ['0.668165', '0.620657', '0.662887']
+            assert [af(1, 'gnomADe_AF'), af(1, 'gnomADg_AF'), af(1, 'gnomAD.AF')] == ['0.999614', '0.998503', '0.999491']
+            assert [af(2, 'gnomADe_AF'), af(2, 'gnomADg_AF'), af(2, 'gnomAD.AF')] == ['', '', '']
+        }
+    }
+
+    // A header-only MAF (e.g. stub MAFs) makes no request, so this also works offline
+    test("Header-only MAF gets the columns without querying") {
+
+        when {
+            params {
+                outdir           = "$outputDir"
+                genome_nexus_url = 'https://genomenexus.invalid'
+            }
+            process {
+                """
+                file("${params.outdir}/gn_inputs").mkdirs()
+                file("${params.outdir}/gn_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\tReference_Allele\\tTumor_Seq_Allele2\\n'
+                input[0] = file("${params.outdir}/gn_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() ==
+                ['Hugo_Symbol\tChromosome\tStart_Position\tEnd_Position\tReference_Allele\tTumor_Seq_Allele2\tgnomADe_AF\tgnomADg_AF\tgnomAD.AF']
+        }
+    }
+
+    // Never write an unannotated file when the service is unreachable: the filter would let everything through
+    test("Fails when Genome Nexus cannot be reached") {
+
+        when {
+            params {
+                outdir           = "$outputDir"
+                genome_nexus_url = 'https://genomenexus.invalid'
+            }
+            process {
+                """
+                file("${params.outdir}/gn_inputs").mkdirs()
+                file("${params.outdir}/gn_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\tReference_Allele\\tTumor_Seq_Allele2\\n' +
+                    'TP53\\t17\\t7579472\\t7579472\\tG\\tC\\n'
+                input[0] = file("${params.outdir}/gn_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert workflow.stdout.any { it.contains('Genome Nexus request to https://genomenexus.invalid failed') }
+        }
+    }
+}

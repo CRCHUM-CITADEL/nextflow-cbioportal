@@ -584,6 +584,7 @@ def test_overlapping_sample_ids_error(tmp_path):
 def test_missing_meta_study_error(tmp_path):
     d1 = make_study(tmp_path, "b1", [("P1", "S1")])
     d2 = make_study(tmp_path, "b2", [("P2", "S2")])
+    (d1 / "meta_study.txt").unlink()
     (d2 / "meta_study.txt").unlink()
     result = run([
         "--input_dir_1", str(d1), "--input_dir_2", str(d2),
@@ -591,6 +592,31 @@ def test_missing_meta_study_error(tmp_path):
     ])
     assert result.returncode != 0
     assert "meta_study.txt not found" in result.stderr
+
+
+def test_incremental_input_without_meta_study(tmp_path):
+    d1 = make_study(tmp_path, "b1", [("P1", "S1")])
+    d2 = make_study(tmp_path, "b2", [("P2", "S2")])
+    (d2 / "meta_study.txt").unlink()
+    out = tmp_path / "merged"
+    result = run([
+        "--input_dir_1", str(d1), "--input_dir_2", str(d2),
+        "--output_dir", str(out),
+    ])
+    assert result.returncode == 0, result.stderr
+    assert "cancer_study_identifier: test_study" in (out / "meta_study.txt").read_text()
+
+
+def test_incremental_input_study_id_mismatch_error(tmp_path):
+    d1 = make_study(tmp_path, "b1", [("P1", "S1")], study_id="study_a")
+    d2 = make_study(tmp_path, "b2", [("P2", "S2")], study_id="study_b")
+    (d2 / "meta_study.txt").unlink()
+    result = run([
+        "--input_dir_1", str(d1), "--input_dir_2", str(d2),
+        "--output_dir", str(tmp_path / "merged"),
+    ])
+    assert result.returncode != 0
+    assert "mismatch" in result.stderr
 
 
 def test_study_id_mismatch_error(tmp_path):

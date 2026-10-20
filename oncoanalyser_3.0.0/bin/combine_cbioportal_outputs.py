@@ -16,7 +16,8 @@ Handled content:
                         (4 '#' metadata rows + column header; column sets may
                         differ between batches and are unioned)
     headerless          cancer_type.txt (deduplicated on the first field)
-    meta files          every meta_*.txt found in either input
+    meta files          every meta_*.txt found in either input (meta_study.txt
+                        may be absent from one: an --incremental run omits it)
     case lists          every case_lists/*.txt found in either input
     subject folders     every other sub-directory (per-subject genomic cache and
                         per-sample clinical splits) is union-copied
@@ -252,26 +253,42 @@ def _read_tsv_rows(path):
 # Validation
 # ---------------------------------------------------------------------------
 
+def read_study_id(directory):
+    """Return the folder's cancer_study_identifier, from meta_study.txt if present.
+
+    An --incremental run writes no meta_study.txt, so fall back to the first
+    other meta file that names the study.
+    """
+    meta_study = os.path.join(directory, "meta_study.txt")
+    candidates = [meta_study] if os.path.isfile(meta_study) else sorted(
+        glob.glob(os.path.join(directory, "meta_*.txt"))
+    )
+    for path in candidates:
+        study_id = parse_meta_file(path).get("cancer_study_identifier", "")
+        if study_id:
+            return study_id
+    return ""
+
+
 def validate_inputs(dir1, dir2, study_id_override=None):
     """Validate both directories and return the cancer_study_identifier to use.
 
-    If study_id_override is provided, skip the mismatch check and return
-    the override value. Otherwise require both dirs to share the same ID.
+    At least one input must carry meta_study.txt; the other may be an
+    --incremental run without one. If study_id_override is provided, skip the
+    mismatch check and return the override value. Otherwise require both dirs
+    to share the same ID.
     """
     for d in (dir1, dir2):
         if not os.path.isdir(d):
             sys.exit(f"ERROR: directory does not exist: {d}")
-        if not os.path.isfile(os.path.join(d, "meta_study.txt")):
-            sys.exit(f"ERROR: meta_study.txt not found in {d}")
+    if not any(os.path.isfile(os.path.join(d, "meta_study.txt")) for d in (dir1, dir2)):
+        sys.exit(f"ERROR: meta_study.txt not found in {dir1} or {dir2}")
 
     if study_id_override:
         return study_id_override
 
-    meta1 = parse_meta_file(os.path.join(dir1, "meta_study.txt"))
-    meta2 = parse_meta_file(os.path.join(dir2, "meta_study.txt"))
-
-    id1 = meta1.get("cancer_study_identifier", "")
-    id2 = meta2.get("cancer_study_identifier", "")
+    id1 = read_study_id(dir1)
+    id2 = read_study_id(dir2)
 
     if id1 != id2:
         sys.exit(

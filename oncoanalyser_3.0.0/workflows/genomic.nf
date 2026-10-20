@@ -457,11 +457,15 @@ workflow GENOMIC {
             )
         }
 
-        // ── Study-level metadata ──────────────────────────────────────────────
+        // ── Study-level metadata + cancer type file ──────────────────────────
+        // Skipped on a follow-up load (--incremental): cBioPortal already holds
+        // the study and cancer type from the first load.
 
         all_groups = ch_samples.map { meta -> meta.group }.unique()
 
-        meta_text = """type_of_cancer: ${params.cancer_type}
+        ch_study_files = Channel.empty()
+        if (!params.incremental) {
+            meta_text = """type_of_cancer: ${params.cancer_type}
 cancer_study_identifier: add_text
 name: ${params.study_id}
 description: ${params.project_description}
@@ -469,18 +473,12 @@ add_global_case_list: true
 reference_genome: hg38
         """
 
-        GENERATE_META_FILE(all_groups, "study", meta_text)
-
-        // ── Cancer type file ─────────────────────────────────────────────────
-        // Skipped on a follow-up load (--incremental): cBioPortal already holds
-        // the cancer type from the first load and re-registering it errors.
-
-        ch_cancer_type = Channel.empty()
-        if (!params.incremental) {
+            GENERATE_META_FILE(all_groups, "study", meta_text)
             GENERATE_CANCER_TYPE(all_groups)
-            ch_cancer_type = GENERATE_CANCER_TYPE.out.flatMap { group, ct, meta_ct ->
-                [tuple(group, ct), tuple(group, meta_ct)]
-            }
+            ch_study_files = GENERATE_META_FILE.out
+                .mix(GENERATE_CANCER_TYPE.out.flatMap { group, ct, meta_ct ->
+                    [tuple(group, ct), tuple(group, meta_ct)]
+                })
         }
 
         // ── Subject → tumor sample linking file ───────────────────────────────
@@ -514,8 +512,7 @@ reference_genome: hg38
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_id)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
-            .mix(GENERATE_META_FILE.out)
-            .mix(ch_cancer_type)
+            .mix(ch_study_files)
             .mix(ch_linking_file)
 
         // ── Software versions ─────────────────────────────────────────────────

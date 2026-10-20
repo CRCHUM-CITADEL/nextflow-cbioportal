@@ -84,7 +84,7 @@
                 "incremental": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Set on a follow-up load into a study cBioPortal already holds: cancer_type.txt and meta_cancer_type.txt are skipped so the cancer type is not registered twice. Per-subject output caching is automatic and needs no flag."
+                    "description": "Set on a follow-up load into a study cBioPortal already holds: meta_study.txt, cancer_type.txt and meta_cancer_type.txt are skipped so the study and cancer type are not registered twice. Per-subject output caching is automatic and needs no flag."
                 }
             }
         },

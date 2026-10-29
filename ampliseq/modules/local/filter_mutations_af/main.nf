@@ -10,8 +10,9 @@ process FILTER_MUTATIONS_AF {
     script:
     def gnomad_args = params.filter_gnomad_af.toString().toBoolean() ? "--max-gnomad-af ${params.max_gnomad_af} --gnomad-columns '${params.gnomad_af_columns}'" : ''
     def vaf_args    = params.filter_vaf.toString().toBoolean() ? "--max-vaf ${params.max_vaf}" : ''
+    def clinvar_args = params.filter_clinvar.toString().toBoolean() ? "--clinvar-keep '${params.clinvar_keep_classes}'" : ''
     """
     mkdir -p filtered
-    filter_mutations_af.py ${mutations_file} --out filtered/data_mutations.txt ${gnomad_args} ${vaf_args}
+    filter_mutations_af.py ${mutations_file} --out filtered/data_mutations.txt ${gnomad_args} ${vaf_args} ${clinvar_args}
     """
 }

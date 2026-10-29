@@ -83,23 +83,27 @@ Filter mode applies QC thresholds using the sample's `analysis_*_export.tsv`. By
 nextflow run main.nf ... --filter_tsv_variants true
 ```
 
-| Data      | Kept in filter mode                                                                                              | Params (default)                                          |
-| --------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Mutations | Position overlaps a TSV row with `Depth` ≥ 250 and `VAF` > 0.03 (`chr` prefix ignored)                           | `--mutation_min_depth` (250), `--mutation_min_vaf` (0.03) |
-| CNAs      | Raw `Copy Number` ≥ 6, so all deletions are dropped                                                              | `--cna_min_copy_number` (6)                               |
-| Fusions   | Taken from the TSV, even when a `*-star-fusion.final.vcf` exists. `Supporting Reads` summed per gene pair ≥ 1000 | `--sv_min_supporting_reads` (1000)                        |
+| Data                            | Kept in filter mode                                                                                              | Params (default)                                                |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Mutations                       | Position overlaps a TSV row with `Depth` ≥ 250 and `VAF` > 0.03 (`chr` prefix ignored)                           | `--mutation_min_depth` (250), `--mutation_min_vaf` (0.03)       |
+| CNAs                            | Raw `Copy Number` ≥ 6, so all deletions are dropped                                                              | `--cna_min_copy_number` (6)                                     |
+| Fusions                         | Taken from the TSV, even when a `*-star-fusion.final.vcf` exists. `Supporting Reads` summed per gene pair ≥ 1000 | `--sv_min_supporting_reads` (1000)                              |
+| Fusions with `--fusion_metrics` | `Total Reads` ≥ 1000 and, when set, `ZR-score` ≥ `--sv_min_zr_score`, per fusion                                 | `--sv_min_supporting_reads` (1000), `--sv_min_zr_score` (unset) |
+
+With `--fusion_metrics <file.tsv>`, fusions come from that one cohort-wide TSV instead of each sample's export TSV or STAR-Fusion VCF. Its `###` lines are skipped, the `#Sample` line is the header, and rows are matched to samples on `#Sample` (the samplesheet `sample_id`). Only `Total Reads` and `ZR-score` are used as metrics; `Total Reads` becomes `Tumor_Variant_Count`. Fusions are per-sample outputs, so samples already in `--outdir` keep their old fusions: delete `{outdir}/samples/*/*_sv.txt` to rebuild them.
 
 `data_seg.txt` is not filtered. Filter mode runs per sample, so samples already in `--outdir` are not re-filtered. Use a fresh `--outdir` when you turn it on or change a threshold.
 
 Optional filters on the merged data. They are off by default and, unlike filter mode, also apply to samples already in `--outdir`:
 
-| Filter       | Drops                                                                                                                                                     | Params (default)                                                                                                         |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| gnomAD       | Mutations with gnomAD allele frequency > 0.5 (exomes + genomes combined), fetched from Genome Nexus (see [gnomAD frequencies](#gnomad-frequencies))       | `--filter_gnomad_af` (false), `--max_gnomad_af` (0.5), `--gnomad_af_columns` (`gnomAD.AF`)                               |
-| VAF          | Mutations with VAF (`t_alt_count / t_depth`) > 0.5                                                                                                        | `--filter_vaf` (false), `--max_vaf` (0.5)                                                                                |
-| CNV depth QC | A sample's CNV calls, unless ≥ 95% of its PASS Pisces variants have depth ≥ 250. The sample is left out of the CNA case lists; mutations and SVs are kept | `--filter_cnv_depth` (false), `--cnv_min_depth` (250), `--cnv_min_depth_fraction` (0.95), `--cnv_depth_pass_only` (true) |
+| Filter       | Drops                                                                                                                                                              | Params (default)                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| gnomAD       | Mutations with a gnomAD allele frequency > 0.5 in any ancestry (exomes or genomes), fetched from Genome Nexus (see [gnomAD frequencies](#gnomad-frequencies))      | `--filter_gnomad_af` (false), `--max_gnomad_af` (0.5), `--gnomad_af_columns` (`gnomAD.AF_max`)                           |
+| ClinVar      | Mutations whose ClinVar classification is not Pathogenic, Likely pathogenic or VUS, including those not in ClinVar (see [gnomAD frequencies](#gnomad-frequencies)) | `--filter_clinvar` (false), `--clinvar_keep_classes` (`Pathogenic,Likely_pathogenic,Uncertain_significance`)             |
+| VAF          | Mutations with VAF (`t_alt_count / t_depth`) > 0.5                                                                                                                 | `--filter_vaf` (false), `--max_vaf` (0.5)                                                                                |
+| CNV depth QC | A sample's CNV calls, unless ≥ 95% of its PASS Pisces variants have depth ≥ 250. The sample is left out of the CNA case lists; mutations and SVs are kept          | `--filter_cnv_depth` (false), `--cnv_min_depth` (250), `--cnv_min_depth_fraction` (0.95), `--cnv_depth_pass_only` (true) |
 
-Values equal to a threshold are kept, and missing values never drop a mutation. The CNV depth QC writes `qc/cnv_depth_qc.tsv`.
+Values equal to a threshold are kept, and a missing gnomAD or VAF value never drops a mutation; a missing ClinVar classification does. The CNV depth QC writes `qc/cnv_depth_qc.tsv`.
 
 Segment data (`data_seg.txt`, `meta_seg.txt`) is off by default. cBioPortal computes _Fraction Genome Altered_ from it, which is not meaningful for an amplicon panel:
 
@@ -111,9 +115,17 @@ nextflow run main.nf ... --include_seg true [--seg_mean_mode log2|cn]
 
 #### gnomAD frequencies
 
-With `--filter_gnomad_af true`, the pipeline looks up each mutation in [Genome Nexus](https://www.genomenexus.org), the service cBioPortal uses for its own gnomAD column, and adds three columns to `data_mutations.txt`: `gnomADe_AF` (gnomAD v2.1.1 exomes), `gnomADg_AF` (genomes) and `gnomAD.AF` (both combined, the value cBioPortal shows). `gnomAD.AF` also appears as a column in the cBioPortal mutation table. A mutation is dropped when `gnomAD.AF` is above `--max_gnomad_af`; one gnomAD has never seen is kept. Use `--gnomad_af_columns gnomADe_AF,gnomADg_AF` to drop on the higher of exomes and genomes instead.
+With `--filter_gnomad_af true` or `--filter_clinvar true`, the pipeline looks up each mutation in [Genome Nexus](https://www.genomenexus.org), the service cBioPortal uses for its own gnomAD and ClinVar columns, and adds these columns to `data_mutations.txt`:
 
-- Genome Nexus sometimes answers without the gnomAD data. Such variants are asked again (up to two more times) before being treated as absent from gnomAD, which can add up to 30 s to the step.
+- `gnomADe_AF` (gnomAD v2.1.1 exomes), `gnomADg_AF` (genomes) and `gnomAD.AF` (both combined, the value cBioPortal shows)
+- `gnomAD.AF_max`: the highest of the total and the eight ancestry frequencies (afr, amr, asj, eas, fin, nfe, oth, sas), exomes and genomes taken apart; `gnomAD.AF_max_pop` says which one, e.g. `exome_nfe`
+- `ClinVar.CLNSIG` (e.g. `Pathogenic/Likely_pathogenic`) and `ClinVar.CLNSIGCONF` (the breakdown of a conflicting call, e.g. `Pathogenic(3)|Uncertain_significance(1)`)
+
+The `gnomAD.*` and `ClinVar.*` columns also appear in the cBioPortal mutation table.
+
+- **gnomAD:** a mutation is dropped when `gnomAD.AF_max` is above `--max_gnomad_af`, so one ancestry above the threshold is enough; one gnomAD has never seen is kept. Use `--gnomad_af_columns gnomAD.AF` for the previous combined-total rule.
+- **ClinVar:** a mutation is kept when its classification includes one of `--clinvar_keep_classes` (`Pathogenic/Likely_pathogenic` and `Pathogenic, low penetrance` count). A conflicting call is kept when its breakdown lists one of them. A mutation ClinVar has never seen is **dropped**.
+- Genome Nexus sometimes answers without the gnomAD data. Variants missing gnomAD or ClinVar data are asked again (up to two more times) before being treated as absent, which can add up to 30 s to the step.
 
 - The step needs **outbound HTTPS** from the node it runs on. If Genome Nexus can't be reached, the run fails rather than keeping every mutation.
 - Only the variant (chromosome, positions, alleles) is sent, never sample or patient IDs.

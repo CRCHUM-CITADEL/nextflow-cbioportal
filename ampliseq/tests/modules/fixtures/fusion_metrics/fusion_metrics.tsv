@@ -1,0 +1,7 @@
+###Fusion metrics export
+###generated 2026-10-01
+#Sample	Source	File extension(s)	Fusion	GeneA	GeneB	ExonA	ExonB	Transcript_idA	Transcript_idB	BreakpointA	BreakpointA	Junction Read Count	DepthA	DepthB	Total Reads	Z-Score	R-score	ZR-score
+S1	arriba	.tsv	EML4--ALK	EML4	ALK	13	20	ENST00000318522	ENST00000389048	chr2:42522656:+	chr2:29446394:-	850	3000	2500	1500	4.1	2.2	9.02
+S1	arriba	.tsv	CD74--ROS1	CD74	ROS1	6	34	ENST00000009530	ENST00000368508	chr5:149784243	chr6:117645578	12	900	800	40	1.0	0.5	0.5
+S1	arriba	.tsv	KIF5B--RET	KIF5B	RET	N/A	12	.	.	chr10:32317356	chr10:43610119	5	100	100	2000	N/A	N/A	N/A
+S2	arriba	.tsv	TMPRSS2--ERG	TMPRSS2	ERG	1	4	ENST00000332149	ENST00000288319	chr21:42880008	chr21:39956869	300	1000	900	1200	3	3	9

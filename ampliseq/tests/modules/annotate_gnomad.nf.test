@@ -36,14 +36,18 @@ nextflow_process {
             assert rows.size() == 3
             assert rows[0][col('gnomADe_AF')] == '0.668165' && rows[0][col('gnomADg_AF')] == '0.620657'
             assert rows[0][col('gnomAD.AF')] == '0.662887'   // (167398 + 19434) / (250534 + 31312)
+            assert rows[0][col('gnomAD.AF_max')] == '0.737803' && rows[0][col('gnomAD.AF_max_pop')] == 'exome_nfe'
+            assert rows[0][col('ClinVar.CLNSIG')] == 'Benign'
             assert rows[1][col('gnomADe_AF')] == '0.668165'
             assert rows[2][col('gnomADe_AF')] == '' && rows[2][col('gnomADg_AF')] == '' && rows[2][col('gnomAD.AF')] == ''
+            assert rows[2][col('gnomAD.AF_max')] == '' && rows[2][col('ClinVar.CLNSIG')] == ''
         }
     }
 
     // Offline: tests/modules/fixtures/fake_genome_nexus.py drops TP53's gnomAD block on the first request
-    // and gives KRAS AC/AN without a frequency; an existing (stale) value is overwritten
-    test("Asks again for variants returned without gnomAD and falls back to AC/AN") {
+    // and gives KRAS AC/AN without a frequency, then its ClinVar block alone on the retry; an existing
+    // (stale) value is overwritten
+    test("Asks again for variants returned without gnomAD or ClinVar and falls back to AC/AN") {
 
         when {
             params {
@@ -74,6 +78,12 @@ nextflow_process {
             assert [af(0, 'gnomADe_AF'), af(0, 'gnomADg_AF'), af(0, 'gnomAD.AF')] == ['0.668165', '0.620657', '0.662887']
             assert [af(1, 'gnomADe_AF'), af(1, 'gnomADg_AF'), af(1, 'gnomAD.AF')] == ['0.999614', '0.998503', '0.999491']
             assert [af(2, 'gnomADe_AF'), af(2, 'gnomADg_AF'), af(2, 'gnomAD.AF')] == ['', '', '']
+            // Per-ancestry maximum: TP53 genome afr 0.8 beats exome nfe 0.74; KRAS exome eas from AC/AN
+            assert [af(0, 'gnomAD.AF_max'), af(0, 'gnomAD.AF_max_pop')] == ['0.8', 'genome_afr']
+            assert [af(1, 'gnomAD.AF_max'), af(1, 'gnomAD.AF_max_pop')] == ['1', 'exome_eas']
+            assert [af(2, 'gnomAD.AF_max'), af(2, 'gnomAD.AF_max_pop')] == ['', '']
+            // KRAS: gnomAD from the first answer, ClinVar from the retry
+            assert [af(0, 'ClinVar.CLNSIG'), af(1, 'ClinVar.CLNSIG'), af(2, 'ClinVar.CLNSIG')] == ['Benign', 'Pathogenic', '']
         }
     }
 
@@ -98,7 +108,7 @@ nextflow_process {
         then {
             assert process.success
             assert path(process.out[0][0].toString()).readLines() ==
-                ['Hugo_Symbol\tChromosome\tStart_Position\tEnd_Position\tReference_Allele\tTumor_Seq_Allele2\tgnomADe_AF\tgnomADg_AF\tgnomAD.AF']
+                ['Hugo_Symbol\tChromosome\tStart_Position\tEnd_Position\tReference_Allele\tTumor_Seq_Allele2\tgnomADe_AF\tgnomADg_AF\tgnomAD.AF\tgnomAD.AF_max\tgnomAD.AF_max_pop\tClinVar.CLNSIG\tClinVar.CLNSIGCONF']
         }
     }
 

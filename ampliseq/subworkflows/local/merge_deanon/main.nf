@@ -31,12 +31,14 @@ workflow MERGE_DEANON {
     // apply to samples cached from earlier incremental runs
     // -------------------------------------------------------------------------
     ch_mutations = MERGE_MUTATIONS.out
-    if (params.filter_gnomad_af.toString().toBoolean()) {
-        // gnomAD frequencies from Genome Nexus, fetched for every run so cached samples get them too
+    def filter_gnomad  = params.filter_gnomad_af.toString().toBoolean()
+    def filter_clinvar = params.filter_clinvar.toString().toBoolean()
+    if (filter_gnomad || filter_clinvar) {
+        // gnomAD + ClinVar from Genome Nexus, fetched for every run so cached samples get them too
         ANNOTATE_GNOMAD(ch_mutations)
         ch_mutations = ANNOTATE_GNOMAD.out
     }
-    if (params.filter_gnomad_af.toString().toBoolean() || params.filter_vaf.toString().toBoolean()) {
+    if (filter_gnomad || filter_clinvar || params.filter_vaf.toString().toBoolean()) {
         FILTER_MUTATIONS_AF(ch_mutations)
         ch_mutations = FILTER_MUTATIONS_AF.out
     }

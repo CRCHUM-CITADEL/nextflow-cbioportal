@@ -28,6 +28,7 @@ nextflow_process {
                     file('${projectDir}/assets/samples/SAMPLE_001')
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = []
                 """
             }
         }
@@ -62,6 +63,7 @@ nextflow_process {
                     file('${projectDir}/assets/samples/SAMPLE_002')
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = []
                 """
             }
         }
@@ -100,6 +102,7 @@ nextflow_process {
                     '1\\t162724506\\t162724506\\t1\\tSNP\\tSNP\\tDDR2\\t0.0866\\tMEDIUM\\t866\\tN/A\\tN/A\\tN/A\\tN/A\\n'
                 input[0] = Channel.of([[sample_id: 'S3'], tsv, dir])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = []
                 """
             }
         }
@@ -133,6 +136,7 @@ nextflow_process {
                     '7\\t100\\t200\\t-1\\tCNV\\tFUSION\\tFOO\\tN/A\\t5\\tNOTAGENE\\tN/A\\n'
                 input[0] = Channel.of([[sample_id: 'S4'], tsv, dir])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = []
                 """
             }
         }
@@ -146,6 +150,96 @@ nextflow_process {
             assert ros1.Site1_Region_Number == '34' && ros1.Site2_Region_Number == '6' && ros1.Class == 'FUSION'
             assert alk.Site2_Chromosome == '2' && alk.Length == '13076262'
             assert unknown.Site2_Chromosome == 'NA' && unknown.Length == 'NA' && unknown.Site1_Region_Number == 'NA'
+        }
+    }
+
+    // fixtures/fusion_metrics: '###' preamble, BreakpointA listed twice (as specified), samples S1 + S2
+    test("Fusion metrics TSV: only this sample's rows, wins over the STAR-Fusion VCF and export TSV") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = Channel.of([
+                    [sample_id: 'S1'],
+                    file('${projectDir}/assets/samples/SAMPLE_001/analysis_001_export.tsv'),
+                    file('${projectDir}/assets/samples/SAMPLE_001')
+                ])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0].split('\t') as List == SV_COLUMNS
+            def rows = lines.drop(1).collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
+            assert rows*.Site1_Hugo_Symbol == ['EML4', 'CD74', 'KIF5B'] : "S2's TMPRSS2--ERG excluded"
+            def eml4 = rows[0]
+            assert eml4.Site2_Hugo_Symbol == 'ALK'
+            assert eml4.Site1_Chromosome == '2' && eml4.Site1_Position == '42522656'
+            assert eml4.Site2_Chromosome == '2' && eml4.Site2_Position == '29446394' && eml4.Length == '13076262'
+            assert eml4.Site1_Ensembl_Transcript_Id == 'ENST00000318522' && eml4.Site2_Ensembl_Transcript_Id == 'ENST00000389048'
+            assert eml4.Site1_Region_Number == '13' && eml4.Site2_Region_Number == '20'
+            assert eml4.Tumor_Variant_Count == '1500' : "Total Reads, not Junction Read Count"
+            assert eml4.Event_Info == 'RNA-seq Fusion: EML4--ALK' && eml4.RNA_Support == 'Yes' && eml4.Class == 'FUSION'
+            assert rows[1].Length == 'NA' : "CD74 chr5 -- ROS1 chr6"
+            assert rows[2].Site1_Ensembl_Transcript_Id == 'NA' && rows[2].Site1_Region_Number == 'NA'
+        }
+    }
+
+    test("Fusion metrics TSV, filter mode: Total Reads >= 1000 and ZR-score >= sv_min_zr_score") {
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                filter_tsv_variants = true
+                sv_min_zr_score     = 5
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    [sample_id: 'S1'],
+                    file('${projectDir}/assets/samples/SAMPLE_001/analysis_001_export.tsv'),
+                    file('${projectDir}/assets/samples/SAMPLE_001')
+                ])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def rows = path(process.out[0][0].toString()).readLines().drop(1)
+                .collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
+            // CD74--ROS1: 40 reads; KIF5B--RET: 2000 reads but ZR-score N/A
+            assert rows*.Site1_Hugo_Symbol == ['EML4']
+        }
+    }
+
+    test("Fusion metrics TSV: a sample absent from the file gets a header-only file") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = Channel.of([
+                    [sample_id: 'S9'],
+                    file('${projectDir}/assets/samples/SAMPLE_001/analysis_001_export.tsv'),
+                    file('${projectDir}/assets/samples/SAMPLE_001')
+                ])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == [SV_COLUMNS.join('\t')]
         }
     }
 }

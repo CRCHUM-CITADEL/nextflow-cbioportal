@@ -65,4 +65,47 @@ nextflow_process {
             assert !path(meta.toString()).text.contains('namespaces:')
         }
     }
+
+    // The FusionMetrics namespace makes cBioPortal show data_sv.txt's FusionMetrics.ZR_score column
+    test("Declares the FusionMetrics SV namespace with fusion_metrics") {
+
+        when {
+            params {
+                outdir         = "$outputDir"
+                fusion_metrics = "${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv"
+            }
+            process {
+                """
+                input[0] = 'test_study'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def sv = process.out[0][0].find { it.toString().endsWith('meta_sv.txt') }
+            assert path(sv.toString()).readLines().contains('namespaces: FusionMetrics')
+            def mut = process.out[0][0].find { it.toString().endsWith('meta_mutations.txt') }
+            assert !path(mut.toString()).text.contains('namespaces:')
+        }
+    }
+
+    // The validator rejects a declared namespace without matching columns, and only the fusion-metrics TSV fills it
+    test("No SV namespace without fusion_metrics") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = 'test_study'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def sv = process.out[0][0].find { it.toString().endsWith('meta_sv.txt') }
+            assert !path(sv.toString()).text.contains('namespaces:')
+        }
+    }
 }

@@ -10,8 +10,9 @@ process WRITE_META {
 
     script:
     def no_seg = params.include_seg.toString().toBoolean() ? '' : '--no-seg'
-    // gnomAD namespace: cBioPortal shows ANNOTATE_GNOMAD's gnomAD.AF column
-    def namespaces = params.filter_gnomad_af.toString().toBoolean() ? '--namespaces gnomAD' : ''
+    // Namespaces make cBioPortal show ANNOTATE_GNOMAD's gnomAD.* and ClinVar.* columns; either filter runs it
+    def annotated  = params.filter_gnomad_af.toString().toBoolean() || params.filter_clinvar.toString().toBoolean()
+    def namespaces = annotated ? '--namespaces gnomAD,ClinVar' : ''
     """
     format_meta.py "${study_id}" ${no_seg} ${namespaces}
     """

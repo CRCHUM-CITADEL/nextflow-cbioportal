@@ -40,13 +40,42 @@ nextflow_process {
         }
     }
 
-    // Default: the combined exomes + genomes value (gnomAD.AF), as cBioPortal shows it
-    test("Filters on the combined gnomAD.AF by default") {
+    // Default: the highest ancestry AF (gnomAD.AF_max), so one population above 0.5 is enough
+    test("Filters on the per-ancestry maximum by default") {
 
         when {
             params {
                 outdir           = "$outputDir"
                 filter_gnomad_af = true
+            }
+            process {
+                """
+                file("${params.outdir}/af_inputs").mkdirs()
+                file("${params.outdir}/af_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tgnomAD.AF\\tgnomAD.AF_max\\tgnomAD.AF_max_pop\\n' +
+                    'ONE_POP_HIGH\\t0.1\\t0.6\\texome_asj\\n' +
+                    'MAX_AT\\t0.2\\t0.5\\tgenome_afr\\n' +
+                    'NOT_IN_GNOMAD\\t\\t\\t\\n'
+                input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
+            assert kept == ['MAX_AT', 'NOT_IN_GNOMAD']
+        }
+    }
+
+    // gnomAD.AF: the combined exomes + genomes value, as cBioPortal shows it (the pre-ancestry rule)
+    test("Filters on the combined gnomAD.AF when asked") {
+
+        when {
+            params {
+                outdir            = "$outputDir"
+                filter_gnomad_af  = true
+                gnomad_af_columns = 'gnomAD.AF'
             }
             process {
                 """
@@ -95,8 +124,71 @@ nextflow_process {
         }
     }
 
+    // Kept: P, LP, VUS, combined calls, qualified calls, conflicting with a kept class.
+    // Dropped: benign calls, non-pathogenicity terms and variants ClinVar has never seen.
+    test("ClinVar filter keeps Pathogenic, Likely pathogenic and VUS only") {
+
+        when {
+            params {
+                outdir         = "$outputDir"
+                filter_clinvar = true
+            }
+            process {
+                """
+                file("${params.outdir}/af_inputs").mkdirs()
+                file("${params.outdir}/af_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tClinVar.CLNSIG\\tClinVar.CLNSIGCONF\\n' +
+                    'P\\tPathogenic\\t\\n' +
+                    'LP\\tLikely_pathogenic\\t\\n' +
+                    'VUS\\tUncertain_significance\\t\\n' +
+                    'P_LP\\tPathogenic/Likely_pathogenic\\t\\n' +
+                    'P_LOW_PEN\\tPathogenic, low penetrance\\t\\n' +
+                    'CONF_P\\tConflicting_classifications_of_pathogenicity\\tPathogenic(3)|Benign(1)\\n' +
+                    'CONF_B\\tConflicting_classifications_of_pathogenicity\\tBenign(2)|Likely_benign(1)\\n' +
+                    'B\\tBenign\\t\\n' +
+                    'LB\\tLikely_benign\\t\\n' +
+                    'B_LB\\tBenign/Likely_benign\\t\\n' +
+                    'DRUG\\tdrug_response\\t\\n' +
+                    'NOT_IN_CLINVAR\\t\\t\\n'
+                input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
+            assert kept == ['P', 'LP', 'VUS', 'P_LP', 'P_LOW_PEN', 'CONF_P']
+        }
+    }
+
+    // No ClinVar data at all is the same as no ClinVar record: nothing is kept
+    test("ClinVar filter drops every row when the ClinVar column is missing") {
+
+        when {
+            params {
+                outdir         = "$outputDir"
+                filter_clinvar = true
+            }
+            process {
+                """
+                file("${params.outdir}/af_inputs").mkdirs()
+                file("${params.outdir}/af_inputs/data_mutations.txt").text =
+                    'Hugo_Symbol\\tChromosome\\n' +
+                    'G1\\tchr1\\n'
+                input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tChromosome']
+        }
+    }
+
     // Stub MAFs have no gnomAD / depth columns
-    test("Passes rows through when the filter columns are missing") {
+    test("Passes rows through when the gnomAD / VAF columns are missing") {
 
         when {
             params {

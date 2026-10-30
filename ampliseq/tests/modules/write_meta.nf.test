@@ -5,8 +5,8 @@ nextflow_process {
     process "WRITE_META"
     tag "module"
 
-    // The gnomAD namespace makes cBioPortal import and show ANNOTATE_GNOMAD's gnomAD.AF column
-    test("Declares the gnomAD namespace with filter_gnomad_af") {
+    // The namespaces make cBioPortal import and show ANNOTATE_GNOMAD's gnomAD.* and ClinVar.* columns
+    test("Declares the gnomAD and ClinVar namespaces with filter_gnomad_af") {
 
         when {
             params {
@@ -23,11 +23,32 @@ nextflow_process {
         then {
             assert process.success
             def meta = process.out[0][0].find { it.toString().endsWith('meta_mutations.txt') }
-            assert path(meta.toString()).readLines().contains('namespaces: gnomAD')
+            assert path(meta.toString()).readLines().contains('namespaces: gnomAD,ClinVar')
         }
     }
 
-    test("No namespace without filter_gnomad_af") {
+    test("Declares the namespaces with filter_clinvar alone") {
+
+        when {
+            params {
+                outdir         = "$outputDir"
+                filter_clinvar = true
+            }
+            process {
+                """
+                input[0] = 'test_study'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def meta = process.out[0][0].find { it.toString().endsWith('meta_mutations.txt') }
+            assert path(meta.toString()).readLines().contains('namespaces: gnomAD,ClinVar')
+        }
+    }
+
+    test("No namespace without the Genome Nexus filters") {
 
         when {
             params { outdir = "$outputDir" }

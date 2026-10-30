@@ -59,8 +59,8 @@ ch_samplesheet
   │
   ├─ MERGE_DEANON (subworkflow) ── merge all per-sample files + deanonymise
   │    ├─ MERGE_{SV,CNA,MUTATIONS,SEG}       (MERGE_SEG… only with include_seg)
-  │    ├─ ANNOTATE_GNOMAD                    (filter_gnomad_af; Genome Nexus API)
-  │    ├─ FILTER_MUTATIONS_AF                (filter_gnomad_af / filter_vaf)
+  │    ├─ ANNOTATE_GNOMAD                    (filter_gnomad_af / filter_clinvar; Genome Nexus API)
+  │    ├─ FILTER_MUTATIONS_AF                (filter_gnomad_af / filter_vaf / filter_clinvar)
   │    ├─ FILTER_CNV_SAMPLES_{CNA,SEG}       (filter_cnv_depth)
   │    └─ DEANON_{MUTATIONS,SV,CNA,SEG}
   │
@@ -76,15 +76,21 @@ ch_samplesheet
 - **Mutations** → FILTER_MUTATIONS instead of PASSTHROUGH_MUTATIONS: keep a MAF row only if its `[Start_Position, End_Position]` overlaps (inclusive, `chr` ignored) a TSV row with numeric `Depth >= mutation_min_depth` (250) and `VAF > mutation_min_vaf` (0.03). Depth/VAF come from the TSV. CNV/fusion rows have `N/A` there, so they are never match regions: a fusion row can span tens of Mb. Alleles are not compared.
 - **CNA** → `format_cna.py --min-copy-number`: keep rows with raw `Copy Number >= cna_min_copy_number` (6, before the half-up rounding). `Confidence` is not used (the `cna_confidence` param was removed). Every deletion is dropped and every kept gene is Value 2.
 - **Fusions** → FORMAT_SV ignores any `*-star-fusion.final.vcf` and runs `format_tsv_to_sv.py --min-supporting-reads`: `Supporting Reads` summed per `(Genes, Breakend Genes)` pair (`N/A` = 0), and every row of a pair whose total is `>= sv_min_supporting_reads` (1000) is kept.
+<<<<<<< Updated upstream
+- **Fusions with `fusion_metrics`** (see below) → `fusion_metrics_to_sv.py --min-junction-reads sv_min_supporting_reads [--min-zr-score sv_min_zr_score]`, per fusion row on `Junction Read Count` (no pair summing); a non-numeric value fails its filter. `sv_min_zr_score` defaults to `null` = no ZR filter.
+=======
+- **Fusions with `fusion_metrics`** (see below) → `fusion_metrics_to_sv.py --min-total-reads sv_min_supporting_reads [--min-zr-score sv_min_zr_score]`, per fusion row (no pair summing); a non-numeric value fails its filter. `sv_min_zr_score` defaults to `null` = no ZR filter.
+>>>>>>> Stashed changes
 - A missing `Depth`/`VAF` column fails the task in filter mode. `data_seg.txt` is never filtered.
 
 FILTER_MUTATIONS runs `bin/filter_mutations.py` (it used to be an inline awk program).
 
 **Post-merge filters** (all off by default; each a param). They run in MERGE_DEANON on the merged, not yet remapped files, so unlike filter mode they also re-filter samples cached in `--outdir`:
 
-- **gnomAD** (`filter_gnomad_af`, `max_gnomad_af` 0.5, `gnomad_af_columns` `gnomAD.AF`): ANNOTATE_GNOMAD fetches the frequencies from Genome Nexus (see **gnomAD** below), then FILTER_MUTATIONS_AF (`bin/filter_mutations_af.py`) drops a mutation whose highest listed gnomAD AF is `> max_gnomad_af`. The default `gnomAD.AF` is exomes + genomes combined, the value cBioPortal shows; `gnomADe_AF,gnomADg_AF` gives the stricter higher-of-both rule.
+- **gnomAD** (`filter_gnomad_af`, `max_gnomad_af` 0.5, `gnomad_af_columns` `gnomAD.AF_max`): ANNOTATE_GNOMAD fetches the frequencies from Genome Nexus (see **gnomAD** below), then FILTER_MUTATIONS_AF (`bin/filter_mutations_af.py`) drops a mutation whose highest listed gnomAD AF is `> max_gnomad_af`. The default `gnomAD.AF_max` is the highest of the total + 8 ancestries, exomes and genomes apart, so **any one ancestry** above the threshold drops the row; `gnomAD.AF` (combined total, what cBioPortal shows) restores the old rule.
+- **ClinVar** (`filter_clinvar`, `clinvar_keep_classes` `Pathogenic,Likely_pathogenic,Uncertain_significance`): keeps a row only when a `/`/`|`/`;`-separated term of `ClinVar.CLNSIG` is a kept class (or a kept class + `,_qualifier`, e.g. `Pathogenic,_low_penetrance`); terms are lowercased, spaces → `_`. A `Conflicting_…` call is kept when `ClinVar.CLNSIGCONF` (`Pathogenic(3)|Benign(1)`, counts stripped) lists a kept class. **Missing ClinVar data drops the row** — an empty `ClinVar.CLNSIG` (not in ClinVar, or still unanswered after the re-asks), and every row when the column itself is absent. The opposite of the gnomAD/VAF rule, by Justin's decision (2026-10-29).
 - **VAF** (`filter_vaf`, `max_vaf` 0.5): drops a mutation whose `t_alt_count / t_depth > max_vaf`.
-- Both: thresholds are strict (`=` is kept); blank/`.`/non-numeric values and `t_depth` 0 never drop a row; a missing column (stub MAF, older cached samples) skips that criterion with a warning.
+- gnomAD/VAF: thresholds are strict (`=` is kept); blank/`.`/non-numeric values and `t_depth` 0 never drop a row, and a missing gnomAD/VAF column (stub MAF, older cached samples) skips that criterion with a warning. ANNOTATE_GNOMAD always runs before the ClinVar filter, so `ClinVar.CLNSIG` is only absent in standalone use.
 - **CNV depth QC** (`filter_cnv_depth`, `cnv_min_depth` 250, `cnv_min_depth_fraction` 0.95, `cnv_depth_pass_only` true): CNV_DEPTH_QC (`bin/cnv_depth_qc.py`) runs on **every** samplesheet sample (cheap: reads the Pisces VCF) and writes `qc/cnv_depth_qc.tsv`. A sample passes when at least that fraction of its (PASS) Pisces records have depth (FORMAT/DP, else INFO/DP) `>= cnv_min_depth`; no countable records = FAIL. FILTER_CNV_SAMPLES drops a failed sample's rows from `data_cna.txt` / `data_seg.txt` (sample column found by header name) and WRITE_CASE_LISTS leaves it out of `cases_cna.txt` and `cases_cnaseq.txt` only, so cBioPortal shows it as not profiled for CNA. Mutations and SVs are kept. The failed IDs travel as a `val` list (no file), `[]` when the filter is off.
 
 ---
@@ -94,6 +100,18 @@ FILTER_MUTATIONS runs `bin/filter_mutations.py` (it used to be an inline awk pro
 - `analysis_*_export.tsv` — real export columns: `Chr, Start, End, Length, Variant Type, Variant Subtype, Ref, Alt, Genes, Cdot, Pdot, Exons, VAF, Confidence, Depth, Depth_Ref, Depth_Alt, Region, Effect, Germline Classification, Somatic Classification, Clinical Significance, In Report, Aggregated Normal Frequency, Copy Number, Included in TMB calculation, Possibly germline variant, Supporting Reads, Breakend Genes, Breakend Exon`. Missing values are the literal `N/A`; SNP rows are points (`Start == End`), CNV/fusion rows are regions. Small variants are `Variant Type = SNP` (subtype `SNP`/`INDEL`); fusions are `CNV`/`SV` + `FUSION`, one row per breakpoint. Scripts read columns by name; `assets/samples/*` uses this layout.
 - `*-basespace-pisces.final.vcf.gz` — somatic mutations VCF; filename prefix = `SAMPLE_ID`
 - `*-basespace-cnv.final.vcf` — CNV VCF; needs `CN` in FORMAT and `END` in INFO
+
+<<<<<<< Updated upstream
+**Fusion-metrics TSV** (`--fusion_metrics`, optional, one file for the whole cohort): `###` preamble lines, then a `#Sample` header (`#Sample, Source, File extension(s), Fusion, GeneA, GeneB, ExonA, ExonB, Transcript_idA, Transcript_idB, BreakpointA, BreakpointB, Junction Read Count, DepthA, DepthB, Total Reads, Z-Score, R-score, ZR-score`), one row per fusion. When set, FORMAT_SV runs `bin/fusion_metrics_to_sv.py` for every sample and ignores the export TSV fusion rows and any STAR-Fusion VCF.
+
+- **Sample matching:** `Sample` (stripped, case-insensitive) matches the samplesheet `sample_id`, the sample folder name, or that folder name without its leading digits and underscore. The real export uses the last form (folder `1000_23BM004967-1-A01-1` gives `23BM004967-1-A01-1`), never the `sample_id` `23bm004967_1000`; matching on `sample_id` alone dropped every fusion (2026-10-30). FORMAT_SV passes `--sample-folder` with the staged folder's name. The output `Sample_Id` is always `sample_id`. A sample without rows gets a header-only file plus a warning listing the names tried.
+- **Gene symbols:** that export writes `GeneA`/`GeneB` as the placeholder `ENSG00000000000.00`, so when either is empty or Ensembl-ID-shaped both come from `Fusion` split on the first `--` (the first gene is at `BreakpointA`).
+- **Metrics:** only `Junction Read Count` (reads across the breakpoint: the filter-mode support filter, and `Tumor_Variant_Count`) and `ZR-score` (filter) are used. `Total Reads` is deliberately ignored: it is the sample's library size, identical for every fusion of a sample (checked on 4,727 samples, 2026-10-30), so as a filter it only ever dropped whole shallow samples. Justin's choice, after the whole-file analysis showed ZR > 1 plus junction > 1000 keeps 121 fusions, nearly all known drivers.
+- **Columns:** the spec'd header lists `BreakpointA` twice, so pandas' `BreakpointA.1` is taken as `BreakpointB` (with a warning). Breakpoints parse as `chr7:55249071` with an optional `:+` strand (unparseable gives `NA`). `Transcript_idA/B` map to `Site1/2_Ensembl_Transcript_Id` and `ExonA/B` to `Site1/2_Region_Number`; `.`, `N/A` and `NA` are missing.
+- **Caching:** the file is a `path` input (`[]` when unset), so `-resume` reruns FORMAT_SV when it changes, but cached samples in `--outdir` are never re-derived (see Incremental Runs).
+=======
+**Fusion-metrics TSV** (`--fusion_metrics`, optional, one file for the whole cohort): `###` preamble lines, then a `#Sample` header (`#Sample, Source, File extension(s), Fusion, GeneA, GeneB, ExonA, ExonB, Transcript_idA, Transcript_idB, BreakpointA, BreakpointB, Junction Read Count, DepthA, DepthB, Total Reads, Z-Score, R-score, ZR-score`), one row per fusion. When set, FORMAT_SV runs `bin/fusion_metrics_to_sv.py` for every sample and ignores the export TSV fusion rows and any STAR-Fusion VCF. Rows match the samplesheet `sample_id` on `Sample` (whitespace-stripped, case-sensitive); a sample without rows gets a header-only `_sv.txt` + warning. The spec'd header lists `BreakpointA` twice, so pandas' `BreakpointA.1` is taken as `BreakpointB` (with a warning). Breakpoints parse as `[chr]<chrom>:<pos>[:strand]` (unparseable → `NA`). Only `Total Reads` (→ `Tumor_Variant_Count`, and the filter-mode depth filter) and `ZR-score` (filter) are used; the other metrics are ignored. `Transcript_idA/B` → `Site1/2_Ensembl_Transcript_Id`, `ExonA/B` → `Site1/2_Region_Number`. `.`/`N/A`/`NA` are missing. The file is a `path` input (`[]` when unset), so `-resume` reruns FORMAT_SV when it changes — but cached samples in `--outdir` are never re-derived (see Incremental Runs).
+>>>>>>> Stashed changes
 
 **Patient file** columns: `patient_id, moh_id, age, sex, os_status, os_months, smoking_history` (`moh_id` → `MOH_ID` in `data_clinical_patient.txt`; must be kept).
 **Sample file** columns: `sample_id, patient_id, cancer_type, cancer_type_detailed, sample_type, primary_tumor_site, metastatic_tumor_site, tumor_purity`.
@@ -148,13 +166,19 @@ Two process labels control container assignment in `nextflow.config`:
 
 ### gnomAD
 
-fastVEP has no population-frequency source, so with `filter_gnomad_af` the merged MAF goes through **ANNOTATE_GNOMAD** (`bin/annotate_gnomad.py`) before FILTER_MUTATIONS_AF. It POSTs each distinct variant (MAF `Chromosome` without `chr`, `Start_Position`, `End_Position`, `Reference_Allele`, `Tumor_Seq_Allele2`; MAF-style `-` alleles work) in batches of 200 to `${genome_nexus_url}/annotation/genomic?fields=my_variant_info`, the service cBioPortal uses for its own gnomAD column. Results are matched back on `originalVariantQuery` (`chrom,start,end,ref,alt`) and written, overwriting any existing values, as `gnomADe_AF` / `gnomADg_AF` (`my_variant_info.annotation.gnomad{Exome,Genome}.alleleFrequency.af`, else `alleleCount.ac / alleleNumber.an` as cBioPortal does; gnomAD v2.1.1, GRCh37) and `gnomAD.AF` = `(AC_e + AC_g) / (AN_e + AN_g)`, cBioPortal's "Total". All three are empty when gnomAD never saw the variant. The columns stay in `data_mutations.txt`; WRITE_META adds `namespaces: gnomAD` to `meta_mutations.txt` (`format_meta.py --namespaces`), so cBioPortal shows `gnomAD.AF` in the mutation table.
+fastVEP has no population-frequency source, so with `filter_gnomad_af` or `filter_clinvar` the merged MAF goes through **ANNOTATE_GNOMAD** (`bin/annotate_gnomad.py`; the name predates ClinVar) before FILTER_MUTATIONS_AF. It POSTs each distinct variant (MAF `Chromosome` without `chr`, `Start_Position`, `End_Position`, `Reference_Allele`, `Tumor_Seq_Allele2`; MAF-style `-` alleles work) in batches of 200 to `${genome_nexus_url}/annotation/genomic?fields=my_variant_info,clinvar`, the service cBioPortal uses for its own gnomAD and ClinVar columns. Results are matched back on `originalVariantQuery` (`chrom,start,end,ref,alt`) and written, overwriting any existing values, unconditionally (so the merge stays rectangular):
 
-- **Dropped answers:** Genome Nexus sometimes returns a variant with `successfully_annotated: true` but no gnomAD block, then the full data seconds later (seen on 19 common panel SNVs at once, 2026-10-19). Treated as unknown, those rows passed the filter and showed up in cBioPortal at AF > 0.5. Variants without gnomAD data are therefore asked again in up to `--empty-retries` (2) passes of 50, after 10 s × pass. The stderr summary gives asked-again / recovered / not-in-gnomAD counts and warns about still-empty variants that have a dbSNP rsID.
+- `gnomADe_AF` / `gnomADg_AF`: `my_variant_info.annotation.gnomad{Exome,Genome}.alleleFrequency.af`, else `alleleCount.ac / alleleNumber.an` as cBioPortal does (gnomAD v2.1.1, GRCh37); `gnomAD.AF` = `(AC_e + AC_g) / (AN_e + AN_g)`, cBioPortal's "Total".
+- `gnomAD.AF_max` / `gnomAD.AF_max_pop`: the highest of the 18 values `af` + `af_{afr,amr,asj,eas,fin,nfe,oth,sas}` × exome/genome (each falling back to `ac_<pop>/an_<pop>`), and its label (`exome_nfe`, `genome_total`). No allele-number guard, so small groups (asj, oth) can spike it — deliberate.
+- `ClinVar.CLNSIG` / `ClinVar.CLNSIGCONF`: `clinvar.annotation.clinicalSignificance` / `conflictingClinicalSignificance`, verbatim.
+
+All are empty when gnomAD / ClinVar never saw the variant. The columns stay in `data_mutations.txt`; WRITE_META adds `namespaces: gnomAD,ClinVar` to `meta_mutations.txt` (`format_meta.py --namespaces`) whenever annotation ran, so cBioPortal shows them in the mutation table.
+
+- **Dropped answers:** Genome Nexus sometimes returns a variant with `successfully_annotated: true` but no gnomAD block, then the full data seconds later (seen on 19 common panel SNVs at once, 2026-10-19). Treated as unknown, those rows passed the filter and showed up in cBioPortal at AF > 0.5. Variants without gnomAD **or ClinVar** data are therefore asked again in up to `--empty-retries` (2) passes of 50, after 10 s × pass (a dropped ClinVar answer would now _remove_ a pathogenic variant). A retry answer is merged half by half, so a later partial answer never erases data. Most somatic variants are not in ClinVar, so the re-ask passes usually run. The stderr summary gives asked-again / recovered / not-in-gnomAD / not-in-ClinVar counts and warns about gnomAD-less variants that have a dbSNP rsID.
 
 - **Network:** the task needs outbound HTTPS. Only coordinates and alleles leave the cluster, never sample IDs. After 3 failed attempts it exits non-zero instead of writing an unannotated file (an empty gnomAD column would let everything through). A header-only MAF makes no request.
 - **Server:** `genome_nexus_url` defaults to the public `https://www.genomenexus.org` (GRCh37); a self-hosted Genome Nexus also works.
-- **Re-fetched every run** over the merged file, so cached samples are covered. Test: `tests/modules/annotate_gnomad.nf.test` (tag `network`, public TP53 P72R). Its offline case uses `tests/modules/fixtures/fake_genome_nexus.py` on `127.0.0.1:18765` (drops the first answer, AC/AN-only variant).
+- **Re-fetched every run** over the merged file, so cached samples are covered. Test: `tests/modules/annotate_gnomad.nf.test` (tag `network`, public TP53 P72R). Its offline case uses `tests/modules/fixtures/fake_genome_nexus.py` on `127.0.0.1:18765` (drops the first gnomAD answer, AC/AN-only variant with per-ancestry AC/AN, a ClinVar block that only arrives on the retry while that retry drops gnomAD).
 
 Container definitions live in `containers/`. See `containers/README.md` for local build, `--mafsmith_container <local.sif>`, and the push/tag convention. ghcr images are private, so pulls need `apptainer registry login`.
 
@@ -175,7 +199,7 @@ A sample is skipped if all four per-sample files exist under `{outdir}/samples/{
 
 Merge/deanon/clinical steps always re-run over all samples combined. Use the same `--outdir` across runs.
 
-**Filter mode is applied per sample**, so switching `--filter_tsv_variants` or changing a threshold does not touch samples already in `--outdir`: use a fresh `--outdir` (or delete `samples/<id>/`) to re-filter them. The post-merge filters (gnomAD, VAF, CNV depth QC), the gnomAD lookup and `include_seg` apply to cached samples too.
+**Filter mode is applied per sample**, so switching `--filter_tsv_variants` or changing a threshold does not touch samples already in `--outdir`: use a fresh `--outdir` (or delete `samples/<id>/`) to re-filter them. The post-merge filters (gnomAD, ClinVar, VAF, CNV depth QC), the Genome Nexus lookup and `include_seg` apply to cached samples too. `fusion_metrics` does **not**: delete `{outdir}/samples/*/*_sv.txt` to rebuild cached samples' fusions from it.
 
 ---
 
@@ -189,7 +213,12 @@ python3 /path/to/bin/format_tsv_to_sv.py    <export.tsv>  <SAMPLE_ID>
 python3 /path/to/bin/format_cna.py    <export.tsv>  <SAMPLE_ID>
 python3 /path/to/bin/vcf_to_seg.py    <cnv.vcf>     <SAMPLE_ID> [--mode log2|cn]
 python3 /path/to/bin/filter_mutations.py <maf> <export.tsv> <out> <min_depth> <min_vaf>
-python3 /path/to/bin/filter_mutations_af.py <maf> --out <out> [--max-gnomad-af X] [--max-vaf Y]
+<<<<<<< Updated upstream
+python3 /path/to/bin/fusion_metrics_to_sv.py <fusion_metrics.tsv> <SAMPLE_ID> [--sample-folder NAME] [--min-junction-reads N] [--min-zr-score Z]
+=======
+python3 /path/to/bin/fusion_metrics_to_sv.py <fusion_metrics.tsv> <SAMPLE_ID> [--min-total-reads N] [--min-zr-score Z]
+>>>>>>> Stashed changes
+python3 /path/to/bin/filter_mutations_af.py <maf> --out <out> [--max-gnomad-af X] [--max-vaf Y] [--clinvar-keep a,b,c]
 python3 /path/to/bin/cnv_depth_qc.py  <pisces.vcf[.gz]> <SAMPLE_ID> [--min-depth 250] [--min-fraction 0.95] [--pass-only]
 python3 /path/to/bin/format_mutations.py data_mutations.txt <linking_file>
 python3 /path/to/bin/format_sv.py       data_sv.txt         <linking_file>

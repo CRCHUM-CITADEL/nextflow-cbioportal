@@ -19,8 +19,8 @@ Genes: GeneA/GeneB, unless one is empty or an Ensembl placeholder (`ENSG00000000
 from `Fusion` (`GENEA--GENEB`, GeneA at BreakpointA).
 
 Filter mode: keep a fusion when `Junction Read Count >= N` (reads across the breakpoint, the fusion's own
-support) and `ZR-score >= Z`; a non-numeric value fails the filter. Junction Read Count is also written as
-Tumor_Variant_Count. Every other metric is ignored; Total Reads is the sample's library size, the same for
+support) and `ZR-score >= Z`; a non-numeric value fails the filter. Junction Read Count is written as
+Tumor_Variant_Count and ZR-score as FusionMetrics.ZR_score. Every other metric is ignored; Total Reads is the sample's library size, the same for
 every fusion of a sample, so it says nothing about one fusion.
 """
 
@@ -148,6 +148,7 @@ def main():
             "Connection_Type":             "5to3",
             "Event_Info":                  f"RNA-seq Fusion: {fusion}",
             "Annotation":                  f"{gene1} - {gene2} fusion" if gene1 and gene2 else "",
+            "FusionMetrics.ZR_score":      clean(r["ZR-score"]),
         })
 
     write_rows(rows)

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
 Generate cBioPortal meta files for all data types.
-Usage: python3 format_meta.py <study_id> [out_dir] [--no-seg] [--namespaces a,b]
+Usage: python3 format_meta.py <study_id> [out_dir] [--no-seg] [--namespaces a,b] [--sv-namespaces c]
 
 --no-seg skips meta_seg.txt. Without segment data cBioPortal does not compute
 Fraction Genome Altered.
 --namespaces adds "namespaces: a,b" to meta_mutations.txt, so cBioPortal imports
 and shows the MAF columns prefixed "a." / "b." (e.g. gnomAD.AF).
+--sv-namespaces does the same for meta_sv.txt (e.g. FusionMetrics.ZR_score). The
+validator rejects a namespace with no matching column, so only pass one the SV file has.
 """
 
 import argparse
@@ -84,6 +86,7 @@ def main():
     parser.add_argument('out_dir', nargs='?', default='.')
     parser.add_argument('--no-seg', action='store_true')
     parser.add_argument('--namespaces', default='')
+    parser.add_argument('--sv-namespaces', default='')
     args = parser.parse_args()
 
     study_id = args.study_id
@@ -98,6 +101,8 @@ def main():
         content = template.format(study_id=study_id)
         if args.namespaces and filename == "meta_mutations.txt":
             content += f"namespaces: {args.namespaces}\n"
+        if args.sv_namespaces and filename == "meta_sv.txt":
+            content += f"namespaces: {args.sv_namespaces}\n"
         with open(path, "w") as f:
             f.write(content)
         print(f"Written: {path}")

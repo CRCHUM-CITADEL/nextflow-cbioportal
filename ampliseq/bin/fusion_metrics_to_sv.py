@@ -2,15 +2,25 @@
 """
 Format one sample's fusions from the cohort-wide fusion-metrics TSV into data_sv.txt (cBioPortal SV
 format, full column set from cbio_sv.SV_COLUMNS).
-Usage: python3 fusion_metrics_to_sv.py <metrics_tsv> <sample_id> [--min-total-reads N] [--min-zr-score Z]
+Usage: python3 fusion_metrics_to_sv.py <metrics_tsv> <sample_id> [--sample-folder NAME]
+                                        [--min-junction-reads N] [--min-zr-score Z]
 
 Layout: `###` preamble lines, then a `#Sample` header line (#Sample, Source, File extension(s), Fusion,
 GeneA, GeneB, ExonA, ExonB, Transcript_idA, Transcript_idB, BreakpointA, BreakpointB, Junction Read Count,
-DepthA, DepthB, Total Reads, Z-Score, R-score, ZR-score), one row per fusion. Rows are matched to the
-sample on `Sample`. Breakpoints are `[chr]<chrom>:<pos>[:strand]`.
+DepthA, DepthB, Total Reads, Z-Score, R-score, ZR-score), one row per fusion. Breakpoints are
+`[chr]<chrom>:<pos>[:strand]`.
 
-Filter mode: keep a fusion when `Total Reads >= N` and `ZR-score >= Z`; a non-numeric value fails the
-filter. Every other metric is ignored.
+Sample matching: `Sample` (case-insensitive) is compared with the sample_id, the --sample-folder name, and
+that name without its leading `<digits>_` (folder `1000_23BM004967-1-A01-1` -> `23BM004967-1-A01-1`, the
+form the fusion caller writes). Sample_Id in the output is always <sample_id>.
+
+Genes: GeneA/GeneB, unless one is empty or an Ensembl placeholder (`ENSG00000000000.00`); then both come
+from `Fusion` (`GENEA--GENEB`, GeneA at BreakpointA).
+
+Filter mode: keep a fusion when `Junction Read Count >= N` (reads across the breakpoint, the fusion's own
+support) and `ZR-score >= Z`; a non-numeric value fails the filter. Junction Read Count is also written as
+Tumor_Variant_Count. Every other metric is ignored; Total Reads is the sample's library size, the same for
+every fusion of a sample, so it says nothing about one fusion.
 """
 
 import argparse
@@ -23,7 +33,8 @@ import pandas as pd
 from cbio_sv import NCBI_BUILD, sv_length, strip_chr, write_rows
 
 BREAKPOINT = re.compile(r"^(?:chr)?([0-9XYMT]+):(\d+)", re.IGNORECASE)
-NEEDED = ["Sample", "GeneA", "GeneB", "BreakpointA", "BreakpointB", "Total Reads", "ZR-score"]
+ENSEMBL_ID = re.compile(r"^ENS[A-Z]*G\d+", re.IGNORECASE)
+NEEDED = ["Sample", "GeneA", "GeneB", "BreakpointA", "BreakpointB", "Junction Read Count", "ZR-score"]
 
 
 def read_metrics(path):
@@ -63,29 +74,52 @@ def region_number(value):
     return clean(value) if clean(value).isdigit() else ""
 
 
+def sample_keys(sample_id, folder):
+    """Uppercased names a row's Sample may carry: sample_id, folder, folder without its digits_ prefix."""
+    keys = [sample_id]
+    if folder:
+        keys += [folder, re.sub(r"^\d+_", "", folder)]
+    return {k.strip().upper() for k in keys if k and k.strip()}
+
+
+def genes(row):
+    """(gene A, gene B): the Gene columns, or `Fusion` split on `--` when either is missing or an Ensembl ID."""
+    gene1, gene2 = clean(row["GeneA"]), clean(row["GeneB"])
+    if all(g and not ENSEMBL_ID.match(g) for g in (gene1, gene2)):
+        return gene1, gene2
+    fusion = clean(row.get("Fusion"))
+    if "--" in fusion:
+        first, second = fusion.split("--", 1)
+        return first.strip(), second.strip()
+    print(f"WARNING: no gene symbols for fusion '{fusion}' (GeneA '{gene1}', GeneB '{gene2}')", file=sys.stderr)
+    return gene1, gene2
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("metrics_tsv")
     parser.add_argument("sample_id")
-    parser.add_argument("--min-total-reads", type=float, default=None)
+    parser.add_argument("--sample-folder", default="")
+    parser.add_argument("--min-junction-reads", type=float, default=None)
     parser.add_argument("--min-zr-score", type=float, default=None)
     args = parser.parse_args()
     sample_id = args.sample_id
 
     df = read_metrics(args.metrics_tsv)
-    df = df[df["Sample"].str.strip() == sample_id]
+    keys = sample_keys(sample_id, args.sample_folder)
+    df = df[df["Sample"].str.strip().str.upper().isin(keys)]
     if df.empty:
-        print(f"WARNING: no fusions for {sample_id} in {args.metrics_tsv}", file=sys.stderr)
+        print(f"WARNING: no fusions for {sample_id} in {args.metrics_tsv} "
+              f"(Sample tried: {', '.join(sorted(keys))})", file=sys.stderr)
 
-    total_reads = pd.to_numeric(df["Total Reads"], errors="coerce")
-    if args.min_total_reads is not None:
-        df = df[total_reads >= args.min_total_reads]
+    if args.min_junction_reads is not None:
+        df = df[pd.to_numeric(df["Junction Read Count"], errors="coerce") >= args.min_junction_reads]
     if args.min_zr_score is not None:
         df = df[pd.to_numeric(df["ZR-score"], errors="coerce") >= args.min_zr_score]
 
     rows = []
     for _, r in df.iterrows():
-        gene1, gene2 = clean(r["GeneA"]), clean(r["GeneB"])
+        gene1, gene2 = genes(r)
         chrom1, pos1 = breakpoint(r["BreakpointA"])
         chrom2, pos2 = breakpoint(r["BreakpointB"])
         for label, value, chrom in (("BreakpointA", r["BreakpointA"], chrom1), ("BreakpointB", r["BreakpointB"], chrom2)):
@@ -110,7 +144,7 @@ def main():
             "Length":                      sv_length(chrom1, pos1, chrom2, pos2),
             "DNA_Support":                 "No",
             "RNA_Support":                 "Yes",
-            "Tumor_Variant_Count":         clean(r["Total Reads"]),
+            "Tumor_Variant_Count":         clean(r["Junction Read Count"]),
             "Connection_Type":             "5to3",
             "Event_Info":                  f"RNA-seq Fusion: {fusion}",
             "Annotation":                  f"{gene1} - {gene2} fusion" if gene1 and gene2 else "",

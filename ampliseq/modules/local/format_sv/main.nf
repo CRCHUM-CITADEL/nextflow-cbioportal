@@ -13,14 +13,14 @@ process FORMAT_SV {
 
     script:
     def filter_mode = params.filter_tsv_variants.toString().toBoolean()
-    // The fusion-metrics TSV, when given, is the only fusion source; filter mode uses its Total Reads / ZR-score
+    // The fusion-metrics TSV, when given, is the only fusion source; filter mode uses its Junction Read Count / ZR-score
     if (fusion_metrics) {
-        def filter_args = filter_mode ? "--min-total-reads ${params.sv_min_supporting_reads}" : ''
+        def filter_args = filter_mode ? "--min-junction-reads ${params.sv_min_supporting_reads}" : ''
         if (filter_mode && params.sv_min_zr_score != null) {
             filter_args += " --min-zr-score ${params.sv_min_zr_score}"
         }
         """
-        fusion_metrics_to_sv.py "${fusion_metrics}" "${meta.sample_id}" ${filter_args}
+        fusion_metrics_to_sv.py "${fusion_metrics}" "${meta.sample_id}" --sample-folder "${sample_folder.name}" ${filter_args}
         mv data_sv.txt "${meta.sample_id}_sv.txt"
         """
     // Filter mode: always the TSV (its Supporting Reads), even with a STAR-Fusion VCF

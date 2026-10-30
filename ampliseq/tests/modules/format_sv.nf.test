@@ -183,14 +183,14 @@ nextflow_process {
             assert eml4.Site2_Chromosome == '2' && eml4.Site2_Position == '29446394' && eml4.Length == '13076262'
             assert eml4.Site1_Ensembl_Transcript_Id == 'ENST00000318522' && eml4.Site2_Ensembl_Transcript_Id == 'ENST00000389048'
             assert eml4.Site1_Region_Number == '13' && eml4.Site2_Region_Number == '20'
-            assert eml4.Tumor_Variant_Count == '1500' : "Total Reads, not Junction Read Count"
+            assert eml4.Tumor_Variant_Count == '1250' : "Junction Read Count, not Total Reads"
             assert eml4.Event_Info == 'RNA-seq Fusion: EML4--ALK' && eml4.RNA_Support == 'Yes' && eml4.Class == 'FUSION'
             assert rows[1].Length == 'NA' : "CD74 chr5 -- ROS1 chr6"
             assert rows[2].Site1_Ensembl_Transcript_Id == 'NA' && rows[2].Site1_Region_Number == 'NA'
         }
     }
 
-    test("Fusion metrics TSV, filter mode: Total Reads >= 1000 and ZR-score >= sv_min_zr_score") {
+    test("Fusion metrics TSV, filter mode: Junction Read Count >= 1000 and ZR-score >= sv_min_zr_score") {
 
         when {
             params {
@@ -215,8 +215,101 @@ nextflow_process {
             assert process.success
             def rows = path(process.out[0][0].toString()).readLines().drop(1)
                 .collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
-            // CD74--ROS1: 40 reads; KIF5B--RET: 2000 reads but ZR-score N/A
+            // CD74--ROS1: 12 junction reads; KIF5B--RET: 5 junction reads and ZR-score N/A
             assert rows*.Site1_Hugo_Symbol == ['EML4']
+        }
+    }
+
+    // Total Reads is the sample's library size: TMPRSS2--ERG has 1200 of it but only 300 junction reads
+    test("Fusion metrics TSV, filter mode: Total Reads is not used as fusion support") {
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                filter_tsv_variants = true
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    [sample_id: 'S2'],
+                    file('${projectDir}/assets/samples/SAMPLE_002/analysis_002_export.tsv'),
+                    file('${projectDir}/assets/samples/SAMPLE_002')
+                ])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == [SV_COLUMNS.join('\t')]
+        }
+    }
+
+    // The real export names samples after the folder minus its NNNN_ prefix and has placeholder gene IDs
+    test("Fusion metrics TSV: matched on the folder name, genes taken from Fusion") {
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                filter_tsv_variants = true
+                sv_min_zr_score     = 0.5
+            }
+            process {
+                """
+                def dir = file("${params.outdir}/sv_inputs/1000_23BM004967-1-A01-1")
+                dir.mkdirs()
+                input[0] = Channel.of([
+                    [sample_id: '23bm004967_1000'],
+                    file('${projectDir}/assets/samples/SAMPLE_001/analysis_001_export.tsv'),
+                    dir
+                ])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def rows = path(process.out[0][0].toString()).readLines().drop(1)
+                .collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
+            // ITGB7--MYC (lowercase Sample, still matched) has ZR-score 0.03
+            assert rows.size() == 1
+            def alk = rows[0]
+            assert alk.Sample_Id == '23bm004967_1000'
+            assert alk.Site1_Hugo_Symbol == 'EML4' && alk.Site2_Hugo_Symbol == 'ALK'
+            assert alk.Site1_Ensembl_Transcript_Id == 'NA' && alk.Site1_Region_Number == 'NA'
+            assert alk.Tumor_Variant_Count == '2056'
+        }
+    }
+
+    test("Fusion metrics TSV: a lowercase Sample still matches, without filters") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                def dir = file("${params.outdir}/sv_inputs/1000_23BM004967-1-A01-1")
+                dir.mkdirs()
+                input[0] = Channel.of([
+                    [sample_id: '23bm004967_1000'],
+                    file('${projectDir}/assets/samples/SAMPLE_001/analysis_001_export.tsv'),
+                    dir
+                ])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def rows = path(process.out[0][0].toString()).readLines().drop(1)
+                .collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
+            assert rows*.Site1_Hugo_Symbol == ['ITGB7', 'EML4']
+            assert rows*.Site2_Hugo_Symbol == ['MYC', 'ALK']
         }
     }
 

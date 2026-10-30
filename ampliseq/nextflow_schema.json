@@ -124,7 +124,7 @@
             "type": "string",
             "format": "file-path",
             "exists": true,
-            "description": "Cohort-wide fusion-metrics TSV ('###' preamble, then a #Sample header). When set it is the only fusion source; rows are matched to samples on #Sample. In filter mode, Total Reads >= sv_min_supporting_reads and ZR-score >= sv_min_zr_score are kept."
+            "description": "Cohort-wide fusion-metrics TSV ('###' preamble, then a #Sample header). When set it is the only fusion source; rows are matched to samples on #Sample. In filter mode, fusions with Junction Read Count >= sv_min_supporting_reads and ZR-score >= sv_min_zr_score are kept."
         },
         "sv_min_zr_score": {
             "type": "number",

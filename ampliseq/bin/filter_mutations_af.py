@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """
-Filter a MAF by gnomAD population allele frequency, tumour VAF and/or ClinVar classification.
+Filter a MAF by gnomAD population allele frequency and/or tumour VAF.
 Usage: filter_mutations_af.py <maf> --out <out_file>
                               [--max-gnomad-af X] [--gnomad-columns a,b,c]
+                              [--clinvar-keep Pathogenic,Likely_pathogenic]
                               [--max-vaf Y]
-                              [--clinvar-keep Pathogenic,Likely_pathogenic,Uncertain_significance]
 
 gnomAD:  a row is removed when the highest value among the listed gnomAD
          columns present in the MAF is > X. The default gnomAD.AF_max is the
          highest ancestry AF, so one population above X is enough.
+ClinVar: exception to the gnomAD rule. A row above X is kept when ClinVar.CLNSIG
+         holds one of the --clinvar-keep terms (any part of a combined call such as
+         Pathogenic/Likely_pathogenic, and Pathogenic,_low_penetrance-style variants),
+         or is a conflicting call whose ClinVar.CLNSIGCONF lists one. Empty ClinVar data,
+         or no ClinVar.CLNSIG column, gives no exception. Rows at or below X are kept
+         whatever ClinVar says.
 VAF:     a row is removed when t_alt_count / t_depth > Y.
-ClinVar: a row is kept only when ClinVar.CLNSIG holds one of the listed terms
-         (any part of a combined call such as Pathogenic/Likely_pathogenic, and
-         Pathogenic,_low_penetrance-style variants). A conflicting call is kept when
-         ClinVar.CLNSIGCONF lists one of them. A variant without ClinVar data is removed,
-         and so is every row when the ClinVar.CLNSIG column is absent.
 
 Missing or non-numeric values (blank, '.') never remove a row for gnomAD/VAF. If a
 gnomAD/VAF column is absent from the header, that criterion is skipped with a warning.
@@ -95,15 +96,18 @@ def main():
     clinvar_keep = None
     if args.clinvar_keep:
         clinvar_keep = clinvar_terms(args.clinvar_keep.replace(',', '|'))
-        if CLINVAR_COLUMN not in col:
-            # No ClinVar data for any row: every row is dropped, like a variant not in ClinVar
-            print(f"WARNING: {CLINVAR_COLUMN} not found in MAF; every row dropped by the ClinVar filter",
+        if gnomad_idx and CLINVAR_COLUMN not in col:
+            print(f"WARNING: {CLINVAR_COLUMN} not found in MAF; no ClinVar exception to the gnomAD filter",
                   file=sys.stderr)
 
     removed_gnomad = 0
     removed_vaf = 0
-    removed_clinvar = 0
+    rescued_clinvar = 0
     kept = [lines[0]]
+
+    def field(fields, name):
+        i = col.get(name)
+        return fields[i] if i is not None and i < len(fields) else ''
 
     for line in lines[1:]:
         if not line.strip():
@@ -114,8 +118,11 @@ def main():
             afs = [to_float(fields[i]) for i in gnomad_idx if i < len(fields)]
             afs = [af for af in afs if af is not None]
             if afs and max(afs) > args.max_gnomad_af:
-                removed_gnomad += 1
-                continue
+                if not (clinvar_keep and clinvar_kept(field(fields, CLINVAR_COLUMN),
+                                                      field(fields, CLINVAR_CONFLICT_COLUMN), clinvar_keep)):
+                    removed_gnomad += 1
+                    continue
+                rescued_clinvar += 1
 
         if vaf_idx:
             alt_i, depth_i = vaf_idx
@@ -123,14 +130,6 @@ def main():
             depth = to_float(fields[depth_i]) if depth_i < len(fields) else None
             if alt is not None and depth and alt / depth > args.max_vaf:
                 removed_vaf += 1
-                continue
-
-        if clinvar_keep:
-            def field(name):
-                i = col.get(name)
-                return fields[i] if i is not None and i < len(fields) else ''
-            if not clinvar_kept(field(CLINVAR_COLUMN), field(CLINVAR_CONFLICT_COLUMN), clinvar_keep):
-                removed_clinvar += 1
                 continue
 
         kept.append(line)
@@ -141,8 +140,8 @@ def main():
     total = len(lines) - 1
     print(f"filter_mutations_af: {total} rows in, {len(kept) - 1} kept, "
           f"{removed_gnomad} removed by gnomAD AF > {args.max_gnomad_af}, "
-          f"{removed_vaf} removed by VAF > {args.max_vaf}, "
-          f"{removed_clinvar} removed by ClinVar (not {args.clinvar_keep})", file=sys.stderr)
+          f"{rescued_clinvar} kept despite it (ClinVar {args.clinvar_keep}), "
+          f"{removed_vaf} removed by VAF > {args.max_vaf}", file=sys.stderr)
 
 
 if __name__ == '__main__':

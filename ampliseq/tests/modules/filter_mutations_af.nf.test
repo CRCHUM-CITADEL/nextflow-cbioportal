@@ -15,6 +15,8 @@ nextflow_process {
                 outdir            = "$outputDir"
                 filter_gnomad_af  = true
                 filter_vaf        = true
+                max_gnomad_af     = 0.5
+                max_vaf           = 0.5
                 gnomad_af_columns = 'gnomADe_AF,gnomADg_AF'
             }
             process {
@@ -47,6 +49,7 @@ nextflow_process {
             params {
                 outdir           = "$outputDir"
                 filter_gnomad_af = true
+                max_gnomad_af    = 0.5
             }
             process {
                 """
@@ -75,6 +78,7 @@ nextflow_process {
             params {
                 outdir            = "$outputDir"
                 filter_gnomad_af  = true
+                max_gnomad_af     = 0.5
                 gnomad_af_columns = 'gnomAD.AF'
             }
             process {
@@ -101,9 +105,10 @@ nextflow_process {
 
         when {
             params {
-                outdir     = "$outputDir"
-                filter_vaf = true
-                max_vaf    = 0.3
+                outdir           = "$outputDir"
+                filter_gnomad_af = false
+                filter_vaf       = true
+                max_vaf          = 0.3
             }
             process {
                 """
@@ -124,32 +129,31 @@ nextflow_process {
         }
     }
 
-    // Kept: P, LP, VUS, combined calls, qualified calls, conflicting with a kept class.
-    // Dropped: benign calls, non-pathogenicity terms and variants ClinVar has never seen.
-    test("ClinVar filter keeps Pathogenic, Likely pathogenic and VUS only") {
+    // Default 0.01: at or below it everything is kept; above it only ClinVar P/LP (any part of the call) is kept
+    test("Keeps common variants only when ClinVar calls them pathogenic or likely pathogenic") {
 
         when {
             params {
-                outdir         = "$outputDir"
-                filter_clinvar = true
+                outdir           = "$outputDir"
+                filter_gnomad_af = true
             }
             process {
                 """
                 file("${params.outdir}/af_inputs").mkdirs()
                 file("${params.outdir}/af_inputs/data_mutations.txt").text =
-                    'Hugo_Symbol\\tClinVar.CLNSIG\\tClinVar.CLNSIGCONF\\n' +
-                    'P\\tPathogenic\\t\\n' +
-                    'LP\\tLikely_pathogenic\\t\\n' +
-                    'VUS\\tUncertain_significance\\t\\n' +
-                    'P_LP\\tPathogenic/Likely_pathogenic\\t\\n' +
-                    'P_LOW_PEN\\tPathogenic, low penetrance\\t\\n' +
-                    'CONF_P\\tConflicting_classifications_of_pathogenicity\\tPathogenic(3)|Benign(1)\\n' +
-                    'CONF_B\\tConflicting_classifications_of_pathogenicity\\tBenign(2)|Likely_benign(1)\\n' +
-                    'B\\tBenign\\t\\n' +
-                    'LB\\tLikely_benign\\t\\n' +
-                    'B_LB\\tBenign/Likely_benign\\t\\n' +
-                    'DRUG\\tdrug_response\\t\\n' +
-                    'NOT_IN_CLINVAR\\t\\t\\n'
+                    'Hugo_Symbol\\tgnomAD.AF_max\\tClinVar.CLNSIG\\tClinVar.CLNSIGCONF\\n' +
+                    'RARE_BENIGN\\t0.001\\tBenign\\t\\n' +
+                    'AT_THRESHOLD\\t0.01\\t\\t\\n' +
+                    'NOT_IN_GNOMAD\\t\\t\\t\\n' +
+                    'P\\t0.2\\tPathogenic\\t\\n' +
+                    'LP\\t0.2\\tLikely_pathogenic\\t\\n' +
+                    'P_LP\\t0.2\\tPathogenic/Likely_pathogenic\\t\\n' +
+                    'P_LOW_PEN\\t0.2\\tPathogenic, low penetrance\\t\\n' +
+                    'CONF_P\\t0.2\\tConflicting_classifications_of_pathogenicity\\tPathogenic(3)|Benign(1)\\n' +
+                    'CONF_B\\t0.2\\tConflicting_classifications_of_pathogenicity\\tBenign(2)|Uncertain_significance(1)\\n' +
+                    'VUS\\t0.2\\tUncertain_significance\\t\\n' +
+                    'BENIGN\\t0.2\\tBenign\\t\\n' +
+                    'NOT_IN_CLINVAR\\t0.2\\t\\t\\n'
                 input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
                 """
             }
@@ -158,24 +162,25 @@ nextflow_process {
         then {
             assert process.success
             def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
-            assert kept == ['P', 'LP', 'VUS', 'P_LP', 'P_LOW_PEN', 'CONF_P']
+            assert kept == ['RARE_BENIGN', 'AT_THRESHOLD', 'NOT_IN_GNOMAD', 'P', 'LP', 'P_LP', 'P_LOW_PEN', 'CONF_P']
         }
     }
 
-    // No ClinVar data at all is the same as no ClinVar record: nothing is kept
-    test("ClinVar filter drops every row when the ClinVar column is missing") {
+    // No ClinVar column: no exception, so only variants at or below the threshold are kept
+    test("Drops common variants when the ClinVar column is missing") {
 
         when {
             params {
-                outdir         = "$outputDir"
-                filter_clinvar = true
+                outdir           = "$outputDir"
+                filter_gnomad_af = true
             }
             process {
                 """
                 file("${params.outdir}/af_inputs").mkdirs()
                 file("${params.outdir}/af_inputs/data_mutations.txt").text =
-                    'Hugo_Symbol\\tChromosome\\n' +
-                    'G1\\tchr1\\n'
+                    'Hugo_Symbol\\tgnomAD.AF_max\\n' +
+                    'RARE\\t0.001\\n' +
+                    'COMMON\\t0.2\\n'
                 input[0] = file("${params.outdir}/af_inputs/data_mutations.txt")
                 """
             }
@@ -183,7 +188,8 @@ nextflow_process {
 
         then {
             assert process.success
-            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tChromosome']
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] }
+            assert kept == ['RARE']
         }
     }
 
@@ -195,6 +201,7 @@ nextflow_process {
                 outdir           = "$outputDir"
                 filter_gnomad_af = true
                 filter_vaf       = true
+                max_vaf          = 0.5
             }
             process {
                 """

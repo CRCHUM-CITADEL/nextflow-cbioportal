@@ -133,22 +133,17 @@
         "filter_gnomad_af": {
             "type": "boolean",
             "default": false,
-            "description": "Drop mutations whose gnomAD allele frequency is above max_gnomad_af in any ancestry. Frequencies (gnomAD v2.1.1 exomes and genomes) are fetched from Genome Nexus; only variant coordinates and alleles are sent."
-        },
-        "filter_clinvar": {
-            "type": "boolean",
-            "default": false,
-            "description": "Keep only mutations whose ClinVar classification, fetched from Genome Nexus, is in clinvar_keep_classes. A conflicting call is kept when its breakdown lists one of them; a variant not in ClinVar is removed."
+            "description": "Drop mutations whose gnomAD allele frequency is above max_gnomad_af in any ancestry, unless their ClinVar classification is in clinvar_keep_classes. Mutations at or below the threshold are always kept. Frequencies (gnomAD v2.1.1 exomes and genomes) and ClinVar are fetched from Genome Nexus; only variant coordinates and alleles are sent."
         },
         "clinvar_keep_classes": {
             "type": "string",
-            "default": "Pathogenic,Likely_pathogenic,Uncertain_significance",
-            "description": "Comma-separated ClinVar classifications kept by filter_clinvar (any part of a combined call such as Pathogenic/Likely_pathogenic counts)."
+            "default": "Pathogenic,Likely_pathogenic",
+            "description": "Comma-separated ClinVar classifications (from Genome Nexus) that keep a mutation despite gnomAD AF > max_gnomad_af. Any part of a combined call such as Pathogenic/Likely_pathogenic counts, and a conflicting call counts when its breakdown lists one. Empty = no exception."
         },
         "max_gnomad_af": {
             "type": "number",
-            "default": 0.5,
-            "description": "gnomAD AF threshold for filter_gnomad_af (rows with AF > this are removed)."
+            "default": 0.01,
+            "description": "gnomAD AF threshold for filter_gnomad_af (rows with AF > this are removed unless ClinVar is in clinvar_keep_classes)."
         },
         "gnomad_af_columns": {
             "type": "string",

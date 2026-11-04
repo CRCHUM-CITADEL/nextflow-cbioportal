@@ -59,8 +59,8 @@ ch_samplesheet
   │
   ├─ MERGE_DEANON (subworkflow) ── merge all per-sample files + deanonymise
   │    ├─ MERGE_{SV,CNA,MUTATIONS,SEG}       (MERGE_SEG… only with include_seg)
-  │    ├─ ANNOTATE_GNOMAD                    (filter_gnomad_af / filter_clinvar; Genome Nexus API)
-  │    ├─ FILTER_MUTATIONS_AF                (filter_gnomad_af / filter_vaf / filter_clinvar)
+  │    ├─ ANNOTATE_GNOMAD                    (filter_gnomad_af; Genome Nexus API)
+  │    ├─ FILTER_MUTATIONS_AF                (filter_gnomad_af / filter_vaf)
   │    ├─ FILTER_CNV_SAMPLES_{CNA,SEG}       (filter_cnv_depth)
   │    └─ DEANON_{MUTATIONS,SV,CNA,SEG}
   │
@@ -87,10 +87,10 @@ FILTER_MUTATIONS runs `bin/filter_mutations.py` (it used to be an inline awk pro
 
 **Post-merge filters** (all off by default; each a param). They run in MERGE_DEANON on the merged, not yet remapped files, so unlike filter mode they also re-filter samples cached in `--outdir`:
 
-- **gnomAD** (`filter_gnomad_af`, `max_gnomad_af` 0.5, `gnomad_af_columns` `gnomAD.AF_max`): ANNOTATE_GNOMAD fetches the frequencies from Genome Nexus (see **gnomAD** below), then FILTER_MUTATIONS_AF (`bin/filter_mutations_af.py`) drops a mutation whose highest listed gnomAD AF is `> max_gnomad_af`. The default `gnomAD.AF_max` is the highest of the total + 8 ancestries, exomes and genomes apart, so **any one ancestry** above the threshold drops the row; `gnomAD.AF` (combined total, what cBioPortal shows) restores the old rule.
-- **ClinVar** (`filter_clinvar`, `clinvar_keep_classes` `Pathogenic,Likely_pathogenic,Uncertain_significance`): keeps a row only when a `/`/`|`/`;`-separated term of `ClinVar.CLNSIG` is a kept class (or a kept class + `,_qualifier`, e.g. `Pathogenic,_low_penetrance`); terms are lowercased, spaces → `_`. A `Conflicting_…` call is kept when `ClinVar.CLNSIGCONF` (`Pathogenic(3)|Benign(1)`, counts stripped) lists a kept class. **Missing ClinVar data drops the row** — an empty `ClinVar.CLNSIG` (not in ClinVar, or still unanswered after the re-asks), and every row when the column itself is absent. The opposite of the gnomAD/VAF rule, by Justin's decision (2026-10-29).
+- **gnomAD** (`filter_gnomad_af`, `max_gnomad_af` 0.01, `gnomad_af_columns` `gnomAD.AF_max`): ANNOTATE_GNOMAD fetches the frequencies from Genome Nexus (see **gnomAD** below), then FILTER_MUTATIONS_AF (`bin/filter_mutations_af.py`) drops a mutation whose highest listed gnomAD AF is `> max_gnomad_af`, unless the ClinVar exception below applies. At or below the threshold a row is always kept. The default `gnomAD.AF_max` is the highest of the total + 8 ancestries, exomes and genomes apart, so **any one ancestry** above the threshold drops the row; `gnomAD.AF` (combined total, what cBioPortal shows) restores the old rule.
+- **ClinVar exception** (`clinvar_keep_classes` `Pathogenic,Likely_pathogenic`; empty = none): a row above `max_gnomad_af` is kept when a `/`/`|`/`;`-separated term of `ClinVar.CLNSIG` is a kept class (or a kept class + `,_qualifier`, e.g. `Pathogenic,_low_penetrance`); terms are lowercased, spaces → `_`. A `Conflicting_…` call counts when `ClinVar.CLNSIGCONF` (`Pathogenic(3)|Benign(1)`, counts stripped) lists a kept class, so any P/LP entry wins. Empty `ClinVar.CLNSIG` or no such column = no exception. Justin's rule (2026-11-04) replaced the standalone `filter_clinvar` (which dropped every variant not P/LP/VUS, even rare ones).
 - **VAF** (`filter_vaf`, `max_vaf` 0.5): drops a mutation whose `t_alt_count / t_depth > max_vaf`.
-- gnomAD/VAF: thresholds are strict (`=` is kept); blank/`.`/non-numeric values and `t_depth` 0 never drop a row, and a missing gnomAD/VAF column (stub MAF, older cached samples) skips that criterion with a warning. ANNOTATE_GNOMAD always runs before the ClinVar filter, so `ClinVar.CLNSIG` is only absent in standalone use.
+- gnomAD/VAF: thresholds are strict (`=` is kept); blank/`.`/non-numeric values and `t_depth` 0 never drop a row, and a missing gnomAD/VAF column (stub MAF, older cached samples) skips that criterion with a warning. ANNOTATE_GNOMAD always runs before FILTER_MUTATIONS_AF, so `ClinVar.CLNSIG` is only absent in standalone use.
 - **CNV depth QC** (`filter_cnv_depth`, `cnv_min_depth` 250, `cnv_min_depth_fraction` 0.95, `cnv_depth_pass_only` true): CNV_DEPTH_QC (`bin/cnv_depth_qc.py`) runs on **every** samplesheet sample (cheap: reads the Pisces VCF) and writes `qc/cnv_depth_qc.tsv`. A sample passes when at least that fraction of its (PASS) Pisces records have depth (FORMAT/DP, else INFO/DP) `>= cnv_min_depth`; no countable records = FAIL. FILTER_CNV_SAMPLES drops a failed sample's rows from `data_cna.txt` / `data_seg.txt` (sample column found by header name) and WRITE_CASE_LISTS leaves it out of `cases_cna.txt` and `cases_cnaseq.txt` only, so cBioPortal shows it as not profiled for CNA. Mutations and SVs are kept. The failed IDs travel as a `val` list (no file), `[]` when the filter is off.
 
 ---
@@ -166,7 +166,7 @@ Two process labels control container assignment in `nextflow.config`:
 
 ### gnomAD
 
-fastVEP has no population-frequency source, so with `filter_gnomad_af` or `filter_clinvar` the merged MAF goes through **ANNOTATE_GNOMAD** (`bin/annotate_gnomad.py`; the name predates ClinVar) before FILTER_MUTATIONS_AF. It POSTs each distinct variant (MAF `Chromosome` without `chr`, `Start_Position`, `End_Position`, `Reference_Allele`, `Tumor_Seq_Allele2`; MAF-style `-` alleles work) in batches of 200 to `${genome_nexus_url}/annotation/genomic?fields=my_variant_info,clinvar`, the service cBioPortal uses for its own gnomAD and ClinVar columns. Results are matched back on `originalVariantQuery` (`chrom,start,end,ref,alt`) and written, overwriting any existing values, unconditionally (so the merge stays rectangular):
+fastVEP has no population-frequency source, so with `filter_gnomad_af` the merged MAF goes through **ANNOTATE_GNOMAD** (`bin/annotate_gnomad.py`; the name predates ClinVar) before FILTER_MUTATIONS_AF. It POSTs each distinct variant (MAF `Chromosome` without `chr`, `Start_Position`, `End_Position`, `Reference_Allele`, `Tumor_Seq_Allele2`; MAF-style `-` alleles work) in batches of 200 to `${genome_nexus_url}/annotation/genomic?fields=my_variant_info,clinvar`, the service cBioPortal uses for its own gnomAD and ClinVar columns. Results are matched back on `originalVariantQuery` (`chrom,start,end,ref,alt`) and written, overwriting any existing values, unconditionally (so the merge stays rectangular):
 
 - `gnomADe_AF` / `gnomADg_AF`: `my_variant_info.annotation.gnomad{Exome,Genome}.alleleFrequency.af`, else `alleleCount.ac / alleleNumber.an` as cBioPortal does (gnomAD v2.1.1, GRCh37); `gnomAD.AF` = `(AC_e + AC_g) / (AN_e + AN_g)`, cBioPortal's "Total".
 - `gnomAD.AF_max` / `gnomAD.AF_max_pop`: the highest of the 18 values `af` + `af_{afr,amr,asj,eas,fin,nfe,oth,sas}` × exome/genome (each falling back to `ac_<pop>/an_<pop>`), and its label (`exome_nfe`, `genome_total`). No allele-number guard, so small groups (asj, oth) can spike it — deliberate.
@@ -199,7 +199,7 @@ A sample is skipped if all four per-sample files exist under `{outdir}/samples/{
 
 Merge/deanon/clinical steps always re-run over all samples combined. Use the same `--outdir` across runs.
 
-**Filter mode is applied per sample**, so switching `--filter_tsv_variants` or changing a threshold does not touch samples already in `--outdir`: use a fresh `--outdir` (or delete `samples/<id>/`) to re-filter them. The post-merge filters (gnomAD, ClinVar, VAF, CNV depth QC), the Genome Nexus lookup and `include_seg` apply to cached samples too. `fusion_metrics` does **not**: delete `{outdir}/samples/*/*_sv.txt` to rebuild cached samples' fusions from it.
+**Filter mode is applied per sample**, so switching `--filter_tsv_variants` or changing a threshold does not touch samples already in `--outdir`: use a fresh `--outdir` (or delete `samples/<id>/`) to re-filter them. The post-merge filters (gnomAD + ClinVar exception, VAF, CNV depth QC), the Genome Nexus lookup and `include_seg` apply to cached samples too. `fusion_metrics` does **not**: delete `{outdir}/samples/*/*_sv.txt` to rebuild cached samples' fusions from it.
 
 ---
 
@@ -218,7 +218,7 @@ python3 /path/to/bin/fusion_metrics_to_sv.py <fusion_metrics.tsv> <SAMPLE_ID> [-
 =======
 python3 /path/to/bin/fusion_metrics_to_sv.py <fusion_metrics.tsv> <SAMPLE_ID> [--min-total-reads N] [--min-zr-score Z]
 >>>>>>> Stashed changes
-python3 /path/to/bin/filter_mutations_af.py <maf> --out <out> [--max-gnomad-af X] [--max-vaf Y] [--clinvar-keep a,b,c]
+python3 /path/to/bin/filter_mutations_af.py <maf> --out <out> [--max-gnomad-af X [--clinvar-keep a,b,c]] [--max-vaf Y]
 python3 /path/to/bin/cnv_depth_qc.py  <pisces.vcf[.gz]> <SAMPLE_ID> [--min-depth 250] [--min-fraction 0.95] [--pass-only]
 python3 /path/to/bin/format_mutations.py data_mutations.txt <linking_file>
 python3 /path/to/bin/format_sv.py       data_sv.txt         <linking_file>

@@ -93,13 +93,24 @@ PER-GROUP AGGREGATED FILES
     the clinical and timeline files. Per-subject folders and
     machine_learning/ are intentionally left out; cBioPortal does not read
     them. Only genomic and both modes produce an archive: clinical-only
-    mode publishes its files flat into <outdir> with no study folder.
+    mode writes its files into <outdir>/<study_id>/ but packages nothing.
 
 
 Clinical mode
 -------------
 
-Clinical mode outputs are saved in <outdir>/<group>/:
+Clinical mode outputs are saved in <outdir>/<study_id>/ (--study_id is
+required in clinical mode). There is no meta_study.txt, cancer_type.txt,
+case list or archive: load the folder alongside a genomic run with the
+same --study_id (see CLINICAL MODE in docs/usage.txt).
+
+With --sample_registrations instead of a clinical samplesheet, only
+data_clinical_sample.txt and meta_clinical_sample.txt are written.
+
+With --genomic_samplesheet, only its subjects appear (single-sample
+subjects take its sample_id), and per-subject slices
+<study_id>/<subject>/<sample_id>.data_clinical_{sample,patient}.txt are
+written as in both mode.
 
   File                         Description
   ---------------------------  ----------------------------
@@ -132,7 +143,20 @@ Clinical mode outputs are saved in <outdir>/<group>/:
   the label is looked up through the MOHCCN primary-site table. Labels
   resolve to the C+2-digit PARENT code, since that table only holds
   parent codes -- C22.0 and C22.1 both label as "Liver and intrahepatic
-  bile ducts".
+  bile ducts". RELAPSE_SITE (data_clinical_patient.txt) can hold several
+  codes ("C569,C220"); its label names every one, joined with "; "
+  because some labels contain commas: "Ovary; Liver and intrahepatic bile
+  ducts".
+
+  Study view (dashboard) order: PRIMARY_SITE has priority 1500 in the
+  4th header row, so Primary Site is the first chart, ahead of
+  cBioPortal's Data Types chart (1000), the survival plots and Mutation
+  Count vs Fraction Genome Altered (200). Every other attribute keeps
+  priority 1, i.e. cBioPortal's default placement. Priority is stored at
+  import: re-import the clinical files of an already-loaded study to
+  change its dashboard. The built-in Data Types and Mutation Count vs
+  FGA charts cannot be moved from study files; only the portal-wide
+  study_view.priority frontend setting changes them.
 
   Common columns: PATIENT_ID, START_DATE, STOP_DATE, EVENT_TYPE.
   Event-specific columns (alphabetical): AGENT, RESULT,

@@ -39,6 +39,10 @@ nextflow_process {
             // the patient file must have exactly one row each, deduplicated.
             assert data_rows.size() == 2
             assert data_rows.collect { it.split('\t')[pat_idx] }.sort() == ['T1', 'T2']
+
+            // The relapse-site label survives the writer, and patient charts keep their default priority.
+            assert cols.contains('RELAPSE_SITE_LABEL')
+            assert lines[3].substring(1).split('\t').every { it == '1' }
         }
     }
 }

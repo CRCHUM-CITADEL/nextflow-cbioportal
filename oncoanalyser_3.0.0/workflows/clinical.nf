@@ -19,7 +19,7 @@ workflow CLINICAL {
     take:
         file_list            // clinical samplesheet rows (may be empty channel)
         sample_registrations // path or channel: sample_registrations.csv (template mode only)
-        genomic_subjects     // val: path to genomic subjects TSV (both mode), or "" to skip filtering
+        genomic_subjects     // val: path to genomic subjects TSV (both mode, or clinical mode with a genomic samplesheet), or "" to skip filtering
 
     main:
         ch_versions = Channel.empty()
@@ -48,16 +48,31 @@ workflow CLINICAL {
             ch_linking_path = (sample_registrations instanceof CharSequence) ?
                 Channel.fromPath(sample_registrations) : sample_registrations
 
+            // subject_id → genomic sample_id, or [:] when there is no genomic filter
+            ch_genomic_map = genomic_subjects.map { gs ->
+                gs ? file(gs).readLines().drop(1).findAll { it.trim() }
+                        .collectEntries { line -> def f = line.split('\t'); [(f[0]): f[1]] }
+                   : [:]
+            }
+
             ch_linking = ch_linking_path
                 .splitCsv(header: true, sep: ',')
                 .filter { row -> row.sample_type == "Total DNA" &&
                     row.tumour_normal_designation == "Tumour" }
                 .toSortedList { a, b -> a.submitter_sample_id <=> b.submitter_sample_id }
-                .flatMap()
-                .unique { [it.submitter_donor_id, it.submitter_specimen_id] }
-                .map { row -> [subject     : row.submitter_donor_id,
-                               sample      : row.submitter_sample_id,
-                               sample_type : "Primary"] }
+                .map { rows -> [rows.unique { [it.submitter_donor_id, it.submitter_specimen_id] }] }
+                .combine(ch_genomic_map)
+                // Same rule as build_clinical_table.R: keep genomic subjects; single-sample ones adopt the genomic sample_id.
+                .flatMap { rows, gmap ->
+                    def kept   = gmap ? rows.findAll { gmap.containsKey(it.submitter_donor_id) } : rows
+                    def counts = kept.countBy { it.submitter_donor_id }
+                    kept.collect { row ->
+                        def remap = gmap && counts[row.submitter_donor_id] == 1
+                        [subject     : row.submitter_donor_id,
+                         sample      : remap ? gmap[row.submitter_donor_id] : row.submitter_sample_id,
+                         sample_type : "Primary"]
+                    }
+                }
 
             // Build newline-separated "subject\tsample\tsample_type" lines
             sample_lines = ch_linking

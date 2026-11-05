@@ -27,8 +27,13 @@ nextflow_pipeline {
 
             println "Test: Output dir: ${params.outdir}"
 
+            def task_names = workflow.trace.succeeded().collect { it.name }
+
             assertAll(
                 { assert workflow.success},
+                // Clinical-only: every task is clinical, and the study folder is named after study_id
+                { assert task_names.every { it.startsWith('CLINICAL:') } },
+                { assert path("${params.outdir}/TEST/meta_clinical_sample.txt").text.contains('cancer_study_identifier: test') },
                 { assert snapshot(
                     // Number of successful tasks
                     workflow.trace.succeeded().size(),
@@ -39,6 +44,100 @@ nextflow_pipeline {
                     // All files with stable contents
                     stable_path
                 ).match() }
+            )
+        }
+    }
+
+    test("clinical — study_id is required") {
+
+        config "tests/nextflow_clinical.config"
+        when {
+            params {
+                mode     = 'clinical'
+                outdir   = "$outputDir"
+                study_id = ""
+            }
+        }
+
+        then {
+            def log = (workflow.stdout + workflow.stderr).join('\n')
+            assertAll(
+                { assert workflow.failed },
+                { assert log.contains('study_id is required in clinical mode') }
+            )
+        }
+    }
+
+    test("clinical — no clinical_samplesheet and no sample_registrations") {
+
+        config "tests/nextflow_clinical.config"
+        when {
+            params {
+                mode                 = 'clinical'
+                outdir               = "$outputDir"
+                clinical_samplesheet = null
+                sample_registrations = ""
+            }
+        }
+
+        then {
+            def log = (workflow.stdout + workflow.stderr).join('\n')
+            assertAll(
+                { assert workflow.failed },
+                { assert log.contains('clinical mode needs --clinical_samplesheet') }
+            )
+        }
+    }
+
+    // The samplesheet's folder does not exist: clinical mode only reads its subject/sample IDs.
+    test("clinical — genomic samplesheet keeps only its subjects") {
+
+        config "tests/nextflow_clinical.config"
+        when {
+            params {
+                mode                = 'clinical'
+                outdir              = "$outputDir"
+                genomic_samplesheet = "${projectDir}/tests/fixtures/genomic_samplesheet_T2.csv"
+            }
+        }
+
+        then {
+            def body = { f -> path("${params.outdir}/TEST/${f}").readLines().findAll { !it.startsWith('#') && it.trim() } }
+            def ids  = { f, col -> def l = body(f); def i = l[0].split('\t').toList().indexOf(col); l.drop(1).collect { it.split('\t', -1)[i] } }
+            def task_names = workflow.trace.succeeded().collect { it.name }
+
+            assertAll(
+                { assert workflow.success },
+                { assert task_names.every { it.startsWith('CLINICAL:') } },
+                // T1 is not in the samplesheet; T2's one tumour adopts the genomic sample_id.
+                { assert ids('data_clinical_sample.txt', 'SAMPLE_ID')   == ['T2-T'] },
+                { assert ids('data_clinical_patient.txt', 'PATIENT_ID') == ['T2'] },
+                { assert ids('data_timeline.txt', 'PATIENT_ID').unique() == ['T2'] },
+                // Same per-subject slice "both" mode publishes.
+                { assert path("${params.outdir}/TEST/T2/T2-T.data_clinical_sample.txt").exists() },
+                { assert !path("${params.outdir}/TEST/T1").exists() }
+            )
+        }
+    }
+
+    test("clinical template — genomic samplesheet keeps only its subjects") {
+
+        config "tests/nextflow_clinical_template.config"
+        when {
+            params {
+                mode                = 'clinical'
+                outdir              = "$outputDir"
+                genomic_samplesheet = "${projectDir}/tests/fixtures/genomic_samplesheet_T2.csv"
+            }
+        }
+
+        then {
+            def rows = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
+                .findAll { !it.startsWith('#') && it.trim() }.drop(1)
+
+            assertAll(
+                { assert workflow.success },
+                { assert rows == ['T2\tT2-T\tPrimary'] }
             )
         }
     }

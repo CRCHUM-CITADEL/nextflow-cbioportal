@@ -47,7 +47,7 @@ nextflow_pipeline {
             params {
                 mode = 'both'
                 outdir = "$outputDir"
-                run_ml = true
+                // ML left off for now: FORMAT_ML_CNV is process_high_memory. Coverage stays in tests/subworkflows/genomic_ml.nf.test.
             }
         }
 

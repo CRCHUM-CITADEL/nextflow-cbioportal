@@ -33,6 +33,23 @@ nextflow_process {
             assert lines[3].startsWith('#')
             assert lines[4].split('\t').contains('SAMPLE_ID')
             assert lines.size() > 5
+
+            def cols     = lines[4].split('\t') as List
+            def priority = [cols, lines[3].substring(1).split('\t') as List].transpose().collectEntries()
+            def rows     = lines.drop(5).collect { [cols, it.split('\t', -1) as List].transpose().collectEntries() }
+
+            // Primary Site is the first study-view chart; every other chart keeps cBioPortal's default.
+            assert priority['PRIMARY_SITE'] == '1500'
+            assert priority.findAll { k, v -> k != 'PRIMARY_SITE' }.values().every { it == '1' }
+
+            // write_cbio_table() silently drops a col_def whose source column is gone, so pin the labels.
+            ['PRIMARY_SITE', 'CANCER_TYPE_LABEL', 'TUMOR_TISSUE_SITE_LABEL'].each { c ->
+                assert cols.contains(c)
+            }
+            def t1 = rows.find { it['PATIENT_ID'] == 'T1' }
+            assert t1['PRIMARY_SITE']            == 'Pancreas'
+            assert t1['CANCER_TYPE_LABEL']       == 'Pancreas'
+            assert t1['TUMOR_TISSUE_SITE_LABEL'] == 'Liver and intrahepatic bile ducts'
         }
     }
 }

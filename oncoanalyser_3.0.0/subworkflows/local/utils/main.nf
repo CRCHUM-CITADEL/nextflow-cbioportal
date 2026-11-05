@@ -80,6 +80,11 @@ workflow PIPELINE_INITIALISATION {
         ch_genomic_samplesheet = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))
     }
 
+    // Clinical mode: an optional genomic samplesheet only names the subjects to keep.
+    if (mode == 'clinical' && genomic_input) {
+        ch_genomic_samplesheet = Channel.fromList(samplesheetToList(genomic_input, "assets/schema_genomic_input.json"))
+    }
+
     if (mode in ['clinical', 'both']){
         ch_clinical_samplesheet = clinical_input
             ? Channel.fromList(samplesheetToList(clinical_input, "assets/schema_clinical_input.json"))
@@ -231,8 +236,18 @@ def validateInputParameters() {
 
     }
 
+    // study_id names the output folder and cancer_study_identifier; blank leaves both empty.
+    if (params.mode == "clinical" && !params.study_id) {
+        error("ERROR: study_id is required in clinical mode. It names the output folder and the cancer_study_identifier, so it must match the study the clinical files are loaded into.")
+    }
+
+    if (params.mode == "clinical" && !params.clinical_samplesheet && !params.sample_registrations) {
+        error("ERROR: clinical mode needs --clinical_samplesheet (full clinical output) or --sample_registrations (template data_clinical_sample.txt only).")
+    }
+
     if (params.mode in ["clinical", "both"] && !params.clinical_samplesheet){
-        log.warn "No clinical samplesheet provided. Template clinical files will be generated from the linking file."
+        def source = params.mode == "clinical" ? "sample_registrations" : "the genomic linking file"
+        log.warn "No clinical samplesheet provided. Template clinical files will be generated from ${source}."
     }
 
     // MOHCCN maps are only read when a clinical samplesheet is given.

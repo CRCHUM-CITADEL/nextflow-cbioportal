@@ -19,7 +19,7 @@
                     "schema": "assets/schema_genomic_input.json",
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
-                    "description": "Path to the genomic samplesheet: one row per subject, pointing at its oncoanalyser output directory.",
+                    "description": "Path to the genomic samplesheet: one row per subject, pointing at its oncoanalyser output directory. Optional in clinical mode, where it keeps only its subjects.",
                     "help_text": "Comma-separated file with a header row and the columns group, subject_id, sample_id, folder. Generate it with bin/generate_samplesheet.py; see docs/usage.txt.",
                     "fa_icon": "fas fa-file-csv"
                 },

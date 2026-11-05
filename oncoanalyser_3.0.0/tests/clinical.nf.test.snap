@@ -8,25 +8,26 @@
                 }
             },
             [
-                "data_clinical_patient.txt",
-                "data_clinical_sample.txt",
-                "data_timeline.txt",
-                "meta_clinical_patient.txt",
-                "meta_clinical_sample.txt",
-                "meta_timeline.txt",
+                "TEST",
+                "TEST/data_clinical_patient.txt",
+                "TEST/data_clinical_sample.txt",
+                "TEST/data_timeline.txt",
+                "TEST/meta_clinical_patient.txt",
+                "TEST/meta_clinical_sample.txt",
+                "TEST/meta_timeline.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
             [
                 "data_clinical_patient.txt:md5,436f98ea35d7d19a3fa8f69fa7c1aa8e",
-                "data_clinical_sample.txt:md5,af25c97ff5f8d7c87a770fcb483d51f2",
+                "data_clinical_sample.txt:md5,070cd7475f29cba8f3e3d23fc0c42d18",
                 "data_timeline.txt:md5,48e4a8a7ef89899bd171ac7aad99faaf",
-                "meta_clinical_patient.txt:md5,a50f23209b906b23ebcdd2f226f03049",
-                "meta_clinical_sample.txt:md5,9d38f37b3d957eb384558b485ca41298",
-                "meta_timeline.txt:md5,156fd8531c8a49b03b1d541ef2af267c"
+                "meta_clinical_patient.txt:md5,db4e12d00e844523c08f6b37fd57865f",
+                "meta_clinical_sample.txt:md5,28084eb9555ebab829df83fe97a1cdbe",
+                "meta_timeline.txt:md5,8d576ca2d7f5f90bdff453cd371778ef"
             ]
         ],
-        "timestamp": "2026-09-17T12:01:36.634648463",
+        "timestamp": "2026-10-30T15:25:49.811451039",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.4"

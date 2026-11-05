@@ -71,4 +71,51 @@ nextflow_process {
             assert t1['specimen_anatomic_location_label'] == 'Liver and intrahepatic bile ducts'
         }
     }
+
+    test("Multi-site relapse — every ICD-O code is labelled") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/donors.csv'),
+                        file('${projectDir}/assets/test_data/clinical/primary_diagnoses.csv'),
+                        file('${projectDir}/assets/test_data/clinical/specimens.csv'),
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        file('${projectDir}/assets/test_data/clinical/treatments.csv'),
+                        file('${projectDir}/assets/test_data/clinical/surgeries.csv'),
+                        file('${projectDir}/assets/test_data/clinical/systemic_therapies.csv'),
+                        file('${projectDir}/assets/test_data/clinical/radiations.csv'),
+                        file('${projectDir}/tests/modules/fixtures/follow_ups_multisite_relapse.csv'),
+                        file('${projectDir}/assets/test_data/clinical/biomarkers.csv'),
+                        [],
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv'),
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv')
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def merged = path(process.out.ch_merged.collect { group, f -> f }[0].toString())
+            def lines  = merged.readLines()
+            def cols   = lines[0].split('\t') as List
+            def rows   = lines.drop(1).collect { [cols, it.split('\t', -1) as List].transpose().collectEntries() }
+            def t2     = rows.find { it['patient'] == 'T2' }
+
+            // T2's first relapse is ["C569","C220"]; "; " because some MOHCCN labels contain commas.
+            assert t2['relapse_site_val']   == 'C569,C220'
+            assert t2['relapse_site_label'] == 'Ovary; Liver and intrahepatic bile ducts'
+        }
+    }
 }

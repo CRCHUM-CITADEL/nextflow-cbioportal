@@ -2,7 +2,6 @@
 """
 Format one sample's fusions from the cohort-wide fusion-metrics TSV into data_sv.txt (cBioPortal SV
 format, full column set from cbio_sv.SV_COLUMNS).
-<<<<<<< Updated upstream
 Usage: python3 fusion_metrics_to_sv.py <metrics_tsv> <sample_id> [--sample-folder NAME]
                                         [--min-junction-reads N] [--min-zr-score Z]
 

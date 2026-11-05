@@ -120,20 +120,35 @@
             "default": false,
             "description": "When true, filter mutations by TSV coordinates; when false, pass all MAF mutations through."
         },
+        "fusion_metrics": {
+            "type": "string",
+            "format": "file-path",
+            "exists": true,
+            "description": "Cohort-wide fusion-metrics TSV ('###' preamble, then a #Sample header). When set it is the only fusion source; rows are matched to samples on #Sample. In filter mode, fusions with Junction Read Count >= sv_min_supporting_reads and ZR-score >= sv_min_zr_score are kept."
+        },
+        "sv_min_zr_score": {
+            "type": "number",
+            "description": "Fusion ZR-score threshold (fusion_metrics in filter mode only; fusions with ZR-score >= this are kept). Unset = no ZR-score filter."
+        },
         "filter_gnomad_af": {
             "type": "boolean",
             "default": false,
-            "description": "Drop mutations whose gnomAD allele frequency is above max_gnomad_af. Frequencies (gnomAD v2.1.1 exomes and genomes) are fetched from Genome Nexus; only variant coordinates and alleles are sent."
+            "description": "Drop mutations whose gnomAD allele frequency is above max_gnomad_af in any ancestry, unless their ClinVar classification is in clinvar_keep_classes. Mutations at or below the threshold are always kept. Frequencies (gnomAD v2.1.1 exomes and genomes) and ClinVar are fetched from Genome Nexus; only variant coordinates and alleles are sent."
+        },
+        "clinvar_keep_classes": {
+            "type": "string",
+            "default": "Pathogenic,Likely_pathogenic",
+            "description": "Comma-separated ClinVar classifications (from Genome Nexus) that keep a mutation despite gnomAD AF > max_gnomad_af. Any part of a combined call such as Pathogenic/Likely_pathogenic counts, and a conflicting call counts when its breakdown lists one. Empty = no exception."
         },
         "max_gnomad_af": {
             "type": "number",
-            "default": 0.5,
-            "description": "gnomAD AF threshold for filter_gnomad_af (rows with AF > this are removed)."
+            "default": 0.01,
+            "description": "gnomAD AF threshold for filter_gnomad_af (rows with AF > this are removed unless ClinVar is in clinvar_keep_classes)."
         },
         "gnomad_af_columns": {
             "type": "string",
-            "default": "gnomAD.AF",
-            "description": "Comma-separated MAF columns compared by filter_gnomad_af (highest value present). gnomAD.AF is exomes + genomes combined, as cBioPortal shows it; gnomADe_AF,gnomADg_AF uses the higher of the two."
+            "default": "gnomAD.AF_max",
+            "description": "Comma-separated MAF columns compared by filter_gnomad_af (highest value present). gnomAD.AF_max is the highest of the total and every ancestry AF, exomes and genomes apart; gnomAD.AF is exomes + genomes combined, as cBioPortal shows it."
         },
         "genome_nexus_url": {
             "type": "string",

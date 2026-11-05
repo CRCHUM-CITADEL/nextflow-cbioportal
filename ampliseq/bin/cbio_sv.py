@@ -6,6 +6,10 @@ Every per-sample _sv.txt is written with exactly SV_COLUMNS, in this order, so p
 from either writer can be merged into one data_sv.txt. The set follows oncoanalyser's
 gen_*_to_cbioportal.R writers plus the cBioPortal fields ampliseq inputs can populate
 (Length, Site1/2_Description, External_Annotation).
+
+FusionMetrics.ZR_score is the fusion-metrics TSV's ZR-score (NA from the other writers). Its
+`namespace.attribute` name lets cBioPortal display it if meta_sv.txt ever declares
+`namespaces: FusionMetrics`; without that it stays in the file but is not imported.
 """
 
 import csv
@@ -44,6 +48,7 @@ SV_COLUMNS = [
     "Annotation",
     "External_Annotation",
     "Comments",
+    "FusionMetrics.ZR_score",
 ]
 
 NCBI_BUILD = "GRCh37"

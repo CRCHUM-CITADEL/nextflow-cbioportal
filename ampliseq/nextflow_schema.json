@@ -106,6 +106,10 @@
             "type": "string",
             "description": "cBioPortal study identifier used in case_lists output."
         },
+        "mafsmith_custom_enst": {
+            "type": "string",
+            "description": "Preferred transcript list for mafsmith (one unversioned ENST per line, .gz allowed), so HGVSp uses the transcript cBioPortal expects. Defaults to assets/grch37_mskcc_canonical_transcripts.txt.gz (Genome Nexus MSKCC canonical transcripts); null = mafsmith's own choice, the longest cDNA."
+        },
         "python_sif": {
             "type": "string",
             "description": "Path to python-ampliseq Apptainer SIF image."

@@ -19,6 +19,7 @@ nextflow_process {
                     file('${projectDir}/tests/modules/fixtures/SAMPLE_CHR')
                 ])
                 input[1] = file('${projectDir}/assets/samples')
+                input[2] = []
                 """
             }
         }
@@ -57,6 +58,7 @@ nextflow_process {
                     file('${projectDir}/tests/modules/fixtures/SAMPLE_TOY')
                 ])
                 input[1] = bundle
+                input[2] = []
                 """
             }
         }
@@ -93,6 +95,7 @@ nextflow_process {
                     file('${projectDir}/tests/modules/fixtures/SAMPLE_NIRVANA')
                 ])
                 input[1] = bundle
+                input[2] = []
                 """
             }
         }
@@ -127,6 +130,65 @@ nextflow_process {
     }
 
     // Without --skip-annotation an empty bundle (e.g. a stub-run leftover in assets/mafsmith) must fail
+    // rs113488022 (BRAF V600E) on the real GRCh37.87 BRAF models (fixture: chr7 shifted by -140418000).
+    // GRCh37.87 has no canonical tags, so without a list mafsmith takes the longest cDNA, the partial
+    // ENST00000496384 (8.3 kb, mostly 3'UTR), and writes p.V208E. The MSKCC list picks ENST00000288602.
+    test("Preferred transcript list gives BRAF p.V600E for rs113488022") {
+
+        when {
+            process {
+                """
+                def bundle = file('${outputDir}/bundle_braf')
+                file('${projectDir}/tests/modules/fixtures/mafsmith_bundle_braf').copyTo(bundle)
+                input[0] = Channel.of([
+                    [group: 'G', subject_id: 'S1', sample_id: 'SAMPLE_BRAF'],
+                    file('${projectDir}/tests/modules/fixtures/SAMPLE_BRAF')
+                ])
+                input[1] = bundle
+                input[2] = file('${projectDir}/assets/grch37_mskcc_canonical_transcripts.txt.gz')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[0].split('\t', -1) as List
+            def row = lines[1].split('\t', -1)
+            def col = { String n -> assert header.indexOf(n) >= 0 : "no ${n} column"; header.indexOf(n) }
+            assert row[col('Hugo_Symbol')] == 'BRAF'
+            assert row[col('Transcript_ID')] == 'ENST00000288602'
+            assert row[col('HGVSp_Short')] == 'p.V600E'
+        }
+    }
+
+    test("Without a preferred transcript list BRAF rs113488022 falls back to the longest cDNA") {
+
+        when {
+            process {
+                """
+                def bundle = file('${outputDir}/bundle_braf')
+                file('${projectDir}/tests/modules/fixtures/mafsmith_bundle_braf').copyTo(bundle)
+                input[0] = Channel.of([
+                    [group: 'G', subject_id: 'S1', sample_id: 'SAMPLE_BRAF'],
+                    file('${projectDir}/tests/modules/fixtures/SAMPLE_BRAF')
+                ])
+                input[1] = bundle
+                input[2] = []
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0][1].toString()).readLines()
+            def header = lines[0].split('\t', -1) as List
+            def row = lines[1].split('\t', -1)
+            assert row[header.indexOf('Transcript_ID')] == 'ENST00000496384'
+            assert row[header.indexOf('HGVSp_Short')] == 'p.V208E'
+        }
+    }
+
     test("Rejects a mafsmith_data bundle without GRCh37 reference files") {
 
         when {
@@ -137,6 +199,7 @@ nextflow_process {
                     file('${projectDir}/tests/modules/fixtures/SAMPLE_CHR')
                 ])
                 input[1] = file('${projectDir}/assets/samples')
+                input[2] = []
                 """
             }
         }

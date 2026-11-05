@@ -67,7 +67,9 @@ nextflow run main.nf \
 
 VCF → MAF uses [mafsmith](https://github.com/nf-osi/mafsmith) + fastVEP (GRCh37, PASS records only), run from the `mafsmith-fastvep` container (see [Containers](#containers)).
 
-`--mafsmith_data` is optional. When it is omitted, empty or `null`, the GRCh37 reference bundle (Ensembl 113) is downloaded once into `assets/mafsmith/` and reused by later runs. A pre-staged bundle must contain `GRCh37/reference.fa` and `GRCh37/genes.gff3.gz`. `MAFSMITH` fails if either file is missing or empty.
+`--mafsmith_data` is optional. When it is omitted, empty or `null`, the GRCh37 reference bundle (Ensembl GRCh37.87, the final GRCh37 gene set) is downloaded once into `assets/mafsmith/` and reused by later runs. A pre-staged bundle must contain `GRCh37/reference.fa` and `GRCh37/genes.gff3.gz`. `MAFSMITH` fails if either file is missing or empty.
+
+`HGVSp` / `HGVSp_Short` use one transcript per gene from `--mafsmith_custom_enst` (default `assets/grch37_mskcc_canonical_transcripts.txt.gz`: the Genome Nexus MSKCC canonical transcripts cBioPortal uses, e.g. BRAF `ENST00000288602`; see [Preferred transcripts](#preferred-transcripts)). GRCh37.87 marks no transcript as canonical, so without the list mafsmith takes the longest cDNA, and BRAF V600E (rs113488022) came out as `p.V208E`. Samples already in `--outdir` keep the protein changes they were annotated with: delete `{outdir}/samples/*/*_mutations.txt` to re-annotate them.
 
 > A `-stub-run` with `--skip_mafsmith false` stores an **empty** `assets/mafsmith/`. Delete it afterwards, or later real runs will reuse it and fail on the missing reference files.
 
@@ -137,6 +139,30 @@ Resume a previous run:
 ```bash
 nextflow run main.nf ... -resume
 ```
+
+#### Preferred transcripts
+
+`assets/grch37_mskcc_canonical_transcripts.txt.gz` is the default `--mafsmith_custom_enst`. It was built on 2026-11-05 from the [genome-nexus-importer](https://github.com/genome-nexus/genome-nexus-importer) repository, commit `dddb2880cd4a23d5d8d25d573fcfcb5fb2ade9bf`, file [`data/grch37_ensembl92/export/ensembl_biomart_canonical_transcripts_per_hgnc.txt`](https://github.com/genome-nexus/genome-nexus-importer/blob/dddb2880cd4a23d5d8d25d573fcfcb5fb2ade9bf/data/grch37_ensembl92/export/ensembl_biomart_canonical_transcripts_per_hgnc.txt). That table gives one transcript per HGNC gene for several sources. The asset takes column 12, `mskcc_canonical_transcript`: the MSKCC isoform overrides (`data/common_input/isoform_overrides_at_mskcc_grch37.txt`, 522 genes) and, for every other gene, the Ensembl transcript Genome Nexus would pick. These are the transcripts Genome Nexus and cBioPortal use for GRCh37.
+
+The file has one `ENST<tab>gene` line per transcript (40,425 lines). mafsmith reads only the first column and skips `#` lines. Entries that are not a plain `ENST…` ID (`None`) are left out, and so is any transcript listed for a second gene. IDs are unversioned on purpose: fastVEP writes transcript IDs without a version, so `ENST00000288602.6` would never match.
+
+To rebuild it (for example from a newer commit):
+
+```bash
+SHA=dddb2880cd4a23d5d8d25d573fcfcb5fb2ade9bf
+curl -sL https://raw.githubusercontent.com/genome-nexus/genome-nexus-importer/$SHA/data/grch37_ensembl92/export/ensembl_biomart_canonical_transcripts_per_hgnc.txt > canonical.txt
+{
+  echo "# Preferred GRCh37 transcripts for mafsmith vcf2maf --custom-enst (one per gene; first column is read)."
+  echo "# Source: genome-nexus/genome-nexus-importer@$SHA"
+  echo "#   data/grch37_ensembl92/export/ensembl_biomart_canonical_transcripts_per_hgnc.txt, column mskcc_canonical_transcript"
+  echo "#   (MSKCC isoform overrides, else Ensembl longest), the transcripts Genome Nexus / cBioPortal use."
+  echo "# IDs are unversioned: fastVEP writes CSQ Feature without the version, and a versioned ID never matches."
+  printf '# enst_id\thgnc_symbol\n'
+  awk -F'\t' 'NR>1 && $12~/^ENST[0-9]+$/ && !seen[$12]++ {print $12"\t"$1}' canonical.txt
+} | gzip -n > assets/grch37_mskcc_canonical_transcripts.txt.gz
+```
+
+After changing the list, delete `{outdir}/samples/*/*_mutations.txt` so existing samples are annotated again.
 
 ### Containers
 

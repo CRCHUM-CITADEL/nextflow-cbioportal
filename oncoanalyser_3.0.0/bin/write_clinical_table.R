@@ -94,7 +94,8 @@ if (opt$mode == "patient") {
     list("SPECIMEN_TISSUE_SOURCE_CODE","specimen_tissue_source_code",        "Specimen Tissue Source Code", "Ontology code for the specimen tissue source.",                        "STRING", "1"),
     list("CANCER_TYPE_CODE",           "cancer_type_code",                   "Cancer Code",                 "ICD-O-3 topography cancer code.",                                      "STRING", "1"),
     list("CANCER_TYPE_LABEL",          "cancer_type_label",                  "Cancer Code Label",           "Human-readable label for the ICD-O-3 topography cancer code.",         "STRING", "1"),
-    list("PRIMARY_SITE",               "primary_site",                       "Primary Site",                "Primary site of the tumor.",                                           "STRING", "1"),
+    # >1000 makes Primary Site the first study-view chart, above cBioPortal's Data Types chart.
+    list("PRIMARY_SITE",               "primary_site",                       "Primary Site",                "Primary site of the tumor.",                                           "STRING", "1500"),
     list("PRIMARY_SITE_CODE",          "primary_site_code",                  "Primary Site Code",           "ICD-O topography code for the primary site.",                          "STRING", "1"),
     list("LATERALITY",               "laterality",                         "Laterality",                  "Laterality of the primary tumor.",                                     "STRING", "1"),
     list("BASIS_OF_DIAGNOSIS",       "basis_of_diagnosis",                 "Basis of Diagnosis",          "Basis on which the primary diagnosis was made.",                       "STRING", "1"),

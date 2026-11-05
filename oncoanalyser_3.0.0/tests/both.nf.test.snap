@@ -1,7 +1,7 @@
 {
     "both mode \u2014 genomic + clinical combined output": {
         "content": [
-            44,
+            38,
             [
                 "TEST",
                 "TEST.tar.gz",
@@ -52,20 +52,6 @@
                 "TEST/data_mutations_dna_rna_germline.txt",
                 "TEST/data_sv.txt",
                 "TEST/data_timeline.txt",
-                "TEST/machine_learning",
-                "TEST/machine_learning/formatted",
-                "TEST/machine_learning/formatted/all_somatic_mutations.tsv",
-                "TEST/machine_learning/formatted/cnv_gene.tsv",
-                "TEST/machine_learning/formatted/expression_tpm.tsv",
-                "TEST/machine_learning/processed",
-                "TEST/machine_learning/processed/cnv_genes.tsv",
-                "TEST/machine_learning/processed/expression_processed_log2.tsv",
-                "TEST/machine_learning/processed/expression_processed_standardized.tsv",
-                "TEST/machine_learning/processed/mutations_processed_binary.tsv",
-                "TEST/machine_learning/processed/mutations_processed_effect.tsv",
-                "TEST/machine_learning/processed/mutations_processed_hybrid.tsv",
-                "TEST/machine_learning/processed/mutations_processed_integrated.tsv",
-                "TEST/machine_learning/processed/mutations_processed_vaf.tsv",
                 "TEST/meta_cancer_type.txt",
                 "TEST/meta_clinical_patient.txt",
                 "TEST/meta_clinical_sample.txt",
@@ -88,7 +74,7 @@
             ],
             [
                 "T1-1DT.data_clinical_patient.txt:md5,2010fd165866d6d452d8f588acc72e27",
-                "T1-1DT.data_clinical_sample.txt:md5,00b3d93258a3d9b4c8d7347b753d1c88",
+                "T1-1DT.data_clinical_sample.txt:md5,a8aedffeb7f4c51548f1594e0f7fc6a4",
                 "T1-1DT.data_mutational_signatures_contribution_DBS.txt:md5,f08cbe9d187a4f6bc05af4fe5dfe1435",
                 "T1-1DT.data_mutational_signatures_contribution_ID.txt:md5,5a37ba4e8b4c304ec948f68b08887c5b",
                 "T1-1DT.data_mutational_signatures_contribution_SBS.txt:md5,cbb955cff44c8ee1d9d576132c19606e",
@@ -101,7 +87,7 @@
                 "T1-1DT_data_cna_hg38.seg:md5,c597634b2dc3d61031a7175b82e71de8",
                 "T1-1DT_data_cna_long.txt:md5,9b2504d25b5ecf622e3946f6fa71e2d6",
                 "T2-T.data_clinical_patient.txt:md5,300767b153ff652fd7d3598c73e45f13",
-                "T2-T.data_clinical_sample.txt:md5,7d8063d1e271f8c0a4a5734dbd163658",
+                "T2-T.data_clinical_sample.txt:md5,16eaf2701faf1a57e46bac1d28397125",
                 "T2-T.data_mutational_signatures_contribution_DBS.txt:md5,4db963341b8f89273985e9bf4afd8a4a",
                 "T2-T.data_mutational_signatures_contribution_ID.txt:md5,30bfc1d50e594fa668c105ca2543ebf1",
                 "T2-T.data_mutational_signatures_contribution_SBS.txt:md5,73073ea100b920a679b93d7dcff89e0f",
@@ -118,7 +104,7 @@
                 "cases_sequenced.txt:md5,91c9d3c2389dd5e7b24f7e60f298c62b",
                 "cases_sv.txt:md5,5097e62d290c0a233002faebbc28c483",
                 "data_clinical_patient.txt:md5,436f98ea35d7d19a3fa8f69fa7c1aa8e",
-                "data_clinical_sample.txt:md5,da9ce82d47a99d5f50152abb8b38a274",
+                "data_clinical_sample.txt:md5,35c31dd48ea59d3ee393a3200e5869bb",
                 "data_cna_hg38.seg:md5,5fa88df1965c02182405694df64fe63e",
                 "data_cna_long.txt:md5,c4c280b51f50e10db9a08ab632391532",
                 "data_expression.txt:md5,81f6b9440fff9939c5012d381bfe02a9",
@@ -131,17 +117,6 @@
                 "data_mutations_dna_rna_germline.txt:md5,2f8e1d0f5da3d1f1c6daf29672022750",
                 "data_sv.txt:md5,d35d116bd783c31a9d5e04b51ea99fc6",
                 "data_timeline.txt:md5,48e4a8a7ef89899bd171ac7aad99faaf",
-                "all_somatic_mutations.tsv:md5,7e9a1a0b48d0f2dd825b57b56290268d",
-                "cnv_gene.tsv:md5,d378d8cbab81e111b158bed4c2dd9d46",
-                "expression_tpm.tsv:md5,953373104bd76faa0b578ac34e2d88b7",
-                "cnv_genes.tsv:md5,dfdec97db10c6d51cca72a858cada782",
-                "expression_processed_log2.tsv:md5,1074f51168d716e67664b622ca046abf",
-                "expression_processed_standardized.tsv:md5,1074f51168d716e67664b622ca046abf",
-                "mutations_processed_binary.tsv:md5,8a3cf0690154827d56eaeec4c266c704",
-                "mutations_processed_effect.tsv:md5,77200747cdf8d3f8b38a2ee8c137619d",
-                "mutations_processed_hybrid.tsv:md5,57c288f195efbb41539d36b851d43dba",
-                "mutations_processed_integrated.tsv:md5,1ebb49a26c320f143020ba543145625d",
-                "mutations_processed_vaf.tsv:md5,3289836ce291b16440a0629e83b6af63",
                 "meta_cancer_type.txt:md5,b5a9f61c582810fdcd5056c42d2c96a6",
                 "meta_clinical_patient.txt:md5,db4e12d00e844523c08f6b37fd57865f",
                 "meta_clinical_sample.txt:md5,28084eb9555ebab829df83fe97a1cdbe",
@@ -161,7 +136,7 @@
                 "util_linking_file.txt:md5,74ba4d7e0241c94fd014a4d994a83497"
             ]
         ],
-        "timestamp": "2026-09-28T20:34:12.160737851",
+        "timestamp": "2026-10-30T16:39:17.86016443",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.4"

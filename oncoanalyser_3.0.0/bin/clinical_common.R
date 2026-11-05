@@ -64,12 +64,17 @@ apply_mohccn_map <- function(values, map) {
 # Apply a reversed primary-site-style map: ICD-O code → human-readable label.
 # Extracts the parent code (C + 2 digits) before lookup, handling both
 # decimal format ("C22.0" → "C22") and concatenated MOHCCN format ("C220" → "C22").
+# A comma-separated list ("C569,C220", a multi-site relapse) labels every code, joined
+# with "; " because some MOHCCN labels contain commas; unmatched codes are dropped.
 apply_ps_label <- function(codes, reversed_map) {
   if (is.null(reversed_map)) return(rep(NA_character_, length(codes)))
-  prefixes <- sub("^(C\\d{2}).*", "\\1", trimws(as.character(codes)))
-  result   <- reversed_map[prefixes]
-  result[is.na(result) | result == ""] <- NA_character_
-  unname(result)
+  vapply(as.character(codes), function(value) {
+    if (is.na(value)) return(NA_character_)
+    prefixes <- sub("^(C\\d{2}).*", "\\1", trimws(strsplit(value, ",", fixed = TRUE)[[1]]))
+    labels   <- unname(reversed_map[prefixes])
+    labels   <- labels[!is.na(labels) & labels != ""]
+    if (length(labels) == 0) NA_character_ else paste(labels, collapse = "; ")
+  }, character(1), USE.NAMES = FALSE)
 }
 
 # ── Sample linking ────────────────────────────────────────────────────────────

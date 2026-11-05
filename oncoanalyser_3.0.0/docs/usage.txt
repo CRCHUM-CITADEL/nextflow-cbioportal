@@ -298,6 +298,8 @@ GENOMIC INPUT PARAMETERS
   Parameter                Required  Default   Description
   -----------------------  --------  --------  ----------------------------
   genomic_samplesheet      Yes       --        Path to genomic samplesheet CSV
+                                               (optional in clinical mode: keeps
+                                               only its subjects)
   resources_dir            Yes       --        Extracted resource kit (all reference files)
   mafsmith_retain_ann      No        (10 CSQ)  Extra VEP fields kept as MAF columns
   run_ml                   No        false     Also build the ML feature tables (machine_learning/)
@@ -309,8 +311,12 @@ CLINICAL INPUT PARAMETERS
 
   Parameter                         Required  Default        Description
   --------------------------------  --------  -----------    ----------------------------
-  clinical_samplesheet              Yes       --             Path to clinical samplesheet CSV
-  sample_registrations              No        (empty)        sample_registrations.csv for template mode
+  clinical_samplesheet              Yes*      --             Path to clinical samplesheet CSV
+  sample_registrations              Yes*      (empty)        sample_registrations.csv for template mode
+
+  * Clinical mode needs one of the two. Both mode needs neither: without
+    a clinical samplesheet it builds the template from the genomic
+    linking file.
 
   MOHCCN mapping tables come from resources_dir.
 
@@ -423,12 +429,106 @@ GENOMIC MODE
 
 CLINICAL MODE
 
+  Builds only the clinical part of a study from ARGO/ICGC-ARGO CSVs.
+  No oncoanalyser output, genomic samplesheet, genome reference or
+  genomic container is needed, and no genomic task runs.
+
   nextflow run main.nf \
       -profile slurm,apptainer,citadel \
       --mode clinical \
       --study_id "MY_STUDY" \
-      --project_description "Description of my study" \
       --clinical_samplesheet clinical_samplesheet.csv
+
+  Outside CRCHUM, replace citadel with --resources_dir: the three
+  MOHCCN mapping tables come from the resource kit.
+
+  nextflow run main.nf \
+      -profile apptainer \
+      --mode clinical \
+      --study_id "MY_STUDY" \
+      --clinical_samplesheet clinical_samplesheet.csv \
+      --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0
+
+  Required:
+
+    --study_id              Names the output folder <outdir>/<study_id>/
+                            and the cancer_study_identifier in every meta
+                            file (lower-cased, '-' becomes '_'). The run
+                            stops without it. Use the same value as the
+                            genomic run the clinical data belongs to.
+    --clinical_samplesheet  or --sample_registrations (see below). The
+                            run stops if neither is given.
+
+  The group_id column of the clinical samplesheet is not used for
+  naming; --study_id decides. Relative filepath values in the
+  samplesheet resolve against the pipeline directory, not the
+  directory you launch from -- prefer absolute paths.
+
+  Output, in <outdir>/<study_id>/:
+
+    data_clinical_patient.txt, meta_clinical_patient.txt
+    data_clinical_sample.txt,  meta_clinical_sample.txt
+    data_timeline.txt,         meta_timeline.txt  (when event data exists)
+
+  By default every Total DNA / Tumour / Solid tissue sample in
+  sample_registrations becomes a row.
+
+  Restricting to genomic samples (optional): add --genomic_samplesheet
+  to output clinical data only for the subjects it lists, exactly as
+  both mode does with its linking file:
+
+    nextflow run main.nf \
+        -profile slurm,apptainer,citadel \
+        --mode clinical \
+        --study_id "MY_STUDY" \
+        --clinical_samplesheet clinical_samplesheet.csv \
+        --genomic_samplesheet samplesheet.csv
+
+    - Only subject_id and sample_id are read. The folder column is not
+      opened, so no oncoanalyser output is needed and no genomic task
+      runs.
+    - Every clinical output -- patient, sample and timeline -- keeps
+      only subjects whose subject_id is in the samplesheet. The run
+      fails if none match.
+    - A subject with one tumour sample takes the samplesheet's
+      sample_id as SAMPLE_ID, so it matches the genomic files. A
+      subject with several keeps its clinical sample IDs.
+    - Per-subject slices <study_id>/<subject>/<sample_id>.data_clinical_
+      {sample,patient}.txt are written, as in both mode.
+    - Also applies to the template variant below.
+
+  Pass the same samplesheet the genomic run used: the result then
+  matches what --mode both would have written. Note -profile test sets
+  genomic_samplesheet, so a clinical run under it is filtered.
+
+  Template variant (no clinical CSVs): pass --sample_registrations
+  instead of --clinical_samplesheet to get a minimal
+  data_clinical_sample.txt (PATIENT_ID, SAMPLE_ID, SAMPLE_TYPE=Primary)
+  plus its meta file. No patient or timeline file is written.
+
+  nextflow run main.nf \
+      -profile slurm,apptainer,citadel \
+      --mode clinical \
+      --study_id "MY_STUDY" \
+      --sample_registrations /data/clinical/sample_registrations.csv
+
+  Loading the output: clinical mode writes no meta_study.txt,
+  cancer_type.txt, case lists or .tar.gz, so its folder is not a
+  standalone study. Pair it with a genomic run instead:
+
+    1. Run --mode genomic with --study_id MY_STUDY --outdir results.
+    2. Run --mode clinical with the same --study_id and --outdir, and
+       --genomic_samplesheet set to step 1's samplesheet. The
+       clinical files land in results/MY_STUDY/ next to the genomic
+       ones (a genomic-only run writes no clinical files, so nothing
+       is overwritten).
+    3. Validate and import results/MY_STUDY/ as described in
+       docs/output.txt. Note the genomic run's MY_STUDY.tar.gz does
+       not contain the clinical files; import the folder, or use
+       --mode both to get one archive with everything.
+
+  To refresh the clinical data of an already-loaded study, rerun
+  step 2 with updated CSVs and re-import the folder.
 
 BOTH MODE
 

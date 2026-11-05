@@ -41,3 +41,5 @@ test.*
 ampliseq/containers/python-ampliseq.sif
 ampliseq/test_results/
 oncoanalyser_3.0.0/pancan_pcawg_2020.tar.gz
+
+.claude

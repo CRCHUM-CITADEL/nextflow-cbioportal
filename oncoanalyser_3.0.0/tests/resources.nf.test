@@ -67,7 +67,7 @@ nextflow_pipeline {
         then {
             assertAll(
                 { assert workflow.success },
-                { assert path("${params.outdir}/data_clinical_sample.txt").exists() }
+                { assert path("${params.outdir}/TEST/data_clinical_sample.txt").exists() }
             )
         }
     }

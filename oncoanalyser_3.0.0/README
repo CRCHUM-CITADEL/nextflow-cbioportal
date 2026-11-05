@@ -30,7 +30,13 @@ nextflow run main.nf -profile slurm,apptainer,citadel \
 
 nextflow run main.nf -profile slurm,apptainer,citadel \
  --mode clinical \
+ --study_id MY_STUDY \
  --clinical_samplesheet clinical_samplesheet.csv
+
+--study_id is required here and must match the genomic run the
+clinical files belong to. Clinical mode writes no meta_study.txt,
+so it is not a standalone study; see CLINICAL MODE in docs/usage.txt
+for the inputs it needs and how to load its output.
 
 # 3c. Run (both mode — genomic + clinical in one run)
 

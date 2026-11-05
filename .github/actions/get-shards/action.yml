@@ -24,6 +24,12 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # setup-nf-test installs no JDK; ubuntu-26.04's default Java 25 breaks nf-test 0.9.3's Groovy.
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "17"
     - name: Install nf-test
       uses: nf-core/setup-nf-test@v1
       with:

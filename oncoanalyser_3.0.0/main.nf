@@ -94,10 +94,20 @@ workflow {
     }
 
     if (params.mode == 'clinical'){
+        // Optional --genomic_samplesheet: keep only its subjects, exactly as both mode does with its linking file.
+        ch_genomic_subjects = params.genomic_samplesheet
+            ? PIPELINE_INITIALISATION.out.genomic_samplesheet
+                .map { row -> "${row[0].subject}\t${row[0].sample}" }
+                .unique()
+                .collectFile(name: 'genomic_subjects.tsv', seed: "subject_id\tsample_id\n", newLine: true, sort: true)
+                .map { f -> f.toString() }
+                .first()
+            : Channel.value("")
+
         CLINICAL(
             PIPELINE_INITIALISATION.out.clinical_samplesheet,
             params.sample_registrations,
-            Channel.value(""),   // no genomic filter in clinical-only mode
+            ch_genomic_subjects,
         )
     }
 
@@ -124,8 +134,7 @@ workflow {
     //
     // Packaging lives here rather than inside GENOMIC so that in "both" mode the
     // archive matches the study directory: genomic + clinical + timeline + linking file.
-    // Only genomic/both produce a per-group study directory — in clinical-only mode the
-    // files are published flat into outdir, so there is nothing to package.
+    // Clinical-only mode has no meta_study.txt or case lists, so it is not packaged.
     //
     if (params.mode in ['genomic', 'both']) {
         ch_package_files = GENOMIC.out.package_files

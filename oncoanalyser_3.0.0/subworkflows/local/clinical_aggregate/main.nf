@@ -68,11 +68,11 @@ workflow CLINICAL_AGGREGATE {
         WRITE_CLINICAL_SAMPLE(BUILD_CLINICAL_TABLE.out.ch_merged)
         WRITE_CLINICAL_PATIENT(BUILD_CLINICAL_TABLE.out.ch_merged)
 
-        // ── Per-sample clinical split (both mode only) ───────────────────────
+        // ── Per-sample clinical split (whenever genomic subjects are given) ──
         ch_group_clinical = WRITE_CLINICAL_SAMPLE.out.ch_clinical_sample
             .join(WRITE_CLINICAL_PATIENT.out.ch_clinical_patient)
 
-        // Parse linking file for per-sample tuples (empty channel in clinical-only mode)
+        // Parse the genomic subjects for per-sample tuples (empty channel when unset)
         ch_per_sample = genomic_subjects
             .filter { it && it != "" }
             .flatMap { gs_path ->

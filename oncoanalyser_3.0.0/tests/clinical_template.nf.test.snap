@@ -3,20 +3,21 @@
         "content": [
             2,
             [
-                "data_clinical_sample.txt",
-                "meta_clinical_sample.txt",
+                "TEST",
+                "TEST/data_clinical_sample.txt",
+                "TEST/meta_clinical_sample.txt",
                 "pipeline_info",
                 "pipeline_info/software_versions.yml"
             ],
             [
                 "data_clinical_sample.txt:md5,ebf79e0e5e7bf3be3eda92d0baf82e60",
-                "meta_clinical_sample.txt:md5,7fb57611daa466db10e82d9cbe17537d"
+                "meta_clinical_sample.txt:md5,b4a55364078a7b78c72f34b683dcb642"
             ]
         ],
-        "timestamp": "2026-08-27T15:53:18.344744546",
+        "timestamp": "2026-10-29T12:38:37.688888962",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "25.10.4"
+            "nextflow": "26.04.4"
         }
     }
 }

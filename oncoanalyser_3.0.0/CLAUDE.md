@@ -186,8 +186,10 @@ Isofox expression now maps Ensembl→Entrez through `ensembl_annotations` too.) 
 
 `GENOMIC_ML` is **opt-in**: `workflows/genomic.nf` only calls it when
 `params.run_ml` is true (default `false`), so a default run writes no
-`<group>/machine_learning/`. `tests/both.nf.test` covers both sides — the snapshot
-test sets `run_ml = true`, a second test asserts no `_ML_` task runs without it.
+`<group>/machine_learning/`. `tests/both.nf.test` runs with ML off for now (its snapshot
+test no longer sets `run_ml`, since `FORMAT_ML_CNV` is `process_high_memory`); a second
+test asserts no `_ML_` task runs without it. ML output is covered only by
+`tests/subworkflows/genomic_ml.nf.test`.
 
 `cosmic_data` and `chimer_data` are **all-or-nothing** — `FORMAT_PROCESS_ML_SV`
 unions the two fusion lists, so one without the other reaches the process with an
@@ -289,6 +291,16 @@ reverse-mapped `*_LABEL` sibling via `apply_ps_label()`: `RELAPSE_SITE`,
 **C+2-digit parent** code, because the MOHCCN primary-site table only carries parent
 codes — `C22.0` and `C22.1` both label as "Liver and intrahepatic bile ducts".
 Sub-site precision would need a fuller ICD-O-3 topography table as a new asset.
+`apply_ps_label()` labels every code of a comma-separated list (a multi-site relapse,
+`C569,C220`) and joins them with `"; "` — MOHCCN labels contain commas.
+
+**Dashboard priority** (4th `#` row, last field of each `col_defs` entry in
+`write_clinical_table.R`): `PRIMARY_SITE` is `1500`, everything else `1` (= cBioPortal's
+default placement). It must stay above `1000`, the frontend's built-in Data Types chart
+(`GENOMIC_PROFILES_SAMPLE_COUNT`); that chart and Mutation Count vs FGA (`200`) are not
+settable from study files. `0` would hide a chart. `write_clinical_sample.nf.test` pins
+both the priority row and the label columns — `write_cbio_table()` silently drops a
+col_def whose source column is missing, so a rename upstream would otherwise lose a label.
 The `_LABEL` suffix is deliberate: cBioPortal reserves `CANCER_TYPE` /
 `CANCER_TYPE_DETAILED` for OncoTree codes and would misread ICD-O labels there.
 
@@ -361,7 +373,23 @@ study ID is read from its other meta files for the mismatch check.
 `both` mode `<study>.tar.gz` mirrors the loadable part of the study directory — genomic +
 clinical + timeline + `util_linking_file.txt` + case lists. `GENOMIC` and `CLINICAL` each
 emit `package_files`; `main.nf` mixes them and calls the module once. Clinical-only mode
-produces no archive (it has no `study_id`/group directory).
+produces no archive: it writes `<outdir>/<study_id>/` but no `meta_study.txt` or case lists,
+so it is not a standalone study (docs/usage.txt, CLINICAL MODE).
+
+`--mode clinical` requires `--study_id` (it names the folder and `cancer_study_identifier`;
+the `test_name` fallback in `PIPELINE_INITIALISATION` is a dead local reassignment in every
+mode) and one of `--clinical_samplesheet` / `--sample_registrations`, checked in
+`validateInputParameters()`. The clinical test configs set no genomic input, and
+`tests/clinical.nf.test` asserts only `CLINICAL:` tasks run.
+
+An optional `--genomic_samplesheet` in clinical mode filters to its subjects: `main.nf`
+`collectFile`s its `subject_id`/`sample_id` into the same TSV shape as `util_linking_file.txt`
+and passes it as `genomic_subjects`, so `BUILD_CLINICAL_TABLE`, the timelines and
+`SPLIT_CLINICAL` behave exactly as in both mode. The TSV stays in the work dir — publishing it
+as `util_linking_file.txt` would overwrite the genomic run's in a shared study folder. The
+template branch of `workflows/clinical.nf` applies the same rule in Groovy (filter by
+subject; single-sample subjects adopt the genomic `sample_id`). Clinical test configs must
+set `genomic_samplesheet = null`: the `test` profile sets one, which would filter them.
 
 The archive's md5 is not reproducible (tar embeds per-file mtimes), so `*.tar.gz` is listed
 in `tests/.nftignore` — assert on its contents, not its checksum.

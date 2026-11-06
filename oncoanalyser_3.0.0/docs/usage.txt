@@ -131,16 +131,15 @@ GENOMIC SAMPLESHEET
 
     <folder>/
     |-- pave/
-    |   |-- somatic/
-    |   |   +-- <subject_id>-T.pave.somatic.vcf.gz     Somatic DNA mutations
-    |   +-- germline/
-    |       +-- <subject_id>-T.pave.germline.vcf.gz    Germline DNA mutations
+    |   +-- somatic/
+    |       +-- <subject_id>-T.pave.somatic.vcf.gz     Somatic DNA mutations
     |-- sage_append/
     |   +-- <subject_id>-T/
     |       +-- <subject_id>-T.sage.append.vcf.gz      RNA-supported somatic
     |-- esvee/
     |   +-- <subject_id>-T.esvee.somatic.vcf.gz        Somatic structural variants
     |-- purple/
+    |   |-- <subject_id>-T.purple.germline.vcf.gz      Germline DNA mutations
     |   |-- <subject_id>-T.purple.cnv.somatic.tsv      Somatic CN segments
     |   +-- <subject_id>-T.purple.cnv.gene.tsv         Gene-level copy numbers
     |-- isofox/

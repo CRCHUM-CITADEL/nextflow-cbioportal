@@ -216,7 +216,7 @@ workflow GENOMIC {
         // ── Build per-modality input channels ─────────────────────────────────
         // File naming conventions (relative to folder), oncoanalyser 3.0 layout:
         //   pave/somatic/${subject}-T.pave.somatic.vcf.gz          — PAVE somatic DNA
-        //   pave/germline/${subject}-T.pave.germline.vcf.gz        — PAVE germline DNA
+        //   purple/${subject}-T.purple.germline.vcf.gz             — PURPLE germline DNA
         //   sage_append/${subject}-T/${subject}-T.sage.append.vcf.gz — SAGE somatic RNA append
         //   esvee/${subject}-T.esvee.somatic.vcf.gz
         //   purple/${subject}-T.purple.cnv.somatic.tsv
@@ -235,12 +235,12 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // SAGE germline VCF → germline mutations
-        ch_sage_germline_vcf = ch_samples_to_run
+        // PURPLE germline VCF → germline mutations (PURPLE calls the genotypes PAVE leaves as ./.)
+        ch_germline_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/pave/germline/${meta.subject}-T.pave.germline.vcf.gz",
-                    'germline mutation (PAVE)')
+                    "${meta.folder}/purple/${meta.subject}-T.purple.germline.vcf.gz",
+                    'germline mutation (PURPLE)')
                 vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
             .filter { it != null }
@@ -365,7 +365,7 @@ workflow GENOMIC {
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations)
 
         GENOMIC_MUTATIONS(
-            ch_sage_germline_vcf,
+            ch_germline_vcf,
             ch_sage_vcf,
             ch_sage_rna_vcf,
             vep_data,

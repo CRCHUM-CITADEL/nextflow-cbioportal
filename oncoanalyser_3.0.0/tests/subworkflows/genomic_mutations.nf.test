@@ -29,7 +29,7 @@ nextflow_workflow {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_germline'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz')
                     ]
                 )
                 // Somatic VCF
@@ -98,7 +98,7 @@ nextflow_workflow {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_germline'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz')
                     ]
                 )
                 input[1] = Channel.of(
@@ -141,7 +141,7 @@ nextflow_workflow {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'mutation_germline'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz')
                     ]
                 )
                 input[1] = Channel.of(

@@ -109,8 +109,13 @@ Exon, Intron}`. Isofox records a transcript + exon rank only when the breakend f
   `ImportCnaDiscreteLongData` has no try/catch. An absent (gene, sample) pair is
   the correct way to say "not profiled" — the importer folds DISCRETE_LONG into
   the wide DISCRETE form and renders a missing pair as an empty cell
+- **Germline calls come from `purple/<subject>-T.purple.germline.vcf.gz`, not PAVE's germline VCF**:
+  PAVE leaves SAGE's `./.` genotypes, PURPLE calls them (CPSR needs `GT` for zygosity) and applies its
+  germline filters (`LOW_TUMOR_VCN`, ...). There is no PAVE fallback. A subject without it also loses
+  its somatic MAF, since `MAFSMITH`'s input joins on `ger_dna_vcf` for `germinal_sample`
 - **`PCGR` gives CPSR the germline calls with all INFO removed** (`bcftools annotate -x INFO`): CPSR
-  aborts on an input INFO tag that clashes with its own (PAVE's `IMPACT`) and annotates everything
+  aborts on an input INFO tag that clashes with its own (`IMPACT`, which PURPLE's germline VCF keeps
+  from PAVE) and annotates everything
   itself. **CPSR exits 0 even when it fails**, so any `- ERROR -` line in its log fails the task;
   never let an error fall through to the header-only placeholder
 - `PCGR` publishes `<sample>.cpsr_debug/` (CPSR log, input/pass-VCF GT summary, CPSR's side outputs);

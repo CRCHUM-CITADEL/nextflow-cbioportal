@@ -1,0 +1,37 @@
+nextflow_process {
+
+    name "Test FILTER_GERMLINE_DNA"
+    script "modules/local/filter_germline_dna/main.nf"
+    process "FILTER_GERMLINE_DNA"
+    tag "module"
+    tag "filter_germline_dna"
+
+    test("PURPLE germline VCF — PASS calls only, normal column only, PURPLE genotypes kept") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0][1].toString()).linesGzip
+            def header = lines.find { it.startsWith('#CHROM') }.split('\t')
+            def records = lines.findAll { !it.startsWith('#') }.collect { it.split('\t') }
+
+            // The tumour column is dropped; the normal is the only sample left.
+            assert header.drop(9) == ['T1-N']
+            // LOW_TUMOR_VCN (PURPLE's germline filter) is gone; both PASS calls remain.
+            assert records.collect { it[1] } == ['44300100', '44300300']
+            assert records.every { it[6] == 'PASS' }
+            // PURPLE's genotype calls reach CPSR unchanged, HOM included.
+            assert records.collect { it[9].split(':')[0] } == ['0/1', '1/1']
+        }
+    }
+}

@@ -68,6 +68,25 @@ snv_header_t2='##fileformat=VCFv4.2
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	T2-N	T2
 '
 
+# PURPLE germline VCF header: PURPLE calls GT and adds copy-number INFO and germline filters
+purple_germline_header() {
+    printf '%s\n' \
+'##fileformat=VCFv4.2' \
+'##FILTER=<ID=PASS,Description="All filters passed">' \
+'##FILTER=<ID=LOW_TUMOR_VCN,Description="Germline variant has very low tumor variant copy number">' \
+'##INFO=<ID=DP,Number=1,Type=Integer,Description="Total depth">' \
+'##INFO=<ID=PURPLE_CN,Number=1,Type=Float,Description="Purity adjusted copy number surrounding variant location">' \
+'##INFO=<ID=PURPLE_VCN,Number=1,Type=Float,Description="Purity adjusted variant copy number">' \
+'##INFO=<ID=PURPLE_MACN,Number=1,Type=Float,Description="Purity adjusted minor allele copy number surrounding variant location">' \
+'##INFO=<ID=BIALLELIC,Number=0,Type=Flag,Description="Variant is biallelic">' \
+'##INFO=<ID=REPORTED,Number=0,Type=Flag,Description="Variant is reported in the driver catalog">' \
+'##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">' \
+'##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allele depths">' \
+'##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">' \
+'##contig=<ID=chr21,length=46709983>' \
+"#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	$1-N	$1"
+}
+
 # BND VCF header for ESVEE SVs
 bnd_header_t1='##fileformat=VCFv4.1
 ##FILTER=<ID=PASS,Description="All filters passed">
@@ -97,9 +116,13 @@ make_vcf "${BASE}/oncoanalyser_output/TEST/T1/pave/somatic/T1-T.pave.somatic.vcf
 "${snv_header_t1}chr21	41800000	.	C	T	60	PASS	DP=100	GT:AD:DP	0/0:50,0:50	0/1:40,30:70
 "
 
-# pave germline VCF (T1) — must have sample column T1 so FILTER_GERMLINE_DNA can exclude it
-make_vcf "${BASE}/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz" \
-"${snv_header_t1}chr21	44300100	.	A	G	80	PASS	DP=120	GT:AD:DP	0/1:55,10:65	0/0:60,0:60
+# purple germline VCF (T1) — must have sample column T1 so FILTER_GERMLINE_DNA can exclude it.
+# A HET and a HOM PASS call, plus a LOW_TUMOR_VCN call FILTER_GERMLINE_DNA must drop.
+make_vcf "${BASE}/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz" \
+"$(purple_germline_header T1)
+chr21	44300100	.	A	G	80	PASS	DP=120;PURPLE_CN=2;PURPLE_VCN=1;PURPLE_MACN=1	GT:AD:DP	0/1:55,10:65	0/0:60,0:60
+chr21	44300300	.	C	T	90	PASS	DP=100;PURPLE_CN=2;PURPLE_VCN=2;PURPLE_MACN=0;BIALLELIC	GT:AD:DP	1/1:0,50:50	1/1:0,50:50
+chr21	44300500	.	G	A	40	LOW_TUMOR_VCN	DP=90;PURPLE_CN=2;PURPLE_VCN=0.1;PURPLE_MACN=1	GT:AD:DP	0/1:40,8:48	0/0:42,0:42
 "
 
 # sage append VCF (RNA-append somatic, T1)
@@ -160,9 +183,10 @@ make_vcf "${BASE}/oncoanalyser_output/TEST/T2/pave/somatic/T2-T.pave.somatic.vcf
 "${snv_header_t2}chr21	41800500	.	G	A	55	PASS	DP=90	GT:AD:DP	0/0:45,0:45	0/1:35,28:63
 "
 
-# pave germline VCF (T2)
-make_vcf "${BASE}/oncoanalyser_output/TEST/T2/pave/germline/T2-T.pave.germline.vcf.gz" \
-"${snv_header_t2}chr21	44300200	.	T	C	75	PASS	DP=110	GT:AD:DP	0/1:50,12:62	0/0:55,0:55
+# purple germline VCF (T2)
+make_vcf "${BASE}/oncoanalyser_output/TEST/T2/purple/T2-T.purple.germline.vcf.gz" \
+"$(purple_germline_header T2)
+chr21	44300200	.	T	C	75	PASS	DP=110;PURPLE_CN=2;PURPLE_VCN=1;PURPLE_MACN=1	GT:AD:DP	0/1:50,12:62	0/0:55,0:55
 "
 
 # sage append VCF (T2)

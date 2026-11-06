@@ -78,6 +78,9 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
                 { assert t1_tasks.isEmpty() : "T1 is already processed but ran tasks: ${t1_tasks}" },
                 // T2 is new: it must actually be processed
                 { assert !t2_tasks.isEmpty() : "T2 was never processed; tasks were: ${tasks}" },
+                // T2's germline VCF is read from purple/, PURPLE's genotyped germline calls
+                { assert t2_tasks.any { it.contains('FILTER_GERMLINE_DNA') }
+                         : "T2's PURPLE germline VCF was not picked up; T2 tasks were: ${t2_tasks}" },
                 // T1's cached rows must survive into the merged study files, exactly once
                 { assert seg.count { it.startsWith('T1-1DT\t') } == 3
                          : "Expected T1's 3 cached segments in data_cna_hg38.seg, got ${seg.findAll { it.startsWith('T1-1DT\t') }}" },

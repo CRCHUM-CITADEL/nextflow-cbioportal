@@ -1,0 +1,165 @@
+nextflow_process {
+
+    name "Test FILTER_GENE_PANEL"
+    script "modules/local/filter_gene_panel/main.nf"
+    process "FILTER_GENE_PANEL"
+    tag "module"
+    tag "filter"
+
+    // Panel shared by the tests: lowercase gene and 'fusion' check case-insensitivity and the sv alias
+    def panel = 'gene\\ttype\\n' +
+        '# comment line\\n' +
+        'TP53\\tmutation\\n' +
+        'kras\\tMutation\\n' +
+        'ERBB2\\tcna\\n' +
+        'ALK\\tfusion\\n' +
+        'RET\\tsv\\n'
+
+    test("Mutations: keeps only panel genes") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/panel.tsv").text = '${panel}'
+                file("${params.outdir}/gp/data_mutations.txt").text =
+                    'Hugo_Symbol\\tTumor_Sample_Barcode\\tHGVSp_Short\\n' +
+                    'TP53\\tS1\\tp.R273H\\n' +
+                    'DDR2\\tS1\\tp.T93I\\n' +
+                    'KRAS\\tS2\\tp.G12D\\n' +
+                    'ERBB2\\tS2\\tp.S310F\\n'
+                input[0] = file("${params.outdir}/gp/data_mutations.txt")
+                input[1] = file("${params.outdir}/gp/panel.tsv")
+                input[2] = 'mutation'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0] == 'Hugo_Symbol\tTumor_Sample_Barcode\tHGVSp_Short'
+            assert lines.drop(1).collect { it.split('\t')[0] } == ['TP53', 'KRAS']
+        }
+    }
+
+    test("CNA: keeps only cna genes, not mutation-only ones") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/panel.tsv").text = '${panel}'
+                file("${params.outdir}/gp/data_cna.txt").text =
+                    'Hugo_Symbol\\tSample_Id\\tValue\\n' +
+                    'ERBB2\\tS1\\t2\\n' +
+                    'TP53\\tS1\\t-2\\n' +
+                    'MYC\\tS2\\t2\\n'
+                input[0] = file("${params.outdir}/gp/data_cna.txt")
+                input[1] = file("${params.outdir}/gp/panel.tsv")
+                input[2] = 'cna'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tSample_Id\tValue', 'ERBB2\tS1\t2']
+        }
+    }
+
+    test("SV: keeps a fusion when either partner is on the panel") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/panel.tsv").text = '${panel}'
+                file("${params.outdir}/gp/data_sv.txt").text =
+                    'Sample_Id\\tSite1_Hugo_Symbol\\tSite2_Hugo_Symbol\\tClass\\n' +
+                    'S1\\tEML4\\tALK\\tFUSION\\n' +
+                    'S1\\tRET\\tCCDC6\\tFUSION\\n' +
+                    'S2\\tTMPRSS2\\tERG\\tFUSION\\n' +
+                    'S2\\t\\tALK\\tFUSION\\n'
+                input[0] = file("${params.outdir}/gp/data_sv.txt")
+                input[1] = file("${params.outdir}/gp/panel.tsv")
+                input[2] = 'sv'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t', -1)[1..2].join('-') }
+            assert kept == ['EML4-ALK', 'RET-CCDC6', '-ALK']
+        }
+    }
+
+    test("Header-only file stays header-only") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/panel.tsv").text = '${panel}'
+                file("${params.outdir}/gp/data_cna.txt").text = 'Hugo_Symbol\\tSample_Id\\tValue\\n'
+                input[0] = file("${params.outdir}/gp/data_cna.txt")
+                input[1] = file("${params.outdir}/gp/panel.tsv")
+                input[2] = 'cna'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tSample_Id\tValue']
+        }
+    }
+
+    test("Fails when the panel lists no genes for the type") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/panel.tsv").text = 'gene\\ttype\\nTP53\\tmutation\\n'
+                file("${params.outdir}/gp/data_cna.txt").text = 'Hugo_Symbol\\tSample_Id\\tValue\\nERBB2\\tS1\\t2\\n'
+                input[0] = file("${params.outdir}/gp/data_cna.txt")
+                input[1] = file("${params.outdir}/gp/panel.tsv")
+                input[2] = 'cna'
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.stdout.any { it.contains("lists no 'cna' genes") } || process.errorReport.contains("lists no 'cna' genes")
+        }
+    }
+
+    test("Fails on an unknown type in the panel") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/panel.tsv").text = 'gene\\ttype\\nTP53\\tsnv\\n'
+                file("${params.outdir}/gp/data_mutations.txt").text = 'Hugo_Symbol\\tTumor_Sample_Barcode\\nTP53\\tS1\\n'
+                input[0] = file("${params.outdir}/gp/data_mutations.txt")
+                input[1] = file("${params.outdir}/gp/panel.tsv")
+                input[2] = 'mutation'
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+        }
+    }
+}

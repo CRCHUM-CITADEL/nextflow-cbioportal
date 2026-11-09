@@ -3,6 +3,9 @@ include { MERGE_CNA           } from '../../../modules/local/merge_cna/main'
 include { MERGE_MUTATIONS     } from '../../../modules/local/merge_mutations/main'
 include { MERGE_SEG           } from '../../../modules/local/merge_seg/main'
 include { ANNOTATE_GNOMAD     } from '../../../modules/local/annotate_gnomad/main'
+include { FILTER_GENE_PANEL as FILTER_GENE_PANEL_MUTATIONS } from '../../../modules/local/filter_gene_panel/main'
+include { FILTER_GENE_PANEL as FILTER_GENE_PANEL_CNA       } from '../../../modules/local/filter_gene_panel/main'
+include { FILTER_GENE_PANEL as FILTER_GENE_PANEL_SV        } from '../../../modules/local/filter_gene_panel/main'
 include { FILTER_MUTATIONS_AF } from '../../../modules/local/filter_mutations_af/main'
 include { FILTER_CNV_SAMPLES as FILTER_CNV_SAMPLES_CNA } from '../../../modules/local/filter_cnv_samples/main'
 include { FILTER_CNV_SAMPLES as FILTER_CNV_SAMPLES_SEG } from '../../../modules/local/filter_cnv_samples/main'
@@ -30,7 +33,20 @@ workflow MERGE_DEANON {
     // Optional filters on the merged data (before ID remapping), so they also
     // apply to samples cached from earlier incremental runs
     // -------------------------------------------------------------------------
+    // Gene panel: keep only genes listed for each data type (first, so Genome Nexus is asked less)
     ch_mutations = MERGE_MUTATIONS.out
+    ch_cna       = MERGE_CNA.out
+    ch_sv        = MERGE_SV.out
+    if (params.gene_panel && params.gene_panel.toString() != 'null') {
+        def gene_panel = file(params.gene_panel, checkIfExists: true)
+        FILTER_GENE_PANEL_MUTATIONS(ch_mutations, gene_panel, 'mutation')
+        FILTER_GENE_PANEL_CNA(ch_cna, gene_panel, 'cna')
+        FILTER_GENE_PANEL_SV(ch_sv, gene_panel, 'sv')
+        ch_mutations = FILTER_GENE_PANEL_MUTATIONS.out
+        ch_cna       = FILTER_GENE_PANEL_CNA.out
+        ch_sv        = FILTER_GENE_PANEL_SV.out
+    }
+
     def filter_gnomad = params.filter_gnomad_af.toString().toBoolean()
     if (filter_gnomad) {
         // gnomAD + ClinVar from Genome Nexus, fetched for every run so cached samples get them too
@@ -42,14 +58,13 @@ workflow MERGE_DEANON {
         ch_mutations = FILTER_MUTATIONS_AF.out
     }
 
-    ch_cna = MERGE_CNA.out
     if (params.filter_cnv_depth.toString().toBoolean()) {
         FILTER_CNV_SAMPLES_CNA(ch_cna, ch_cnv_failed, 'Sample_Id')
         ch_cna = FILTER_CNV_SAMPLES_CNA.out
     }
 
     DEANON_MUTATIONS(ch_mutations, ch_linking)
-    DEANON_SV(MERGE_SV.out, ch_linking)
+    DEANON_SV(ch_sv, ch_linking)
     DEANON_CNA(ch_cna, ch_linking)
 
     // -------------------------------------------------------------------------

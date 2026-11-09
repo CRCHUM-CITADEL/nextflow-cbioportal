@@ -10,7 +10,7 @@ include { FILTER_GERMLINE_DNA    } from '../../../modules/local/filter_germline_
 
 workflow GENOMIC_MUTATIONS {
     take:
-        ger_dna_vcf   // tuple (meta, purple.germline.vcf.gz) — PURPLE germline VCF
+        ger_dna_vcf   // tuple (meta, pave.germline.vcf.gz) — PAVE germline VCF, GT ./.
         som_dna_vcf   // tuple (meta, pave.somatic.vcf.gz)  — pave somatic VCF
         som_rna_vcf   // tuple (meta, sage.append.vcf.gz)   — SAGE RNA-append VCF
         vep_data      // channel<path> — pre-staged VEP cache, for PCGR (may be empty)
@@ -19,6 +19,7 @@ workflow GENOMIC_MUTATIONS {
         needs_vep
         needs_pcgr
         needs_mafsmith
+        ensembl_annotations // path — BioMart TSV, fills the MAF's Entrez_Gene_Id
 
     main:
         // Reference data is only needed when there is at least one subject to
@@ -58,7 +59,8 @@ workflow GENOMIC_MUTATIONS {
 
         MAFSMITH(
             som_dna_vcf_input,
-            ch_mafsmith_data
+            ch_mafsmith_data,
+            ensembl_annotations
         )
 
         som_dna_maf = MAFSMITH.out.maf.map { meta, maf ->

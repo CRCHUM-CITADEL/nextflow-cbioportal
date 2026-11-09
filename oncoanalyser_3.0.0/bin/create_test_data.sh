@@ -68,20 +68,16 @@ snv_header_t2='##fileformat=VCFv4.2
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	T2-N	T2
 '
 
-# PURPLE germline VCF header: PURPLE calls GT and adds copy-number INFO and germline filters
-purple_germline_header() {
+# PAVE germline VCF header: SAGE leaves GT as ./., FILTER_GERMLINE_DNA infers it from FORMAT/DP and AF
+pave_germline_header() {
     printf '%s\n' \
 '##fileformat=VCFv4.2' \
 '##FILTER=<ID=PASS,Description="All filters passed">' \
-'##FILTER=<ID=LOW_TUMOR_VCN,Description="Germline variant has very low tumor variant copy number">' \
+'##FILTER=<ID=LOW_QUAL,Description="Low quality">' \
 '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total depth">' \
-'##INFO=<ID=PURPLE_CN,Number=1,Type=Float,Description="Purity adjusted copy number surrounding variant location">' \
-'##INFO=<ID=PURPLE_VCN,Number=1,Type=Float,Description="Purity adjusted variant copy number">' \
-'##INFO=<ID=PURPLE_MACN,Number=1,Type=Float,Description="Purity adjusted minor allele copy number surrounding variant location">' \
-'##INFO=<ID=BIALLELIC,Number=0,Type=Flag,Description="Variant is biallelic">' \
-'##INFO=<ID=REPORTED,Number=0,Type=Flag,Description="Variant is reported in the driver catalog">' \
 '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">' \
 '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allele depths">' \
+'##FORMAT=<ID=AF,Number=1,Type=Float,Description="Allelic frequency calculated from read context counts">' \
 '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">' \
 '##contig=<ID=chr21,length=46709983>' \
 "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	$1-N	$1"
@@ -116,13 +112,20 @@ make_vcf "${BASE}/oncoanalyser_output/TEST/T1/pave/somatic/T1-T.pave.somatic.vcf
 "${snv_header_t1}chr21	41800000	.	C	T	60	PASS	DP=100	GT:AD:DP	0/0:50,0:50	0/1:40,30:70
 "
 
-# purple germline VCF (T1) — must have sample column T1 so FILTER_GERMLINE_DNA can exclude it.
-# A HET and a HOM PASS call, plus a LOW_TUMOR_VCN call FILTER_GERMLINE_DNA must drop.
-make_vcf "${BASE}/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz" \
-"$(purple_germline_header T1)
-chr21	44300100	.	A	G	80	PASS	DP=120;PURPLE_CN=2;PURPLE_VCN=1;PURPLE_MACN=1	GT:AD:DP	0/1:55,10:65	0/0:60,0:60
-chr21	44300300	.	C	T	90	PASS	DP=100;PURPLE_CN=2;PURPLE_VCN=2;PURPLE_MACN=0;BIALLELIC	GT:AD:DP	1/1:0,50:50	1/1:0,50:50
-chr21	44300500	.	G	A	40	LOW_TUMOR_VCN	DP=90;PURPLE_CN=2;PURPLE_VCN=0.1;PURPLE_MACN=1	GT:AD:DP	0/1:40,8:48	0/0:42,0:42
+# pave germline VCF (T1) — must have sample column T1 so FILTER_GERMLINE_DNA can exclude it.
+# Every GT is ./.; the normal's DP/AF cover each genotype rule and its boundaries:
+#   100 hom, 150 hom at AF 0.9, 200 het, 250 het at AF 0.2, 300 ref (AF < 0.2),
+#   350 stays ./. (DP 9), 400 ref at low depth, 500 LOW_QUAL (dropped).
+make_vcf "${BASE}/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz" \
+"$(pave_germline_header T1)
+chr21	44300100	.	A	G	80	PASS	DP=80	GT:AD:AF:DP	./.:2,38:0.95:40	./.:2,38:0.95:40
+chr21	44300150	.	C	T	80	PASS	DP=60	GT:AD:AF:DP	./.:3,27:0.9:30	./.:3,27:0.9:30
+chr21	44300200	.	G	A	80	PASS	DP=120	GT:AD:AF:DP	./.:30,30:0.5:60	./.:30,30:0.5:60
+chr21	44300250	.	T	C	80	PASS	DP=100	GT:AD:AF:DP	./.:40,10:0.2:50	./.:40,10:0.2:50
+chr21	44300300	.	A	C	80	PASS	DP=160	GT:AD:AF:DP	./.:68,12:0.15:80	./.:60,20:0.25:80
+chr21	44300350	.	G	T	80	PASS	DP=18	GT:AD:AF:DP	./.:4,5:0.5:9	./.:4,5:0.5:9
+chr21	44300400	.	C	G	80	PASS	DP=10	GT:AD:AF:DP	./.:4,1:0.1:5	./.:4,1:0.1:5
+chr21	44300500	.	T	A	40	LOW_QUAL	DP=100	GT:AD:AF:DP	./.:25,25:0.5:50	./.:25,25:0.5:50
 "
 
 # sage append VCF (RNA-append somatic, T1)
@@ -183,10 +186,10 @@ make_vcf "${BASE}/oncoanalyser_output/TEST/T2/pave/somatic/T2-T.pave.somatic.vcf
 "${snv_header_t2}chr21	41800500	.	G	A	55	PASS	DP=90	GT:AD:DP	0/0:45,0:45	0/1:35,28:63
 "
 
-# purple germline VCF (T2)
-make_vcf "${BASE}/oncoanalyser_output/TEST/T2/purple/T2-T.purple.germline.vcf.gz" \
-"$(purple_germline_header T2)
-chr21	44300200	.	T	C	75	PASS	DP=110;PURPLE_CN=2;PURPLE_VCN=1;PURPLE_MACN=1	GT:AD:DP	0/1:50,12:62	0/0:55,0:55
+# pave germline VCF (T2)
+make_vcf "${BASE}/oncoanalyser_output/TEST/T2/pave/germline/T2-T.pave.germline.vcf.gz" \
+"$(pave_germline_header T2)
+chr21	44300200	.	T	C	75	PASS	DP=110	GT:AD:AF:DP	./.:31,31:0.5:62	./.:24,24:0.5:48
 "
 
 # sage append VCF (T2)

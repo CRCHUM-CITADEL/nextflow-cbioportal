@@ -123,7 +123,7 @@ workflow GENOMIC {
 
     take:
         samplesheet_list        // from nf-schema — one record per samplesheet row
-        ensembl_annotations     // path — BioMart TSV for CNV gene mapping + ESVEE gene overlap
+        ensembl_annotations     // path — BioMart TSV for CNV/MAF gene mapping + ESVEE gene overlap
         vep_data                // channel<path> — pre-staged VEP cache (may be empty)
         pcgr_data               // channel<path> — pre-staged PCGR reference data (may be empty)
         mafsmith_data           // channel<path> — pre-staged mafsmith home (may be empty)
@@ -216,7 +216,7 @@ workflow GENOMIC {
         // ── Build per-modality input channels ─────────────────────────────────
         // File naming conventions (relative to folder), oncoanalyser 3.0 layout:
         //   pave/somatic/${subject}-T.pave.somatic.vcf.gz          — PAVE somatic DNA
-        //   purple/${subject}-T.purple.germline.vcf.gz             — PURPLE germline DNA
+        //   pave/germline/${subject}-T.pave.germline.vcf.gz        — PAVE germline DNA
         //   sage_append/${subject}-T/${subject}-T.sage.append.vcf.gz — SAGE somatic RNA append
         //   esvee/${subject}-T.esvee.somatic.vcf.gz
         //   purple/${subject}-T.purple.cnv.somatic.tsv
@@ -235,12 +235,12 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // PURPLE germline VCF → germline mutations (PURPLE calls the genotypes PAVE leaves as ./.)
+        // PAVE germline VCF → germline mutations (GT is ./.; FILTER_GERMLINE_DNA infers it)
         ch_germline_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/purple/${meta.subject}-T.purple.germline.vcf.gz",
-                    'germline mutation (PURPLE)')
+                    "${meta.folder}/pave/germline/${meta.subject}-T.pave.germline.vcf.gz",
+                    'germline mutation (PAVE)')
                 vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
             .filter { it != null }
@@ -373,7 +373,8 @@ workflow GENOMIC {
             mafsmith_data,
             needs_vep,
             needs_pcgr,
-            needs_mafsmith
+            needs_mafsmith,
+            ensembl_annotations
         )
 
         // ── Mix new results with pre-existing cached results ──────────────────

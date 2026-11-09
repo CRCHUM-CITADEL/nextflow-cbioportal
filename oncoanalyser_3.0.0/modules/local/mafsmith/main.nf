@@ -6,6 +6,7 @@ process MAFSMITH {
     input:
         tuple val(meta), path(vcf) // compressed (.vcf.gz) or uncompressed (.vcf)
         path mafsmith_data         // mafsmith home: reference data (+ optionally fastvep)
+        path ensembl_annotations   // BioMart TSV: fills Entrez_Gene_Id, which mafsmith leaves 0
 
     output:
         tuple val(meta), path("${meta.sample}.maf"), emit: maf
@@ -73,6 +74,13 @@ process MAFSMITH {
         --maf tmp.${meta.sample}.maf \\
         --output tmp.${meta.sample}.annotated.maf
     mv tmp.${meta.sample}.annotated.maf tmp.${meta.sample}.maf
+
+    # mafsmith has no Ensembl-to-Entrez table and writes Entrez_Gene_Id = 0 on every row.
+    fill_maf_entrez.py \\
+        --maf tmp.${meta.sample}.maf \\
+        --annotations ${ensembl_annotations} \\
+        --output tmp.${meta.sample}.entrez.maf
+    mv tmp.${meta.sample}.entrez.maf tmp.${meta.sample}.maf
 
     # Set Tumor_Sample_Barcode to the cBioPortal sample id and Mutation_Status to Somatic (mafsmith
     # leaves it empty; cBioPortal tells somatic from germline by it). Columns are found by name on line 2.

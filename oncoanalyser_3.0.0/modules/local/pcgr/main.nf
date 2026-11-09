@@ -27,7 +27,7 @@ process PCGR {
     bcftools annotate -x INFO -Oz -o cpsr_input.vcf.gz ${ger_dna_vcf}
     bcftools index -t cpsr_input.vcf.gz
 
-    # What CPSR is given: sample columns, genotypes (CPSR drops 0/0), FILTER values, contig names.
+    # What CPSR is given: sample columns, genotypes (CPSR drops ./.; 2.3+ also 0/0), FILTER values, contig names.
     summarise_vcf() {
         echo "records: \$(bcftools view -H "\$1" | wc -l)"
         echo "samples: \$(bcftools query -l "\$1" | tr '\\n' ' ')"

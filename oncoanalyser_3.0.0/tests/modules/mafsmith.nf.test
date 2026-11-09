@@ -26,6 +26,7 @@ nextflow_process {
                 ])
                 // --skip-annotation: the bundle is never read, only symlinked in
                 input[1] = file('${projectDir}/assets/test_data/clinical')
+                input[2] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
                 """
             }
         }

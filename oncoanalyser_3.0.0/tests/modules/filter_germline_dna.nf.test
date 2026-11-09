@@ -6,14 +6,17 @@ nextflow_process {
     tag "module"
     tag "filter_germline_dna"
 
-    test("PURPLE germline VCF — PASS calls only, normal column only, PURPLE genotypes kept") {
+    // T1's PAVE germline fixture: every GT is ./., and each record's normal DP/AF
+    // exercises one genotype rule or boundary (see bin/create_test_data.sh).
+
+    test("default cutoffs — normal GT inferred from DP/AF, PASS calls only, normal column only") {
 
         when {
             process {
                 """
                 input[0] = Channel.of([
                     [group: 'TEST', subject: 'T1', sample: 'T1'],
-                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz')
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
                 ])
                 """
             }
@@ -24,14 +27,76 @@ nextflow_process {
             def lines = path(process.out[0][0][1].toString()).linesGzip
             def header = lines.find { it.startsWith('#CHROM') }.split('\t')
             def records = lines.findAll { !it.startsWith('#') }.collect { it.split('\t') }
+            def gt = records.collectEntries { [(it[1]): it[9].split(':')[0]] }
 
             // The tumour column is dropped; the normal is the only sample left.
             assert header.drop(9) == ['T1-N']
-            // LOW_TUMOR_VCN (PURPLE's germline filter) is gone; both PASS calls remain.
-            assert records.collect { it[1] } == ['44300100', '44300300']
+            // LOW_QUAL (44300500) is dropped before inference.
             assert records.every { it[6] == 'PASS' }
-            // PURPLE's genotype calls reach CPSR unchanged, HOM included.
-            assert records.collect { it[9].split(':')[0] } == ['0/1', '1/1']
+            // Reference calls never reach CPSR, which keeps and classifies them in 2.2.5.
+            // 44300300 (normal AF 0.15, tumour 0.25) and 44300400 (AF 0.1) are inferred 0/0 and removed.
+            assert gt == [
+                '44300100': '1/1',  // DP 40, AF 0.95
+                '44300150': '1/1',  // AF exactly 0.9
+                '44300200': '0/1',  // AF 0.5
+                '44300250': '0/1',  // AF exactly 0.2
+                '44300350': './.',  // DP 9: too shallow to call, CPSR drops it
+            ]
+        }
+    }
+
+    test("cutoffs come from params") {
+
+        when {
+            params {
+                germline_min_depth   = 5
+                germline_het_min_vaf = 0.1
+                germline_hom_min_vaf = 0.95
+            }
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def records = path(process.out[0][0][1].toString()).linesGzip
+                .findAll { !it.startsWith('#') }.collect { it.split('\t') }
+            def gt = records.collectEntries { [(it[1]): it[9].split(':')[0]] }
+            assert gt == [
+                '44300100': '1/1',
+                '44300150': '0/1',  // 0.9 < hom 0.95
+                '44300200': '0/1',
+                '44300250': '0/1',
+                '44300300': '0/1',  // 0.15 >= het 0.1
+                '44300350': '0/1',  // DP 9 >= 5
+                '44300400': '0/1',  // AF exactly 0.1, DP exactly 5
+            ]
+        }
+    }
+
+    test("no FORMAT/AF — the task fails instead of leaving every GT uncalled") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'T1', sample: 'T1'],
+                    file('${projectDir}/tests/modules/fixtures/pave_germline_impact.vcf.gz')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.stdout.any { it.contains('has no FORMAT/AF or FORMAT/DP') } ||
+                   process.stderr.any { it.contains('has no FORMAT/AF or FORMAT/DP') }
         }
     }
 }

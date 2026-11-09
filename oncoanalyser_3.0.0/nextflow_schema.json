@@ -104,6 +104,26 @@
                     "type": "string",
                     "description": "Path to COSMIC fusion TSV for ML SV processing (only used with --run_ml)."
                 },
+                "germline_min_depth": {
+                    "type": "integer",
+                    "default": 10,
+                    "minimum": 0,
+                    "description": "Minimum normal FORMAT/DP before a germline genotype is inferred; lower-depth sites stay ./. and CPSR drops them (unless AF is below germline_het_min_vaf, which is reference at any depth)."
+                },
+                "germline_het_min_vaf": {
+                    "type": "number",
+                    "default": 0.2,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Minimum normal FORMAT/AF to call a germline variant heterozygous (0/1). Below it the site is set to reference (0/0), which assumes no tumour-in-normal contamination."
+                },
+                "germline_hom_min_vaf": {
+                    "type": "number",
+                    "default": 0.9,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Minimum normal FORMAT/AF to call a germline variant homozygous alt (1/1)."
+                },
                 "mafsmith_retain_ann": {
                     "type": "string",
                     "description": "Comma-separated VEP CSQ subfields to retain as extra MAF columns beyond mafsmith's 53 standard ones. Names must match fastVEP's CSQ field list; an unknown name yields an empty column. Empty disables the flag."

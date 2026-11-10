@@ -70,7 +70,7 @@ PER-GROUP AGGREGATED FILES
     cases_sequenced.txt    Samples with mutation data
     cases_sv.txt           Samples with structural-variant data
 
-  Clinical sample template (--type dna-only with --mode genomic only):
+  Clinical sample template (--mode genomic-dna-only only):
 
     data_clinical_sample.txt   One row per samplesheet sample. Filled:
                                PATIENT_ID (subject_id), SAMPLE_ID
@@ -106,7 +106,7 @@ PER-GROUP AGGREGATED FILES
     meta files, case_lists/, util_linking_file.txt and — in "both" mode —
     the clinical and timeline files. Per-subject folders and
     machine_learning/ are intentionally left out; cBioPortal does not read
-    them. Only genomic and both modes produce an archive: clinical-only
+    them. Only genomic, genomic-dna-only and both modes produce an archive: clinical-only
     mode writes its files into <outdir>/<study_id>/ but packages nothing.
 
 

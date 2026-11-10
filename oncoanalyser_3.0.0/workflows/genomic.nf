@@ -21,14 +21,8 @@ include { SIGPROFILER_DBS              } from '../modules/local/sigprofiler_dbs'
 include { SIGPROFILER_ID               } from '../modules/local/sigprofiler_id'
 include { SIGS_COUNTS_TO_CBIOPORTAL    } from '../modules/local/sigs_counts_to_cbioportal'
 include { resource                     } from '../subworkflows/local/utils'
+include { isDnaOnly                    } from '../subworkflows/local/utils'
 
-
-// True when running without RNA data. Compares case-insensitively because params values
-// given on the command line are immutable — "--type DNA-only" cannot be normalised in
-// place by the validator, so a plain `params.type == 'dna-only'` would silently be false.
-def isDnaOnly() {
-    return (params.type ?: 'both').toString().toLowerCase() == 'dna-only'
-}
 
 // Resolve an oncoanalyser output file path; log a warning and return null if absent.
 def findOncoFile(meta, path_str, label) {
@@ -61,7 +55,7 @@ def hasPaveVcf(meta, kind) {
     return paveVcfPath(meta, kind) != null
 }
 
-// Somatic or germline (kind) variant VCF for a subject. "both" reads pave/<kind>/. dna-only
+// Somatic or germline (kind) variant VCF for a subject. With RNA (genomic/both) reads pave/<kind>/. dna-only
 // prefers PAVE too (pave/<kind>/, then flat pave/), and falls back to the raw SAGE VCF only
 // when oncoanalyser wrote no PAVE file for the subject (it can skip PAVE/sage_append without
 // RNA). Raw SAGE carries no PAVE INFO, so gnomAD_AF and the HMF.* MAF columns stay empty for
@@ -84,7 +78,7 @@ def findVariantVcf(meta, kind, label) {
 // dna-only: oncoanalyser runs only a subset of tools on WES/DNA-only data (e.g. no sigs/).
 // A subject whose <folder>/<tool>/ directory is absent is dropped from that tool's channels
 // without a per-subject warning (one summary line per tool is logged instead). A present
-// folder with a missing file still warns via findOncoFile. Always true in "both" mode.
+// folder with a missing file still warns via findOncoFile. Always true outside --mode genomic-dna-only.
 def hasToolOutput(meta, tool) {
     return !isDnaOnly() || file("${meta.folder}/${tool}", checkIfExists: false).isDirectory()
 }
@@ -590,15 +584,15 @@ reference_genome: hg38
                 })
         }
 
-        // ── Clinical sample template (dna-only, genomic mode) ────────────────
+        // ── Clinical sample template (--mode genomic-dna-only) ──────────────
         // cBioPortal's validateData.py stops at "No sample attribute file detected" without a
-        // clinical sample file, and --mode genomic never runs CLINICAL. Only values the pipeline
+        // clinical sample file, and --mode genomic-dna-only never runs CLINICAL. Only values the pipeline
         // knows are written (samplesheet subject_id / sample_id, params.cancer_type); every
-        // other column is left empty for the user — nothing is inferred. Not done in --mode
-        // both, where CLINICAL writes its own data_clinical_sample.txt to the same folder.
+        // other column is left empty for the user — nothing is inferred. Not needed in --mode
+        // both (always DNA+RNA), where CLINICAL writes its own data_clinical_sample.txt.
 
         ch_clinical_sample = channel.empty()
-        if (isDnaOnly() && params.mode == 'genomic') {
+        if (isDnaOnly()) {
             ch_clinical_lines = ch_samples
                 .map { meta -> tuple(meta.group, "${meta.subject}\t${meta.sample}".toString()) }
                 .unique()

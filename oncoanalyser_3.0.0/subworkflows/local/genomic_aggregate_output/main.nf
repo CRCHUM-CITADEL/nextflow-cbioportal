@@ -8,11 +8,7 @@ include { MERGE_SIGS_COUNTS_DBS_TO_CBIOPORTAL } from '../../../modules/local/mer
 include { MERGE_SIGS_ID_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_id_to_cbioportal'
 include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_counts_id_to_cbioportal'
 
-// Case-insensitive: params values set on the command line are immutable, so "--type DNA-only"
-// reaches here unnormalised and an exact-match comparison would silently be false.
-def isDnaOnly() {
-    return (params.type ?: 'both').toString().toLowerCase() == 'dna-only'
-}
+include { isDnaOnly } from '../utils'
 
     workflow GENOMIC_AGGREGATE_OUTPUT {
 
@@ -396,7 +392,7 @@ data_filename: data_mutational_signatures_counts_ID.txt
 generic_entity_meta_properties: NAME
     """
 
-        // expression meta file is only emitted in DNA+RNA ("both") mode — a dna-only study
+        // expression meta file is only emitted with RNA (not --mode genomic-dna-only) — a dna-only study
         // never produces data_expression.txt, so a meta file pointing at it would be an
         // orphan entry that breaks cBioPortal import
         meta_entries = [

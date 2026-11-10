@@ -8,23 +8,27 @@ Requires Nextflow >= 26.04.4.
 
 ## Key Rules
 
-- `--type both` (default) or `--type dna-only` — dna-only skips all RNA-derived processing
+- `--mode` is `genomic`, `genomic-dna-only`, `clinical` or `both` (default). `genomic-dna-only`
+  (there is no `--type`; it replaced `--type dna-only`) is genomic mode without RNA and has no
+  `both` counterpart. All checks go through `isDnaOnly()` / `runsGenomic()` /
+  `pipelineModes()` in `subworkflows/local/utils/main.nf`, matched exactly (lower case).
+  dna-only skips all RNA-derived processing
   (Isofox expression, Isofox fusion, SAGE RNA-append) and omits the expression profile/meta
   file, even if RNA files exist on disk. `workflows/genomic.nf` hands those channels
   `channel.empty()`, so every subject reaches `INTEGRATE_RNA_VARIANTS` with `[]` and its MAF
   keeps the empty `RNA.*` columns. Validated in `subworkflows/local/utils/main.nf`.
   Mutational signature fitting (Sigs) is DNA-only either way, but its VCF may differ (below)
-- `--type dna-only` falls back per subject for the somatic/germline VCF: `findVariantVcf()` in
+- `--mode genomic-dna-only` falls back per subject for the somatic/germline VCF: `findVariantVcf()` in
   `workflows/genomic.nf` reads `pave/{somatic,germline}/<subject>-T.pave.*.vcf.gz` when it
-  exists (as in "both" mode), then the flat `pave/<subject>-T.pave.*.vcf.gz` that older
-  oncoanalyser runs write (`paveVcfPath()`; "both" mode never reads the flat layout), and
+  exists (as with RNA), then the flat `pave/<subject>-T.pave.*.vcf.gz` that older
+  oncoanalyser runs write (`paveVcfPath()`; `genomic`/`both` never read the flat layout), and
   only otherwise the raw SAGE output,
   `sage/{somatic,germline}/<subject>-T.sage.*.vcf.gz`. A DNA-only oncoanalyser run may or may
   not write `pave/` — never assume either. Applies to mutations (`ch_sage_vcf`,
   `ch_sage_germline_vcf`) and DBS/ID signature fitting (`ch_sigs_dbs`, `ch_sigs_id`). Raw SAGE
   carries no PAVE INFO, so `gnomAD_AF` and the `HMF.*` MAF columns stay empty for a fallback
   subject; a cohort can mix both sources, since the MAF columns are written unconditionally
-- `--type dna-only` skips steps per oncoanalyser tool: a subject whose `<folder>/<tool>/` directory
+- `--mode genomic-dna-only` skips steps per oncoanalyser tool: a subject whose `<folder>/<tool>/` directory
   is absent (`purple`, `esvee`, `sigs`) is dropped from that tool's channels (`hasToolOutput()` in
   `workflows/genomic.nf`, one summary warning per tool, not per subject). For the variant VCFs a
   subject is dropped only when it has no PAVE VCF in either layout and no `sage/<kind>/` (`hasVariantVcf()`),
@@ -32,16 +36,16 @@ Requires Nextflow >= 26.04.4.
   `GENOMIC_AGGREGATE_OUTPUT`, meta files and case lists are emitted only for data types
   that produced output (e.g. WES without `sigs/` → no SBS data or SBS meta files); each case-list
   label travels with its sample list and an empty (`toList()` → `""`) list is dropped. `.tpm.tsv`
-  is not `required` in `subjectOutputs()` under dna-only. "both" mode keeps the fixed meta and case lists
+  is not `required` in `subjectOutputs()` under dna-only. `genomic`/`both` keep the fixed meta and case lists
 - `cancer_type` must be an OncoTree code (https://oncotree.mskcc.org/) already in the target portal
-- `--type dna-only` with `--mode genomic` ends by writing a **template** `data_clinical_sample.txt` +
+- `--mode genomic-dna-only` ends by writing a **template** `data_clinical_sample.txt` +
   `meta_clinical_sample.txt` (`GENERATE_CLINICAL_SAMPLE`, `bin/gen_clinical_sample_template.py`),
   because `validateData.py` stops at "No sample attribute file detected" without one and
-  `--mode genomic` never runs `CLINICAL`. Only known values are filled: `PATIENT_ID` = samplesheet
+  it never runs `CLINICAL`. Only known values are filled: `PATIENT_ID` = samplesheet
   `subject_id`, `SAMPLE_ID` = `sample_id`, `ONCOTREE_CODE` = `cancer_type` upper-cased.
   `CANCER_TYPE`, `CANCER_TYPE_DETAILED` and `SAMPLE_TYPE` are left empty on purpose — never infer
   them. A `log.warn` ("ACTION REQUIRED … STILL NEEDS TO BE FILLED IN") marks this. Not run in
-  `--mode both`, where `CLINICAL` (or its `GENERATE_CLINICAL_TEMPLATE` fallback) writes the file
+  `--mode genomic` or `--mode both`; in `both` `CLINICAL` (or its `GENERATE_CLINICAL_TEMPLATE` fallback) writes the file
 - R scripts → `container_r`; Python → `container_python`; SigProfiler → `container_sigprofiler`;
   VCF→MAF → `container_mafsmith`
 - **VCF→MAF is `MAFSMITH` (nf-osi/mafsmith), not vcf2maf** (since 4.0.0).

@@ -28,7 +28,7 @@ workflow PIPELINE_INITIALISATION {
     version           	// boolean: Display version and exit
     monochrome_logs   	// boolean: Do not use coloured log outputs
     nextflow_cli_args 	// array: List of positional nextflow CLI args
-    mode              	// string: pipeline mode [clinical, genomic, both]
+    mode              	// string: pipeline mode [genomic, genomic-dna-only, clinical, both]
     outdir            	// string: The output directory where the results will be saved
     genomic_input     	// string: Path to input samplesheet
     clinical_input    	// string: Path to input samplesheet
@@ -72,7 +72,7 @@ workflow PIPELINE_INITIALISATION {
     ch_genomic_samplesheet  = Channel.empty()
     ch_clinical_samplesheet = Channel.empty()
 
-    if (mode in ['genomic', 'both']){
+    if (runsGenomic()){
         if (!resource('ensembl_annotations')){
             error("ERROR: Missing ensembl_annotations (BioMart TSV). Set --resources_dir to the resource kit, pass --ensembl_annotations, or use -profile citadel at CRCHUM.")
         }
@@ -168,25 +168,17 @@ workflow PIPELINE_COMPLETION {
 def validateInputParameters() {
 
     // check modes and input
+    // Exact, lower-case match: params values given on the command line are immutable, so
+    // a value cannot be normalised in place here, and every consumer compares exactly.
     if (!params.mode){
-        error("ERROR: Pipeline mode not chosen in configuration file. Choices : 'genomic', 'clinical', or 'both'")
+        error("ERROR: Pipeline mode not chosen. Choices: ${pipelineModes().collect { "'${it}'" }.join(', ')}")
     }
-    params.mode = params.mode.toLowerCase()
-    if ( !params.mode in ['genomic','clinical','both'] ) {
-        error("Error: Invalid pipeline mode chosen. Choices : 'genomic', 'clinical', or 'both'")
-    }
-
-    // check sequencing data type
-    // NOTE: params values supplied on the command line are immutable — assigning to
-    // params.type here is silently ignored, so the value is NOT normalised in place.
-    // Every consumer must compare case-insensitively (see isDnaOnly() in the workflows).
-    def type_value = (params.type ?: 'both').toString().toLowerCase()
-    if ( !(type_value in ['both', 'dna-only']) ) {
-        error("ERROR: Invalid --type value '${params.type}'. Choices: 'both' or 'dna-only'")
+    if ( !(params.mode in pipelineModes()) ) {
+        error("ERROR: Invalid --mode '${params.mode}'. Choices: ${pipelineModes().collect { "'${it}'" }.join(', ')}")
     }
 
     // make sure there's input
-    if (params.mode in ["genomic", "both"] && !params.genomic_samplesheet){
+    if (runsGenomic() && !params.genomic_samplesheet){
         error("ERROR: Could not find genomic samplesheet. Not running any tests. Check input in nextflow.config")
     }
 
@@ -211,7 +203,7 @@ def validateInputParameters() {
         }
     }
 
-    if (params.mode in ["genomic", "both"]) {
+    if (runsGenomic()) {
         def genome_reference = resource('genome_reference')
         if (!genome_reference) {
             error("ERROR: genome_reference is required for genomic mode. Set --resources_dir to the resource kit, or pass --genome_reference.")
@@ -297,6 +289,25 @@ def resourceLayout() {
         mohccn_specimen_tissue_source_map : "${moh}/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv",
         mohccn_treatment_intent_map       : "${moh}/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv",
     ]
+}
+
+
+// Pipeline modes. genomic-dna-only is genomic mode without RNA; there is no DNA-only
+// variant of "both" — run genomic-dna-only, then clinical, for that.
+def pipelineModes() {
+    return ['genomic', 'genomic-dna-only', 'clinical', 'both']
+}
+
+
+// True when the mode runs the GENOMIC workflow.
+def runsGenomic() {
+    return params.mode in ['genomic', 'genomic-dna-only', 'both']
+}
+
+
+// True when running without RNA data (--mode genomic-dna-only).
+def isDnaOnly() {
+    return params.mode == 'genomic-dna-only'
 }
 
 

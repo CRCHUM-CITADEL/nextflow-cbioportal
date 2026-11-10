@@ -16,7 +16,7 @@ nextflow_process {
             process {
                 """
                 // Unsorted on purpose — rows must come out sorted by sample_id
-                input[0] = Channel.of(['TEST', 'S2\\tS2-T\\nS1\\tS1-T'])
+                input[0] = Channel.of(['TEST', 'S2\\tS2-T\\nS1\\tS1-T', []])
                 """
             }
         }
@@ -57,7 +57,7 @@ nextflow_process {
             }
             process {
                 """
-                input[0] = Channel.of(['TEST', 'S1\\tS1-T'])
+                input[0] = Channel.of(['TEST', 'S1\\tS1-T', []])
                 """
             }
         }
@@ -68,6 +68,45 @@ nextflow_process {
             def lines = path(process.out.clinical_sample[0][1].toString()).readLines()
             assert lines.size() == 6
             assert lines[5] == 'S1\tS1-T\t\t\t\t'
+        }
+    }
+
+    test("Existing file — values and extra columns kept, new sample added, dropped sample removed") {
+
+        when {
+            params {
+                outdir      = "$outputDir"
+                cancer_type = "brca"
+            }
+            process {
+                """
+                // S1 is in the existing file (filled in by hand), S3 is new, S2 left the samplesheet
+                input[0] = Channel.of([
+                    'TEST',
+                    'S3\\tS3-T\\nS1\\tS1-T',
+                    file('${projectDir}/tests/modules/fixtures/data_clinical_sample_existing.txt')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def lines = path(process.out.clinical_sample[0][1].toString()).readLines()
+            assert lines.size() == 7
+
+            // The existing '#' rows and header (with its extra TISSUE_NOTE column) are kept as-is
+            assert lines[0] == '#Patient Identifier\tSample Identifier\tOncotree Code\tCancer Type\tSample Type\tTissue Note'
+            assert lines[1].endsWith('\tFree-text note added by hand')
+            assert lines[4] == 'PATIENT_ID\tSAMPLE_ID\tONCOTREE_CODE\tCANCER_TYPE\tSAMPLE_TYPE\tTISSUE_NOTE'
+
+            // S1 keeps the values filled in by hand; S3 gets only the known values
+            assert lines[5] == 'S1\tS1-T\tBRCA\tBreast Cancer\tPrimary\tfilled by hand'
+            assert lines[6] == 'S3\tS3-T\tBRCA\t\t\t'
+
+            // S2 is no longer in the samplesheet
+            assert !lines.any { it.startsWith('S2\t') }
         }
     }
 }

@@ -80,7 +80,9 @@ include { isDnaOnly } from '../utils'
                 .map {filepath -> tuple(filepath.parent.name, filepath) }
 
             // merge expression with merging not possible within pure nextflow. This will publish the file to output via the module
-            tpm_file_list = expression_results
+            // dna-only never writes expression, even when TPM files reach this subworkflow:
+            // without meta_expression.txt (skipped below) a data_expression.txt breaks the import
+            tpm_file_list = (isDnaOnly() ? channel.empty() : expression_results)
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
                 .map { group, metas, files ->

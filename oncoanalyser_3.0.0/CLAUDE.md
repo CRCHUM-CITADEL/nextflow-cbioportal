@@ -36,7 +36,13 @@ Requires Nextflow >= 26.04.4.
   `GENOMIC_AGGREGATE_OUTPUT`, meta files and case lists are emitted only for data types
   that produced output (e.g. WES without `sigs/` → no SBS data or SBS meta files); each case-list
   label travels with its sample list and an empty (`toList()` → `""`) list is dropped. `.tpm.tsv`
-  is not `required` in `subjectOutputs()` under dna-only. `genomic`/`both` keep the fixed meta and case lists
+  is not `required` in `subjectOutputs()` under dna-only, and `outputExpected()` drops the CNV / SV / MAF
+  requirement for a subject whose `purple/` / `esvee/` / variant VCFs are absent, so such a subject is still
+  cached instead of reprocessed on every run. Expression is never merged or reloaded from the cache under
+  dna-only (`GENOMIC_AGGREGATE_OUTPUT` empties its TPM input), so no `data_expression.txt` can appear without
+  `meta_expression.txt`. A subject missing either variant VCF gets no MAF rows at all: `GENOMIC_MUTATIONS`
+  joins somatic with germline. Cached SV/MAF files from an earlier DNA+RNA run into the same `outdir` still
+  carry RNA content — delete the subject folders when switching. `genomic`/`both` keep the fixed meta and case lists
 - `cancer_type` must be an OncoTree code (https://oncotree.mskcc.org/) already in the target portal
 - `--mode genomic-dna-only` ends by writing a **template** `data_clinical_sample.txt` +
   `meta_clinical_sample.txt` (`GENERATE_CLINICAL_SAMPLE`, `bin/gen_clinical_sample_template.py`),
@@ -45,7 +51,10 @@ Requires Nextflow >= 26.04.4.
   `subject_id`, `SAMPLE_ID` = `sample_id`, `ONCOTREE_CODE` = `cancer_type` upper-cased.
   `CANCER_TYPE`, `CANCER_TYPE_DETAILED` and `SAMPLE_TYPE` are left empty on purpose — never infer
   them. A `log.warn` ("ACTION REQUIRED … STILL NEEDS TO BE FILLED IN") marks this. Not run in
-  `--mode genomic` or `--mode both`; in `both` `CLINICAL` (or its `GENERATE_CLINICAL_TEMPLATE` fallback) writes the file
+  `--mode genomic` or `--mode both`; in `both` `CLINICAL` (or its `GENERATE_CLINICAL_TEMPLATE` fallback) writes the file.
+  An existing `<outdir>/<group>/data_clinical_sample.txt` (filled in by hand, or from `--mode clinical`) is
+  passed in as `existing` and **updated, never replaced**: its comment rows, columns and values are kept,
+  new samples are added with the known values only, rows of samples no longer in the samplesheet are dropped
 - R scripts → `container_r`; Python → `container_python`; SigProfiler → `container_sigprofiler`;
   VCF→MAF → `container_mafsmith`
 - **VCF→MAF is `MAFSMITH` (nf-osi/mafsmith), not vcf2maf** (since 4.0.0).

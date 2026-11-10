@@ -102,7 +102,9 @@ def hasVariantVcf(meta, kind) {
 //              files are optional: SigProfiler legitimately emits nothing for a
 //              subject with too few mutations, and gating on them would
 //              reprocess such a subject on every single run. Expression is
-//              optional under dna-only, which never writes .tpm.tsv.
+//              optional under dna-only, which never writes .tpm.tsv. Under dna-only
+//              a required output is also skipped for a subject whose tool output is
+//              absent (see outputExpected).
 def subjectOutputs() {
     return [
         [tag: 'cnv_seg',         suffix: '_data_cna_hg38.seg',                               required: true ],
@@ -136,9 +138,34 @@ def resolveSubjectCache(meta) {
             found[output.tag] = f
             return true
         }
-        return !output.required
+        return !outputExpected(meta, output)
     }
     return complete ? found : null
+}
+
+
+// True when a subjectOutputs() entry must exist for the subject to count as cached.
+// dna-only skips a step whose oncoanalyser tool output is absent for the subject, so its
+// output is never written and cannot be required: otherwise a WES subject without, e.g.,
+// esvee/ would never count as cached and would be reprocessed on every run. The MAF needs
+// both the somatic and the germline VCF (GENOMIC_MUTATIONS joins them).
+def outputExpected(meta, output) {
+    if (!output.required) {
+        return false
+    }
+    if (!isDnaOnly()) {
+        return true
+    }
+    if (output.tag in ['cnv_seg', 'cnv_long']) {
+        return hasToolOutput(meta, 'purple')
+    }
+    if (output.tag == 'sv') {
+        return hasToolOutput(meta, 'esvee')
+    }
+    if (output.tag == 'mutation') {
+        return hasVariantVcf(meta, 'somatic') && hasVariantVcf(meta, 'germline')
+    }
+    return true
 }
 
 
@@ -430,8 +457,10 @@ workflow GENOMIC {
 
             // Variant VCFs: PAVE when present, raw SAGE fallback (see findVariantVcf), else skipped
             [
-                'somatic' : 'mutations and DBS/ID signatures',
-                'germline': 'germline mutations (CPSR)',
+                // GENOMIC_MUTATIONS pairs each somatic VCF with the germline VCF, so a
+                // subject missing either one gets no MAF rows at all
+                'somatic' : 'all mutations (somatic and germline) and DBS/ID signatures',
+                'germline': 'all mutations (somatic and germline: the MAF step needs both VCFs)',
             ].each { kind, steps ->
                 ch_samples_to_run
                     .map { meta -> hasPaveVcf(meta, kind) ? 'pave' : (hasVariantVcf(meta, kind) ? 'sage' : 'none') }
@@ -506,8 +535,9 @@ workflow GENOMIC {
         all_sv = MERGE_SAMPLE_SV.out.sv
             .mix(cachedFiles(ch_files_ran, 'sv'))
 
+        // dna-only: a .tpm.tsv left on disk by an earlier DNA+RNA run is not reloaded
         all_expression = GENOMIC_EXPRESSION.out.out
-            .mix(cachedFiles(ch_files_ran, 'expression'))
+            .mix(isDnaOnly() ? channel.empty() : cachedFiles(ch_files_ran, 'expression'))
 
         all_mutations = GENOMIC_MUTATIONS.out.out
             .mix(cachedFiles(ch_files_ran, 'mutation'))
@@ -590,6 +620,8 @@ reference_genome: hg38
         // knows are written (samplesheet subject_id / sample_id, params.cancer_type); every
         // other column is left empty for the user — nothing is inferred. Not needed in --mode
         // both (always DNA+RNA), where CLINICAL writes its own data_clinical_sample.txt.
+        // A data_clinical_sample.txt already in the group folder (filled in by hand, or from
+        // --mode clinical) is updated, not replaced: its values are kept, new samples added.
 
         ch_clinical_sample = channel.empty()
         if (isDnaOnly()) {
@@ -597,7 +629,10 @@ reference_genome: hg38
                 .map { meta -> tuple(meta.group, "${meta.subject}\t${meta.sample}".toString()) }
                 .unique()
                 .groupTuple()
-                .map { group, lines -> tuple(group, lines.sort(false).join('\n')) }
+                .map { group, lines ->
+                    def existing = file("${params.outdir}/${group}/data_clinical_sample.txt", checkIfExists: false)
+                    tuple(group, lines.sort(false).join('\n'), existing.exists() && !existing.isEmpty() ? existing : [])
+                }
 
             GENERATE_CLINICAL_SAMPLE(ch_clinical_lines)
 
@@ -613,7 +648,14 @@ data_filename: data_clinical_sample.txt
                 .mix(GENERATE_META_FILE_CLINICAL.out)
 
             GENERATE_CLINICAL_SAMPLE.out.clinical_sample
-                .subscribe { group, _f ->
+                .join(ch_clinical_lines.map { group, _lines, existing -> tuple(group, existing ? true : false) })
+                .subscribe { group, _f, updated ->
+                    if (updated) {
+                        log.warn "data_clinical_sample.txt already existed in ${params.outdir}/${group}/ and was UPDATED, not replaced: " +
+                            "existing values are kept, rows for samples no longer in the samplesheet were dropped, and samples new " +
+                            "to this run were added with only PATIENT_ID, SAMPLE_ID and ONCOTREE_CODE filled — fill in their other columns before import."
+                        return
+                    }
                     def filled_cols = ['PATIENT_ID (samplesheet subject_id)', 'SAMPLE_ID (samplesheet sample_id)']
                     def empty_cols  = ['CANCER_TYPE', 'CANCER_TYPE_DETAILED', 'SAMPLE_TYPE']
                     if (params.cancer_type) {

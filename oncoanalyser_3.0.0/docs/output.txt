@@ -77,6 +77,12 @@ PER-GROUP AGGREGATED FILES
                                (sample_id), ONCOTREE_CODE (cancer_type).
                                Left empty: CANCER_TYPE,
                                CANCER_TYPE_DETAILED, SAMPLE_TYPE.
+                               If the file already exists (filled in
+                               by hand, or from --mode clinical), it
+                               is updated, not replaced: existing
+                               values and columns are kept, new
+                               samples are added, and rows for samples
+                               no longer in the samplesheet are dropped.
     meta_clinical_sample.txt   Metadata for the sample attributes.
 
     cBioPortal requires a clinical sample file, so this template lets

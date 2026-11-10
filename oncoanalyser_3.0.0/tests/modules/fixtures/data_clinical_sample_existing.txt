@@ -1,0 +1,7 @@
+#Patient Identifier	Sample Identifier	Oncotree Code	Cancer Type	Sample Type	Tissue Note
+#Identifier to uniquely specify a patient.	A unique sample identifier.	Oncotree Code	Cancer Type	Sample type	Free-text note added by hand
+#STRING	STRING	STRING	STRING	STRING	STRING
+#1	1	1	1	1	1
+PATIENT_ID	SAMPLE_ID	ONCOTREE_CODE	CANCER_TYPE	SAMPLE_TYPE	TISSUE_NOTE
+S1	S1-T	BRCA	Breast Cancer	Primary	filled by hand
+S2	S2-T	BRCA	Breast Cancer	Metastasis	dropped from samplesheet

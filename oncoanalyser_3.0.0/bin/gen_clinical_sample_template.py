@@ -9,6 +9,13 @@ Only values the pipeline actually knows are written:
 Every other column is written empty. Nothing is inferred: the empty columns
 must be filled in by hand before the study is imported into cBioPortal.
 
+With --existing (the data_clinical_sample.txt already in the output folder, e.g.
+filled in by hand or written by --mode clinical), that file is updated instead of
+replaced: its columns and the values of every sample still in the samplesheet are
+kept, samples new to the samplesheet get a row with only the known values, and rows
+for samples no longer in the samplesheet are dropped (the samplesheet defines the
+cohort). A rerun therefore never wipes values someone filled in.
+
 Format: https://docs.cbioportal.org/file-formats/#clinical-data
 """
 
@@ -61,26 +68,75 @@ def read_linking(path):
     return sorted(pairs, key=lambda pair: pair[1])
 
 
+def read_existing(path):
+    """Return (comment_rows, header, rows) of an existing clinical sample file.
+
+    comment_rows are the leading '#' lines, kept verbatim; rows are dicts keyed by header.
+    """
+    with open(path, newline="") as fh:
+        lines = [line.rstrip("\r\n") for line in fh]
+
+    comment_rows = []
+    while lines and lines[0].startswith("#"):
+        comment_rows.append(lines.pop(0))
+    if not lines:
+        sys.exit(f"ERROR: {path} has no header row")
+
+    header = lines.pop(0).split("\t")
+    missing = {"PATIENT_ID", "SAMPLE_ID"} - set(header)
+    if missing:
+        sys.exit(f"ERROR: existing {path} is missing column(s): {', '.join(sorted(missing))}")
+
+    rows = []
+    for number, line in enumerate(lines, start=len(comment_rows) + 2):
+        if not line.strip():
+            continue
+        fields = line.split("\t")
+        if len(fields) > len(header):
+            sys.exit(f"ERROR: existing {path} line {number} has more fields than the header")
+        rows.append(dict(zip(header, fields + [""] * (len(header) - len(fields)))))
+    return comment_rows, header, rows
+
+
+def write_table(path, comment_rows, header, rows):
+    with open(path, "w", newline="") as fh:
+        for line in comment_rows:
+            fh.write(line + "\n")
+        fh.write("\t".join(header) + "\n")
+        for row in rows:
+            fh.write("\t".join(row.get(col, "") for col in header) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Create a template cBioPortal data_clinical_sample.txt.")
     parser.add_argument("--linking", required=True, help="TSV with subject_id and sample_id columns")
     parser.add_argument("--cancer-type", default="", help="OncoTree code from the cancer_type param (may be empty)")
+    parser.add_argument("--existing", default=None, help="Existing data_clinical_sample.txt to update instead of replace (optional)")
     parser.add_argument("-o", "--output", default="data_clinical_sample.txt", help="Output path (default: data_clinical_sample.txt)")
     args = parser.parse_args()
 
     pairs = read_linking(args.linking)
     oncotree_code = args.cancer_type.strip().upper()
 
-    with open(args.output, "w", newline="") as fh:
-        # Four '#' rows describing the attributes, then the attribute names
-        fh.write("#" + "\t".join(col[1] for col in COLUMNS) + "\n")
-        fh.write("#" + "\t".join(col[2] for col in COLUMNS) + "\n")
-        fh.write("#" + "\t".join(col[3] for col in COLUMNS) + "\n")
-        fh.write("#" + "\t".join(col[4] for col in COLUMNS) + "\n")
-        fh.write("\t".join(col[0] for col in COLUMNS) + "\n")
-        for subject, sample in pairs:
-            values = {"PATIENT_ID": subject, "SAMPLE_ID": sample, "ONCOTREE_CODE": oncotree_code}
-            fh.write("\t".join(values.get(col[0], "") for col in COLUMNS) + "\n")
+    def template_row(subject, sample):
+        return {"PATIENT_ID": subject, "SAMPLE_ID": sample, "ONCOTREE_CODE": oncotree_code}
+
+    if args.existing:
+        comment_rows, header, old_rows = read_existing(args.existing)
+        by_sample = {row["SAMPLE_ID"]: row for row in old_rows}
+        rows = [by_sample.get(sample) or template_row(subject, sample) for subject, sample in pairs]
+        kept = sum(1 for _subject, sample in pairs if sample in by_sample)
+        dropped = sorted(set(by_sample) - {sample for _subject, sample in pairs})
+        write_table(args.output, comment_rows, header, rows)
+        print(f"Updated {args.existing}: kept {kept} existing row(s), added {len(pairs) - kept} new sample(s)", file=sys.stderr)
+        if dropped:
+            print(f"WARNING: dropped {len(dropped)} row(s) for samples not in the samplesheet: {', '.join(dropped)}", file=sys.stderr)
+        return
+
+    # Four '#' rows describing the attributes, then the attribute names
+    comment_rows = ["#" + "\t".join(col[i] for col in COLUMNS) for i in (1, 2, 3, 4)]
+    header = [col[0] for col in COLUMNS]
+    write_table(args.output, comment_rows, header, [template_row(subject, sample) for subject, sample in pairs])
 
     empty = [col[0] for col in COLUMNS if col[0] not in ("PATIENT_ID", "SAMPLE_ID")
              and not (col[0] == "ONCOTREE_CODE" and oncotree_code)]

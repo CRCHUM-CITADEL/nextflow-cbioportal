@@ -35,11 +35,13 @@ Genomic mode processing steps:
   Structural variants (DNA)    ESVEE somatic VCF            data_sv.txt (DNA rows)
   RNA fusions                  Isofox pass_fusions TSV      data_sv.txt (RNA rows)
   Gene expression              Isofox gene_data TSV         data_expression.txt
-  Mutations                    PAVE somatic/germline/RNA    data_mutations_dna_rna_
-                               VCFs                         germline.txt (MAF)
+  Mutations                    PURPLE somatic/germline +    data_mutations_dna_rna_
+                               SAGE RNA-append VCFs         germline.txt (MAF)
   Mutational signatures (SBS)  SNV trinucleotide counts     Contribution + counts
-  Mutational signatures (DBS)  PAVE somatic VCF             Contribution + counts
-  Mutational signatures (ID)   PAVE somatic VCF             Contribution + counts
+  Mutational signatures (DBS)  PURPLE somatic VCF           Contribution + counts
+  Mutational signatures (ID)   PURPLE somatic VCF           Contribution + counts
+  TMB / TML / HRD              PURPLE purity TSV, CHORD     data_clinical_sample_
+                               prediction TSV               genomic.txt
   ML feature tables            Merged group-level files     ML-formatted CNV, expression,
   (only with --run_ml)                                      mutation, SV
 
@@ -130,19 +132,19 @@ GENOMIC SAMPLESHEET
     All modalities are optional -- missing or empty files are skipped.
 
     <folder>/
-    |-- pave/
-    |   |-- somatic/
-    |   |   +-- <subject_id>-T.pave.somatic.vcf.gz     Somatic DNA mutations
-    |   +-- germline/
-    |       +-- <subject_id>-T.pave.germline.vcf.gz    Germline DNA mutations
     |-- sage_append/
     |   +-- <subject_id>-T/
     |       +-- <subject_id>-T.sage.append.vcf.gz      RNA-supported somatic
     |-- esvee/
     |   +-- <subject_id>-T.esvee.somatic.vcf.gz        Somatic structural variants
     |-- purple/
+    |   |-- <subject_id>-T.purple.somatic.vcf.gz       Somatic DNA mutations
+    |   |-- <subject_id>-T.purple.germline.vcf.gz      Germline DNA mutations
     |   |-- <subject_id>-T.purple.cnv.somatic.tsv      Somatic CN segments
-    |   +-- <subject_id>-T.purple.cnv.gene.tsv         Gene-level copy numbers
+    |   |-- <subject_id>-T.purple.cnv.gene.tsv         Gene-level copy numbers
+    |   +-- <subject_id>-T.purple.purity.tsv           Sex (chrX/chrY), TMB/TML
+    |-- chord/
+    |   +-- <subject_id>-T.chord.prediction.tsv        HRD score/status/type
     |-- isofox/
     |   |-- <subject_id>-T.isf.gene_data.tsv           Gene expression (Isofox)
     |   +-- <subject_id>-T.isf.pass_fusions.tsv        RNA gene fusions (Isofox)
@@ -151,7 +153,7 @@ GENOMIC SAMPLESHEET
 
     File naming: The pipeline resolves files using subject_id (from the
     samplesheet), not sample_id. For example, if subject_id=PATIENT1,
-    the pipeline looks for PATIENT1-T.pave.somatic.vcf.gz.
+    the pipeline looks for PATIENT1-T.purple.somatic.vcf.gz.
 
 CLINICAL SAMPLESHEET
 
@@ -421,9 +423,15 @@ SITE CONFIGURATION
 
   Germline genotypes
 
-    PAVE writes every germline call with GT=./., and CPSR drops
-    uncalled genotypes. FILTER_GERMLINE_DNA therefore infers the
-    normal's GT from its FORMAT/DP and FORMAT/AF (bcftools +setGT):
+    Germline calls come from PURPLE's germline VCF. FILTER_GERMLINE_DNA
+    keeps records whose FILTER is exactly PASS or LOW_TUMOR_VCN (a
+    tumour-side flag: the call in the normal is real) and drops LOW_VAF
+    and everything else, including LOW_TUMOR_VCN;LOW_VAF.
+
+    PURPLE sets GT (0/1, 1/1) where it can and leaves ./. elsewhere;
+    CPSR drops uncalled genotypes. PURPLE's calls are kept as-is, and
+    only the ./. ones are inferred from the normal's FORMAT/DP and
+    FORMAT/AF (bcftools +setGT):
 
       DP >= 10 and AF >= 0.9         1/1
       DP >= 10 and 0.2 <= AF < 0.9   0/1

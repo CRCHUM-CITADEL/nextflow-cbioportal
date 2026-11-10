@@ -18,6 +18,7 @@ include { SIGPROFILER_SBS               } from '../modules/local/sigprofiler_sbs
 include { SIGPROFILER_DBS              } from '../modules/local/sigprofiler_dbs'
 include { SIGPROFILER_ID               } from '../modules/local/sigprofiler_id'
 include { SIGS_COUNTS_TO_CBIOPORTAL    } from '../modules/local/sigs_counts_to_cbioportal'
+include { GENOMIC_SAMPLE_ATTRIBUTES    } from '../modules/local/genomic_sample_attributes'
 include { resource                     } from '../subworkflows/local/utils'
 
 
@@ -215,32 +216,34 @@ workflow GENOMIC {
 
         // ── Build per-modality input channels ─────────────────────────────────
         // File naming conventions (relative to folder), oncoanalyser 3.0 layout:
-        //   pave/somatic/${subject}-T.pave.somatic.vcf.gz          — PAVE somatic DNA
-        //   pave/germline/${subject}-T.pave.germline.vcf.gz        — PAVE germline DNA
+        //   purple/${subject}-T.purple.somatic.vcf.gz              — PURPLE somatic DNA (PAVE-annotated)
+        //   purple/${subject}-T.purple.germline.vcf.gz             — PURPLE germline DNA
         //   sage_append/${subject}-T/${subject}-T.sage.append.vcf.gz — SAGE somatic RNA append
         //   esvee/${subject}-T.esvee.somatic.vcf.gz
         //   purple/${subject}-T.purple.cnv.somatic.tsv
         //   purple/${subject}-T.purple.cnv.gene.tsv
+        //   purple/${subject}-T.purple.purity.tsv                  — sex, TMB/TML
+        //   chord/${subject}-T.chord.prediction.tsv                — HRD
         //   isofox/${subject}-T.isf.gene_data.tsv
         //   isofox/${subject}-T.isf.pass_fusions.tsv
         //   sigs/${subject}-T.sig.snv_counts.csv
 
-        // PAVE somatic VCF → mutations
-        ch_sage_vcf = ch_samples_to_run
+        // PURPLE somatic VCF → mutations
+        ch_somatic_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/pave/somatic/${meta.subject}-T.pave.somatic.vcf.gz",
-                    'mutation (PAVE somatic)')
+                    "${meta.folder}/purple/${meta.subject}-T.purple.somatic.vcf.gz",
+                    'mutation (PURPLE somatic)')
                 vcf ? [meta + [pipeline: 'mutation'], vcf] : null
             }
             .filter { it != null }
 
-        // PAVE germline VCF → germline mutations (GT is ./.; FILTER_GERMLINE_DNA infers it)
+        // PURPLE germline VCF → germline mutations (FILTER_GERMLINE_DNA infers the GTs PURPLE left ./.)
         ch_germline_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/pave/germline/${meta.subject}-T.pave.germline.vcf.gz",
-                    'germline mutation (PAVE)')
+                    "${meta.folder}/purple/${meta.subject}-T.purple.germline.vcf.gz",
+                    'germline mutation (PURPLE)')
                 vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
             .filter { it != null }
@@ -316,21 +319,21 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // DBS signature fitting: extract from PAVE somatic VCF
+        // DBS signature fitting: extract from PURPLE somatic VCF
         ch_sigs_dbs = ch_samples_to_run
             .map { meta ->
                 def f = findOncoFile(meta,
-                    "${meta.folder}/pave/somatic/${meta.subject}-T.pave.somatic.vcf.gz",
+                    "${meta.folder}/purple/${meta.subject}-T.purple.somatic.vcf.gz",
                     'somatic VCF (SigProfiler DBS)')
                 f ? [meta + [pipeline: 'sigs_dbs'], f] : null
             }
             .filter { it != null }
 
-        // ID signature fitting: extract indels from PAVE somatic VCF
+        // ID signature fitting: extract indels from PURPLE somatic VCF
         ch_sigs_id = ch_samples_to_run
             .map { meta ->
                 def f = findOncoFile(meta,
-                    "${meta.folder}/pave/somatic/${meta.subject}-T.pave.somatic.vcf.gz",
+                    "${meta.folder}/purple/${meta.subject}-T.purple.somatic.vcf.gz",
                     'somatic VCF (SigProfiler ID)')
                 f ? [meta + [pipeline: 'sigs_id'], f] : null
             }
@@ -345,6 +348,23 @@ workflow GENOMIC {
                 snv_counts ? [meta + [pipeline: 'sigs_counts'], snv_counts] : null
             }
             .filter { it != null }
+
+        // PURPLE purity + CHORD → TMB/TML/HRD sample attributes. Built from ch_samples, not
+        // ch_samples_to_run: re-read every run so cached subjects keep their row. Absent file → NA.
+        ch_sample_attributes = ch_samples
+            .map { meta ->
+                def purity = file("${meta.folder}/purple/${meta.subject}-T.purple.purity.tsv", checkIfExists: false)
+                def chord  = file("${meta.folder}/chord/${meta.subject}-T.chord.prediction.tsv", checkIfExists: false)
+                if (!purity.exists() || purity.isEmpty()) {
+                    log.warn "No PURPLE purity file for ${meta.subject}; TMB/TML will be NA"
+                    purity = []
+                }
+                if (!chord.exists() || chord.isEmpty()) {
+                    log.warn "No CHORD prediction file for ${meta.subject}; HRD will be NA"
+                    chord = []
+                }
+                [meta + [pipeline: 'sample_attributes'], purity, chord]
+            }
 
         // ── Run subworkflows ──────────────────────────────────────────────────
 
@@ -364,9 +384,11 @@ workflow GENOMIC {
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations)
 
+        GENOMIC_SAMPLE_ATTRIBUTES(ch_sample_attributes)
+
         GENOMIC_MUTATIONS(
             ch_germline_vcf,
-            ch_sage_vcf,
+            ch_somatic_vcf,
             ch_sage_rna_vcf,
             vep_data,
             pcgr_data,
@@ -442,6 +464,7 @@ workflow GENOMIC {
             all_sigs_counts_dbs,
             all_sigs_id,
             all_sigs_counts_id,
+            GENOMIC_SAMPLE_ATTRIBUTES.out.attributes,
         )
 
         // ── ML formatting (opt-in: --run_ml) ──────────────────────────────────
@@ -511,6 +534,7 @@ reference_genome: hg38
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_dbs)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_id)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_id)
+            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sample_attributes)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
             .mix(ch_study_files)

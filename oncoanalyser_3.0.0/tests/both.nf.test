@@ -41,12 +41,21 @@ nextflow_pipeline {
                     )
                 }
             }
+
+            // Absolute folders: GENOMIC_SAMPLE_ATTRIBUTES reads PURPLE/CHORD even for cached subjects,
+            // and the checked-in samplesheet's relative paths don't resolve under nf-test.
+            new File("${outputDir}/../both_samplesheet.csv").text = """\
+group,subject_id,sample_id,folder
+TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
+TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
+"""
         }
 
         when {
             params {
                 mode = 'both'
                 outdir = "$outputDir"
+                genomic_samplesheet = "${outputDir}/../both_samplesheet.csv"
                 // ML left off for now: FORMAT_ML_CNV is process_high_memory. Coverage stays in tests/subworkflows/genomic_ml.nf.test.
             }
         }
@@ -94,9 +103,17 @@ nextflow_pipeline {
                 'data_mutational_signatures_counts_ID.txt',
             ]
 
+            // TMB/HRD sample attributes: T1 has purity + CHORD, T2 purity only
+            def attr_rows = path("${params.outdir}/TEST/data_clinical_sample_genomic.txt").readLines()
+                .findAll { !it.startsWith('#') && !it.startsWith('PATIENT_ID') }.sort()
+
             assertAll(
                 { assert workflow.success },
                 { assert linking_subjects == ['T1', 'T2'] : "Linking file should contain T1 and T2, got: ${linking_subjects}" },
+                { assert attr_rows == ['T1\tT1-1DT\t12.5\tHIGH\t312\tHIGH\t0.83\tHR_deficient\tBRCA2_type',
+                                       'T2\tT2-T\t2.1\tLOW\t45\tLOW\tNA\tNA\tNA'] : "Unexpected sample attributes: ${attr_rows}" },
+                { assert tar_entries.containsAll(['data_clinical_sample_genomic.txt', 'meta_clinical_sample_genomic.txt'])
+                         : "Archive missing the genomic sample attributes, got: ${tar_entries}" },
                 { assert data_rows.size() == 2 : "Expected 2 sample rows (T1-1DT, T2-T), got ${data_rows.size()}" },
                 { assert data_rows.count { it.startsWith('T1') } == 1 : "Expected 1 T1 row (deduped tumour)" },
                 { assert data_rows.count { it.startsWith('T2') } == 1 : "Expected 1 T2 row" },
@@ -144,7 +161,7 @@ nextflow_pipeline {
                 def dir = new File("${outputDir}/TEST/${subject}")
                 dir.mkdirs()
                 new File(precomputed).listFiles()
-                    .findAll { it.name.startsWith("${sample}") && !it.name.contains('isofox_fusion') }
+                    .findAll { it.name.startsWith("${sample}") }
                     .each { f ->
                         java.nio.file.Files.copy(f.toPath(), new File(dir, f.name).toPath(),
                             java.nio.file.StandardCopyOption.REPLACE_EXISTING)

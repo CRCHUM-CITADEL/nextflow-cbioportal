@@ -50,6 +50,29 @@ PER-GROUP AGGREGATED FILES
     data_mutational_signatures_counts_DBS.txt          (same)
     data_mutational_signatures_contribution_ID.txt     (same)
     data_mutational_signatures_counts_ID.txt           (same)
+    data_clinical_sample_genomic.txt                   CLINICAL/SAMPLE_ATTRIBUTES
+
+  data_clinical_sample_genomic.txt is a second sample-attributes file
+  (cBioPortal accepts several), written in genomic and both modes. One row
+  per samplesheet subject, cached ones included (re-read every run):
+
+    Column       Source                                      Type
+    -----------  ------------------------------------------  ------
+    TMB_PER_MB   purple/<subject>-T.purple.purity.tsv tmbPerMb  NUMBER
+    TMB_STATUS   purity.tsv tmbStatus (HIGH/LOW/UNKNOWN)     STRING
+    TML          purity.tsv tml                              NUMBER
+    TML_STATUS   purity.tsv tmlStatus (HIGH/LOW/UNKNOWN)     STRING
+    HRD_SCORE    chord/<subject>-T.chord.prediction.tsv hrd  NUMBER
+                 (or p_hrd)
+    HR_STATUS    chord prediction hr_status                  STRING
+    HRD_TYPE     chord prediction hrd_type                   STRING
+
+  A missing purity or CHORD file gives NA for its columns (with a warning);
+  a file without the expected columns fails the run.
+
+  The MAF's HMF.* columns include PURPLE's per-variant fields: HMF.PURPLE_AF,
+  HMF.PURPLE_CN, HMF.PURPLE_VCN, HMF.PURPLE_MACN, HMF.BIALLELIC (1 = set),
+  HMF.SUBCL (somatic rows only; germline rows leave them empty).
 
   Meta files:
 
@@ -62,7 +85,8 @@ PER-GROUP AGGREGATED FILES
     meta_mutational_signatures_contribution_DBS.txt,
     meta_mutational_signatures_counts_DBS.txt,
     meta_mutational_signatures_contribution_ID.txt,
-    meta_mutational_signatures_counts_ID.txt
+    meta_mutational_signatures_counts_ID.txt,
+    meta_clinical_sample_genomic.txt
 
   Case lists (in <outdir>/<group>/case_lists/):
 

@@ -23,7 +23,7 @@ process PCGR {
     mkdir -p ${debug}
 
     # CPSR annotates every variant itself and aborts when an input INFO tag clashes with one of its
-    # own (PAVE writes IMPACT), so it gets the calls with all INFO removed; FILTER and genotypes stay.
+    # own (PAVE writes IMPACT, which PURPLE keeps), so it gets the calls with all INFO removed; FILTER and genotypes stay.
     bcftools annotate -x INFO -Oz -o cpsr_input.vcf.gz ${ger_dna_vcf}
     bcftools index -t cpsr_input.vcf.gz
 

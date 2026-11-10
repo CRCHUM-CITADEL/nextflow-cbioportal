@@ -1,0 +1,6 @@
+#Patient Identifier	Sample Identifier	TMB per Mb (PURPLE)	TMB Status (PURPLE)	TML (PURPLE)	TML Status (PURPLE)	HRD Score (CHORD)	HR Status (CHORD)	HRD Type (CHORD)
+#Identifier to uniquely specify a patient.	A unique sample identifier.	Tumour mutational burden: passing variants per Mb (PURPLE tmbPerMb).	PURPLE TMB status: HIGH (> 10 per Mb), LOW or UNKNOWN.	Tumour mutational load: missense variants (PURPLE tml).	PURPLE TML status: HIGH, LOW or UNKNOWN.	CHORD probability of homologous recombination deficiency.	CHORD homologous recombination status.	CHORD HRD type: BRCA1_type, BRCA2_type or none.
+#STRING	STRING	NUMBER	STRING	NUMBER	STRING	NUMBER	STRING	STRING
+#1	1	1	1	1	1	1	1	1
+PATIENT_ID	SAMPLE_ID	TMB_PER_MB	TMB_STATUS	TML	TML_STATUS	HRD_SCORE	HR_STATUS	HRD_TYPE
+T2	T2	2.1	LOW	45	LOW	NA	NA	NA

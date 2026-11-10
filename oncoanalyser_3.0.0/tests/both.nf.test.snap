@@ -1,7 +1,7 @@
 {
     "both mode \u2014 genomic + clinical combined output": {
         "content": [
-            38,
+            41,
             [
                 "TEST",
                 "TEST.tar.gz",
@@ -40,6 +40,7 @@
                 "TEST/case_lists/cases_sv.txt",
                 "TEST/data_clinical_patient.txt",
                 "TEST/data_clinical_sample.txt",
+                "TEST/data_clinical_sample_genomic.txt",
                 "TEST/data_cna_hg38.seg",
                 "TEST/data_cna_long.txt",
                 "TEST/data_expression.txt",
@@ -55,6 +56,7 @@
                 "TEST/meta_cancer_type.txt",
                 "TEST/meta_clinical_patient.txt",
                 "TEST/meta_clinical_sample.txt",
+                "TEST/meta_clinical_sample_genomic.txt",
                 "TEST/meta_cna_hg38.txt",
                 "TEST/meta_cna_long.txt",
                 "TEST/meta_expression.txt",
@@ -105,6 +107,7 @@
                 "cases_sv.txt:md5,5097e62d290c0a233002faebbc28c483",
                 "data_clinical_patient.txt:md5,436f98ea35d7d19a3fa8f69fa7c1aa8e",
                 "data_clinical_sample.txt:md5,35c31dd48ea59d3ee393a3200e5869bb",
+                "data_clinical_sample_genomic.txt:md5,bdd68cefdf303143ccce098da93a1855",
                 "data_cna_hg38.seg:md5,5fa88df1965c02182405694df64fe63e",
                 "data_cna_long.txt:md5,c4c280b51f50e10db9a08ab632391532",
                 "data_expression.txt:md5,81f6b9440fff9939c5012d381bfe02a9",
@@ -120,6 +123,7 @@
                 "meta_cancer_type.txt:md5,b5a9f61c582810fdcd5056c42d2c96a6",
                 "meta_clinical_patient.txt:md5,db4e12d00e844523c08f6b37fd57865f",
                 "meta_clinical_sample.txt:md5,28084eb9555ebab829df83fe97a1cdbe",
+                "meta_clinical_sample_genomic.txt:md5,9d08f4686c449f88b702f8569d3aa869",
                 "meta_cna_hg38.txt:md5,fea7b93b93b225eae54fd65cf98dfec9",
                 "meta_cna_long.txt:md5,36be0d576ee91f9ddc7d90079d21322d",
                 "meta_expression.txt:md5,fb817b03609b28d4dde78e35aa51f0fd",
@@ -136,7 +140,7 @@
                 "util_linking_file.txt:md5,74ba4d7e0241c94fd014a4d994a83497"
             ]
         ],
-        "timestamp": "2026-10-30T16:39:17.86016443",
+        "timestamp": "2026-11-10T09:36:46.761189164",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.4"

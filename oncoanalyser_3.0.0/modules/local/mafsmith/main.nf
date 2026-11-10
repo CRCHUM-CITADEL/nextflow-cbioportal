@@ -64,8 +64,8 @@ process MAFSMITH {
         --input-vcf tmp.${meta.sample}.somatic.vcf \\
         --output-maf tmp.${meta.sample}.maf
 
-    # mafsmith's --retain-ann only reads CSQ subfields, so every plain INFO field SAGE
-    # and PAVE wrote -- GND_FREQ (gnomAD), TIER, CLNSIG, PON_COUNT, ... -- is dropped.
+    # mafsmith's --retain-ann only reads CSQ subfields, so every plain INFO field SAGE,
+    # PAVE and PURPLE wrote -- GND_FREQ (gnomAD), TIER, PURPLE_VCN, BIALLELIC, ... -- is dropped.
     # Join them back on the MAF's own coordinate convention. Columns are always added,
     # even when the VCF declares none of them, so every per-subject MAF keeps the same
     # width and the group-level collectFile merge cannot go ragged.

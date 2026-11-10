@@ -10,8 +10,8 @@ include { FILTER_GERMLINE_DNA    } from '../../../modules/local/filter_germline_
 
 workflow GENOMIC_MUTATIONS {
     take:
-        ger_dna_vcf   // tuple (meta, pave.germline.vcf.gz) — PAVE germline VCF, GT ./.
-        som_dna_vcf   // tuple (meta, pave.somatic.vcf.gz)  — pave somatic VCF
+        ger_dna_vcf   // tuple (meta, purple.germline.vcf.gz) — PURPLE germline VCF, GT partly ./.
+        som_dna_vcf   // tuple (meta, purple.somatic.vcf.gz)  — PURPLE somatic VCF
         som_rna_vcf   // tuple (meta, sage.append.vcf.gz)   — SAGE RNA-append VCF
         vep_data      // channel<path> — pre-staged VEP cache, for PCGR (may be empty)
         pcgr_data     // channel<path> — pre-staged PCGR reference data (may be empty)

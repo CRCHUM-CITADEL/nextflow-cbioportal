@@ -5,6 +5,8 @@ rejected (converters `stop()` without the 3.0 columns).
 
 ## Mutations (MAF)
 
+- Inputs are PURPLE's VCFs (`purple/<subject>-T.purple.{somatic,germline}.vcf.gz`; PAVE-annotated, plus
+  PURPLE INFO), also for SigProfiler DBS/ID. `pave/` is no longer read. RNA stays `sage_append/`
 - VCF→MAF is `MAFSMITH` (mafsmith + fastVEP), not vcf2maf. mafsmith reads only `$HOME/.mafsmith`,
   so the module sets `HOME=./` and symlinks `mafsmith_data` there. `genome_reference` is now used
   only by SigProfiler
@@ -14,7 +16,7 @@ rejected (converters `stop()` without the 3.0 columns).
   changing it changes output and needs a new kit version. Image def:
   `containers/mafsmith-fastvep_v0.1.0-0.4.0.def`, tag `mafsmith-fastvep:<mafsmith>-<fastvep>`
 - mafsmith does not derive `--vcf-tumor-id` from `--tumor-id`: without `--vcf-tumor-id` /
-  `--vcf-normal-id` it takes the first VCF sample (PAVE's normal) as tumour and `t_*`/`n_*` swap.
+  `--vcf-normal-id` it takes the first VCF sample (the normal) as tumour and `t_*`/`n_*` swap.
   `MAFSMITH` passes both; it finds sample columns via the `FORMAT` header and MAF columns by name.
   `mafsmith.nf.test` runs the real binary with `--skip-annotation` to guard this
 - `Mutation_Status` is only `Somatic` (set by `MAFSMITH`) or `Germline` (CPSR rows); cBioPortal and
@@ -22,8 +24,9 @@ rejected (converters `stop()` without the 3.0 columns).
   (namespace `RNA` in `meta_sequenced.txt`), never in `Mutation_Status`
 - Every DNA subject reaches the MAF with or without RNA (`remainder: true` join; `[]` RNA input);
   the `RNA.*` columns are always written so the group merge stays rectangular
-- `--retain-ann` reads CSQ subfields only, so `annotate_maf_with_vcf_info.py` joins 10 PAVE INFO
-  fields back: `GND_FREQ` → `gnomAD_AF`, plus `HMF.{TIER,CLNSIG,CLNSIGCONF,PON_COUNT,MAPPABILITY,MSG,TNC,REP_C,MH}`.
+- `--retain-ann` reads CSQ subfields only, so `annotate_maf_with_vcf_info.py` joins 16 INFO fields
+  back: `GND_FREQ` → `gnomAD_AF`, plus `HMF.{TIER,CLNSIG,CLNSIGCONF,PON_COUNT,MAPPABILITY,MSG,TNC,REP_C,MH}`
+  and PURPLE's `HMF.{PURPLE_AF,PURPLE_CN,PURPLE_VCN,PURPLE_MACN,BIALLELIC,SUBCL}` (a flag reads `1`).
   Its join key must normalise alleles exactly like mafsmith (`src/vcf/normalization.rs`: strip common
   prefix advancing POS, empty allele → `-`, insertion `Start = pos-1`) or every indel is silently missed.
   Columns are written unconditionally; the step fails when nothing matches
@@ -34,10 +37,13 @@ rejected (converters `stop()` without the 3.0 columns).
 - **Cached subjects keep their older MAF** (narrower columns, `0` Entrez, old RNA format) until reprocessed;
   a mix makes the merged file ragged
 
-## Germline (PAVE → FILTER_GERMLINE_DNA → PCGR/CPSR → CONVERT_CPSR_TO_MAF)
+## Germline (PURPLE → FILTER_GERMLINE_DNA → PCGR/CPSR → CONVERT_CPSR_TO_MAF)
 
-- PAVE writes `GT=./.`; CPSR drops `./.` (vcf2tsvpy). `FILTER_GERMLINE_DNA` keeps PASS, drops the tumour
-  column and fills missing normal GTs with `bcftools +setGT`: `DP >= germline_min_depth` (10) and
+- `FILTER_GERMLINE_DNA` keeps FILTER exactly `PASS` or `LOW_TUMOR_VCN` (tumour-side; the normal's call is
+  real) and drops `LOW_VAF`, `LOW_TUMOR_VCN;LOW_VAF` and the rest (awk on column 7: `bcftools -i FILTER=`
+  errors on an undeclared filter)
+- PURPLE calls GT where it can and leaves `./.`; CPSR drops `./.` (vcf2tsvpy). `FILTER_GERMLINE_DNA` drops
+  the tumour column, keeps PURPLE's GTs and fills only missing normal GTs with `bcftools +setGT`: `DP >= germline_min_depth` (10) and
   `AF >= germline_hom_min_vaf` (0.9) → `1/1`; same depth and `AF >= germline_het_min_vaf` (0.2) → `0/1`;
   `AF < 0.2` → `0/0`, then removed; low depth with `AF >= 0.2` stays `./.`. We remove `0/0` because
   CPSR 2.2.5 (production) keeps and classifies hom-ref records; only 2.3+ drops them. Fails if
@@ -45,7 +51,7 @@ rejected (converters `stop()` without the 3.0 columns).
 - Low AF = reference **assumes no tumour-in-normal contamination** — agreed with Rob Eveleigh, not
   validated; revisit once GenPipes has TiN QC
 - A subject without a germline VCF also loses its somatic MAF (`MAFSMITH` input joins on `ger_dna_vcf`)
-- `PCGR` strips all INFO before CPSR (CPSR aborts on clashing tags such as PAVE's `IMPACT`). CPSR exits 0
+- `PCGR` strips all INFO before CPSR (CPSR aborts on clashing tags such as PAVE's `IMPACT`, kept by PURPLE). CPSR exits 0
   on failure, so any `- ERROR -` log line fails the task — never fall through to the header-only placeholder
 - `PCGR` publishes `<sample>.cpsr_debug/` (log, GT summaries, side outputs); `ext.args = '--debug'` keeps
   intermediates. CPSR output is named `<subject>-N`; `PCGR` renames it to `<sample>`, and writes a
@@ -137,6 +143,8 @@ rejected (converters `stop()` without the 3.0 columns).
   and read nothing from disk (stale + fresh share basenames and collide in staged merges). Signatures are
   `required: false` (SigProfiler may emit nothing) but loaded when present
 - Cached subjects bypass `MERGE_SAMPLE_SV` (published `<sample>.data_sv.txt` is already merged)
+- Exception: `GENOMIC_SAMPLE_ATTRIBUTES` runs for **every** subject (from `ch_samples`), re-reading PURPLE
+  purity + CHORD so cached subjects keep their TMB/HRD row. Not in `subjectOutputs()`, not published per subject
 - The samplesheet defines the cohort: group files are rebuilt each run; dropped subjects vanish (warned
   via the previous `util_linking_file.txt`). Delete a subject's output dir to force reprocessing
 - No subject to process → no reference download (`DOWNLOAD_*` gated on `count().filter { it > 0 }`)
@@ -151,6 +159,11 @@ rejected (converters `stop()` without the 3.0 columns).
   (row-append, MAF 2-line header, wide matrix, timeline/clinical column union, `meta_*`/case lists by
   glob). Not `machine_learning/` (cohort-normalised). Unhandled files are reported (`--strict` fails);
   overlapping sample IDs are an error. New outputs → its dispatch table + `tests/test_combine_cbioportal_outputs.py`
+- `data_clinical_sample_genomic.txt` (+ `meta_clinical_sample_genomic.txt`, `SAMPLE_ATTRIBUTES`) is a second
+  sample-attributes file, in genomic and both modes: `TMB_PER_MB, TMB_STATUS, TML, TML_STATUS` from
+  `purple.purity.tsv`, `HRD_SCORE` (`hrd`, else `p_hrd`), `HR_STATUS, HRD_TYPE` from
+  `chord/<subject>-T.chord.prediction.tsv`. Columns by name; missing file → `NA`, missing column → fail.
+  `bin/gen_genomic_sample_attributes.py` owns the col defs; merged with `collectFile(skip: 5)`
 - Signatures: `docs/mutational_signatures.md`. Process labels: `conf/base.config`
 
 ## Testing
@@ -162,3 +175,7 @@ rejected (converters `stop()` without the 3.0 columns).
   rows appear in a merged file iff it came from the cache. `both.nf.test` pre-stages outputs
 - `WorkflowTask` has only `name` and `success`: `workflow.trace.succeeded().collect { it.name }`
 - `${projectDir}` in a class-level `def` string inside a test isn't interpolated — inline it in the process block
+- `bin/create_test_data.sh` must reproduce `assets/test_data/` byte for byte (no `git status` change after a
+  run); edit a generated fixture there, not by hand. Layout: `assets/test_data/README.md`
+- Test samplesheets with relative `folder`s don't resolve under nf-test — write an absolute one outside
+  `outputDir` (it would enter the snapshot)

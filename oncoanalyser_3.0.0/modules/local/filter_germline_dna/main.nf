@@ -17,16 +17,16 @@ process FILTER_GERMLINE_DNA {
     def het_vaf = params.germline_het_min_vaf
     def hom_vaf = params.germline_hom_min_vaf
     """
-    zcat $ger_dna_vcf | grep "#" > tmp.${meta.sample}.vcf
-    zgrep -v "^#" $ger_dna_vcf | grep PASS >> tmp.${meta.sample}.vcf
+    # Keep FILTER exactly PASS or LOW_TUMOR_VCN (a tumour-side flag; the call in the normal is real), drop LOW_VAF and the rest.
+    zcat $ger_dna_vcf | awk -F'\\t' '/^#/ || \$7 == "PASS" || \$7 == "LOW_TUMOR_VCN"' > tmp.${meta.sample}.vcf
 
     if ! grep -q '^##FORMAT=<ID=AF,' tmp.${meta.sample}.vcf || ! grep -q '^##FORMAT=<ID=DP,' tmp.${meta.sample}.vcf; then
         echo "ERROR: ${ger_dna_vcf} has no FORMAT/AF or FORMAT/DP, so germline genotypes cannot be inferred" >&2
         exit 1
     fi
 
-    # PAVE leaves GT as ./. and CPSR drops uncalled genotypes, so infer the normal's GT from its DP and AF.
-    # Missing GTs only, in order: hom, het, then AF < het cutoff as reference (assumes no tumour-in-normal).
+    # PURPLE calls GT where it can and leaves ./. elsewhere; CPSR drops uncalled genotypes, so infer those from DP and AF.
+    # Missing GTs only (PURPLE's calls are kept), in order: hom, het, then AF < het cutoff as reference (assumes no tumour-in-normal).
     # Low-depth sites with AF >= het cutoff stay ./. and CPSR drops them.
     # 0/0 is removed here: CPSR 2.2.5 keeps and classifies hom-ref records (only 2.3+ drops them).
     bcftools view -s ^${meta.sample} tmp.${meta.sample}.vcf \\

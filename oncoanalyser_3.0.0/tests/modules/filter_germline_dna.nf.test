@@ -6,17 +6,17 @@ nextflow_process {
     tag "module"
     tag "filter_germline_dna"
 
-    // T1's PAVE germline fixture: every GT is ./., and each record's normal DP/AF
-    // exercises one genotype rule or boundary (see bin/create_test_data.sh).
+    // T1's PURPLE germline fixture: 44300100-500 are ./. and each normal DP/AF exercises one
+    // genotype rule or boundary; 600-900 cover PURPLE's own GT and filters (see bin/create_test_data.sh).
 
-    test("default cutoffs — normal GT inferred from DP/AF, PASS calls only, normal column only") {
+    test("default cutoffs — missing GTs inferred from DP/AF, PASS + LOW_TUMOR_VCN only, normal column only") {
 
         when {
             process {
                 """
                 input[0] = Channel.of([
                     [group: 'TEST', subject: 'T1', sample: 'T1'],
-                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz')
                 ])
                 """
             }
@@ -31,8 +31,8 @@ nextflow_process {
 
             // The tumour column is dropped; the normal is the only sample left.
             assert header.drop(9) == ['T1-N']
-            // LOW_QUAL (44300500) is dropped before inference.
-            assert records.every { it[6] == 'PASS' }
+            // LOW_QUAL (500), LOW_VAF (800) and LOW_TUMOR_VCN;LOW_VAF (900) are dropped before inference.
+            assert records.collect { it[6] }.unique().sort() == ['LOW_TUMOR_VCN', 'PASS']
             // Reference calls never reach CPSR, which keeps and classifies them in 2.2.5.
             // 44300300 (normal AF 0.15, tumour 0.25) and 44300400 (AF 0.1) are inferred 0/0 and removed.
             assert gt == [
@@ -41,6 +41,8 @@ nextflow_process {
                 '44300200': '0/1',  // AF 0.5
                 '44300250': '0/1',  // AF exactly 0.2
                 '44300350': './.',  // DP 9: too shallow to call, CPSR drops it
+                '44300600': '0/1',  // PURPLE's call is kept, though AF 0.95 would infer 1/1
+                '44300700': '0/1',  // LOW_TUMOR_VCN: tumour-side flag, the normal's call is kept
             ]
         }
     }
@@ -57,7 +59,7 @@ nextflow_process {
                 """
                 input[0] = Channel.of([
                     [group: 'TEST', subject: 'T1', sample: 'T1'],
-                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/germline/T1-T.pave.germline.vcf.gz')
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz')
                 ])
                 """
             }
@@ -76,6 +78,8 @@ nextflow_process {
                 '44300300': '0/1',  // 0.15 >= het 0.1
                 '44300350': '0/1',  // DP 9 >= 5
                 '44300400': '0/1',  // AF exactly 0.1, DP exactly 5
+                '44300600': '0/1',  // PURPLE's call, not re-inferred
+                '44300700': '0/1',
             ]
         }
     }

@@ -19,6 +19,7 @@ include { PIPELINE_INITIALISATION } from './subworkflows/local/utils'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils'
 include { resource                } from './subworkflows/local/utils'
 include { helpRequested           } from './subworkflows/local/utils'
+include { runsGenomic             } from './subworkflows/local/utils'
 include { PACKAGE_CBIOPORTAL      } from './modules/local/package_cbioportal'
 
 /*
@@ -54,7 +55,7 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    if (params.mode in ['genomic', 'both']){
+    if (runsGenomic()){
 
         // Reference files: explicit param, else the resource kit, else '' (download).
         def vep_data      = resource('vep_data')
@@ -136,7 +137,7 @@ workflow {
     // archive matches the study directory: genomic + clinical + timeline + linking file.
     // Clinical-only mode has no meta_study.txt or case lists, so it is not packaged.
     //
-    if (params.mode in ['genomic', 'both']) {
+    if (runsGenomic()) {
         ch_package_files = GENOMIC.out.package_files
 
         if (params.mode == 'both') {

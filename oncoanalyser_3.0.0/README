@@ -26,6 +26,16 @@ nextflow run main.nf -profile slurm,apptainer,citadel \
  --mode genomic \
  --genomic_samplesheet samplesheet.csv
 
+# 3a'. Run (genomic mode, DNA only -- e.g. WES, no RNA)
+
+nextflow run main.nf -profile slurm,apptainer,citadel \
+ --mode genomic-dna-only \
+ --genomic_samplesheet samplesheet.csv
+
+Skips all RNA-derived steps and writes a template data_clinical_sample.txt
+that must be completed before loading. There is no DNA-only variant of
+--mode both: run genomic-dna-only, then clinical.
+
 # 3b. Run (clinical mode)
 
 nextflow run main.nf -profile slurm,apptainer,citadel \
@@ -53,7 +63,7 @@ SLURM account. List it LAST so it wins wherever profiles overlap.
 
 Outside CRCHUM, drop it and supply the reference data yourself --
 nextflow.config ships portable defaults only (public container images,
-empty reference paths). Genomic and both modes require at least:
+empty reference paths). Genomic, genomic-dna-only and both modes require at least:
 
 nextflow run main.nf -profile apptainer \
  --mode genomic \

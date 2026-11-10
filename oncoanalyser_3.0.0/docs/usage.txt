@@ -9,12 +9,21 @@ This pipeline converts nf-core/oncoanalyser WGS/WTS output and clinical
 CSVs into cBioPortal-compatible import packages. It runs on HPC clusters
 using SLURM and Apptainer (no Docker, no sudo).
 
-The pipeline has three modes:
+The pipeline has four modes:
 
   Genomic mode   Processes per-subject oncoanalyser output (mutations,
                  copy-number, structural variants, gene expression, RNA
                  fusions, mutational signatures) and produces merged,
                  group-level cBioPortal data files packaged as a .tar.gz.
+
+  Genomic-dna-only mode
+                 Genomic mode without RNA (e.g. WES). Skips Isofox
+                 expression/fusion and SAGE RNA-append even if RNA files are
+                 present, skips per subject any step whose oncoanalyser tool
+                 folder is absent, and writes a template
+                 data_clinical_sample.txt that must be completed before
+                 loading. There is no DNA-only variant of both mode: run
+                 genomic-dna-only, then clinical.
 
   Clinical mode  Transforms clinical CSVs (patient demographics, diagnoses,
                  treatments, specimens, etc.) into cBioPortal patient and
@@ -135,6 +144,8 @@ GENOMIC SAMPLESHEET
     |   |   +-- <subject_id>-T.pave.somatic.vcf.gz     Somatic DNA mutations
     |   +-- germline/
     |       +-- <subject_id>-T.pave.germline.vcf.gz    Germline DNA mutations
+    |       (--mode genomic-dna-only also reads both VCFs directly under pave/,
+    |        the layout of older oncoanalyser runs)
     |-- sage_append/
     |   +-- <subject_id>-T/
     |       +-- <subject_id>-T.sage.append.vcf.gz      RNA-supported somatic
@@ -288,7 +299,7 @@ CORE PARAMETERS
 
   Parameter              Required  Default                   Description
   ---------------------  --------  ------------------------  ----------------------
-  mode                   Yes       genomic                   genomic, clinical, or both
+  mode                   Yes       both                      genomic, genomic-dna-only, clinical, or both
   study_id               Yes       --                        Study identifier for meta_study.txt and output folder
   project_description    Yes       --                        Study description
   outdir                 No        output_<project>_<date>   Output directory
@@ -425,6 +436,16 @@ GENOMIC MODE
       --mode genomic \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
+      --genomic_samplesheet samplesheet.csv
+
+GENOMIC-DNA-ONLY MODE
+
+  nextflow run main.nf \
+      -profile slurm,apptainer,citadel \
+      --mode genomic-dna-only \
+      --study_id "MY_STUDY" \
+      --project_description "Description of my study" \
+      --cancer_type "brca" \
       --genomic_samplesheet samplesheet.csv
 
 CLINICAL MODE

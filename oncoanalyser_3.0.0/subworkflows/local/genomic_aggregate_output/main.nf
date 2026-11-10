@@ -8,6 +8,8 @@ include { MERGE_SIGS_COUNTS_DBS_TO_CBIOPORTAL } from '../../../modules/local/mer
 include { MERGE_SIGS_ID_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_id_to_cbioportal'
 include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merge_sigs_counts_id_to_cbioportal'
 
+include { isDnaOnly } from '../utils'
+
     workflow GENOMIC_AGGREGATE_OUTPUT {
 
         take:
@@ -28,7 +30,10 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
             ch_versions = channel.empty()
 
             // to get all groups, just take .seg files (we assume seg and long are the same)
-            all_groups = cnv_results_seg.map {meta, sample -> meta.group}.unique()
+            // dna-only: purple/ may be absent, so take groups from any DNA data type
+            all_groups = isDnaOnly()
+                ? cnv_results_seg.mix(sv_results).mix(mutation_results).map { meta, _f -> meta.group }.unique()
+                : cnv_results_seg.map {meta, sample -> meta.group}.unique()
 
             // merge cnv ----------------------------------------
             cnv_seg_output = cnv_results_seg
@@ -75,7 +80,9 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
                 .map {filepath -> tuple(filepath.parent.name, filepath) }
 
             // merge expression with merging not possible within pure nextflow. This will publish the file to output via the module
-            tpm_file_list = expression_results
+            // dna-only never writes expression, even when TPM files reach this subworkflow:
+            // without meta_expression.txt (skipped below) a data_expression.txt breaks the import
+            tpm_file_list = (isDnaOnly() ? channel.empty() : expression_results)
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
                 .map { group, metas, files ->
@@ -235,10 +242,30 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
             case_sample_lists = cnv_sample_list.concat(mutation_sample_list).concat(sv_sample_list)
             all_groups_cases = all_groups.combine(case_name_all).map { g, _c -> g }
 
+            // dna-only: each label travels with its sample list, so a data type with no output
+            // (tool not run) drops its own case list instead of shifting the remaining lists
+            // onto the wrong names (the three inputs above are paired by position). toList()
+            // gives an empty modality an empty string, which is filtered out here.
+            if (isDnaOnly()) {
+                ch_case_in = all_groups
+                    .combine(cnv_sample_list.map { ['cnv', it] }
+                        .mix(mutation_sample_list.map { ['sequenced', it] })
+                        .mix(sv_sample_list.map { ['sv', it] })
+                        .filter { _name, samples -> samples })
+                    .multiMap { g, name, samples -> group: g; label: name; samples: samples }
+                case_groups  = ch_case_in.group
+                case_labels  = ch_case_in.label
+                case_samples = ch_case_in.samples
+            } else {
+                case_groups  = all_groups_cases
+                case_labels  = case_name_all
+                case_samples = case_sample_lists
+            }
+
             GENERATE_CASE_LIST(
-                all_groups_cases,
-                case_name_all,
-                case_sample_lists
+                case_groups,
+                case_labels,
+                case_samples
             )
 
             // to get all groups, just take .seg files (we assume seg and long are the same)
@@ -367,14 +394,67 @@ data_filename: data_mutational_signatures_counts_ID.txt
 generic_entity_meta_properties: NAME
     """
 
-        meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs, meta_text_counts, meta_text_sigs_dbs, meta_text_counts_dbs, meta_text_sigs_id, meta_text_counts_id)
-        file_name_all = channel.of("cna_hg38", "cna_long", "sv", "expression", "sequenced", "mutational_signatures_contribution_SBS", "mutational_signatures_counts_SBS", "mutational_signatures_contribution_DBS", "mutational_signatures_counts_DBS", "mutational_signatures_contribution_ID", "mutational_signatures_counts_ID")
+        // expression meta file is only emitted with RNA (not --mode genomic-dna-only) — a dna-only study
+        // never produces data_expression.txt, so a meta file pointing at it would be an
+        // orphan entry that breaks cBioPortal import
+        meta_entries = [
+            ["cna_hg38", meta_text_seg],
+            ["cna_long", meta_text_long],
+            ["sv", meta_text_sv],
+        ]
+        if (!isDnaOnly()) {
+            meta_entries << ["expression", meta_text_expression]
+        }
+        meta_entries += [
+            ["sequenced", meta_text_mutations],
+            ["mutational_signatures_contribution_SBS", meta_text_sigs],
+            ["mutational_signatures_counts_SBS", meta_text_counts],
+            ["mutational_signatures_contribution_DBS", meta_text_sigs_dbs],
+            ["mutational_signatures_counts_DBS", meta_text_counts_dbs],
+            ["mutational_signatures_contribution_ID", meta_text_sigs_id],
+            ["mutational_signatures_counts_ID", meta_text_counts_id],
+        ]
+
+        file_name_all = channel.fromList(meta_entries.collect { it[0] })
+        meta_text_all  = channel.fromList(meta_entries.collect { it[1] })
         all_groups_meta = all_groups.combine(file_name_all).map { g, _f -> g }
 
+        // dna-only: a meta file is written only when its data file was produced, so a tool
+        // oncoanalyser did not run (e.g. no sigs/ for WES → no SBS) leaves no orphan meta file
+        if (isDnaOnly()) {
+            ch_present = cnv_seg_output.map { g, _f -> [g, 'cna_hg38'] }
+                .mix(cnv_long_output.map        { g, _f -> [g, 'cna_long'] })
+                .mix(sv_output.map              { g, _f -> [g, 'sv'] })
+                .mix(mutation_output.map        { g, _f -> [g, 'sequenced'] })
+                .mix(sigs_output.map            { g, _f -> [g, 'mutational_signatures_contribution_SBS'] })
+                .mix(sigs_counts_output.map     { g, _f -> [g, 'mutational_signatures_counts_SBS'] })
+                .mix(sigs_dbs_output.map        { g, _f -> [g, 'mutational_signatures_contribution_DBS'] })
+                .mix(sigs_counts_dbs_output.map { g, _f -> [g, 'mutational_signatures_counts_DBS'] })
+                .mix(sigs_id_output.map         { g, _f -> [g, 'mutational_signatures_contribution_ID'] })
+                .mix(sigs_counts_id_output.map  { g, _f -> [g, 'mutational_signatures_counts_ID'] })
+                .map { g, name -> "${g}/${name}".toString() }
+                .collect()
+                .map { it.toSet() }
+                .ifEmpty([] as Set)
+
+            ch_meta_in = all_groups
+                .combine(channel.fromList(meta_entries))
+                .combine(ch_present)
+                .filter { g, name, _text, present -> "${g}/${name}".toString() in present }
+                .multiMap { g, name, text, _present -> group: g; label: name; text: text }
+            meta_groups = ch_meta_in.group
+            meta_labels = ch_meta_in.label
+            meta_texts  = ch_meta_in.text
+        } else {
+            meta_groups = all_groups_meta
+            meta_labels = file_name_all
+            meta_texts  = meta_text_all
+        }
+
         GENERATE_META_FILE(
-            all_groups_meta,
-            file_name_all,
-            meta_text_all
+            meta_groups,
+            meta_labels,
+            meta_texts
         )
 
     emit:

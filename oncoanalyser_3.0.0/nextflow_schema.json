@@ -43,14 +43,14 @@
                 },
                 "mode": {
                     "type": "string",
-                    "description": "The pipeline mode you'd like to run. Either 'clinical', 'genomic', or 'both'",
-                    "enum": ["clinical", "genomic", "both"],
+                    "description": "The pipeline mode you'd like to run: 'genomic', 'genomic-dna-only', 'clinical', or 'both'. genomic-dna-only is genomic mode without RNA: it skips all RNA-derived processing (Isofox expression/fusion, SAGE RNA-append) and the expression profile, even if RNA files are present, and writes a template data_clinical_sample.txt.",
+                    "enum": ["genomic", "genomic-dna-only", "clinical", "both"],
                     "fa_icon": "fas fa-folder-open"
                 },
                 "run_ml": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Also build the machine-learning feature tables (<group>/machine_learning/). Off by default; genomic and both modes only.",
+                    "description": "Also build the machine-learning feature tables (<group>/machine_learning/). Off by default; genomic, genomic-dna-only and both modes only.",
                     "fa_icon": "fas fa-brain"
                 },
                 "sample_registrations": {

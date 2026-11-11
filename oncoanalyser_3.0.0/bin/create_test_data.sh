@@ -202,7 +202,7 @@ XGENE_DEL	chrX	60000000	60010000	0.2	0.2	0	0	0	0	0	0	0	0	0	0	0	0	0
 YGENE_NEUTRAL	chrY	20000000	20010000	1.0	1.0	0	0	0	0	0	0	0	0	0	0	0	0	0
 EOF
 
-# PURPLE purity (T1) — gender for the chrX/chrY baseline, TMB/TML for data_clinical_sample_genomic.txt
+# PURPLE purity (T1) — gender for the chrX/chrY baseline, TMB/TML for the sample attributes
 cat > "${BASE}/oncoanalyser_output/TEST/T1/purple/T1-T.purple.purity.tsv" << 'EOF'
 purity	ploidy	gender	status	msIndelsPerMb	msStatus	tml	tmlStatus	tmbPerMb	tmbStatus
 0.75	2.0	MALE	PASS	0.12	MSS	312	HIGH	12.5	HIGH

@@ -8,7 +8,7 @@ process GENOMIC_SAMPLE_ATTRIBUTES {
         tuple val(meta), path(purity), path(chord) // [] when absent
 
     output:
-        tuple val(meta), path("${meta.sample}.clinical_sample_genomic.tsv"), emit: attributes
+        tuple val(meta), path("${meta.sample}.genomic_sample_attributes.tsv"), emit: attributes
 
     when:
         task.ext.when == null || task.ext.when
@@ -22,7 +22,7 @@ process GENOMIC_SAMPLE_ATTRIBUTES {
         --sample ${meta.sample} \\
         ${purity_arg} \\
         ${chord_arg} \\
-        --output ${meta.sample}.clinical_sample_genomic.tsv
+        --output ${meta.sample}.genomic_sample_attributes.tsv
     """
 
     stub:
@@ -34,6 +34,6 @@ process GENOMIC_SAMPLE_ATTRIBUTES {
         printf '#1\\t1\\t1\\t1\\t1\\t1\\t1\\t1\\t1\\n'
         printf 'PATIENT_ID\\tSAMPLE_ID\\tTMB_PER_MB\\tTMB_STATUS\\tTML\\tTML_STATUS\\tHRD_SCORE\\tHR_STATUS\\tHRD_TYPE\\n'
         printf '%s\\t%s\\tNA\\tNA\\tNA\\tNA\\tNA\\tNA\\tNA\\n' "${meta.subject}" "${meta.sample}"
-    } > ${meta.sample}.clinical_sample_genomic.tsv
+    } > ${meta.sample}.genomic_sample_attributes.tsv
     """
 }

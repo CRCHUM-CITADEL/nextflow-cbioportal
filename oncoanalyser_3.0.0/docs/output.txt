@@ -50,11 +50,15 @@ PER-GROUP AGGREGATED FILES
     data_mutational_signatures_counts_DBS.txt          (same)
     data_mutational_signatures_contribution_ID.txt     (same)
     data_mutational_signatures_counts_ID.txt           (same)
-    data_clinical_sample_genomic.txt                   CLINICAL/SAMPLE_ATTRIBUTES
+    data_clinical_sample.txt (genomic mode only)       CLINICAL/SAMPLE_ATTRIBUTES
 
-  data_clinical_sample_genomic.txt is a second sample-attributes file
-  (cBioPortal accepts several), written in genomic and both modes. One row
-  per samplesheet subject, cached ones included (re-read every run):
+  TMB/TML and HRD sample attributes. cBioPortal accepts one
+  SAMPLE_ATTRIBUTES file per study, so they always live in
+  data_clinical_sample.txt: in genomic mode it holds only PATIENT_ID,
+  SAMPLE_ID and these columns; in both mode they are joined onto the
+  clinical sample file by SAMPLE_ID (NA for a clinical sample without
+  genomic data). Every samplesheet subject is covered, cached ones
+  included (re-read every run):
 
     Column       Source                                      Type
     -----------  ------------------------------------------  ------
@@ -68,7 +72,10 @@ PER-GROUP AGGREGATED FILES
     HRD_TYPE     chord prediction hrd_type                   STRING
 
   A missing purity or CHORD file gives NA for its columns (with a warning);
-  a file without the expected columns fails the run.
+  a file without the expected columns fails the run. A clinical-mode run
+  written into the same <outdir>/<study_id>/ afterwards replaces a
+  genomic-mode data_clinical_sample.txt, and with it these columns; use
+  --mode both to keep them.
 
   The MAF's HMF.* columns include PURPLE's per-variant fields: HMF.PURPLE_AF,
   HMF.PURPLE_CN, HMF.PURPLE_VCN, HMF.PURPLE_MACN, HMF.BIALLELIC (1 = set),
@@ -86,7 +93,7 @@ PER-GROUP AGGREGATED FILES
     meta_mutational_signatures_counts_DBS.txt,
     meta_mutational_signatures_contribution_ID.txt,
     meta_mutational_signatures_counts_ID.txt,
-    meta_clinical_sample_genomic.txt
+    meta_clinical_sample.txt (genomic mode only)
 
   Case lists (in <outdir>/<group>/case_lists/):
 

@@ -40,8 +40,8 @@ Genomic mode processing steps:
   Mutational signatures (SBS)  SNV trinucleotide counts     Contribution + counts
   Mutational signatures (DBS)  PURPLE somatic VCF           Contribution + counts
   Mutational signatures (ID)   PURPLE somatic VCF           Contribution + counts
-  TMB / TML / HRD              PURPLE purity TSV, CHORD     data_clinical_sample_
-                               prediction TSV               genomic.txt
+  TMB / TML / HRD              PURPLE purity TSV, CHORD     data_clinical_sample.txt
+                               prediction TSV               (columns; see output.txt)
   ML feature tables            Merged group-level files     ML-formatted CNV, expression,
   (only with --run_ml)                                      mutation, SV
 

@@ -12,8 +12,7 @@ Handled content:
                         data_mutational_signatures_{contribution,counts}_{SBS,DBS,ID}.txt
     union-append        data_timeline.txt (column set varies with the event
                         types present in each batch)
-    clinical            data_clinical_sample.txt, data_clinical_patient.txt,
-                        data_clinical_sample_genomic.txt
+    clinical            data_clinical_sample.txt, data_clinical_patient.txt
                         (4 '#' metadata rows + column header; column sets may
                         differ between batches and are unioned)
     headerless          cancer_type.txt (deduplicated on the first field)
@@ -89,7 +88,6 @@ UNION_APPEND_FILES = [
 CLINICAL_FILES = [
     "data_clinical_sample.txt",
     "data_clinical_patient.txt",
-    "data_clinical_sample_genomic.txt",
 ]
 
 # Headerless tab-separated files, deduplicated on the first field.

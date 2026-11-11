@@ -68,7 +68,8 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
             // GENOMIC_SAMPLE_ATTRIBUTES re-reads PURPLE/CHORD for every subject, cached or not
             def t1_tasks = tasks.findAll { it.contains('T1-1DT') && !it.contains('GENOMIC_SAMPLE_ATTRIBUTES') }
             def t2_tasks = tasks.findAll { it.contains('T2-T') }
-            def sample_attrs = path("${params.outdir}/TEST/data_clinical_sample_genomic.txt").readLines()
+            // Genomic mode: the TMB/HRD attributes are the study's data_clinical_sample.txt
+            def sample_attrs = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
 
             def seg  = path("${params.outdir}/TEST/data_cna_hg38.seg").readLines()
             def long_cnv = path("${params.outdir}/TEST/data_cna_long.txt").readLines()
@@ -88,9 +89,9 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
                          : "GENOMIC_SAMPLE_ATTRIBUTES did not run for cached T1" },
                 { assert sample_attrs.count { it.startsWith('T1\tT1-1DT\t') } == 1 &&
                          sample_attrs.count { it.startsWith('T2\tT2-T\t') } == 1
-                         : "Expected one T1 and one T2 row in data_clinical_sample_genomic.txt, got ${sample_attrs}" },
+                         : "Expected one T1 and one T2 row in data_clinical_sample.txt, got ${sample_attrs}" },
                 { assert sample_attrs.count { it.startsWith('PATIENT_ID\t') } == 1 },
-                { assert path("${params.outdir}/TEST/meta_clinical_sample_genomic.txt").exists() },
+                { assert path("${params.outdir}/TEST/meta_clinical_sample.txt").exists() },
                 // T1's cached rows must survive into the merged study files, exactly once
                 { assert seg.count { it.startsWith('T1-1DT\t') } == 3
                          : "Expected T1's 3 cached segments in data_cna_hg38.seg, got ${seg.findAll { it.startsWith('T1-1DT\t') }}" },

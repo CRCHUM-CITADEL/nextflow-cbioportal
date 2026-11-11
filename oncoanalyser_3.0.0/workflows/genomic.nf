@@ -11,6 +11,7 @@ include { GENOMIC_MUTATIONS            } from '../subworkflows/local/genomic_mut
 include { GENOMIC_ML                   } from '../subworkflows/local/genomic_ml'
 include { GENOMIC_AGGREGATE_OUTPUT     } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE           } from '../modules/local/generate_meta_file'
+include { GENERATE_META_FILE as GENERATE_META_FILE_CLINICAL_SAMPLE } from '../modules/local/generate_meta_file'
 include { GENERATE_CANCER_TYPE        } from '../modules/local/generate_cancer_type'
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
 include { MERGE_SAMPLE_SV              } from '../modules/local/merge_sample_sv'
@@ -505,6 +506,29 @@ reference_genome: hg38
                 })
         }
 
+        // ── TMB/HRD sample attributes ─────────────────────────────────────────
+        // cBioPortal allows one SAMPLE_ATTRIBUTES file. A genomic-only study has none, so the
+        // attributes become its data_clinical_sample.txt; in both mode CLINICAL joins them onto its own.
+
+        ch_sample_attributes = GENOMIC_AGGREGATE_OUTPUT.out.sample_attributes
+
+        ch_genomic_clinical_files = Channel.empty()
+        if (params.mode == 'genomic') {
+            ch_genomic_clinical_sample = ch_sample_attributes
+                .collectFile(storeDir: "${params.outdir}") { group, f ->
+                    ["${group}/data_clinical_sample.txt", f.text]
+                }
+                .map { f -> tuple(f.parent.name, f) }
+
+            meta_text_clinical_sample = """cancer_study_identifier: add_text
+genetic_alteration_type: CLINICAL
+datatype: SAMPLE_ATTRIBUTES
+data_filename: data_clinical_sample.txt
+        """
+            GENERATE_META_FILE_CLINICAL_SAMPLE(all_groups, "clinical_sample", meta_text_clinical_sample)
+            ch_genomic_clinical_files = ch_genomic_clinical_sample.mix(GENERATE_META_FILE_CLINICAL_SAMPLE.out)
+        }
+
         // ── Subject → tumor sample linking file ───────────────────────────────
 
         ch_linking_file = ch_samples
@@ -534,7 +558,7 @@ reference_genome: hg38
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_dbs)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_id)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_id)
-            .mix(GENOMIC_AGGREGATE_OUTPUT.out.sample_attributes)
+            .mix(ch_genomic_clinical_files)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
             .mix(ch_study_files)
@@ -553,6 +577,7 @@ reference_genome: hg38
     emit:
         linking_file  = ch_linking_file     // channel<tuple(group, file)> — subject→sample linking file per group
         package_files = all_package_files   // channel<tuple(group, file)> — files to put in the study archive
+        sample_attributes = ch_sample_attributes // channel<tuple(group, file)> — merged TMB/HRD, for CLINICAL to join (both mode)
 }
 
 /*

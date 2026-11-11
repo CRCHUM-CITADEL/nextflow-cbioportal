@@ -25,7 +25,7 @@ nextflow_process {
         then {
             assert process.success
             def out = process.out.attributes[0][1].toString()
-            assert out.endsWith('T1-1DT.clinical_sample_genomic.tsv')
+            assert out.endsWith('T1-1DT.genomic_sample_attributes.tsv')
             def lines = path(out).readLines()
             assert lines.size() == 6
             assert lines[2] == '#STRING\tSTRING\tNUMBER\tSTRING\tNUMBER\tSTRING\tNUMBER\tSTRING\tSTRING'

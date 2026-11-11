@@ -22,7 +22,7 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
             sigs_counts_dbs_results
             sigs_id_results
             sigs_counts_id_results
-            sample_attributes_results // [meta, <sample>.clinical_sample_genomic.tsv], every subject
+            sample_attributes_results // [meta, <sample>.genomic_sample_attributes.tsv], every subject
 
         main:
 
@@ -114,20 +114,17 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
                 .map {filepath -> tuple(filepath.parent.name, filepath) }
 
 
-            // merge genomic sample attributes (TMB/TML, HRD); each part has 4 '#' lines + the ID header
+            // merge genomic sample attributes (TMB/TML, HRD); each part has 4 '#' lines + the ID header.
+            // Not a study file: GENOMIC publishes it as data_clinical_sample.txt (genomic mode) or
+            // CLINICAL joins it onto its own (both mode); cBioPortal allows one SAMPLE_ATTRIBUTES file.
             sample_attributes_output = sample_attributes_results
                 .map {meta, filepath -> [meta.group, filepath]}
-                .groupTuple()
-                .flatMap { group, files ->
-                    files.collect { filepath -> [group, filepath]}
-                }
-                .collectFile(storeDir: "${params.outdir}",
-                           keepHeader : true,
+                .collectFile(keepHeader : true,
                            skip: 5,
                            sort: 'deep') { group, filepath ->
-                              ["${group}/data_clinical_sample_genomic.txt", filepath.text]
+                              ["${group}.genomic_sample_attributes.txt", filepath.text]
                            }
-                .map {filepath -> tuple(filepath.parent.name, filepath) }
+                .map {filepath -> tuple(filepath.name - '.genomic_sample_attributes.txt', filepath) }
 
 
             // merge signatures -------------------------------------------------------------
@@ -384,14 +381,8 @@ data_filename: data_mutational_signatures_counts_ID.txt
 generic_entity_meta_properties: NAME
     """
 
-            meta_text_sample_attributes = """cancer_study_identifier: add_text
-genetic_alteration_type: CLINICAL
-datatype: SAMPLE_ATTRIBUTES
-data_filename: data_clinical_sample_genomic.txt
-    """
-
-        meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs, meta_text_counts, meta_text_sigs_dbs, meta_text_counts_dbs, meta_text_sigs_id, meta_text_counts_id, meta_text_sample_attributes)
-        file_name_all = channel.of("cna_hg38", "cna_long", "sv", "expression", "sequenced", "mutational_signatures_contribution_SBS", "mutational_signatures_counts_SBS", "mutational_signatures_contribution_DBS", "mutational_signatures_counts_DBS", "mutational_signatures_contribution_ID", "mutational_signatures_counts_ID", "clinical_sample_genomic")
+        meta_text_all = channel.of(meta_text_seg, meta_text_long, meta_text_sv, meta_text_expression, meta_text_mutations, meta_text_sigs, meta_text_counts, meta_text_sigs_dbs, meta_text_counts_dbs, meta_text_sigs_id, meta_text_counts_id)
+        file_name_all = channel.of("cna_hg38", "cna_long", "sv", "expression", "sequenced", "mutational_signatures_contribution_SBS", "mutational_signatures_counts_SBS", "mutational_signatures_contribution_DBS", "mutational_signatures_counts_DBS", "mutational_signatures_contribution_ID", "mutational_signatures_counts_ID")
         all_groups_meta = all_groups.combine(file_name_all).map { g, _f -> g }
 
         GENERATE_META_FILE(

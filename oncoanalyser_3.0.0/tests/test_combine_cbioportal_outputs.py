@@ -312,25 +312,6 @@ def test_clinical_column_union(tmp_path):
     assert s2["CEA"] == "v" and s2["PSA_LEVEL"] == "NA"
 
 
-def test_clinical_sample_genomic_is_merged(tmp_path):
-    # TMB/HRD sample attributes: rows appended across batches, copied when only one has it.
-    cols = ["PATIENT_ID", "SAMPLE_ID", "TMB_PER_MB", "HR_STATUS"]
-    d1 = make_study(tmp_path, "b1", [("P1", "S1")])
-    d2 = make_study(tmp_path, "b2", [("P2", "S2")])
-    d3 = make_study(tmp_path, "b3", [("P3", "S3")])
-    write_clinical(d1 / "data_clinical_sample_genomic.txt", cols, [["P1", "S1", "12.5", "HR_deficient"]])
-    write_clinical(d2 / "data_clinical_sample_genomic.txt", cols, [["P2", "S2", "2.1", "NA"]])
-
-    out, _ = merge(tmp_path, d1, d2, extra_args=["--strict"])  # --strict fails on an unhandled file
-    meta_rows, columns, rows = read_clinical(out / "data_clinical_sample_genomic.txt")
-    assert columns == cols and len(meta_rows) == 4
-    assert [(r["SAMPLE_ID"], r["TMB_PER_MB"]) for r in rows] == [("S1", "12.5"), ("S2", "2.1")]
-
-    out13, _ = merge(tmp_path, d1, d3, out_name="out13")
-    _, _, rows13 = read_clinical(out13 / "data_clinical_sample_genomic.txt")
-    assert [r["SAMPLE_ID"] for r in rows13] == ["S1"]
-
-
 def test_clinical_patient_rows_are_not_deduplicated(tmp_path):
     # Same patient, different samples in each batch: both rows are kept.
     d1 = make_study(tmp_path, "b1", [("P1", "S1")])

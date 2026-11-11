@@ -159,11 +159,14 @@ rejected (converters `stop()` without the 3.0 columns).
   (row-append, MAF 2-line header, wide matrix, timeline/clinical column union, `meta_*`/case lists by
   glob). Not `machine_learning/` (cohort-normalised). Unhandled files are reported (`--strict` fails);
   overlapping sample IDs are an error. New outputs → its dispatch table + `tests/test_combine_cbioportal_outputs.py`
-- `data_clinical_sample_genomic.txt` (+ `meta_clinical_sample_genomic.txt`, `SAMPLE_ATTRIBUTES`) is a second
-  sample-attributes file, in genomic and both modes: `TMB_PER_MB, TMB_STATUS, TML, TML_STATUS` from
-  `purple.purity.tsv`, `HRD_SCORE` (`hrd`, else `p_hrd`), `HR_STATUS, HRD_TYPE` from
-  `chord/<subject>-T.chord.prediction.tsv`. Columns by name; missing file → `NA`, missing column → fail.
-  `bin/gen_genomic_sample_attributes.py` owns the col defs; merged with `collectFile(skip: 5)`
+- TMB/HRD sample attributes: `TMB_PER_MB, TMB_STATUS, TML, TML_STATUS` from `purple.purity.tsv`,
+  `HRD_SCORE` (`hrd`, else `p_hrd`), `HR_STATUS, HRD_TYPE` from `chord/<subject>-T.chord.prediction.tsv`.
+  Columns by name; missing file → `NA`, missing column → fail. `bin/gen_genomic_sample_attributes.py` owns
+  the col defs; `GENOMIC_AGGREGATE_OUTPUT` merges them (`collectFile(skip: 5)`) into an intermediate, not a
+  study file. **cBioPortal rejects a second `SAMPLE_ATTRIBUTES` file** ("Multiple sample attribute files"),
+  so: genomic mode publishes it as `data_clinical_sample.txt` + meta (`workflows/genomic.nf`); both mode
+  passes it to `CLINICAL`, whose `WRITE_CLINICAL_SAMPLE` / `GENERATE_CLINICAL_TEMPLATE` run
+  `join_genomic_sample_attributes.R` (by `SAMPLE_ID`, before `SPLIT_CLINICAL`). Clinical mode passes `[]`
 - Signatures: `docs/mutational_signatures.md`. Process labels: `conf/base.config`
 
 ## Testing

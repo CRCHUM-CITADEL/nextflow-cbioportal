@@ -16,6 +16,7 @@ workflow CLINICAL_AGGREGATE {
     take:
         filelist          // channel: [meta(group, pipeline, extraction_date), csv_path]
         genomic_subjects  // val: path to genomic subjects TSV, or "" to skip filtering
+        genomic_attributes // val: merged TMB/HRD sample attributes, or [] — joined onto data_clinical_sample.txt
 
     main:
 
@@ -65,7 +66,7 @@ workflow CLINICAL_AGGREGATE {
 
         BUILD_CLINICAL_TABLE(ch_build_input, ch_clinical_common)
 
-        WRITE_CLINICAL_SAMPLE(BUILD_CLINICAL_TABLE.out.ch_merged)
+        WRITE_CLINICAL_SAMPLE(BUILD_CLINICAL_TABLE.out.ch_merged, genomic_attributes)
         WRITE_CLINICAL_PATIENT(BUILD_CLINICAL_TABLE.out.ch_merged)
 
         // ── Per-sample clinical split (whenever genomic subjects are given) ──

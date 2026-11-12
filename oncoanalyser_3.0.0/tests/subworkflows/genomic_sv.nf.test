@@ -17,11 +17,11 @@ nextflow_workflow {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sv'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/esvee/T1-T.esvee.unfiltered.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.sv.vcf.gz')
                     ],
                     [
                         [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sv'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/esvee/T2-T.esvee.unfiltered.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple/T2-T.purple.sv.vcf.gz')
                     ]
                 )
                 input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
@@ -34,15 +34,16 @@ nextflow_workflow {
             assert workflow.out.sv_out.size() == 2
 
             def sv_names = workflow.out.sv_out.collect { meta, f -> f.toString().split('/').last() }.sort()
-            assert sv_names == ['T1.esvee.data_sv.txt', 'T2.esvee.data_sv.txt']
+            assert sv_names == ['T1.purple_sv.data_sv.txt', 'T2.purple_sv.data_sv.txt']
 
             // Verify cBioPortal SV format: expected columns in header
-            def sv_t1_path = workflow.out.sv_out.collect { meta, f -> f }.find { it.toString().endsWith('T1.esvee.data_sv.txt') }
+            def sv_t1_path = workflow.out.sv_out.collect { meta, f -> f }.find { it.toString().endsWith('T1.purple_sv.data_sv.txt') }
             def header = path(sv_t1_path.toString()).readLines()[0]
             assert header.contains('Sample_Id')
             assert header.contains('SV_Status')
             assert header.contains('Site1_Hugo_Symbol')
             assert header.contains('NCBI_Build')
+            assert header.contains('HMF.PURPLE_JCN')
 
             snapshot(
                 workflow.out.sv_out.collect { meta, f -> path(f.toString()) }.sort { it.toString().split('/').last() }

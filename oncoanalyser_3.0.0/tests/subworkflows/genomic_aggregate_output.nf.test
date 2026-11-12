@@ -81,6 +81,17 @@ nextflow_workflow {
                 input[8] = Channel.empty()   // sigs_counts_dbs_results (DBS counts)
                 input[9] = Channel.empty()   // sigs_id_results (ID contribution)
                 input[10] = Channel.empty()  // sigs_counts_id_results (ID counts)
+                // Genomic sample attributes (TMB/HRD) — collectFile with skip:5 keeps one header
+                input[11] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1'],
+                        file('${projectDir}/assets/test_data/precomputed/T1.genomic_sample_attributes.tsv')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2'],
+                        file('${projectDir}/assets/test_data/precomputed/T2.genomic_sample_attributes.tsv')
+                    ]
+                )
                 """
             }
         }
@@ -104,6 +115,11 @@ nextflow_workflow {
             assert path("${params.outdir}/TEST/meta_cna_hg38.txt").exists()
             assert path("${params.outdir}/TEST/meta_cna_long.txt").exists()
             assert path("${params.outdir}/TEST/meta_sv.txt").exists()
+            // cBioPortal imports the HMF.PURPLE_* SV columns only when the namespace is declared
+            assert path("${params.outdir}/TEST/meta_sv.txt").readLines().contains('namespaces: HMF')
+            def sv_header = path("${params.outdir}/TEST/data_sv.txt").readLines()[0].split('\t') as List
+            assert sv_header.contains('HMF.PURPLE_JCN')
+            assert path("${params.outdir}/TEST/data_sv.txt").readLines().every { it.split('\t', -1).size() == sv_header.size() }
             assert path("${params.outdir}/TEST/meta_expression.txt").exists()
             assert path("${params.outdir}/TEST/meta_sequenced.txt").exists()
 
@@ -111,6 +127,20 @@ nextflow_workflow {
             def seg_lines = path("${params.outdir}/TEST/data_cna_hg38.seg").readLines()
             assert seg_lines.any { it.startsWith('T1') }
             assert seg_lines.any { it.startsWith('T2') }
+
+            // Genomic sample attributes: one 4-line '#' header + ID line, then a row per sample. Emitted
+            // for GENOMIC/CLINICAL to place; not a study file (cBioPortal allows one SAMPLE_ATTRIBUTES file).
+            assert workflow.out.sample_attributes.size() == 1
+            assert workflow.out.sample_attributes[0][0] == 'TEST'
+            def attrs = path(workflow.out.sample_attributes[0][1].toString()).readLines()
+            assert attrs.take(4).every { it.startsWith('#') }
+            assert attrs[4] == 'PATIENT_ID\tSAMPLE_ID\tTMB_PER_MB\tTMB_STATUS\tTML\tTML_STATUS\tHRD_SCORE\tHR_STATUS\tHRD_TYPE'
+            assert attrs.drop(5).sort() == [  // sort: 'deep' orders by content, not sample
+                'T1\tT1\t12.5\tHIGH\t312\tHIGH\t0.83\tHR_deficient\tBRCA2_type',
+                'T2\tT2\t2.1\tLOW\t45\tLOW\tNA\tNA\tNA',
+            ]
+            assert !path("${params.outdir}/TEST/data_clinical_sample.txt").exists()
+            assert !path("${params.outdir}/TEST/meta_clinical_sample.txt").exists()
 
             // Verify case list format
             def cnv_case_list = path("${params.outdir}/TEST/case_lists/cases_cnv.txt").readLines()

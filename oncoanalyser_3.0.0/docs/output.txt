@@ -16,7 +16,7 @@ PER-SUBJECT FILES
   --------------------------------------------------  ----------------------------
   <sample>_data_cna_hg38.seg                          Copy-number segments (SEG).
   <sample>_data_cna_long.txt                          Gene-level discrete CNAs.
-  <sample>.data_sv.txt                                DNA structural variants.
+  <sample>.data_sv.txt                                DNA SVs (PURPLE) + RNA fusions.
   <sample>.isofox_fusion.data_sv.txt                  RNA gene fusions (Isofox).
   <sample>.tpm.tsv                                    Gene expression in TPM.
   <subject>.somatic_rna_germline.maf                  Merged mutation file (MAF).
@@ -50,6 +50,44 @@ PER-GROUP AGGREGATED FILES
     data_mutational_signatures_counts_DBS.txt          (same)
     data_mutational_signatures_contribution_ID.txt     (same)
     data_mutational_signatures_counts_ID.txt           (same)
+    data_clinical_sample.txt (genomic mode only)       CLINICAL/SAMPLE_ATTRIBUTES
+
+  TMB/TML and HRD sample attributes. cBioPortal accepts one
+  SAMPLE_ATTRIBUTES file per study, so they always live in
+  data_clinical_sample.txt: in genomic mode it holds only PATIENT_ID,
+  SAMPLE_ID and these columns; in both mode they are joined onto the
+  clinical sample file by SAMPLE_ID (NA for a clinical sample without
+  genomic data). Every samplesheet subject is covered, cached ones
+  included (re-read every run):
+
+    Column       Source                                      Type
+    -----------  ------------------------------------------  ------
+    TMB_PER_MB   purple/<subject>-T.purple.purity.tsv tmbPerMb  NUMBER
+    TMB_STATUS   purity.tsv tmbStatus (HIGH/LOW/UNKNOWN)     STRING
+    TML          purity.tsv tml                              NUMBER
+    TML_STATUS   purity.tsv tmlStatus (HIGH/LOW/UNKNOWN)     STRING
+    HRD_SCORE    chord/<subject>-T.chord.prediction.tsv hrd  NUMBER
+                 (or p_hrd)
+    HR_STATUS    chord prediction hr_status                  STRING
+    HRD_TYPE     chord prediction hrd_type                   STRING
+
+  A missing purity or CHORD file gives NA for its columns (with a warning);
+  a file without the expected columns fails the run. A clinical-mode run
+  written into the same <outdir>/<study_id>/ afterwards replaces a
+  genomic-mode data_clinical_sample.txt, and with it these columns; use
+  --mode both to keep them.
+
+  The MAF's HMF.* columns include PURPLE's per-variant fields: HMF.PURPLE_AF,
+  HMF.PURPLE_CN, HMF.PURPLE_VCN, HMF.PURPLE_MACN, HMF.BIALLELIC (1 = set),
+  HMF.SUBCL (somatic rows only; germline rows leave them empty).
+
+  data_sv.txt DNA rows come from purple/<subject>-T.purple.sv.vcf.gz (PASS
+  breakend pairs with a gene at both sites). Tumor_Variant_Count,
+  Tumor_Split_Read_Count and Tumor_Paired_End_Read_Count are the tumour's
+  VF, SF and DF. PURPLE's purity-adjusted values are in HMF.* columns
+  (meta_sv.txt declares namespaces: HMF): HMF.PURPLE_JCN (junction copy
+  number) and, per breakend, HMF.PURPLE_AF_SITE1/2, HMF.PURPLE_CN_SITE1/2,
+  HMF.PURPLE_CN_CHANGE_SITE1/2. RNA fusion rows leave them NA.
 
   Meta files:
 
@@ -62,7 +100,8 @@ PER-GROUP AGGREGATED FILES
     meta_mutational_signatures_contribution_DBS.txt,
     meta_mutational_signatures_counts_DBS.txt,
     meta_mutational_signatures_contribution_ID.txt,
-    meta_mutational_signatures_counts_ID.txt
+    meta_mutational_signatures_counts_ID.txt,
+    meta_clinical_sample.txt (genomic mode only)
 
   Case lists (in <outdir>/<group>/case_lists/):
 

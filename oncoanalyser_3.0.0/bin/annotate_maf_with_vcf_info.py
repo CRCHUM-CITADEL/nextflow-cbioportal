@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Carry SAGE/PAVE INFO annotations from the source VCF into a mafsmith MAF.
+"""Carry SAGE/PAVE/PURPLE INFO annotations from the source VCF into a mafsmith MAF.
 
 mafsmith's `--retain-ann` only reads CSQ subfields, so every plain INFO field the
-caller wrote -- including PAVE's gnomAD frequency (GND_FREQ) and SAGE's TIER -- is
+caller wrote -- including PAVE's gnomAD frequency (GND_FREQ), SAGE's TIER and PURPLE's
+purity-adjusted copy number fields -- is
 dropped on the floor. This joins them back on the MAF's own coordinate convention.
 
 The join key is (Chromosome, Start_Position, Reference_Allele, Tumor_Seq_Allele2)
@@ -33,6 +34,12 @@ INFO_FIELDS = [
     ("TNC", "TNC"),
     ("REP_C", "REP_C"),
     ("MH", "MH"),
+    ("PURPLE_AF", "PURPLE_AF"),
+    ("PURPLE_CN", "PURPLE_CN"),
+    ("PURPLE_VCN", "PURPLE_VCN"),
+    ("PURPLE_MACN", "PURPLE_MACN"),
+    ("BIALLELIC", "BIALLELIC"),
+    ("SUBCL", "SUBCL"),
 ]
 
 

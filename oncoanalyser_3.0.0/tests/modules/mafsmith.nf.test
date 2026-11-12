@@ -6,7 +6,7 @@ nextflow_process {
     tag "module"
     tag "mafsmith"
 
-    // PAVE somatic VCFs list the normal column first and the tumor second. mafsmith,
+    // PURPLE somatic VCFs list the normal column first and the tumor second. mafsmith,
     // unlike vcf2maf.pl, does not take the VCF column from --tumor-id: without
     // --vcf-tumor-id it treats the FIRST column as the tumor, so t_* came from the
     // normal (t_alt_count 0) and cBioPortal, which derives allele frequency from
@@ -22,10 +22,11 @@ nextflow_process {
                 """
                 input[0] = Channel.of([
                     [group: 'TEST', subject: 'T1', sample: 'T1'],
-                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/somatic/T1-T.pave.somatic.vcf.gz')
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.somatic.vcf.gz')
                 ])
                 // --skip-annotation: the bundle is never read, only symlinked in
                 input[1] = file('${projectDir}/assets/test_data/clinical')
+                input[2] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
                 """
             }
         }

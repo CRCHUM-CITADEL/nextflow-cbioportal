@@ -41,12 +41,21 @@ nextflow_pipeline {
                     )
                 }
             }
+
+            // Absolute folders: GENOMIC_SAMPLE_ATTRIBUTES reads PURPLE/CHORD even for cached subjects,
+            // and the checked-in samplesheet's relative paths don't resolve under nf-test.
+            new File("${outputDir}/../both_samplesheet.csv").text = """\
+group,subject_id,sample_id,folder
+TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
+TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
+"""
         }
 
         when {
             params {
                 mode = 'both'
                 outdir = "$outputDir"
+                genomic_samplesheet = "${outputDir}/../both_samplesheet.csv"
                 // ML left off for now: FORMAT_ML_CNV is process_high_memory. Coverage stays in tests/subworkflows/genomic_ml.nf.test.
             }
         }
@@ -94,9 +103,21 @@ nextflow_pipeline {
                 'data_mutational_signatures_counts_ID.txt',
             ]
 
+            // TMB/HRD joined onto data_clinical_sample.txt: T1 has purity + CHORD, T2 purity only
+            def attr_cols = ['TMB_PER_MB', 'TMB_STATUS', 'TML', 'TML_STATUS', 'HRD_SCORE', 'HR_STATUS', 'HRD_TYPE']
+            def attrs_by_sample = data_rows.collectEntries { row ->
+                def v = row.split('\t', -1)
+                [(v[sample_cols.indexOf('SAMPLE_ID')]): attr_cols.collect { v[sample_cols.indexOf(it)] }]
+            }
+
             assertAll(
                 { assert workflow.success },
                 { assert linking_subjects == ['T1', 'T2'] : "Linking file should contain T1 and T2, got: ${linking_subjects}" },
+                { assert sample_cols.containsAll(attr_cols) : "TMB/HRD columns missing from data_clinical_sample.txt: ${sample_cols}" },
+                { assert attrs_by_sample == ['T1-1DT': ['12.5', 'HIGH', '312', 'HIGH', '0.83', 'HR_deficient', 'BRCA2_type'],
+                                             'T2-T'  : ['2.1', 'LOW', '45', 'LOW', 'NA', 'NA', 'NA']] : "Unexpected sample attributes: ${attrs_by_sample}" },
+                // cBioPortal allows one SAMPLE_ATTRIBUTES file per study
+                { assert path("${params.outdir}/TEST").list().collect { it.fileName.toString() }.findAll { it.startsWith('meta_clinical_sample') } == ['meta_clinical_sample.txt'] },
                 { assert data_rows.size() == 2 : "Expected 2 sample rows (T1-1DT, T2-T), got ${data_rows.size()}" },
                 { assert data_rows.count { it.startsWith('T1') } == 1 : "Expected 1 T1 row (deduped tumour)" },
                 { assert data_rows.count { it.startsWith('T2') } == 1 : "Expected 1 T2 row" },
@@ -144,7 +165,7 @@ nextflow_pipeline {
                 def dir = new File("${outputDir}/TEST/${subject}")
                 dir.mkdirs()
                 new File(precomputed).listFiles()
-                    .findAll { it.name.startsWith("${sample}") && !it.name.contains('isofox_fusion') }
+                    .findAll { it.name.startsWith("${sample}") }
                     .each { f ->
                         java.nio.file.Files.copy(f.toPath(), new File(dir, f.name).toPath(),
                             java.nio.file.StandardCopyOption.REPLACE_EXISTING)
@@ -168,6 +189,64 @@ nextflow_pipeline {
                 { assert !path("${params.outdir}/TEST/machine_learning").exists() : "machine_learning/ was created without --run_ml" },
                 { assert path("${params.outdir}/TEST/data_mutations_dna_rna_germline.txt").exists() },
                 { assert path("${params.outdir}/TEST.tar.gz").exists() },
+            )
+        }
+    }
+
+    // No clinical samplesheet: the template sample file is built from GENOMIC's linking file
+    // (it used to be parsed as sample_registrations.csv, matched nothing, and no file was written).
+    test("both mode — no clinical samplesheet, template sample file from the linking file") {
+
+        config "tests/nextflow_both.config"
+
+        setup {
+            def precomputed = "${projectDir}/assets/test_data/precomputed"
+            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
+                def dir = new File("${outputDir}/TEST/${subject}")
+                dir.mkdirs()
+                new File(precomputed).listFiles()
+                    .findAll { it.name.startsWith("${sample}") }
+                    .each { f ->
+                        java.nio.file.Files.copy(f.toPath(), new File(dir, f.name).toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    }
+            }
+            new File("${outputDir}/../both_samplesheet.csv").text = """\
+group,subject_id,sample_id,folder
+TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
+TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
+"""
+        }
+
+        when {
+            params {
+                mode = 'both'
+                outdir = "$outputDir"
+                genomic_samplesheet = "${outputDir}/../both_samplesheet.csv"
+                clinical_samplesheet = null
+            }
+        }
+
+        then {
+            def tasks = workflow.trace.succeeded().collect { it.name }
+            def sample_file = path("${params.outdir}/TEST/data_clinical_sample.txt")
+            def lines = sample_file.exists() ? sample_file.readLines() : []
+            def cols  = lines ? lines[4].split('\t') as List : []
+            def rows  = lines.drop(5).collect { [cols, it.split('\t', -1) as List].transpose().collectEntries() }
+            def tar_entries = ["tar", "-tzf", "${params.outdir}/TEST.tar.gz"].execute().text.readLines()
+                .collect { it.split('/').last() }
+
+            assertAll(
+                { assert workflow.success },
+                { assert tasks.any { it.contains('GENERATE_CLINICAL_TEMPLATE') } : "template step never ran: ${tasks}" },
+                { assert sample_file.exists() : "data_clinical_sample.txt was not written" },
+                { assert rows.collect { [it.PATIENT_ID, it.SAMPLE_ID, it.SAMPLE_TYPE] } ==
+                         [['T1', 'T1-1DT', 'Primary'], ['T2', 'T2-T', 'Primary']] : "Unexpected rows: ${rows}" },
+                // TMB/HRD joined onto the template rows too
+                { assert rows.collect { [it.SAMPLE_ID, it.TMB_PER_MB, it.HR_STATUS] } ==
+                         [['T1-1DT', '12.5', 'HR_deficient'], ['T2-T', '2.1', 'NA']] },
+                { assert lines.take(4).every { it.startsWith('#') && it.split('\t').size() == cols.size() } },
+                { assert tar_entries.containsAll(['data_clinical_sample.txt', 'meta_clinical_sample.txt']) },
             )
         }
     }

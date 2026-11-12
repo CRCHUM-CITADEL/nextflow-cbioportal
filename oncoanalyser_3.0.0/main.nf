@@ -108,6 +108,7 @@ workflow {
             PIPELINE_INITIALISATION.out.clinical_samplesheet,
             params.sample_registrations,
             ch_genomic_subjects,
+            Channel.value([]),
         )
     }
 
@@ -122,10 +123,16 @@ workflow {
             .map { group, f -> f.toString() }
             .first()
 
+        // Merged TMB/HRD sample attributes, joined onto data_clinical_sample.txt by CLINICAL ([] if none)
+        ch_genomic_attributes = GENOMIC.out.sample_attributes
+            .map { group, f -> f }
+            .toList()
+            .map { files -> files ? files[0] : [] }
         CLINICAL(
             PIPELINE_INITIALISATION.out.clinical_samplesheet,
             ch_linking_file,
             ch_genomic_subjects,
+            ch_genomic_attributes,
         )
     }
 

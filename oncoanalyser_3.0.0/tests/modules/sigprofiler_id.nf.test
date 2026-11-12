@@ -17,11 +17,11 @@ nextflow_process {
                 input[0] = Channel.of(
                     [
                         [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sigs_id'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/pave/somatic/T1-T.pave.somatic.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.somatic.vcf.gz')
                     ],
                     [
                         [group: 'TEST', subject: 'T2', sample: 'T2', pipeline: 'sigs_id'],
-                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/pave/somatic/T2-T.pave.somatic.vcf.gz')
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple/T2-T.purple.somatic.vcf.gz')
                     ]
                 )
                 input[1] = file('${projectDir}/assets/test_data/resources/genomic/cosmic_mutational_signatures/COSMIC_Human_ID-83_GRCh38_v3.6.csv')

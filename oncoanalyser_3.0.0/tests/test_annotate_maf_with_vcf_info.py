@@ -154,6 +154,28 @@ def test_flag_info_field_reads_as_present(tmp_path):
     assert rows[0]["HMF.MSG"] == "1"
 
 
+def test_purple_fields_are_annotated(tmp_path):
+    # PURPLE somatic VCF fields, incl. the BIALLELIC flag; an absent flag stays blank.
+    res, out = annotate(
+        tmp_path,
+        [("chr1", 100, "A", "G",
+          "TIER=PANEL;PURPLE_AF=0.42;PURPLE_CN=3.1;PURPLE_VCN=1.3;PURPLE_MACN=0.9;BIALLELIC;SUBCL=0.05"),
+         ("chr1", 200, "C", "T", "PURPLE_AF=0.2;PURPLE_VCN=0.4")],
+        [("GENE", "1", 100, "A", "G"), ("GENE", "1", 200, "C", "T")],
+    )
+    assert res.returncode == 0, res.stderr
+    header, rows = read_maf(out)
+    assert rows[0]["HMF.PURPLE_AF"] == "0.42"
+    assert rows[0]["HMF.PURPLE_CN"] == "3.1"
+    assert rows[0]["HMF.PURPLE_VCN"] == "1.3"
+    assert rows[0]["HMF.PURPLE_MACN"] == "0.9"
+    assert rows[0]["HMF.BIALLELIC"] == "1"
+    assert rows[0]["HMF.SUBCL"] == "0.05"
+    assert rows[1]["HMF.BIALLELIC"] == ""
+    assert header[-6:] == ["HMF.PURPLE_AF", "HMF.PURPLE_CN", "HMF.PURPLE_VCN",
+                           "HMF.PURPLE_MACN", "HMF.BIALLELIC", "HMF.SUBCL"]
+
+
 # ── Failure modes ─────────────────────────────────────────────────────────────
 
 def test_zero_matches_is_a_hard_error(tmp_path):

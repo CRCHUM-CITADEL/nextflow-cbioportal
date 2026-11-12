@@ -28,7 +28,7 @@ process GENOMIC_SAMPLE_ATTRIBUTES {
     stub:
     """
     {
-        printf '#Patient Identifier\\tSample Identifier\\tTMB per Mb (PURPLE)\\tTMB Status (PURPLE)\\tTML (PURPLE)\\tTML Status (PURPLE)\\tHRD Score (CHORD)\\tHR Status (CHORD)\\tHRD Type (CHORD)\\n'
+        printf '#Patient Identifier\\tSample Identifier\\tTMB per Mb\\tTMB Status\\tTML\\tTML Status\\tHRD Score\\tHR Status\\tHRD Type\\n'
         printf '#stub\\tstub\\tstub\\tstub\\tstub\\tstub\\tstub\\tstub\\tstub\\n'
         printf '#STRING\\tSTRING\\tNUMBER\\tSTRING\\tNUMBER\\tSTRING\\tNUMBER\\tSTRING\\tSTRING\\n'
         printf '#1\\t1\\t1\\t1\\t1\\t1\\t1\\t1\\t1\\n'

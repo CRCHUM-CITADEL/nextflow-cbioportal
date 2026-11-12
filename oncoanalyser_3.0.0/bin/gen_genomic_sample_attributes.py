@@ -17,14 +17,14 @@ import sys
 COLUMNS = [
     ("PATIENT_ID", "Patient Identifier", "Identifier to uniquely specify a patient.", "STRING"),
     ("SAMPLE_ID", "Sample Identifier", "A unique sample identifier.", "STRING"),
-    ("TMB_PER_MB", "TMB per Mb (PURPLE)",
-     "Tumour mutational burden: passing variants per Mb (PURPLE tmbPerMb).", "NUMBER"),
-    ("TMB_STATUS", "TMB Status (PURPLE)", "PURPLE TMB status: HIGH (> 10 per Mb), LOW or UNKNOWN.", "STRING"),
-    ("TML", "TML (PURPLE)", "Tumour mutational load: missense variants (PURPLE tml).", "NUMBER"),
-    ("TML_STATUS", "TML Status (PURPLE)", "PURPLE TML status: HIGH, LOW or UNKNOWN.", "STRING"),
-    ("HRD_SCORE", "HRD Score (CHORD)", "CHORD probability of homologous recombination deficiency.", "NUMBER"),
-    ("HR_STATUS", "HR Status (CHORD)", "CHORD homologous recombination status.", "STRING"),
-    ("HRD_TYPE", "HRD Type (CHORD)", "CHORD HRD type: BRCA1_type, BRCA2_type or none.", "STRING"),
+    ("TMB_PER_MB", "TMB per Mb",
+     "Tumour mutational burden: passing variants per Mb.", "NUMBER"),
+    ("TMB_STATUS", "TMB Status", "TMB status: HIGH (> 10 per Mb), LOW or UNKNOWN.", "STRING"),
+    ("TML", "TML", "Tumour mutational load: missense variants.", "NUMBER"),
+    ("TML_STATUS", "TML Status", "TML status: HIGH, LOW or UNKNOWN.", "STRING"),
+    ("HRD_SCORE", "HRD Score", "Probability of homologous recombination deficiency.", "NUMBER"),
+    ("HR_STATUS", "HR Status", "Homologous recombination status.", "STRING"),
+    ("HRD_TYPE", "HRD Type", "HRD type: BRCA1_type, BRCA2_type or none.", "STRING"),
 ]
 
 # cBioPortal ID -> candidate source columns, first match wins

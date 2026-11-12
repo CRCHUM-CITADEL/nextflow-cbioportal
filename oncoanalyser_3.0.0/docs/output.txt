@@ -16,7 +16,7 @@ PER-SUBJECT FILES
   --------------------------------------------------  ----------------------------
   <sample>_data_cna_hg38.seg                          Copy-number segments (SEG).
   <sample>_data_cna_long.txt                          Gene-level discrete CNAs.
-  <sample>.data_sv.txt                                DNA structural variants.
+  <sample>.data_sv.txt                                DNA SVs (PURPLE) + RNA fusions.
   <sample>.isofox_fusion.data_sv.txt                  RNA gene fusions (Isofox).
   <sample>.tpm.tsv                                    Gene expression in TPM.
   <subject>.somatic_rna_germline.maf                  Merged mutation file (MAF).
@@ -80,6 +80,14 @@ PER-GROUP AGGREGATED FILES
   The MAF's HMF.* columns include PURPLE's per-variant fields: HMF.PURPLE_AF,
   HMF.PURPLE_CN, HMF.PURPLE_VCN, HMF.PURPLE_MACN, HMF.BIALLELIC (1 = set),
   HMF.SUBCL (somatic rows only; germline rows leave them empty).
+
+  data_sv.txt DNA rows come from purple/<subject>-T.purple.sv.vcf.gz (PASS
+  breakend pairs with a gene at both sites). Tumor_Variant_Count,
+  Tumor_Split_Read_Count and Tumor_Paired_End_Read_Count are the tumour's
+  VF, SF and DF. PURPLE's purity-adjusted values are in HMF.* columns
+  (meta_sv.txt declares namespaces: HMF): HMF.PURPLE_JCN (junction copy
+  number) and, per breakend, HMF.PURPLE_AF_SITE1/2, HMF.PURPLE_CN_SITE1/2,
+  HMF.PURPLE_CN_CHANGE_SITE1/2. RNA fusion rows leave them NA.
 
   Meta files:
 

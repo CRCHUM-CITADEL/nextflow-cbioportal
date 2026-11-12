@@ -68,8 +68,17 @@ rejected (converters `stop()` without the 3.0 columns).
 ## SV / CNA / ML
 
 - `data_sv.txt` needs Hugo symbols at both sites — unannotated rows are dropped
-- ESVEE (`gen_esvee_sv_to_cbioportal.R`): BND strand `(+,-)` DEL, `(-,+)` DUP, `(+,+)/(-,-)` INV, other
-  chr TRANSLOC; `DNA_Support=Yes, RNA_Support=No`. Isofox fusions: `Class=FUSION, DNA_Support=No, RNA_Support=Yes`
+- DNA SVs come from `purple/<subject>-T.purple.sv.vcf.gz` (`gen_purple_sv_to_cbioportal.R`), not `esvee/`. PURPLE
+  keeps every input record and adds `INFERRED` breakends and `TINC_RECOVERED` SVs; we keep `PASS` BNDs with a mate.
+  The tumour column is the one named `<subject>-T` (column order is undocumented). Counts: `VF` → `Tumor_Variant_Count`,
+  `SF` → split, `DF` → paired-end (ESVEE writes no `BVF`/`SR`/`PR`)
+- BND strand: `(+,-)` DEL, `(-,+)` DUP, `(+,+)/(-,-)` INV, other chr TRANSLOC. The ALT-bracket regex needs
+  `perl = TRUE` (in POSIX `\\[` inside `[]` is a literal backslash: every SV was INV). `DNA_Support=Yes, RNA_Support=No`.
+  Isofox fusions: `Class=FUSION, DNA_Support=No, RNA_Support=Yes`
+- `PURPLE_AF/CN/CN_CHANGE` are `[this breakend, mate]` on every record (PURPLE reverses the mate's), so each site
+  takes element 1 of its own record → `HMF.PURPLE_{AF,CN,CN_CHANGE}_SITE{1,2}`, plus `HMF.PURPLE_JCN`. Every SV
+  writer (Isofox too, as `NA`) emits all 7, or `MERGE_SAMPLE_SV` / the group `collectFile` go ragged.
+  `meta_sv.txt` declares `namespaces: HMF`
 - Isofox 3.0 `pass_fusions.tsv`: `Name` = `<up>_<down>` (split on first `_`); `Tumor_Variant_Count` =
   `SplitFrags + RealignedFrags + DiscordantFrags`. `Site1/2_Region`: transcript + exon → `Exon`, gene
   without exon ref → `Intron`, no gene → `NA` (UTR/Promoter not derivable)
@@ -156,9 +165,10 @@ rejected (converters `stop()` without the 3.0 columns).
   `both` mode the archive mirrors the loadable study. Its md5 isn't reproducible (`*.tar.gz` in
   `tests/.nftignore`) — assert on contents
 - `bin/combine_cbioportal_outputs.py` (standalone) merges two study folders/archives per file category
-  (row-append, MAF 2-line header, wide matrix, timeline/clinical column union, `meta_*`/case lists by
+  (row-append, MAF 2-line header, wide matrix, timeline/clinical/SV column union, `meta_*`/case lists by
   glob). Not `machine_learning/` (cohort-normalised). Unhandled files are reported (`--strict` fails);
   overlapping sample IDs are an error. New outputs → its dispatch table + `tests/test_combine_cbioportal_outputs.py`
+- Clinical/genomic column labels and descriptions never name the tool (no "(PURPLE)", "(CHORD)")
 - TMB/HRD sample attributes: `TMB_PER_MB, TMB_STATUS, TML, TML_STATUS` from `purple.purity.tsv`,
   `HRD_SCORE` (`hrd`, else `p_hrd`), `HR_STATUS, HRD_TYPE` from `chord/<subject>-T.chord.prediction.tsv`.
   Columns by name; missing file → `NA`, missing column → fail. `bin/gen_genomic_sample_attributes.py` owns

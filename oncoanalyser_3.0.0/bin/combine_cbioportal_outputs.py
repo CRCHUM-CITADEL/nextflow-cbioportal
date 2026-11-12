@@ -5,13 +5,13 @@ Inputs and output can be directories or .tar.gz archives containing the
 same cBioPortal folder structure.  Archives are auto-extracted/created.
 
 Handled content:
-    row-append          data_cna_hg38.seg, data_cna_long.txt, data_sv.txt,
-                        util_linking_file.txt
+    row-append          data_cna_hg38.seg, data_cna_long.txt, util_linking_file.txt
     MAF (2-line header) data_mutations_dna_rna_germline.txt
     wide matrices       data_expression.txt,
                         data_mutational_signatures_{contribution,counts}_{SBS,DBS,ID}.txt
     union-append        data_timeline.txt (column set varies with the event
-                        types present in each batch)
+                        types present in each batch), data_sv.txt (a batch
+                        from before the HMF.PURPLE_* columns is narrower)
     clinical            data_clinical_sample.txt, data_clinical_patient.txt
                         (4 '#' metadata rows + column header; column sets may
                         differ between batches and are unioned)
@@ -62,7 +62,6 @@ import tempfile
 ROW_APPEND_FILES = [
     ("data_cna_hg38.seg", 1),
     ("data_cna_long.txt", 1),
-    ("data_sv.txt", 1),
     ("util_linking_file.txt", 1),
 ]
 
@@ -81,8 +80,24 @@ WIDE_MATRIX_FILES = [
 # Long-format files whose column set depends on which record types a batch
 # contained.  gen_timeline.R writes the four common columns first, then the
 # union of the remaining columns sorted alphabetically.
+# data_sv.txt keeps gen_purple_sv_to_cbioportal.R's column order.
+SV_COLUMNS = [
+    "Sample_Id", "SV_Status",
+    "Site1_Hugo_Symbol", "Site1_Ensembl_Transcript_Id", "Site1_Region_Number", "Site1_Region",
+    "Site2_Hugo_Symbol", "Site2_Ensembl_Transcript_Id", "Site2_Region_Number", "Site2_Region",
+    "Site2_Effect_On_Frame", "NCBI_Build", "Class", "DNA_Support", "RNA_Support",
+    "Tumor_Variant_Count", "Connection_Type", "Breakpoint_Type", "Event_Info", "Annotation",
+    "Site1_Chromosome", "Site1_Position", "Site2_Chromosome", "Site2_Position",
+    "Tumor_Split_Read_Count", "Tumor_Paired_End_Read_Count",
+    "HMF.PURPLE_JCN",
+    "HMF.PURPLE_AF_SITE1", "HMF.PURPLE_AF_SITE2",
+    "HMF.PURPLE_CN_SITE1", "HMF.PURPLE_CN_SITE2",
+    "HMF.PURPLE_CN_CHANGE_SITE1", "HMF.PURPLE_CN_CHANGE_SITE2",
+]
+
 UNION_APPEND_FILES = [
     ("data_timeline.txt", ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"], ""),
+    ("data_sv.txt", SV_COLUMNS, "NA"),
 ]
 
 CLINICAL_FILES = [
@@ -782,7 +797,7 @@ def merge_folders(dir1, dir2, out_dir, study_id_override=None, strict=False):
             log(f"{action} {filename}")
             merge_wide_matrix(p1, p2, os.path.join(out_dir, filename), key_cols, fill)
 
-    # Union-append files (timeline)
+    # Union-append files (timeline, SV)
     for filename, leading_cols, fill in UNION_APPEND_FILES:
         handled_files.add(filename)
         p1 = resolve(dir1, filename)

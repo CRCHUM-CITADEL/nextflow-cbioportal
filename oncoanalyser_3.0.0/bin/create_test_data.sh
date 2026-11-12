@@ -107,26 +107,28 @@ purple_germline_header() {
 "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	$1-N	$1"
 }
 
-# BND VCF header for ESVEE SVs
-bnd_header_t1='##fileformat=VCFv4.1
-##FILTER=<ID=PASS,Description="All filters passed">
-##INFO=<ID=SVTYPE,Number=1,Type=String,Description="SV type">
-##INFO=<ID=MATEID,Number=.,Type=String,Description="ID of mate breakend">
-##FORMAT=<ID=BVF,Number=1,Type=Integer,Description="Breakend variant fragments">
-##FORMAT=<ID=VF,Number=1,Type=Integer,Description="Variant fragments">
-##contig=<ID=chr21,length=46709983>
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	T1
-'
-
-bnd_header_t2='##fileformat=VCFv4.1
-##FILTER=<ID=PASS,Description="All filters passed">
-##INFO=<ID=SVTYPE,Number=1,Type=String,Description="SV type">
-##INFO=<ID=MATEID,Number=.,Type=String,Description="ID of mate breakend">
-##FORMAT=<ID=BVF,Number=1,Type=Integer,Description="Breakend variant fragments">
-##FORMAT=<ID=VF,Number=1,Type=Integer,Description="Variant fragments">
-##contig=<ID=chr21,length=46709983>
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	T2
-'
+# PURPLE somatic SV VCF header: ESVEE's records + PURPLE's INFO, normal then tumour column
+purple_sv_header() {
+printf '%s\n' \
+'##fileformat=VCFv4.2' \
+'##FILTER=<ID=PASS,Description="All filters passed">' \
+'##FILTER=<ID=PON,Description="Found in panel of normals">' \
+'##FILTER=<ID=INFERRED,Description="Breakend inferred from copy number transition">' \
+'##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">' \
+'##INFO=<ID=MATEID,Number=1,Type=String,Description="Id of other breakend in junction">' \
+'##INFO=<ID=INFERRED,Number=0,Type=Flag,Description="Breakend inferred from copy number transition">' \
+'##INFO=<ID=TINC_RECOVERED,Number=0,Type=Flag,Description="Recovered from germline by tumor-in-normal contamination">' \
+'##INFO=<ID=PURPLE_AF,Number=.,Type=Float,Description="Purity adjusted allele frequency at each breakend">' \
+'##INFO=<ID=PURPLE_CN,Number=.,Type=Float,Description="Purity adjusted copy number at each breakend">' \
+'##INFO=<ID=PURPLE_CN_CHANGE,Number=.,Type=Float,Description="Purity adjusted change in copy number at each breakend">' \
+'##INFO=<ID=PURPLE_JCN,Number=1,Type=Float,Description="Purity adjusted junction copy number">' \
+'##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">' \
+'##FORMAT=<ID=DF,Number=1,Type=Integer,Description="Count of discordant fragments with a read either side of the breakend">' \
+'##FORMAT=<ID=SF,Number=1,Type=Integer,Description="Count of fragments supporting the breakend with a read overlapping the breakend">' \
+'##FORMAT=<ID=VF,Number=1,Type=Integer,Description="Total variant fragments supporting the breakend">' \
+'##contig=<ID=chr21,length=46709983>' \
+"#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	$1-N	$1-T"
+}
 
 echo ""
 echo "--- Creating T1 fixtures ---"
@@ -174,10 +176,19 @@ make_vcf "${BASE}/oncoanalyser_output/TEST/T1/sage_append/T1-T/T1-T.sage.append.
 "${snv_header_t1}chr21	41800000	.	C	T	60	PASS	DP=80	GT:AD:DP	0/0:40,0:40	0/1:30,25:55
 "
 
-# esvee BND VCF (T1) — one PASS BND pair
-make_vcf "${BASE}/oncoanalyser_output/TEST/T1/esvee/T1-T.esvee.unfiltered.vcf.gz" \
-"${bnd_header_t1}chr21	41800000	BND_T1_1	A	A[chr21:44300000[	.	PASS	SVTYPE=BND;MATEID=BND_T1_2	BVF:VF	3:5
-chr21	44300000	BND_T1_2	G	]chr21:41800000]G	.	PASS	SVTYPE=BND;MATEID=BND_T1_1	BVF:VF	3:5
+# PURPLE SV VCF (T1). PURPLE_AF/CN/CN_CHANGE are [this breakend, mate], so the mate's list is reversed.
+# Kept: the PRDM15-PFKL PASS pair and the TINC_RECOVERED SOD1-HUNK pair. Dropped: IFNAR1 INFERRED breakend,
+# SIK1 single breakend (no MATEID), COL6A1-COL6A2 PON pair. The normal's counts differ from the tumour's.
+make_vcf "${BASE}/oncoanalyser_output/TEST/T1/purple/T1-T.purple.sv.vcf.gz" \
+"$(purple_sv_header T1)
+chr21	31660000	SV_T1_3o	T	T]chr21:31900000]	800	PASS	SVTYPE=BND;MATEID=SV_T1_3h;TINC_RECOVERED;PURPLE_AF=0.12,0.15;PURPLE_CN=2.1,2.3;PURPLE_CN_CHANGE=0.3,0.35;PURPLE_JCN=0.32	GT:DF:SF:VF	./.:1:1:2	./.:2:3:5
+chr21	31900000	SV_T1_3h	C	C]chr21:31660000]	800	PASS	SVTYPE=BND;MATEID=SV_T1_3o;TINC_RECOVERED;PURPLE_AF=0.15,0.12;PURPLE_CN=2.3,2.1;PURPLE_CN_CHANGE=0.35,0.3;PURPLE_JCN=0.32	GT:DF:SF:VF	./.:1:1:2	./.:2:3:5
+chr21	33340000	purple_1	G	.G	.	INFERRED	SVTYPE=BND;INFERRED;PURPLE_AF=0.4;PURPLE_CN=3;PURPLE_CN_CHANGE=1	GT:DF:SF:VF	./.:0:0:0	./.:0:0:0
+chr21	41800000	SV_T1_1o	A	A[chr21:44300100[	1500	PASS	SVTYPE=BND;MATEID=SV_T1_1h;PURPLE_AF=0.31,0.27;PURPLE_CN=3.1,2.4;PURPLE_CN_CHANGE=0.9,0.7;PURPLE_JCN=0.95	GT:DF:SF:VF	./.:0:1:1	./.:5:3:8
+chr21	43420000	SV_T1_4	C	C.	300	PASS	SVTYPE=SGL;PURPLE_AF=0.2;PURPLE_CN=2;PURPLE_CN_CHANGE=0.4;PURPLE_JCN=0.4	GT:DF:SF:VF	./.:0:0:0	./.:0:4:4
+chr21	44300100	SV_T1_1h	G	]chr21:41800000]G	1500	PASS	SVTYPE=BND;MATEID=SV_T1_1o;PURPLE_AF=0.27,0.31;PURPLE_CN=2.4,3.1;PURPLE_CN_CHANGE=0.7,0.9;PURPLE_JCN=0.95	GT:DF:SF:VF	./.:0:1:1	./.:5:3:8
+chr21	45990000	SV_T1_2o	A	A[chr21:46100000[	400	PON	SVTYPE=BND;MATEID=SV_T1_2h;PURPLE_AF=0.1,0.1;PURPLE_CN=2,2;PURPLE_CN_CHANGE=0.2,0.2;PURPLE_JCN=0.2	GT:DF:SF:VF	./.:0:0:0	./.:2:2:4
+chr21	46100000	SV_T1_2h	G	]chr21:45990000]G	400	PON	SVTYPE=BND;MATEID=SV_T1_2o;PURPLE_AF=0.1,0.1;PURPLE_CN=2,2;PURPLE_CN_CHANGE=0.2,0.2;PURPLE_JCN=0.2	GT:DF:SF:VF	./.:0:0:0	./.:2:2:4
 "
 
 # PURPLE somatic CNV segments (T1)
@@ -262,10 +273,20 @@ make_vcf "${BASE}/oncoanalyser_output/TEST/T2/sage_append/T2-T/T2-T.sage.append.
 "${snv_header_t2}chr21	41800500	.	G	A	55	PASS	DP=70	GT:AD:DP	0/0:35,0:35	0/1:28,22:50
 "
 
-# esvee BND VCF (T2)
-make_vcf "${BASE}/oncoanalyser_output/TEST/T2/esvee/T2-T.esvee.unfiltered.vcf.gz" \
-"${bnd_header_t2}chr21	41800500	BND_T2_1	C	C[chr21:44300200[	.	PASS	SVTYPE=BND;MATEID=BND_T2_2	BVF:VF	4:6
-chr21	44300200	BND_T2_2	A	]chr21:41800500]A	.	PASS	SVTYPE=BND;MATEID=BND_T2_1	BVF:VF	4:6
+# PURPLE SV VCF (T2) — one PASS PRDM15-PFKL pair
+make_vcf "${BASE}/oncoanalyser_output/TEST/T2/purple/T2-T.purple.sv.vcf.gz" \
+"$(purple_sv_header T2)
+chr21	41800500	SV_T2_1o	C	C[chr21:44300200[	1200	PASS	SVTYPE=BND;MATEID=SV_T2_1h;PURPLE_AF=0.42,0.38;PURPLE_CN=2.8,2.2;PURPLE_CN_CHANGE=1.1,0.9;PURPLE_JCN=1.05	GT:DF:SF:VF	./.:0:0:0	./.:6:4:10
+chr21	44300200	SV_T2_1h	A	]chr21:41800500]A	1200	PASS	SVTYPE=BND;MATEID=SV_T2_1o;PURPLE_AF=0.38,0.42;PURPLE_CN=2.2,2.8;PURPLE_CN_CHANGE=0.9,1.1;PURPLE_JCN=1.05	GT:DF:SF:VF	./.:0:0:0	./.:6:4:10
+"
+
+# PURPLE SV VCF (T3) — two PRDM15-DNMT3L PASS pairs at the same coordinates (VF 8 and 21) for the dedupe test
+make_vcf "${BASE}/oncoanalyser_output/TEST/T3/purple/T3-T.purple.sv.vcf.gz" \
+"$(purple_sv_header T3)
+chr21	41850000	SV_T3_1a	A	A[chr21:44250000[	900	PASS	SVTYPE=BND;MATEID=SV_T3_2a;PURPLE_AF=0.2,0.2;PURPLE_CN=2,2;PURPLE_CN_CHANGE=0.4,0.4;PURPLE_JCN=0.4	GT:DF:SF:VF	./.:0:0:0	./.:5:3:8
+chr21	41850000	SV_T3_1b	A	A[chr21:44250000[	1900	PASS	SVTYPE=BND;MATEID=SV_T3_2b;PURPLE_AF=0.5,0.5;PURPLE_CN=2,2;PURPLE_CN_CHANGE=1,1;PURPLE_JCN=1	GT:DF:SF:VF	./.:0:0:0	./.:12:9:21
+chr21	44250000	SV_T3_2a	G	]chr21:41850000]G	900	PASS	SVTYPE=BND;MATEID=SV_T3_1a;PURPLE_AF=0.2,0.2;PURPLE_CN=2,2;PURPLE_CN_CHANGE=0.4,0.4;PURPLE_JCN=0.4	GT:DF:SF:VF	./.:0:0:0	./.:5:3:8
+chr21	44250000	SV_T3_2b	G	]chr21:41850000]G	1900	PASS	SVTYPE=BND;MATEID=SV_T3_1b;PURPLE_AF=0.5,0.5;PURPLE_CN=2,2;PURPLE_CN_CHANGE=1,1;PURPLE_JCN=1	GT:DF:SF:VF	./.:0:0:0	./.:12:9:21
 "
 
 # PURPLE somatic CNV segments (T2)
@@ -358,22 +379,22 @@ PFKL	100002	T2-T	2
 HUNK	100003	T2-T	-2
 EOF
 
-# SV files (output of ESVEE_SV_TO_CBIOPORTAL)
+# SV files (output of PURPLE_SV_TO_CBIOPORTAL + Isofox, merged)
 cat > "${BASE}/precomputed/T1.data_sv.txt" << 'EOF'
-Sample_Id	SV_Status	Site1_Hugo_Symbol	Site1_Ensembl_Transcript_Id	Site1_Region_Number	Site1_Region	Site2_Hugo_Symbol	Site2_Ensembl_Transcript_Id	Site2_Region_Number	Site2_Region	Site2_Effect_On_Frame	NCBI_Build	Class	DNA_Support	RNA_Support	Tumor_Variant_Count	Connection_Type	Breakpoint_Type	Event_Info	Annotation	Site1_Chromosome	Site1_Position	Site2_Chromosome	Site2_Position	Tumor_Split_Read_Count	Tumor_Paired_End_Read_Count
-T1	SOMATIC	PRDM15		.	.	PFKL		.	.		GRCh38	INVERSION	Yes	No	3	5to3	PRECISE	DNA SV: PRDM15--PFKL		21	41800000	21	44300000	3	5
+Sample_Id	SV_Status	Site1_Hugo_Symbol	Site1_Ensembl_Transcript_Id	Site1_Region_Number	Site1_Region	Site2_Hugo_Symbol	Site2_Ensembl_Transcript_Id	Site2_Region_Number	Site2_Region	Site2_Effect_On_Frame	NCBI_Build	Class	DNA_Support	RNA_Support	Tumor_Variant_Count	Connection_Type	Breakpoint_Type	Event_Info	Annotation	Site1_Chromosome	Site1_Position	Site2_Chromosome	Site2_Position	Tumor_Split_Read_Count	Tumor_Paired_End_Read_Count	HMF.PURPLE_JCN	HMF.PURPLE_AF_SITE1	HMF.PURPLE_AF_SITE2	HMF.PURPLE_CN_SITE1	HMF.PURPLE_CN_SITE2	HMF.PURPLE_CN_CHANGE_SITE1	HMF.PURPLE_CN_CHANGE_SITE2
+T1	SOMATIC	PRDM15		.	.	PFKL		.	.		GRCh38	INVERSION	Yes	No	3	5to3	PRECISE	DNA SV: PRDM15--PFKL		21	41800000	21	44300000	3	5	0.95	0.31	0.27	3.1	2.4	0.9	0.7
 EOF
 
 cat > "${BASE}/precomputed/T2.data_sv.txt" << 'EOF'
-Sample_Id	SV_Status	Site1_Hugo_Symbol	Site1_Ensembl_Transcript_Id	Site1_Region_Number	Site1_Region	Site2_Hugo_Symbol	Site2_Ensembl_Transcript_Id	Site2_Region_Number	Site2_Region	Site2_Effect_On_Frame	NCBI_Build	Class	DNA_Support	RNA_Support	Tumor_Variant_Count	Connection_Type	Breakpoint_Type	Event_Info	Annotation	Site1_Chromosome	Site1_Position	Site2_Chromosome	Site2_Position	Tumor_Split_Read_Count	Tumor_Paired_End_Read_Count
-T2	SOMATIC	PRDM15		.	.	PFKL		.	.		GRCh38	INVERSION	Yes	No	4	5to3	PRECISE	DNA SV: PRDM15--PFKL		21	41800500	21	44300200	4	6
+Sample_Id	SV_Status	Site1_Hugo_Symbol	Site1_Ensembl_Transcript_Id	Site1_Region_Number	Site1_Region	Site2_Hugo_Symbol	Site2_Ensembl_Transcript_Id	Site2_Region_Number	Site2_Region	Site2_Effect_On_Frame	NCBI_Build	Class	DNA_Support	RNA_Support	Tumor_Variant_Count	Connection_Type	Breakpoint_Type	Event_Info	Annotation	Site1_Chromosome	Site1_Position	Site2_Chromosome	Site2_Position	Tumor_Split_Read_Count	Tumor_Paired_End_Read_Count	HMF.PURPLE_JCN	HMF.PURPLE_AF_SITE1	HMF.PURPLE_AF_SITE2	HMF.PURPLE_CN_SITE1	HMF.PURPLE_CN_SITE2	HMF.PURPLE_CN_CHANGE_SITE1	HMF.PURPLE_CN_CHANGE_SITE2
+T2	SOMATIC	PRDM15		.	.	PFKL		.	.		GRCh38	INVERSION	Yes	No	4	5to3	PRECISE	DNA SV: PRDM15--PFKL		21	41800500	21	44300200	4	6	0.95	0.31	0.27	3.1	2.4	0.9	0.7
 EOF
 
 # Group-merged SV (used by FORMAT_PROCESS_ML_SV — named data_sv.txt)
 cat > "${BASE}/precomputed/data_sv.txt" << 'EOF'
-Sample_Id	SV_Status	Site1_Hugo_Symbol	Site1_Ensembl_Transcript_Id	Site1_Region_Number	Site1_Region	Site2_Hugo_Symbol	Site2_Ensembl_Transcript_Id	Site2_Region_Number	Site2_Region	Site2_Effect_On_Frame	NCBI_Build	Class	DNA_Support	RNA_Support	Tumor_Variant_Count	Connection_Type	Breakpoint_Type	Event_Info	Annotation	Site1_Chromosome	Site1_Position	Site2_Chromosome	Site2_Position	Tumor_Split_Read_Count	Tumor_Paired_End_Read_Count
-T1-1DT	SOMATIC	PRDM15	NA	NA	NA	PFKL	NA	NA	NA	NA	GRCh38	DELETION	Yes	No	3	5to3	PRECISE	DNA WGS Fusion: PRDM15--PFKL	NA	21	41800000	21	44300000	3	5
-T2-T	SOMATIC	PRDM15	NA	NA	NA	PFKL	NA	NA	NA	NA	GRCh38	DELETION	Yes	No	4	5to3	PRECISE	DNA WGS Fusion: PRDM15--PFKL	NA	21	41800500	21	44300200	4	6
+Sample_Id	SV_Status	Site1_Hugo_Symbol	Site1_Ensembl_Transcript_Id	Site1_Region_Number	Site1_Region	Site2_Hugo_Symbol	Site2_Ensembl_Transcript_Id	Site2_Region_Number	Site2_Region	Site2_Effect_On_Frame	NCBI_Build	Class	DNA_Support	RNA_Support	Tumor_Variant_Count	Connection_Type	Breakpoint_Type	Event_Info	Annotation	Site1_Chromosome	Site1_Position	Site2_Chromosome	Site2_Position	Tumor_Split_Read_Count	Tumor_Paired_End_Read_Count	HMF.PURPLE_JCN	HMF.PURPLE_AF_SITE1	HMF.PURPLE_AF_SITE2	HMF.PURPLE_CN_SITE1	HMF.PURPLE_CN_SITE2	HMF.PURPLE_CN_CHANGE_SITE1	HMF.PURPLE_CN_CHANGE_SITE2
+T1-1DT	SOMATIC	PRDM15	NA	NA	NA	PFKL	NA	NA	NA	NA	GRCh38	DELETION	Yes	No	3	5to3	PRECISE	DNA WGS Fusion: PRDM15--PFKL	NA	21	41800000	21	44300000	3	5	0.95	0.31	0.27	3.1	2.4	0.9	0.7
+T2-T	SOMATIC	PRDM15	NA	NA	NA	PFKL	NA	NA	NA	NA	GRCh38	DELETION	Yes	No	4	5to3	PRECISE	DNA WGS Fusion: PRDM15--PFKL	NA	21	41800500	21	44300200	4	6	0.95	0.31	0.27	3.1	2.4	0.9	0.7
 EOF
 
 # TPM files (output of ISOFOX_EXPRESSION_TO_CBIOPORTAL — per-sample TPM)

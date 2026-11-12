@@ -32,7 +32,7 @@ Genomic mode processing steps:
   ---------------------------  ---------------------------  ----------------------------
   Copy-number variants         PURPLE somatic + gene TSVs   data_cna_hg38.seg,
                                                             data_cna_long.txt
-  Structural variants (DNA)    ESVEE somatic VCF            data_sv.txt (DNA rows)
+  Structural variants (DNA)    PURPLE somatic SV VCF        data_sv.txt (DNA rows)
   RNA fusions                  Isofox pass_fusions TSV      data_sv.txt (RNA rows)
   Gene expression              Isofox gene_data TSV         data_expression.txt
   Mutations                    PURPLE somatic/germline +    data_mutations_dna_rna_
@@ -135,11 +135,10 @@ GENOMIC SAMPLESHEET
     |-- sage_append/
     |   +-- <subject_id>-T/
     |       +-- <subject_id>-T.sage.append.vcf.gz      RNA-supported somatic
-    |-- esvee/
-    |   +-- <subject_id>-T.esvee.somatic.vcf.gz        Somatic structural variants
     |-- purple/
     |   |-- <subject_id>-T.purple.somatic.vcf.gz       Somatic DNA mutations
     |   |-- <subject_id>-T.purple.germline.vcf.gz      Germline DNA mutations
+    |   |-- <subject_id>-T.purple.sv.vcf.gz            Somatic structural variants
     |   |-- <subject_id>-T.purple.cnv.somatic.tsv      Somatic CN segments
     |   |-- <subject_id>-T.purple.cnv.gene.tsv         Gene-level copy numbers
     |   +-- <subject_id>-T.purple.purity.tsv           Sex (chrX/chrY), TMB/TML

@@ -2,14 +2,14 @@
     "Two subjects \u2014 SV data_sv.txt files are produced": {
         "content": [
             [
-                "T1.esvee.data_sv.txt:md5,160e2cfebb0b949e1c63b8d9aa807a15",
-                "T2.esvee.data_sv.txt:md5,24f907b9f745fb9b0eccda9ac852aaf6"
+                "T1.purple_sv.data_sv.txt:md5,f23d7630e1ad7f05afa6d61322b6ba86",
+                "T2.purple_sv.data_sv.txt:md5,0edd4c5776162c4805478de980831fa3"
             ]
         ],
-        "timestamp": "2026-07-21T16:12:22.664290494",
+        "timestamp": "2026-11-12T09:27:22.47477166",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "25.10.4"
+            "nextflow": "26.04.4"
         }
     }
 }

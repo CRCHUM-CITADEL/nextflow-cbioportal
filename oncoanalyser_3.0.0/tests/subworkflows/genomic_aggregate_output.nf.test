@@ -115,6 +115,11 @@ nextflow_workflow {
             assert path("${params.outdir}/TEST/meta_cna_hg38.txt").exists()
             assert path("${params.outdir}/TEST/meta_cna_long.txt").exists()
             assert path("${params.outdir}/TEST/meta_sv.txt").exists()
+            // cBioPortal imports the HMF.PURPLE_* SV columns only when the namespace is declared
+            assert path("${params.outdir}/TEST/meta_sv.txt").readLines().contains('namespaces: HMF')
+            def sv_header = path("${params.outdir}/TEST/data_sv.txt").readLines()[0].split('\t') as List
+            assert sv_header.contains('HMF.PURPLE_JCN')
+            assert path("${params.outdir}/TEST/data_sv.txt").readLines().every { it.split('\t', -1).size() == sv_header.size() }
             assert path("${params.outdir}/TEST/meta_expression.txt").exists()
             assert path("${params.outdir}/TEST/meta_sequenced.txt").exists()
 

@@ -283,6 +283,7 @@ show_profile_in_analysis_tab: true
 profile_name: Structural variants from DNA
 profile_description: Structural Variant Data DNA
 data_filename: data_sv.txt
+namespaces: HMF
             """
 
             meta_text_expression = """cancer_study_identifier: add_text

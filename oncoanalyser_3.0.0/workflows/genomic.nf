@@ -125,7 +125,7 @@ workflow GENOMIC {
 
     take:
         samplesheet_list        // from nf-schema — one record per samplesheet row
-        ensembl_annotations     // path — BioMart TSV for CNV/MAF gene mapping + ESVEE gene overlap
+        ensembl_annotations     // path — BioMart TSV for CNV/MAF gene mapping + SV gene overlap
         vep_data                // channel<path> — pre-staged VEP cache (may be empty)
         pcgr_data               // channel<path> — pre-staged PCGR reference data (may be empty)
         mafsmith_data           // channel<path> — pre-staged mafsmith home (may be empty)
@@ -220,7 +220,7 @@ workflow GENOMIC {
         //   purple/${subject}-T.purple.somatic.vcf.gz              — PURPLE somatic DNA (PAVE-annotated)
         //   purple/${subject}-T.purple.germline.vcf.gz             — PURPLE germline DNA
         //   sage_append/${subject}-T/${subject}-T.sage.append.vcf.gz — SAGE somatic RNA append
-        //   esvee/${subject}-T.esvee.somatic.vcf.gz
+        //   purple/${subject}-T.purple.sv.vcf.gz                   — PURPLE somatic SVs
         //   purple/${subject}-T.purple.cnv.somatic.tsv
         //   purple/${subject}-T.purple.cnv.gene.tsv
         //   purple/${subject}-T.purple.purity.tsv                  — sex, TMB/TML
@@ -280,12 +280,12 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // ESVEE somatic VCF (tumor only) → structural variants
-        ch_esvee_vcf = ch_samples_to_run
+        // PURPLE somatic SV VCF (ESVEE's records + PURPLE copy number) → structural variants
+        ch_purple_sv = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/esvee/${meta.subject}-T.esvee.somatic.vcf.gz",
-                    'sv (ESVEE tumor)')
+                    "${meta.folder}/purple/${meta.subject}-T.purple.sv.vcf.gz",
+                    'sv (PURPLE)')
                 vcf ? [meta + [pipeline: 'sv'], vcf] : null
             }
             .filter { it != null }
@@ -371,7 +371,7 @@ workflow GENOMIC {
 
         GENOMIC_CNV(ch_purple_cnv, ensembl_annotations)
 
-        GENOMIC_SV(ch_esvee_vcf, ensembl_annotations)
+        GENOMIC_SV(ch_purple_sv, ensembl_annotations)
 
         ISOFOX_FUSION_TO_CBIOPORTAL(ch_isofox_fusion)
 

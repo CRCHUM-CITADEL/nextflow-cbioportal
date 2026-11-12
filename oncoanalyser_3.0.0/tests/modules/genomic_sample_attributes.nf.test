@@ -28,6 +28,9 @@ nextflow_process {
             assert out.endsWith('T1-1DT.genomic_sample_attributes.tsv')
             def lines = path(out).readLines()
             assert lines.size() == 6
+            // Labels and descriptions don't name the tool (PURPLE, CHORD)
+            assert lines[0] == '#Patient Identifier\tSample Identifier\tTMB per Mb\tTMB Status\tTML\tTML Status\tHRD Score\tHR Status\tHRD Type'
+            assert !(lines[1] =~ /PURPLE|CHORD/)
             assert lines[2] == '#STRING\tSTRING\tNUMBER\tSTRING\tNUMBER\tSTRING\tNUMBER\tSTRING\tSTRING'
             assert lines[4] == 'PATIENT_ID\tSAMPLE_ID\tTMB_PER_MB\tTMB_STATUS\tTML\tTML_STATUS\tHRD_SCORE\tHR_STATUS\tHRD_TYPE'
             assert lines[5] == 'T1\tT1-1DT\t12.5\tHIGH\t312\tHIGH\t0.83\tHR_deficient\tBRCA2_type'

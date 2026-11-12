@@ -9,7 +9,7 @@ nextflow_workflow {
     // Runs under -stub-run. MAFSMITH needs its pre-fetched reference bundle
     // (params.mafsmith_data), which is a site path with no public download, so the
     // real mutation path cannot execute in CI. What is asserted here is the wiring:
-    // germline VCF -> FILTER_GERMLINE_DNA -> BCFTOOLS_INDEX -> PCGR, somatic VCF ->
+    // germline VCF -> BCFTOOLS_INDEX -> PCGR, somatic VCF ->
     // MAFSMITH -> INTEGRATE_RNA_VARIANTS -> CONVERT_CPSR_TO_MAF, joined on subject.
     options "-stub-run"
 
@@ -73,7 +73,7 @@ nextflow_workflow {
 
             // Every process on the mutation path actually ran.
             def ran = workflow.trace.succeeded().collect { it.name }
-            ['FILTER_GERMLINE_DNA', 'BCFTOOLS_INDEX', 'PCGR', 'MAFSMITH',
+            ['BCFTOOLS_INDEX', 'PCGR', 'MAFSMITH',
              'INTEGRATE_RNA_VARIANTS', 'CONVERT_CPSR_TO_MAF'].each { proc ->
                 assert ran.any { it.contains(proc) } : "${proc} did not run: ${ran}"
             }

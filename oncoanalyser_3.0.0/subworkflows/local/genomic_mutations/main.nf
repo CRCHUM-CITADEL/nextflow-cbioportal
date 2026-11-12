@@ -6,7 +6,6 @@ include { DOWNLOAD_VEP_TEST      } from '../../../modules/local/download_vep_tes
 include { DOWNLOAD_PCGR          } from '../../../modules/local/download_pcgr'
 include { DOWNLOAD_MAFSMITH      } from '../../../modules/local/download_mafsmith'
 include { BCFTOOLS_INDEX         } from '../../../modules/nf-core/bcftools/index'
-include { FILTER_GERMLINE_DNA    } from '../../../modules/local/filter_germline_dna'
 
 workflow GENOMIC_MUTATIONS {
     take:
@@ -32,11 +31,10 @@ workflow GENOMIC_MUTATIONS {
         ch_pcgr_data     = needs_pcgr     ? DOWNLOAD_PCGR(ch_has_work).data_dir.first()      : pcgr_data.first()
         ch_mafsmith_data = needs_mafsmith ? DOWNLOAD_MAFSMITH(ch_has_work).data_dir.first()  : mafsmith_data.first()
 
-        ger_dna_filtered = FILTER_GERMLINE_DNA(ger_dna_vcf)
+        // PURPLE's germline calls go to CPSR unfiltered; PCGR keeps only the normal column.
+        ger_dna_index = BCFTOOLS_INDEX(ger_dna_vcf).tbi
 
-        ger_dna_index = BCFTOOLS_INDEX(ger_dna_filtered).tbi
-
-        ger_dna_vcf_with_index = ger_dna_filtered
+        ger_dna_vcf_with_index = ger_dna_vcf
             .join(ger_dna_index)
             .map { meta, filepath, index -> tuple(meta, filepath, index) }
 

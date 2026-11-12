@@ -149,12 +149,8 @@ chr21	10001000	.	T	A	52	PASS	DP=92;PURPLE_AF=0.48;PURPLE_CN=2;PURPLE_VCN=0.88;PU
 chr21	10001001	.	C	G	54	PASS	DP=88;PURPLE_AF=0.49;PURPLE_CN=2;PURPLE_VCN=0.89;PURPLE_MACN=1;SUBCL=0	GT:AD:DP	0/0:44,0:44	0/1:35,25:60
 "
 
-# PURPLE germline VCF (T1) — must have sample column T1 so FILTER_GERMLINE_DNA can exclude it.
-# 100-500 are ./.; the normal's DP/AF cover each genotype rule and its boundaries:
-#   100 hom, 150 hom at AF 0.9, 200 het, 250 het at AF 0.2, 300 ref (AF < 0.2),
-#   350 stays ./. (DP 9), 400 ref at low depth, 500 LOW_QUAL (dropped).
-# 600 PURPLE called 0/1 (kept, though AF 0.95 would infer 1/1), 700 LOW_TUMOR_VCN (kept, inferred 0/1),
-# 800 LOW_VAF and 900 LOW_TUMOR_VCN;LOW_VAF (both dropped).
+# PURPLE germline VCF (T1): normal T1-N first, then the tumour T1 (PCGR keeps only the first column).
+# Mixed ./. and called GTs and PURPLE FILTER values (PASS, LOW_QUAL, LOW_TUMOR_VCN, LOW_VAF); CPSR gets them unchanged.
 make_vcf "${BASE}/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz" \
 "$(purple_germline_header T1)
 chr21	44300100	.	A	G	80	PASS	DP=80	GT:AD:AF:DP	./.:2,38:0.95:40	./.:2,38:0.95:40

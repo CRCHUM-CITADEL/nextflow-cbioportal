@@ -239,7 +239,7 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // PURPLE germline VCF → germline mutations (FILTER_GERMLINE_DNA infers the GTs PURPLE left ./.)
+        // PURPLE germline VCF → germline mutations (to CPSR unfiltered, normal column only)
         ch_germline_vcf = ch_samples_to_run
             .map { meta ->
                 def vcf = findOncoFile(meta,

@@ -81,8 +81,8 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
                 { assert t1_tasks.isEmpty() : "T1 is already processed but ran tasks: ${t1_tasks}" },
                 // T2 is new: it must actually be processed
                 { assert !t2_tasks.isEmpty() : "T2 was never processed; tasks were: ${tasks}" },
-                // T2's PURPLE germline VCF is picked up and goes through genotype inference
-                { assert t2_tasks.any { it.contains('FILTER_GERMLINE_DNA') }
+                // T2's PURPLE germline VCF is picked up and goes to CPSR
+                { assert t2_tasks.any { it.contains('PCGR') }
                          : "T2's PURPLE germline VCF was not picked up; T2 tasks were: ${t2_tasks}" },
                 // TMB/HRD rows exist for the cached subject too, once each
                 { assert tasks.any { it.contains('GENOMIC_SAMPLE_ATTRIBUTES') && it.contains('T1-1DT') }

@@ -303,9 +303,6 @@ GENOMIC INPUT PARAMETERS
                                                only its subjects)
   resources_dir            Yes       --        Extracted resource kit (all reference files)
   mafsmith_retain_ann      No        (10 CSQ)  Extra VEP fields kept as MAF columns
-  germline_min_depth       No        10        Min normal DP to infer a germline GT
-  germline_het_min_vaf     No        0.2       Min normal AF for 0/1; below it is 0/0
-  germline_hom_min_vaf     No        0.9       Min normal AF for 1/1
   run_ml                   No        false     Also build the ML feature tables (machine_learning/)
   cosmic_data              No        --        COSMIC Fusion TSV for ML (licence-gated)
 
@@ -420,31 +417,13 @@ SITE CONFIGURATION
     cannot be restored this way. Set mafsmith_retain_ann to "" to drop
     back to the 53 standard columns.
 
-  Germline genotypes
+  Germline calls
 
-    Germline calls come from PURPLE's germline VCF. FILTER_GERMLINE_DNA
-    keeps records whose FILTER is exactly PASS or LOW_TUMOR_VCN (a
-    tumour-side flag: the call in the normal is real) and drops LOW_VAF
-    and everything else, including LOW_TUMOR_VCN;LOW_VAF.
-
-    PURPLE sets GT (0/1, 1/1) where it can and leaves ./. elsewhere;
-    CPSR drops uncalled genotypes. PURPLE's calls are kept as-is, and
-    only the ./. ones are inferred from the normal's FORMAT/DP and
-    FORMAT/AF (bcftools +setGT):
-
-      DP >= 10 and AF >= 0.9         1/1
-      DP >= 10 and 0.2 <= AF < 0.9   0/1
-      AF < 0.2 (any depth)           0/0, treated as noise and removed
-      DP < 10 and AF >= 0.2          stays ./. (CPSR drops it)
-
-    The 0/0 records are removed before CPSR because CPSR 2.2.5 keeps
-    and classifies them; only CPSR 2.3 and later drop them itself.
-
-    Setting low-AF sites to reference assumes no tumour-in-normal
-    contamination: with heavy contamination a somatic variant can
-    pass 0.2 in the normal and be reported as a germline het. The
-    cutoffs are germline_min_depth, germline_het_min_vaf and
-    germline_hom_min_vaf.
+    Germline calls come from PURPLE's germline VCF and go to CPSR as
+    PURPLE wrote them: no FILTER selection and no genotype changes.
+    PCGR only keeps the normal's sample column (PURPLE writes it first)
+    and removes INFO before CPSR runs. CPSR itself analyses PASS records
+    only and drops genotypes PURPLE left as ./.
 
 GENOMIC MODE
 

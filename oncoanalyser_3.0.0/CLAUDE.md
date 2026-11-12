@@ -37,21 +37,14 @@ rejected (converters `stop()` without the 3.0 columns).
 - **Cached subjects keep their older MAF** (narrower columns, `0` Entrez, old RNA format) until reprocessed;
   a mix makes the merged file ragged
 
-## Germline (PURPLE → FILTER_GERMLINE_DNA → PCGR/CPSR → CONVERT_CPSR_TO_MAF)
+## Germline (PURPLE → PCGR/CPSR → CONVERT_CPSR_TO_MAF)
 
-- `FILTER_GERMLINE_DNA` keeps FILTER exactly `PASS` or `LOW_TUMOR_VCN` (tumour-side; the normal's call is
-  real) and drops `LOW_VAF`, `LOW_TUMOR_VCN;LOW_VAF` and the rest (awk on column 7: `bcftools -i FILTER=`
-  errors on an undeclared filter)
-- PURPLE calls GT where it can and leaves `./.`; CPSR drops `./.` (vcf2tsvpy). `FILTER_GERMLINE_DNA` drops
-  the tumour column, keeps PURPLE's GTs and fills only missing normal GTs with `bcftools +setGT`: `DP >= germline_min_depth` (10) and
-  `AF >= germline_hom_min_vaf` (0.9) → `1/1`; same depth and `AF >= germline_het_min_vaf` (0.2) → `0/1`;
-  `AF < 0.2` → `0/0`, then removed; low depth with `AF >= 0.2` stays `./.`. We remove `0/0` because
-  CPSR 2.2.5 (production) keeps and classifies hom-ref records; only 2.3+ drops them. Fails if
-  `FORMAT/AF` or `FORMAT/DP` is undeclared
-- Low AF = reference **assumes no tumour-in-normal contamination** — agreed with Rob Eveleigh, not
-  validated; revisit once GenPipes has TiN QC
+- PURPLE's germline VCF goes to CPSR **unfiltered**: no FILTER selection, no GT inference (the old
+  `FILTER_GERMLINE_DNA` step was for PAVE, which wrote every GT as `./.`). CPSR itself keeps PASS only and
+  drops `./.`, so PURPLE's `LOW_TUMOR_VCN` calls and its uncalled GTs never reach the MAF
+- `PCGR` keeps only the first sample column (PURPLE writes the normal first, then the tumour) and strips all INFO
 - A subject without a germline VCF also loses its somatic MAF (`MAFSMITH` input joins on `ger_dna_vcf`)
-- `PCGR` strips all INFO before CPSR (CPSR aborts on clashing tags such as PAVE's `IMPACT`, kept by PURPLE). CPSR exits 0
+- INFO is stripped because CPSR aborts on clashing tags such as PAVE's `IMPACT`, kept by PURPLE. CPSR exits 0
   on failure, so any `- ERROR -` log line fails the task — never fall through to the header-only placeholder
 - `PCGR` publishes `<sample>.cpsr_debug/` (log, GT summaries, side outputs); `ext.args = '--debug'` keeps
   intermediates. CPSR output is named `<subject>-N`; `PCGR` renames it to `<sample>`, and writes a

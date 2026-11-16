@@ -1,28 +1,21 @@
-## 1. Take bam files from oncoanalyser test data
+# Test data (oncoanalyser_3.0.0)
 
-### wget samplesheet:
+Minimal fixtures for nf-test and the Python tests. Everything is chr21-scale and synthetic.
 
-wget https://raw.githubusercontent.com/nf-core/test-datasets/oncoanalyser/samplesheet/bam_eval.subject_a.wgts.tndna_trna.minimal.stub.csv
+| Path                                  | What it is                                                                                                                                                                                                                                                     | Made by                                                               |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `oncoanalyser_output/TEST/T{1,2}/`    | Oncoanalyser 3.0 output per subject: `purple/` (somatic + germline + SV VCFs, CNV, purity), `chord/` (T1 only, so T2 exercises HRD = `NA`), `isofox/`, `sage_append/`, `sigs/`. T1's SV VCF also has PON, INFERRED, single-breakend and TINC_RECOVERED records | `bin/create_test_data.sh` (`sigs/` is hand-made)                      |
+| `oncoanalyser_output/TEST/T3/purple/` | Duplicate-coordinate BND pairs for the SV dedupe test                                                                                                                                                                                                          | `bin/create_test_data.sh`                                             |
+| `precomputed/`                        | Per-subject outputs a real run publishes, staged as the incremental cache. `T1`/`T2` names feed subworkflow tests; `T1-1DT`/`T2-T` names feed pipeline tests                                                                                                   | `create_test_data.sh` for `T1`/`T2` + group files; the rest hand-made |
+| `annotations/`                        | BioMart gene table (chr21 + test genes), COSMIC fusion sample                                                                                                                                                                                                  | hand-made                                                             |
+| `reference/`                          | chr21 FASTA for SigProfiler ID                                                                                                                                                                                                                                 | downloaded                                                            |
+| `resources/`                          | Mini resource kit used by the `test` profile (`resources_dir`)                                                                                                                                                                                                 | hand-made                                                             |
+| `clinical/`, `samplesheet/`           | MOHCCN-style clinical CSVs and the genomic/clinical samplesheets                                                                                                                                                                                               | hand-made                                                             |
 
-### wget bams:
+Regenerate with `bash bin/create_test_data.sh` (needs `bgzip` and `tabix`). It reproduces the
+committed files exactly, so `git status` should show no change; if it does, the script and the
+fixtures have drifted.
 
-wget \
-https://raw.githubusercontent.com/nf-core/test-datasets/oncoanalyser/sample_data/simulated_reads/wgts/markdups_bam/subject_a.normal.dna.bwa-mem2_2.2.1.markdups.bam \
-https://raw.githubusercontent.com/nf-core/test-datasets/oncoanalyser/sample_data/simulated_reads/wgts/markdups_bam/subject_a.normal.dna.bwa-mem2_2.2.1.markdups.bam.bai \
-https://raw.githubusercontent.com/nf-core/test-datasets/oncoanalyser/sample_data/simulated_reads/wgts/markdups_bam/subject_a.tumor.dna.bwa-mem2_2.2.1.markdups.bam \
-https://raw.githubusercontent.com/nf-core/test-datasets/oncoanalyser/sample_data/simulated_reads/wgts/markdups_bam/subject_a.tumor.dna.bwa-mem2_2.2.1.markdups.bam.bai
-
-### wget reference:
-
-wget \
-https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/GRCh38_masked_exclusions_alts_hlas.fasta \
-https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/samtools_index-1.16/GRCh38_masked_exclusions_alts_hlas.fasta.fai
-
-## 2. Transform them into vcf.gz files using bcftools.
-
-bcftools mpileup -Ou -f ../reference/GRCh38_masked_exclusions_alts_hlas.fasta ../bam/subject_a.normal.dna.bwa-mem2_2.2.1.markdups.bam | bcftools call -mv -Oz -o subject_a.normal.dna.bwa-mem2_2.2.1.markdups.vcf.gz
-
-bcftools mpileup -Ou -f ../reference/GRCh38_masked_exclusions_alts_hlas.fasta ../bam/subject_a.tumor.dna.bwa-mem2_2.2.1.markdups.bam | bcftool
-s call -mv -Oz -o subject_a.tumor.dna.bwa-mem2_2.2.1.markdups.vcf.gz
-
-## . Use those vcf.gz files into pipeline for testing
+The samplesheets' `folder` paths are relative to the pipeline directory. Under nf-test the launch
+directory is elsewhere, so pipeline tests that need the oncoanalyser folders write an absolute
+samplesheet outside `outputDir` in `setup` (see `tests/both.nf.test`, `tests/incremental_pipeline.nf.test`).

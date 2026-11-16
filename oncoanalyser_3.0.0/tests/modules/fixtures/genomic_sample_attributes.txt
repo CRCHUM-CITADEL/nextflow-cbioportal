@@ -1,0 +1,7 @@
+#Patient Identifier	Sample Identifier	TMB per Mb	TMB Status	TML	TML Status	HRD Score	HR Status	HRD Type
+#Identifier to uniquely specify a patient.	A unique sample identifier.	Tumour mutational burden: passing variants per Mb.	TMB status: HIGH (> 10 per Mb), LOW or UNKNOWN.	Tumour mutational load: missense variants.	TML status: HIGH, LOW or UNKNOWN.	Probability of homologous recombination deficiency.	Homologous recombination status.	HRD type: BRCA1_type, BRCA2_type or none.
+#STRING	STRING	NUMBER	STRING	NUMBER	STRING	NUMBER	STRING	STRING
+#1	1	1	1	1	1	1	1	1
+PATIENT_ID	SAMPLE_ID	TMB_PER_MB	TMB_STATUS	TML	TML_STATUS	HRD_SCORE	HR_STATUS	HRD_TYPE
+T1	T1-1DT	12.5	HIGH	312	HIGH	0.83	HR_deficient	BRCA2_type
+TX	TX-T	1.0	LOW	10	LOW	NA	NA	NA

@@ -104,6 +104,7 @@ nextflow_workflow {
                 input[8]  = Channel.empty()  // sigs_counts_dbs_results
                 input[9]  = Channel.empty()  // sigs_id_results
                 input[10] = Channel.empty()  // sigs_counts_id_results
+                input[11] = Channel.empty()  // sample_attributes_results
                 """
             }
         }
@@ -213,6 +214,7 @@ nextflow_workflow {
                 input[8]  = Channel.empty()  // sigs_counts_dbs_results
                 input[9]  = Channel.empty()  // sigs_id_results
                 input[10] = Channel.empty()  // sigs_counts_id_results
+                input[11] = Channel.empty()  // sample_attributes_results
                 """
             }
         }

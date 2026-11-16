@@ -22,6 +22,7 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
             sigs_counts_dbs_results
             sigs_id_results
             sigs_counts_id_results
+            sample_attributes_results // [meta, <sample>.genomic_sample_attributes.tsv], every subject
 
         main:
 
@@ -111,6 +112,19 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
                               ["${group}/data_mutations_dna_rna_germline.txt", filepath.text]
                            }
                 .map {filepath -> tuple(filepath.parent.name, filepath) }
+
+
+            // merge genomic sample attributes (TMB/TML, HRD); each part has 4 '#' lines + the ID header.
+            // Not a study file: GENOMIC publishes it as data_clinical_sample.txt (genomic mode) or
+            // CLINICAL joins it onto its own (both mode); cBioPortal allows one SAMPLE_ATTRIBUTES file.
+            sample_attributes_output = sample_attributes_results
+                .map {meta, filepath -> [meta.group, filepath]}
+                .collectFile(keepHeader : true,
+                           skip: 5,
+                           sort: 'deep') { group, filepath ->
+                              ["${group}.genomic_sample_attributes.txt", filepath.text]
+                           }
+                .map {filepath -> tuple(filepath.name - '.genomic_sample_attributes.txt', filepath) }
 
 
             // merge signatures -------------------------------------------------------------
@@ -269,6 +283,7 @@ show_profile_in_analysis_tab: true
 profile_name: Structural variants from DNA
 profile_description: Structural Variant Data DNA
 data_filename: data_sv.txt
+namespaces: HMF
             """
 
             meta_text_expression = """cancer_study_identifier: add_text
@@ -389,6 +404,7 @@ generic_entity_meta_properties: NAME
         sigs_counts_dbs = sigs_counts_dbs_output
         sigs_id         = sigs_id_output
         sigs_counts_id  = sigs_counts_id_output
+        sample_attributes = sample_attributes_output
         meta_files      = GENERATE_META_FILE.out
         case_files  = GENERATE_CASE_LIST.out
 }

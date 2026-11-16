@@ -1,0 +1,93 @@
+nextflow_process {
+
+    name "Test GENOMIC_SAMPLE_ATTRIBUTES"
+    script "modules/local/genomic_sample_attributes/main.nf"
+    process "GENOMIC_SAMPLE_ATTRIBUTES"
+    tag "module"
+    tag "genomic_sample_attributes"
+
+    // T1 has PURPLE purity + CHORD; T2 has purity only (bin/create_test_data.sh).
+
+    test("purity + CHORD — TMB/TML and HRD filled, cBioPortal header written") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'T1', sample: 'T1-1DT'],
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.purity.tsv'),
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/chord/T1-T.chord.prediction.tsv')
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def out = process.out.attributes[0][1].toString()
+            assert out.endsWith('T1-1DT.genomic_sample_attributes.tsv')
+            def lines = path(out).readLines()
+            assert lines.size() == 6
+            // Labels and descriptions don't name the tool (PURPLE, CHORD)
+            assert lines[0] == '#Patient Identifier\tSample Identifier\tTMB per Mb\tTMB Status\tTML\tTML Status\tHRD Score\tHR Status\tHRD Type'
+            assert !(lines[1] =~ /PURPLE|CHORD/)
+            assert lines[2] == '#STRING\tSTRING\tNUMBER\tSTRING\tNUMBER\tSTRING\tNUMBER\tSTRING\tSTRING'
+            assert lines[4] == 'PATIENT_ID\tSAMPLE_ID\tTMB_PER_MB\tTMB_STATUS\tTML\tTML_STATUS\tHRD_SCORE\tHR_STATUS\tHRD_TYPE'
+            assert lines[5] == 'T1\tT1-1DT\t12.5\tHIGH\t312\tHIGH\t0.83\tHR_deficient\tBRCA2_type'
+        }
+    }
+
+    test("no CHORD file — HRD columns are NA") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [group: 'TEST', subject: 'T2', sample: 'T2-T'],
+                    file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple/T2-T.purple.purity.tsv'),
+                    []
+                ])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out.attributes[0][1].toString()).readLines()[5] == 'T2\tT2-T\t2.1\tLOW\t45\tLOW\tNA\tNA\tNA'
+        }
+    }
+
+    test("neither file — every attribute is NA") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([[group: 'TEST', subject: 'T3', sample: 'T3-T'], [], []])
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out.attributes[0][1].toString()).readLines()[5] == 'T3\tT3-T\tNA\tNA\tNA\tNA\tNA\tNA\tNA'
+        }
+    }
+
+    test("purity file without TMB columns — the task fails") {
+
+        when {
+            process {
+                """
+                def old = file("\${workDir}/old.purple.purity.tsv")
+                old.text = "purity\\tploidy\\tgender\\tstatus\\n0.75\\t2.0\\tMALE\\tPASS\\n"
+                input[0] = Channel.of([[group: 'TEST', subject: 'T1', sample: 'T1'], old, []])
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains('has none of the columns tmbPerMb')
+        }
+    }
+}

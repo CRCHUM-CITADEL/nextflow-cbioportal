@@ -78,7 +78,7 @@ Container images:
   sdp-r:4.5.1                    R scripts (CNV, SV, expression, aggregation)
   sdp-python:3.12                Python scripts
   mafsmith-fastvep:0.1.0-0.4.0   VCF-to-MAF conversion (mafsmith + fastVEP)
-  pcgr:2.2.5                     Germline variant annotation (PCGR/CPSR)
+  pcgr:2.4.0                     Germline variant annotation (PCGR/CPSR)
   sigprofiler:1.1.3              Mutational signature fitting
 
   GHCR authentication: Containers at ghcr.io/crchum-citadel require
@@ -89,9 +89,9 @@ Container images:
 Reference data:
 
   All reference files ship in one download, the resource kit
-  (nextflow-cbioportal-resources-v1.0.0.tar.gz). Extract it and pass:
+  (nextflow-cbioportal-resources-v1.1.0.tar.gz). Extract it and pass:
 
-    --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0
+    --resources_dir /path/to/nextflow-cbioportal-resources-v1.1.0
 
   Any reference param set explicitly overrides the kit for that file.
   COSMIC fusions (cosmic_data) are licence-gated and not in the kit;
@@ -328,7 +328,7 @@ CONTAINER PARAMETERS
   container_r            ORAS or local SIF  R 4.5.1 container
   container_python       ORAS or local SIF  Python 3.12 container
   container_mafsmith     ORAS or local SIF  mafsmith 0.1.0 + fastVEP 0.4.0
-  container_pcgr         ORAS or local SIF  PCGR 2.2.5 (needs kit bundle + VEP 113)
+  container_pcgr         ORAS or local SIF  PCGR 2.4.0 (needs kit bundle + VEP 116)
   container_sigprofiler  ORAS or local SIF  SigProfiler 1.1.3
 
 NOTIFICATION PARAMETERS
@@ -375,14 +375,15 @@ SITE CONFIGURATION
     nextflow run main.nf -profile apptainer \
       --mode genomic \
       --genomic_samplesheet samplesheet.csv \
-      --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0
+      --resources_dir /path/to/nextflow-cbioportal-resources-v1.1.0
 
   or copy nextflow_citadel.config as a template and pass it with -c.
 
   mafsmith reference data
 
-    Use the kit's mafsmith home. It ships its own fastVEP (0.3.0),
-    which mafsmith uses instead of the container's.
+    Use the kit's mafsmith home. It carries the fastVEP that
+    `mafsmith fetch` installs (fastVEP master: 0.5.0 in kit 1.1.0),
+    which mafsmith uses instead of the container's 0.4.0.
 
   MAF columns
 
@@ -425,6 +426,11 @@ SITE CONFIGURATION
     and removes INFO before CPSR runs. CPSR itself analyses PASS records
     only and drops genotypes PURPLE left as ./.
 
+    CPSR runs with --clinvar_cancer_only: ClinVar variants attributed
+    only to non-cancer conditions are left out (CPSR 2.4 reports them
+    by default). --no_pdf skips its PDF report. Both somatic and
+    germline rows are annotated on Ensembl 116.
+
 GENOMIC MODE
 
   module load nextflow/26.04.4 apptainer/1.3.5 htslib/1.22.1
@@ -456,7 +462,7 @@ CLINICAL MODE
       --mode clinical \
       --study_id "MY_STUDY" \
       --clinical_samplesheet clinical_samplesheet.csv \
-      --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0
+      --resources_dir /path/to/nextflow-cbioportal-resources-v1.1.0
 
   Required:
 
@@ -563,7 +569,7 @@ USING A PARAMS FILE
     study_id: "MY_STUDY"
     project_description: "Description of my study"
     genomic_samplesheet: "/data/samplesheet.csv"
-    resources_dir: "/path/to/nextflow-cbioportal-resources-v1.0.0"
+    resources_dir: "/path/to/nextflow-cbioportal-resources-v1.1.0"
     cosmic_data: "/path/to/Cosmic_Fusion_v103_GRCh38.tsv"
     outdir: "output_my_study"
     email: "user@example.com"

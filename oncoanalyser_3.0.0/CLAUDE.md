@@ -12,9 +12,11 @@ rejected (converters `stop()` without the 3.0 columns).
   only by SigProfiler
 - `mafsmith_data` comes from the resource kit. `DOWNLOAD_MAFSMITH` (`mafsmith fetch`) is test-only:
   it gets Ensembl contigs (`1`), not GATK hg38 `chr1`. A hand-built bundle needs `--gff3` + `--ref-fasta`
-- Production uses the kit's fastVEP 0.3.0 (`<data-dir>/bin/fastvep` wins over the container's 0.4.0);
-  changing it changes output and needs a new kit version. Image def:
-  `containers/mafsmith-fastvep_v0.1.0-0.4.0.def`, tag `mafsmith-fastvep:<mafsmith>-<fastvep>`
+- Production uses the kit's `bin/fastvep` (`<data-dir>/bin/fastvep` wins over the container's 0.4.0): the
+  one `mafsmith fetch` installs (`cargo install` from fastVEP `master`; 0.5.0 in kit 1.1.0; mafsmith 0.1.0
+  is still the latest). Changing it changes output and needs a new kit version. fastVEP writes
+  `genes.gff3` + `genes.gff3.fastvep.cache` beside the GFF3 on first use, so the kit ships them pre-built.
+  Image def: `containers/mafsmith-fastvep_v0.1.0-0.4.0.def`, tag `mafsmith-fastvep:<mafsmith>-<fastvep>`
 - mafsmith does not derive `--vcf-tumor-id` from `--tumor-id`: without `--vcf-tumor-id` /
   `--vcf-normal-id` it takes the first VCF sample (the normal) as tumour and `t_*`/`n_*` swap.
   `MAFSMITH` passes both; it finds sample columns via the `FORMAT` header and MAF columns by name.
@@ -55,8 +57,13 @@ rejected (converters `stop()` without the 3.0 columns).
   `Likely Pathogenic`. Then drops `Intron`/`IGR`
 - `gen_convert_cpsr_to_maf.R` pins germline rows to the incoming MAF's header: `maf_entry$X <- v` adds a
   slot for an absent `X` and `rbind()` widens silently. Add a column only if the annotator emits it
-- PCGR 2.2.x needs bundle 20250314 + VEP 113 — bump `container_pcgr`, bundle and VEP cache together.
-  2.3.x needs VEP 115 (out for now). `test` profile stays on PCGR 2.1.2 to match its downloads
+- PCGR 2.4.x needs bundle 20261106 + VEP 116 — bump `container_pcgr`, bundle and VEP cache together.
+  Somatic (mafsmith GFF3), germline (VEP) and `ensembl_annotations` are all Ensembl 116: move them
+  together (kit table: `bin/build_ensembl_annotations.py`, recipe in docs/resources.md)
+- `PCGR` passes `--no_pdf` and `--clinvar_cancer_only` (2.4-only flags), so every `container_pcgr`,
+  `test` included, is 2.4.0. `fake_cpsr` logs ERROR without them; nf-tests never run real CPSR
+- `DOWNLOAD_*` `storeDir`s carry the release (`assets/pcgr/20261106`, `assets/mafsmith/ensembl_116`) so an
+  older download is never reused. `DOWNLOAD_VEP_TEST` is still the VEP 112 chr21 cache: wiring only
 
 ## SV / CNA / ML
 

@@ -33,7 +33,8 @@ nextflow_process {
             // Debug folder: CPSR's log, what it was given, and its other outputs.
             def debug = process.out.debug[0][1].toString()
             assert debug.endsWith('T1-T.cpsr_debug')
-            assert path("${debug}/cpsr.log").text.contains('fake cpsr: sample_id=T1-N')
+            // CPSR 2.4: no PDF report, and ClinVar calls for non-cancer phenotypes excluded.
+            assert path("${debug}/cpsr.log").text.contains('fake cpsr: sample_id=T1-N no_pdf=1 clinvar_cancer_only=1')
             def summary = path("${debug}/input_summary.txt").text
             // Only the normal (first column) reaches CPSR; the tumour column T1 is dropped
             assert summary.readLines().find { it.startsWith('samples:') }.trim() == 'samples: T1-N'

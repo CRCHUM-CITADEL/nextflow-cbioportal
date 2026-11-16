@@ -271,7 +271,7 @@ def resourceLayout() {
     def sigs = 'genomic/cosmic_mutational_signatures'
     def moh  = 'clinical/MoH/dictionary'
     return [
-        ensembl_annotations               : 'genomic/annotations/biomart_grch38_ensembl_113_with_entrez_id.tsv',
+        ensembl_annotations               : 'genomic/annotations/biomart_grch38_ensembl_116_with_entrez_id.tsv',
         chimer_data                       : 'genomic/annotations/ChimerKB4.xlsx',
         cancer_hotspots_data              : 'genomic/annotations/cancerhotspots_single.json',
         vep_data                          : 'genomic/vep/cache',

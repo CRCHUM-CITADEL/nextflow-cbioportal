@@ -51,6 +51,8 @@ process PCGR {
     --panel_id 0 \\
     --vep_buffer_size 1000 \\
     --no_html \\
+    --no_pdf \\
+    --clinvar_cancer_only \\
     --sample_id ${cpsr_id} \\
     ${args} 2>&1 | tee ${debug}/cpsr.log
 

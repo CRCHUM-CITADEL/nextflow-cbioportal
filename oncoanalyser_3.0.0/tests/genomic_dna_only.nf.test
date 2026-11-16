@@ -1,0 +1,130 @@
+nextflow_pipeline {
+
+    name "Test genomic-dna-only mode pipeline"
+    script "../main.nf"
+    tag "pipeline"
+    tag "genomic-dna-only"
+
+    test("genomic-dna-only — cached without .tpm.tsv, no expression output, TMB/HRD sample file") {
+
+        config "tests/nextflow_both.config"
+
+        setup {
+            def precomputed = "${projectDir}/assets/test_data/precomputed"
+            def copy = { java.io.File src, java.io.File dst ->
+                dst.parentFile.mkdirs()
+                java.nio.file.Files.copy(src.toPath(), dst.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+
+            // T2 input as on WES: no sigs/, no PURPLE SV VCF (no ESVEE), no RNA
+            def t2 = new File("${outputDir}/../dna_only_input/T2")
+            new File("${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple").listFiles()
+                .findAll { !it.name.contains('.purple.sv.vcf.gz') }
+                .each { f -> copy(f, new File(t2, "purple/${f.name}")) }
+
+            // Cached per-subject outputs, without .tpm.tsv. T1 keeps a stale .tpm.tsv from a DNA+RNA run;
+            // T2 has no data_sv.txt or SBS files, since those steps are skipped for it.
+            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
+                new File(precomputed).listFiles()
+                    .findAll { it.name.startsWith(sample) }
+                    .findAll { subject == 'T1' || !(it.name.endsWith('.tpm.tsv') || it.name.endsWith('.data_sv.txt') || it.name.contains('_SBS')) }
+                    .each { f -> copy(f, new File("${outputDir}/TEST/${subject}/${f.name}")) }
+            }
+
+            new File("${outputDir}/../dna_only_samplesheet.csv").text = """\
+group,subject_id,sample_id,folder
+TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
+TEST,T2,T2-T,${t2.canonicalPath}
+"""
+        }
+
+        when {
+            params {
+                mode                = 'genomic-dna-only'
+                outdir              = "$outputDir"
+                genomic_samplesheet = "${outputDir}/../dna_only_samplesheet.csv"
+            }
+        }
+
+        then {
+            def tasks = workflow.trace.succeeded().collect { it.name }
+            def group = "${params.outdir}/TEST"
+            def tar_entries = ["tar", "-tzf", "${params.outdir}/TEST.tar.gz"].execute().text
+                .readLines()
+                .findAll { it && !it.endsWith('/') }
+                .collect { it.split('/').last() }
+            def sample_lines = path("${group}/data_clinical_sample.txt").readLines().findAll { !it.startsWith('#') && it.trim() }
+
+            assertAll(
+                { assert workflow.success },
+                // Both subjects count as cached: no per-subject processing runs
+                { assert tasks.every { !(it =~ /GENOMIC_(CNV|SV|MUTATIONS|EXPRESSION)|SIGPROFILER|ISOFOX/) }
+                         : "Cached subjects were reprocessed: ${tasks.findAll { it =~ /GENOMIC_(CNV|SV|MUTATIONS|EXPRESSION)|SIGPROFILER|ISOFOX/ }}" },
+                // No expression, even with T1's stale .tpm.tsv on disk
+                { assert !path("${group}/data_expression.txt").exists() },
+                { assert !path("${group}/meta_expression.txt").exists() },
+                { assert !tar_entries.any { it.contains('expression') } : "Archive has expression files: ${tar_entries}" },
+                // DNA data types still written; SV holds T1 only
+                { assert path("${group}/data_mutations_dna_rna_germline.txt").exists() },
+                { assert path("${group}/meta_sequenced.txt").exists() },
+                { assert path("${group}/data_sv.txt").readLines().drop(1).every { it.contains('T1-1DT') } },
+                // TMB/HRD sample attributes become data_clinical_sample.txt, as in genomic mode
+                { assert path("${group}/meta_clinical_sample.txt").exists() },
+                { assert sample_lines[0].startsWith('PATIENT_ID\tSAMPLE_ID\tTMB_PER_MB') },
+                { assert sample_lines.drop(1).collect { it.split('\t')[1] }.sort() == ['T1-1DT', 'T2-T'] },
+                { assert tar_entries.contains('data_clinical_sample.txt') },
+            )
+        }
+    }
+
+    test("genomic-dna-only — RNA steps never run; a WES subject skips SV and SBS steps") {
+
+        config "tests/nextflow_incremental.config"
+        options "-stub-run"
+
+        setup {
+            // T2 as on WES: no sigs/, no PURPLE SV VCF, no RNA. T1 keeps isofox/ and sage_append/ on disk.
+            def t2 = new File("${outputDir}/../dna_only_stub_input/T2")
+            new File("${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple").listFiles()
+                .findAll { !it.name.contains('.purple.sv.vcf.gz') }
+                .each { f ->
+                    def dst = new File(t2, "purple/${f.name}")
+                    dst.parentFile.mkdirs()
+                    java.nio.file.Files.copy(f.toPath(), dst.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                }
+            new File("${outputDir}/../dna_only_stub_samplesheet.csv").text = """\
+group,subject_id,sample_id,folder
+TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
+TEST,T2,T2-T,${t2.canonicalPath}
+"""
+        }
+
+        when {
+            params {
+                mode                = 'genomic-dna-only'
+                outdir              = "$outputDir"
+                genomic_samplesheet = "${outputDir}/../dna_only_stub_samplesheet.csv"
+            }
+        }
+
+        then {
+            def tasks = workflow.trace.succeeded().collect { it.name }
+            def ran = { pattern -> tasks.findAll { it =~ pattern } }
+            def log = path("${params.outdir}/../meta/nextflow.log").text  // log.warn is not in workflow.stdout
+
+            assertAll(
+                { assert workflow.success },
+                { assert ran(/ISOFOX|GENOMIC_EXPRESSION/).isEmpty() : "RNA steps ran: ${ran(/ISOFOX|GENOMIC_EXPRESSION/)}" },
+                // T2 has no sigs/ and no SV VCF: one task each, for T1
+                { assert ran(/SIGPROFILER_SBS/).size() == 1 : "SBS tasks: ${ran(/SIGPROFILER_SBS/)}" },
+                { assert ran(/PURPLE_SV_TO_CBIOPORTAL/).size() == 1 : "SV tasks: ${ran(/PURPLE_SV_TO_CBIOPORTAL/)}" },
+                // Both subjects have purple/: CNV and mutations run for each
+                { assert ran(/PURPLE_CNV_TO_CBIOPORTAL/).size() == 2 : "CNV tasks: ${ran(/PURPLE_CNV_TO_CBIOPORTAL/)}" },
+                { assert !path("${params.outdir}/TEST/meta_expression.txt").exists() },
+                { assert log.contains('dna-only: sigs/ absent for 1/2 subject(s)') },
+                { assert log.contains('dna-only: PURPLE SV VCF absent for 1/2 subject(s)') },
+                { assert !log.contains('dna-only: purple/ absent') },
+            )
+        }
+    }
+}

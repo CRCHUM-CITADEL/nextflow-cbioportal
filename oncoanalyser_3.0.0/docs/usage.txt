@@ -9,12 +9,20 @@ This pipeline converts nf-core/oncoanalyser WGS/WTS output and clinical
 CSVs into cBioPortal-compatible import packages. It runs on HPC clusters
 using SLURM and Apptainer (no Docker, no sudo).
 
-The pipeline has three modes:
+The pipeline has four modes:
 
   Genomic mode   Processes per-subject oncoanalyser output (mutations,
                  copy-number, structural variants, gene expression, RNA
                  fusions, mutational signatures) and produces merged,
                  group-level cBioPortal data files packaged as a .tar.gz.
+
+  Genomic-dna-only mode
+                 Genomic mode without RNA (e.g. WES). Skips Isofox
+                 expression/fusions and SAGE RNA-append even if RNA files
+                 are present, and writes no expression profile. A subject
+                 without purple/, its PURPLE SV VCF or sigs/ skips the steps
+                 that need it. There is no DNA-only variant of both mode:
+                 run genomic-dna-only, then clinical.
 
   Clinical mode  Transforms clinical CSVs (patient demographics, diagnoses,
                  treatments, specimens, etc.) into cBioPortal patient and
@@ -289,8 +297,7 @@ CORE PARAMETERS
 
   Parameter              Required  Default                   Description
   ---------------------  --------  ------------------------  ----------------------
-  mode                   Yes       both                      genomic, clinical, or both
-  dna_only               No        false                     DNA-only data (e.g. WES), genomic/both mode: see DNA-ONLY DATA
+  mode                   Yes       both                      genomic, genomic-dna-only, clinical, or both
   study_id               Yes       --                        Study identifier for meta_study.txt and output folder
   project_description    Yes       --                        Study description
   outdir                 No        output_<project>_<date>   Output directory
@@ -437,22 +444,14 @@ GENOMIC MODE
       --project_description "Description of my study" \
       --genomic_samplesheet samplesheet.csv
 
-DNA-ONLY DATA (--dna_only)
-
-  For oncoanalyser output without RNA (e.g. WES), add --dna_only to genomic
-  or both mode. Isofox expression/fusions and SAGE RNA-append are skipped
-  even if RNA files are present, and no expression profile is written. A
-  subject without purple/, its PURPLE SV VCF or sigs/ skips the steps that
-  need it (one summary warning each). The clinical side of both mode is
-  unchanged.
+GENOMIC-DNA-ONLY MODE
 
   nextflow run main.nf \
       -profile slurm,apptainer,citadel \
-      --mode both --dna_only \
+      --mode genomic-dna-only \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
-      --genomic_samplesheet samplesheet.csv \
-      --clinical_samplesheet clinical_samplesheet.csv
+      --genomic_samplesheet samplesheet.csv
 
 CLINICAL MODE
 

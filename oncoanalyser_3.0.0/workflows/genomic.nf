@@ -573,7 +573,7 @@ reference_genome: hg38
         ch_sample_attributes = GENOMIC_AGGREGATE_OUTPUT.out.sample_attributes
 
         ch_genomic_clinical_files = Channel.empty()
-        if (params.mode == 'genomic') {
+        if (params.mode in ['genomic', 'genomic-dna-only']) {
             ch_genomic_clinical_sample = ch_sample_attributes
                 .collectFile(storeDir: "${params.outdir}") { group, f ->
                     ["${group}/data_clinical_sample.txt", f.text]

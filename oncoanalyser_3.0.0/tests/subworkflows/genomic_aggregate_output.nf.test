@@ -149,12 +149,12 @@ nextflow_workflow {
         }
     }
 
-    test("dna_only — no expression data or meta file produced, even with TPM input supplied") {
+    test("mode=genomic-dna-only — no expression data or meta file produced, even with TPM input supplied") {
 
         when {
             params {
                 outdir = "$outputDir"
-                dna_only = true
+                mode   = 'genomic-dna-only'
             }
             workflow {
                 """
@@ -239,12 +239,12 @@ nextflow_workflow {
         }
     }
 
-    test("dna_only — tools not run (no SV VCF, no sigs) leave no orphan meta files or case lists") {
+    test("mode=genomic-dna-only — tools not run (no SV VCF, no sigs) leave no orphan meta files or case lists") {
 
         when {
             params {
                 outdir = "$outputDir"
-                dna_only = true
+                mode   = 'genomic-dna-only'
             }
             workflow {
                 """

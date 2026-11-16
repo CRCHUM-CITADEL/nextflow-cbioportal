@@ -28,7 +28,7 @@ workflow PIPELINE_INITIALISATION {
     version           	// boolean: Display version and exit
     monochrome_logs   	// boolean: Do not use coloured log outputs
     nextflow_cli_args 	// array: List of positional nextflow CLI args
-    mode              	// string: pipeline mode [clinical, genomic, both]
+    mode              	// string: pipeline mode [genomic, genomic-dna-only, clinical, both]
     outdir            	// string: The output directory where the results will be saved
     genomic_input     	// string: Path to input samplesheet
     clinical_input    	// string: Path to input samplesheet
@@ -176,9 +176,6 @@ def validateInputParameters() {
     if (!(params.mode in pipelineModes())) {
         error("ERROR: Invalid --mode '${params.mode}'. Choices: ${choices}")
     }
-    if (isDnaOnly() && !runsGenomic()) {
-        error("ERROR: --dna_only applies to --mode genomic or both, not '${params.mode}'.")
-    }
 
     // make sure there's input
     if (runsGenomic() && !params.genomic_samplesheet){
@@ -295,21 +292,21 @@ def resourceLayout() {
 }
 
 
-// Pipeline modes.
+// Pipeline modes. No DNA-only variant of "both": run genomic-dna-only, then clinical.
 def pipelineModes() {
-    return ['genomic', 'clinical', 'both']
+    return ['genomic', 'genomic-dna-only', 'clinical', 'both']
 }
 
 
 // True when the mode runs the GENOMIC workflow.
 def runsGenomic() {
-    return params.mode in ['genomic', 'both']
+    return params.mode in ['genomic', 'genomic-dna-only', 'both']
 }
 
 
-// True with --dna_only (genomic or both mode). CLI params are Strings on NF 26, so "false" is coerced.
+// True when running without RNA data (--mode genomic-dna-only).
 def isDnaOnly() {
-    return params.dna_only.toString().toBoolean()
+    return params.mode == 'genomic-dna-only'
 }
 
 

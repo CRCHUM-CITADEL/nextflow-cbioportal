@@ -6,6 +6,7 @@ process MAFSMITH {
     input:
         tuple val(meta), path(vcf) // compressed (.vcf.gz) or uncompressed (.vcf)
         path mafsmith_data         // mafsmith home: reference data (+ optionally fastvep)
+        path ensembl_annotations   // BioMart TSV: fills Entrez_Gene_Id, which mafsmith leaves 0
 
     output:
         tuple val(meta), path("${meta.sample}.maf"), emit: maf
@@ -63,8 +64,8 @@ process MAFSMITH {
         --input-vcf tmp.${meta.sample}.somatic.vcf \\
         --output-maf tmp.${meta.sample}.maf
 
-    # mafsmith's --retain-ann only reads CSQ subfields, so every plain INFO field SAGE
-    # and PAVE wrote -- GND_FREQ (gnomAD), TIER, CLNSIG, PON_COUNT, ... -- is dropped.
+    # mafsmith's --retain-ann only reads CSQ subfields, so every plain INFO field SAGE,
+    # PAVE and PURPLE wrote -- GND_FREQ (gnomAD), TIER, PURPLE_VCN, BIALLELIC, ... -- is dropped.
     # Join them back on the MAF's own coordinate convention. Columns are always added,
     # even when the VCF declares none of them, so every per-subject MAF keeps the same
     # width and the group-level collectFile merge cannot go ragged.
@@ -73,6 +74,13 @@ process MAFSMITH {
         --maf tmp.${meta.sample}.maf \\
         --output tmp.${meta.sample}.annotated.maf
     mv tmp.${meta.sample}.annotated.maf tmp.${meta.sample}.maf
+
+    # mafsmith has no Ensembl-to-Entrez table and writes Entrez_Gene_Id = 0 on every row.
+    fill_maf_entrez.py \\
+        --maf tmp.${meta.sample}.maf \\
+        --annotations ${ensembl_annotations} \\
+        --output tmp.${meta.sample}.entrez.maf
+    mv tmp.${meta.sample}.entrez.maf tmp.${meta.sample}.maf
 
     # Set Tumor_Sample_Barcode to the cBioPortal sample id and Mutation_Status to Somatic (mafsmith
     # leaves it empty; cBioPortal tells somatic from germline by it). Columns are found by name on line 2.

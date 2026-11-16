@@ -11,15 +11,15 @@ include { GENOMIC_MUTATIONS            } from '../subworkflows/local/genomic_mut
 include { GENOMIC_ML                   } from '../subworkflows/local/genomic_ml'
 include { GENOMIC_AGGREGATE_OUTPUT     } from '../subworkflows/local/genomic_aggregate_output'
 include { GENERATE_META_FILE           } from '../modules/local/generate_meta_file'
-include { GENERATE_META_FILE as GENERATE_META_FILE_CLINICAL } from '../modules/local/generate_meta_file'
+include { GENERATE_META_FILE as GENERATE_META_FILE_CLINICAL_SAMPLE } from '../modules/local/generate_meta_file'
 include { GENERATE_CANCER_TYPE        } from '../modules/local/generate_cancer_type'
-include { GENERATE_CLINICAL_SAMPLE     } from '../modules/local/generate_clinical_sample'
 include { ISOFOX_FUSION_TO_CBIOPORTAL  } from '../modules/local/isofox_fusion_to_cbioportal'
 include { MERGE_SAMPLE_SV              } from '../modules/local/merge_sample_sv'
 include { SIGPROFILER_SBS               } from '../modules/local/sigprofiler_sbs'
 include { SIGPROFILER_DBS              } from '../modules/local/sigprofiler_dbs'
 include { SIGPROFILER_ID               } from '../modules/local/sigprofiler_id'
 include { SIGS_COUNTS_TO_CBIOPORTAL    } from '../modules/local/sigs_counts_to_cbioportal'
+include { GENOMIC_SAMPLE_ATTRIBUTES    } from '../modules/local/genomic_sample_attributes'
 include { resource                     } from '../subworkflows/local/utils'
 include { isDnaOnly                    } from '../subworkflows/local/utils'
 
@@ -35,59 +35,21 @@ def findOncoFile(meta, path_str, label) {
 }
 
 
-// Path of the subject's PAVE somatic or germline (kind) VCF, or null when none exists and is
-// non-empty. oncoanalyser 3.0 writes pave/<kind>/; dna-only also accepts the flat pave/ layout
-// of older oncoanalyser runs, checked second.
-def paveVcfPath(meta, kind) {
-    def name  = "${meta.subject}-T.pave.${kind}.vcf.gz"
-    def paths = ["${meta.folder}/pave/${kind}/${name}"]
-    if (isDnaOnly()) {
-        paths << "${meta.folder}/pave/${name}"
-    }
-    return paths.find { p ->
-        def f = file(p, checkIfExists: false)
-        f.exists() && !f.isEmpty()
-    }
+// False only under dna-only when <folder>/<rel> is absent: that step is skipped for the subject.
+def hasOncoOutput(meta, rel) {
+    return !isDnaOnly() || file("${meta.folder}/${rel}", checkIfExists: false).exists()
 }
 
-// True when the subject has a PAVE somatic or germline (kind) VCF (see paveVcfPath).
-def hasPaveVcf(meta, kind) {
-    return paveVcfPath(meta, kind) != null
+
+// dna-only inputs: label, path relative to the subject folder, steps skipped without it.
+def dnaOnlyInputs(meta) {
+    return [
+        [label: 'purple/',            rel: 'purple',                                     steps: 'copy number, SVs, mutations and DBS/ID signatures'],
+        [label: 'PURPLE SV VCF',      rel: "purple/${meta.subject}-T.purple.sv.vcf.gz",  steps: 'structural variants'],
+        [label: 'sigs/',              rel: 'sigs',                                       steps: 'SBS signatures'],
+    ]
 }
 
-// Somatic or germline (kind) variant VCF for a subject. With RNA (genomic/both) reads pave/<kind>/. dna-only
-// prefers PAVE too (pave/<kind>/, then flat pave/), and falls back to the raw SAGE VCF only
-// when oncoanalyser wrote no PAVE file for the subject (it can skip PAVE/sage_append without
-// RNA). Raw SAGE carries no PAVE INFO, so gnomAD_AF and the HMF.* MAF columns stay empty for
-// a subject read from it.
-def findVariantVcf(meta, kind, label) {
-    if (!isDnaOnly()) {
-        return findOncoFile(meta,
-            "${meta.folder}/pave/${kind}/${meta.subject}-T.pave.${kind}.vcf.gz",
-            "${label} (PAVE ${kind})")
-    }
-    def pave = paveVcfPath(meta, kind)
-    if (pave) {
-        return findOncoFile(meta, pave, "${label} (PAVE ${kind})")
-    }
-    return findOncoFile(meta,
-        "${meta.folder}/sage/${kind}/${meta.subject}-T.sage.${kind}.vcf.gz",
-        "${label} (SAGE ${kind}, dna-only fallback)")
-}
-
-// dna-only: oncoanalyser runs only a subset of tools on WES/DNA-only data (e.g. no sigs/).
-// A subject whose <folder>/<tool>/ directory is absent is dropped from that tool's channels
-// without a per-subject warning (one summary line per tool is logged instead). A present
-// folder with a missing file still warns via findOncoFile. Always true outside --mode genomic-dna-only.
-def hasToolOutput(meta, tool) {
-    return !isDnaOnly() || file("${meta.folder}/${tool}", checkIfExists: false).isDirectory()
-}
-
-// A somatic or germline (kind) variant VCF can come from pave/<kind>/ or, in dna-only, the
-// flat pave/ layout or sage/<kind>/.
-def hasVariantVcf(meta, kind) {
-    return hasToolOutput(meta, "pave/${kind}") || hasPaveVcf(meta, kind) || hasToolOutput(meta, "sage/${kind}")
-}
 
 // Every per-subject file this workflow publishes to <outdir>/<group>/<subject>/.
 //
@@ -101,10 +63,7 @@ def hasVariantVcf(meta, kind) {
 //   required — must exist for the subject to count as processed. The signature
 //              files are optional: SigProfiler legitimately emits nothing for a
 //              subject with too few mutations, and gating on them would
-//              reprocess such a subject on every single run. Expression is
-//              optional under dna-only, which never writes .tpm.tsv. Under dna-only
-//              a required output is also skipped for a subject whose tool output is
-//              absent (see outputExpected).
+//              reprocess such a subject on every single run. Under dna-only, see outputExpected().
 def subjectOutputs() {
     return [
         [tag: 'cnv_seg',         suffix: '_data_cna_hg38.seg',                               required: true ],
@@ -144,26 +103,16 @@ def resolveSubjectCache(meta) {
 }
 
 
-// True when a subjectOutputs() entry must exist for the subject to count as cached.
-// dna-only skips a step whose oncoanalyser tool output is absent for the subject, so its
-// output is never written and cannot be required: otherwise a WES subject without, e.g.,
-// esvee/ would never count as cached and would be reprocessed on every run. The MAF needs
-// both the somatic and the germline VCF (GENOMIC_MUTATIONS joins them).
+// Required output whose input exists: under dna-only a skipped step's output is not required.
 def outputExpected(meta, output) {
     if (!output.required) {
         return false
     }
-    if (!isDnaOnly()) {
-        return true
-    }
-    if (output.tag in ['cnv_seg', 'cnv_long']) {
-        return hasToolOutput(meta, 'purple')
+    if (output.tag in ['cnv_seg', 'cnv_long', 'mutation']) {
+        return hasOncoOutput(meta, 'purple')
     }
     if (output.tag == 'sv') {
-        return hasToolOutput(meta, 'esvee')
-    }
-    if (output.tag == 'mutation') {
-        return hasVariantVcf(meta, 'somatic') && hasVariantVcf(meta, 'germline')
+        return hasOncoOutput(meta, "purple/${meta.subject}-T.purple.sv.vcf.gz")
     }
     return true
 }
@@ -208,7 +157,7 @@ workflow GENOMIC {
 
     take:
         samplesheet_list        // from nf-schema — one record per samplesheet row
-        ensembl_annotations     // path — BioMart TSV for CNV gene mapping + ESVEE gene overlap
+        ensembl_annotations     // path — BioMart TSV for CNV/MAF gene mapping + SV gene overlap
         vep_data                // channel<path> — pre-staged VEP cache (may be empty)
         pcgr_data               // channel<path> — pre-staged PCGR reference data (may be empty)
         mafsmith_data           // channel<path> — pre-staged mafsmith home (may be empty)
@@ -300,36 +249,41 @@ workflow GENOMIC {
 
         // ── Build per-modality input channels ─────────────────────────────────
         // File naming conventions (relative to folder), oncoanalyser 3.0 layout:
-        //   pave/somatic/${subject}-T.pave.somatic.vcf.gz          — PAVE somatic DNA
-        //   pave/germline/${subject}-T.pave.germline.vcf.gz        — PAVE germline DNA
-        //   (dna-only also accepts the older flat pave/${subject}-T.pave.{somatic,germline}.vcf.gz)
+        //   purple/${subject}-T.purple.somatic.vcf.gz              — PURPLE somatic DNA (PAVE-annotated)
+        //   purple/${subject}-T.purple.germline.vcf.gz             — PURPLE germline DNA
         //   sage_append/${subject}-T/${subject}-T.sage.append.vcf.gz — SAGE somatic RNA append
-        //   esvee/${subject}-T.esvee.somatic.vcf.gz
+        //   purple/${subject}-T.purple.sv.vcf.gz                   — PURPLE somatic SVs
         //   purple/${subject}-T.purple.cnv.somatic.tsv
         //   purple/${subject}-T.purple.cnv.gene.tsv
+        //   purple/${subject}-T.purple.purity.tsv                  — sex, TMB/TML
+        //   chord/${subject}-T.chord.prediction.tsv                — HRD
         //   isofox/${subject}-T.isf.gene_data.tsv
         //   isofox/${subject}-T.isf.pass_fusions.tsv
         //   sigs/${subject}-T.sig.snv_counts.csv
 
-        // PAVE somatic VCF → mutations (dna-only: raw SAGE when pave/ is absent, see findVariantVcf)
-        ch_sage_vcf = ch_samples_to_run
-            .filter { meta -> hasVariantVcf(meta, 'somatic') }
+        // PURPLE somatic VCF → mutations
+        ch_somatic_vcf = ch_samples_to_run
+            .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
-                def vcf = findVariantVcf(meta, 'somatic', 'mutation')
+                def vcf = findOncoFile(meta,
+                    "${meta.folder}/purple/${meta.subject}-T.purple.somatic.vcf.gz",
+                    'mutation (PURPLE somatic)')
                 vcf ? [meta + [pipeline: 'mutation'], vcf] : null
             }
             .filter { it != null }
 
-        // PAVE germline VCF → germline mutations (same dna-only fallback as above)
-        ch_sage_germline_vcf = ch_samples_to_run
-            .filter { meta -> hasVariantVcf(meta, 'germline') }
+        // PURPLE germline VCF → germline mutations (to CPSR unfiltered, normal column only)
+        ch_germline_vcf = ch_samples_to_run
+            .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
-                def vcf = findVariantVcf(meta, 'germline', 'germline mutation')
+                def vcf = findOncoFile(meta,
+                    "${meta.folder}/purple/${meta.subject}-T.purple.germline.vcf.gz",
+                    'germline mutation (PURPLE)')
                 vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
             }
             .filter { it != null }
 
-        // SAGE RNA-append VCF → somatic RNA mutations (skipped entirely in dna-only mode)
+        // SAGE RNA-append VCF → somatic RNA mutations (none under dna-only)
         ch_sage_rna_vcf = isDnaOnly()
             ? channel.empty()
             : ch_samples_to_run
@@ -346,7 +300,7 @@ workflow GENOMIC {
         // chrX/chrY baseline, so a subject without one still gets CNV output —
         // just with a diploid baseline everywhere, same as before this file existed.
         ch_purple_cnv = ch_samples_to_run
-            .filter { meta -> hasToolOutput(meta, 'purple') }
+            .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
                 def somatic = findOncoFile(meta,
                     "${meta.folder}/purple/${meta.subject}-T.purple.cnv.somatic.tsv",
@@ -363,18 +317,18 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // ESVEE somatic VCF (tumor only) → structural variants
-        ch_esvee_vcf = ch_samples_to_run
-            .filter { meta -> hasToolOutput(meta, 'esvee') }
+        // PURPLE somatic SV VCF (ESVEE's records + PURPLE copy number) → structural variants
+        ch_purple_sv = ch_samples_to_run
+            .filter { meta -> hasOncoOutput(meta, "purple/${meta.subject}-T.purple.sv.vcf.gz") }
             .map { meta ->
                 def vcf = findOncoFile(meta,
-                    "${meta.folder}/esvee/${meta.subject}-T.esvee.somatic.vcf.gz",
-                    'sv (ESVEE tumor)')
+                    "${meta.folder}/purple/${meta.subject}-T.purple.sv.vcf.gz",
+                    'sv (PURPLE)')
                 vcf ? [meta + [pipeline: 'sv'], vcf] : null
             }
             .filter { it != null }
 
-        // Isofox gene expression CSV → TPM (skipped entirely in dna-only mode)
+        // Isofox gene expression CSV → TPM (none under dna-only)
         ch_isofox_exp = isDnaOnly()
             ? channel.empty()
             : ch_samples_to_run
@@ -386,7 +340,7 @@ workflow GENOMIC {
                 }
                 .filter { it != null }
 
-        // Isofox pass_fusions CSV (tumor RNA) → RNA fusions for data_sv.txt (skipped entirely in dna-only mode)
+        // Isofox pass_fusions CSV (tumor RNA) → RNA fusions for data_sv.txt (none under dna-only)
         ch_isofox_fusion = isDnaOnly()
             ? channel.empty()
             : ch_samples_to_run
@@ -400,7 +354,7 @@ workflow GENOMIC {
 
         // SBS signature fitting: reuse snv_counts.csv with pipeline:'sigs' for cache compatibility
         ch_sigs_for_assignment = ch_samples_to_run
-            .filter { meta -> hasToolOutput(meta, 'sigs') }
+            .filter { meta -> hasOncoOutput(meta, 'sigs') }
             .map { meta ->
                 def f = findOncoFile(meta,
                     "${meta.folder}/sigs/${meta.subject}-T.sig.snv_counts.csv",
@@ -409,27 +363,31 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // DBS signature fitting: extract from PAVE somatic VCF (dna-only: raw SAGE fallback)
+        // DBS signature fitting: extract from PURPLE somatic VCF
         ch_sigs_dbs = ch_samples_to_run
-            .filter { meta -> hasVariantVcf(meta, 'somatic') }
+            .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
-                def f = findVariantVcf(meta, 'somatic', 'SigProfiler DBS')
+                def f = findOncoFile(meta,
+                    "${meta.folder}/purple/${meta.subject}-T.purple.somatic.vcf.gz",
+                    'somatic VCF (SigProfiler DBS)')
                 f ? [meta + [pipeline: 'sigs_dbs'], f] : null
             }
             .filter { it != null }
 
-        // ID signature fitting: extract indels from PAVE somatic VCF (dna-only: raw SAGE fallback)
+        // ID signature fitting: extract indels from PURPLE somatic VCF
         ch_sigs_id = ch_samples_to_run
-            .filter { meta -> hasVariantVcf(meta, 'somatic') }
+            .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
-                def f = findVariantVcf(meta, 'somatic', 'SigProfiler ID')
+                def f = findOncoFile(meta,
+                    "${meta.folder}/purple/${meta.subject}-T.purple.somatic.vcf.gz",
+                    'somatic VCF (SigProfiler ID)')
                 f ? [meta + [pipeline: 'sigs_id'], f] : null
             }
             .filter { it != null }
 
         // SIGS SNV counts CSV → mutational signature trinucleotide counts
         ch_sigs_counts = ch_samples_to_run
-            .filter { meta -> hasToolOutput(meta, 'sigs') }
+            .filter { meta -> hasOncoOutput(meta, 'sigs') }
             .map { meta ->
                 def snv_counts = findOncoFile(meta,
                     "${meta.folder}/sigs/${meta.subject}-T.sig.snv_counts.csv",
@@ -438,51 +396,41 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // dna-only: one summary line per oncoanalyser tool whose output folder is absent
-        if (isDnaOnly()) {
-            [
-                'purple'       : 'copy number',
-                'esvee'        : 'structural variants',
-                'sigs'         : 'SBS signatures',
-            ].each { tool, steps ->
-                ch_samples_to_run
-                    .map { meta -> hasToolOutput(meta, tool) ? 0 : 1 }
-                    .reduce([0, 0]) { acc, missing -> [acc[0] + missing, acc[1] + 1] }
-                    .subscribe { counts ->
-                        if (counts[0] > 0) {
-                            log.warn "dna-only: ${tool}/ absent for ${counts[0]}/${counts[1]} subject(s); ${steps} skipped for those subjects"
-                        }
-                    }
+        // PURPLE purity + CHORD → TMB/TML/HRD sample attributes. Built from ch_samples, not
+        // ch_samples_to_run: re-read every run so cached subjects keep their row. Absent file → NA.
+        ch_sample_attributes = ch_samples
+            .map { meta ->
+                def purity = file("${meta.folder}/purple/${meta.subject}-T.purple.purity.tsv", checkIfExists: false)
+                def chord  = file("${meta.folder}/chord/${meta.subject}-T.chord.prediction.tsv", checkIfExists: false)
+                if (!purity.exists() || purity.isEmpty()) {
+                    log.warn "No PURPLE purity file for ${meta.subject}; TMB/TML will be NA"
+                    purity = []
+                }
+                if (!chord.exists() || chord.isEmpty()) {
+                    log.warn "No CHORD prediction file for ${meta.subject}; HRD will be NA"
+                    chord = []
+                }
+                [meta + [pipeline: 'sample_attributes'], purity, chord]
             }
 
-            // Variant VCFs: PAVE when present, raw SAGE fallback (see findVariantVcf), else skipped
-            [
-                // GENOMIC_MUTATIONS pairs each somatic VCF with the germline VCF, so a
-                // subject missing either one gets no MAF rows at all
-                'somatic' : 'all mutations (somatic and germline) and DBS/ID signatures',
-                'germline': 'all mutations (somatic and germline: the MAF step needs both VCFs)',
-            ].each { kind, steps ->
-                ch_samples_to_run
-                    .map { meta -> hasPaveVcf(meta, kind) ? 'pave' : (hasVariantVcf(meta, kind) ? 'sage' : 'none') }
-                    .toList()
-                    .subscribe { sources ->
-                        def n_sage = sources.count('sage')
-                        def n_none = sources.count('none')
-                        if (n_sage > 0) {
-                            log.warn "dna-only: no PAVE ${kind} VCF for ${n_sage}/${sources.size()} subject(s); using raw sage/${kind}/ (gnomAD_AF and HMF.* MAF columns empty for those)"
-                        }
-                        if (n_none > 0) {
-                            log.warn "dna-only: no PAVE ${kind} VCF and no sage/${kind}/ for ${n_none}/${sources.size()} subject(s); ${steps} skipped for those subjects"
-                        }
+        // dna-only: one summary line per oncoanalyser input absent for some subjects
+        if (isDnaOnly()) {
+            ch_samples_to_run
+                .flatMap { meta -> dnaOnlyInputs(meta).collect { input -> [input.label, input.steps, hasOncoOutput(meta, input.rel) ? 0 : 1] } }
+                .groupTuple(by: [0, 1])
+                .subscribe { label, steps, missing ->
+                    def n = missing.sum()
+                    if (n > 0) {
+                        log.warn "dna-only: ${label} absent for ${n}/${missing.size()} subject(s) to run; ${steps} skipped for those"
                     }
-            }
+                }
         }
 
         // ── Run subworkflows ──────────────────────────────────────────────────
 
         GENOMIC_CNV(ch_purple_cnv, ensembl_annotations)
 
-        GENOMIC_SV(ch_esvee_vcf, ensembl_annotations)
+        GENOMIC_SV(ch_purple_sv, ensembl_annotations)
 
         ISOFOX_FUSION_TO_CBIOPORTAL(ch_isofox_fusion)
 
@@ -496,16 +444,19 @@ workflow GENOMIC {
 
         GENOMIC_EXPRESSION(ch_isofox_exp, ensembl_annotations)
 
+        GENOMIC_SAMPLE_ATTRIBUTES(ch_sample_attributes)
+
         GENOMIC_MUTATIONS(
-            ch_sage_germline_vcf,
-            ch_sage_vcf,
+            ch_germline_vcf,
+            ch_somatic_vcf,
             ch_sage_rna_vcf,
             vep_data,
             pcgr_data,
             mafsmith_data,
             needs_vep,
             needs_pcgr,
-            needs_mafsmith
+            needs_mafsmith,
+            ensembl_annotations
         )
 
         // ── Mix new results with pre-existing cached results ──────────────────
@@ -535,7 +486,7 @@ workflow GENOMIC {
         all_sv = MERGE_SAMPLE_SV.out.sv
             .mix(cachedFiles(ch_files_ran, 'sv'))
 
-        // dna-only: a .tpm.tsv left on disk by an earlier DNA+RNA run is not reloaded
+        // dna-only: a .tpm.tsv left by an earlier DNA+RNA run is not reloaded
         all_expression = GENOMIC_EXPRESSION.out.out
             .mix(isDnaOnly() ? channel.empty() : cachedFiles(ch_files_ran, 'expression'))
 
@@ -574,6 +525,7 @@ workflow GENOMIC {
             all_sigs_counts_dbs,
             all_sigs_id,
             all_sigs_counts_id,
+            GENOMIC_SAMPLE_ATTRIBUTES.out.attributes,
         )
 
         // ── ML formatting (opt-in: --run_ml) ──────────────────────────────────
@@ -614,62 +566,27 @@ reference_genome: hg38
                 })
         }
 
-        // ── Clinical sample template (--mode genomic-dna-only) ──────────────
-        // cBioPortal's validateData.py stops at "No sample attribute file detected" without a
-        // clinical sample file, and --mode genomic-dna-only never runs CLINICAL. Only values the pipeline
-        // knows are written (samplesheet subject_id / sample_id, params.cancer_type); every
-        // other column is left empty for the user — nothing is inferred. Not needed in --mode
-        // both (always DNA+RNA), where CLINICAL writes its own data_clinical_sample.txt.
-        // A data_clinical_sample.txt already in the group folder (filled in by hand, or from
-        // --mode clinical) is updated, not replaced: its values are kept, new samples added.
+        // ── TMB/HRD sample attributes ─────────────────────────────────────────
+        // cBioPortal allows one SAMPLE_ATTRIBUTES file. A genomic-only study has none, so the
+        // attributes become its data_clinical_sample.txt; in both mode CLINICAL joins them onto its own.
 
-        ch_clinical_sample = channel.empty()
-        if (isDnaOnly()) {
-            ch_clinical_lines = ch_samples
-                .map { meta -> tuple(meta.group, "${meta.subject}\t${meta.sample}".toString()) }
-                .unique()
-                .groupTuple()
-                .map { group, lines ->
-                    def existing = file("${params.outdir}/${group}/data_clinical_sample.txt", checkIfExists: false)
-                    tuple(group, lines.sort(false).join('\n'), existing.exists() && !existing.isEmpty() ? existing : [])
+        ch_sample_attributes = GENOMIC_AGGREGATE_OUTPUT.out.sample_attributes
+
+        ch_genomic_clinical_files = Channel.empty()
+        if (params.mode == 'genomic') {
+            ch_genomic_clinical_sample = ch_sample_attributes
+                .collectFile(storeDir: "${params.outdir}") { group, f ->
+                    ["${group}/data_clinical_sample.txt", f.text]
                 }
+                .map { f -> tuple(f.parent.name, f) }
 
-            GENERATE_CLINICAL_SAMPLE(ch_clinical_lines)
-
-            meta_text_clinical = """cancer_study_identifier: add_text
+            meta_text_clinical_sample = """cancer_study_identifier: add_text
 genetic_alteration_type: CLINICAL
 datatype: SAMPLE_ATTRIBUTES
 data_filename: data_clinical_sample.txt
         """
-
-            GENERATE_META_FILE_CLINICAL(all_groups, "clinical_sample", meta_text_clinical)
-
-            ch_clinical_sample = GENERATE_CLINICAL_SAMPLE.out.clinical_sample
-                .mix(GENERATE_META_FILE_CLINICAL.out)
-
-            GENERATE_CLINICAL_SAMPLE.out.clinical_sample
-                .join(ch_clinical_lines.map { group, _lines, existing -> tuple(group, existing ? true : false) })
-                .subscribe { group, _f, updated ->
-                    if (updated) {
-                        log.warn "data_clinical_sample.txt already existed in ${params.outdir}/${group}/ and was UPDATED, not replaced: " +
-                            "existing values are kept, rows for samples no longer in the samplesheet were dropped, and samples new " +
-                            "to this run were added with only PATIENT_ID, SAMPLE_ID and ONCOTREE_CODE filled — fill in their other columns before import."
-                        return
-                    }
-                    def filled_cols = ['PATIENT_ID (samplesheet subject_id)', 'SAMPLE_ID (samplesheet sample_id)']
-                    def empty_cols  = ['CANCER_TYPE', 'CANCER_TYPE_DETAILED', 'SAMPLE_TYPE']
-                    if (params.cancer_type) {
-                        filled_cols << 'ONCOTREE_CODE (cancer_type)'
-                    } else {
-                        empty_cols.add(0, 'ONCOTREE_CODE')
-                    }
-                    def msg = "ACTION REQUIRED: data_clinical_sample.txt is a TEMPLATE and STILL NEEDS TO BE FILLED IN " +
-                        "before cBioPortal import: ${params.outdir}/${group}/data_clinical_sample.txt " +
-                        "(the copy inside ${group}.tar.gz is the same unfilled template). " +
-                        "Columns left empty: ${empty_cols.join(', ')}. " +
-                        "Filled by the pipeline: ${filled_cols.join(', ')}. Nothing was inferred."
-                    log.warn(msg)
-                }
+            GENERATE_META_FILE_CLINICAL_SAMPLE(all_groups, "clinical_sample", meta_text_clinical_sample)
+            ch_genomic_clinical_files = ch_genomic_clinical_sample.mix(GENERATE_META_FILE_CLINICAL_SAMPLE.out)
         }
 
         // ── Subject → tumor sample linking file ───────────────────────────────
@@ -701,11 +618,11 @@ data_filename: data_clinical_sample.txt
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_dbs)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_id)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.sigs_counts_id)
+            .mix(ch_genomic_clinical_files)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.meta_files)
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.case_files)
             .mix(ch_study_files)
             .mix(ch_linking_file)
-            .mix(ch_clinical_sample)
 
         // ── Software versions ─────────────────────────────────────────────────
 
@@ -720,6 +637,7 @@ data_filename: data_clinical_sample.txt
     emit:
         linking_file  = ch_linking_file     // channel<tuple(group, file)> — subject→sample linking file per group
         package_files = all_package_files   // channel<tuple(group, file)> — files to put in the study archive
+        sample_attributes = ch_sample_attributes // channel<tuple(group, file)> — merged TMB/HRD, for CLINICAL to join (both mode)
 }
 
 /*

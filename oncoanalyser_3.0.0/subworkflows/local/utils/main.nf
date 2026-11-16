@@ -28,7 +28,7 @@ workflow PIPELINE_INITIALISATION {
     version           	// boolean: Display version and exit
     monochrome_logs   	// boolean: Do not use coloured log outputs
     nextflow_cli_args 	// array: List of positional nextflow CLI args
-    mode              	// string: pipeline mode [genomic, genomic-dna-only, clinical, both]
+    mode              	// string: pipeline mode [clinical, genomic, both]
     outdir            	// string: The output directory where the results will be saved
     genomic_input     	// string: Path to input samplesheet
     clinical_input    	// string: Path to input samplesheet
@@ -168,13 +168,16 @@ workflow PIPELINE_COMPLETION {
 def validateInputParameters() {
 
     // check modes and input
-    // Exact, lower-case match: params values given on the command line are immutable, so
-    // a value cannot be normalised in place here, and every consumer compares exactly.
+    // Exact match: CLI params are immutable, so the value cannot be normalised here.
+    def choices = pipelineModes().collect { m -> "'${m}'" }.join(', ')
     if (!params.mode){
-        error("ERROR: Pipeline mode not chosen. Choices: ${pipelineModes().collect { "'${it}'" }.join(', ')}")
+        error("ERROR: Pipeline mode not chosen. Choices: ${choices}")
     }
-    if ( !(params.mode in pipelineModes()) ) {
-        error("ERROR: Invalid --mode '${params.mode}'. Choices: ${pipelineModes().collect { "'${it}'" }.join(', ')}")
+    if (!(params.mode in pipelineModes())) {
+        error("ERROR: Invalid --mode '${params.mode}'. Choices: ${choices}")
+    }
+    if (isDnaOnly() && !runsGenomic()) {
+        error("ERROR: --dna_only applies to --mode genomic or both, not '${params.mode}'.")
     }
 
     // make sure there's input
@@ -292,22 +295,21 @@ def resourceLayout() {
 }
 
 
-// Pipeline modes. genomic-dna-only is genomic mode without RNA; there is no DNA-only
-// variant of "both" — run genomic-dna-only, then clinical, for that.
+// Pipeline modes.
 def pipelineModes() {
-    return ['genomic', 'genomic-dna-only', 'clinical', 'both']
+    return ['genomic', 'clinical', 'both']
 }
 
 
 // True when the mode runs the GENOMIC workflow.
 def runsGenomic() {
-    return params.mode in ['genomic', 'genomic-dna-only', 'both']
+    return params.mode in ['genomic', 'both']
 }
 
 
-// True when running without RNA data (--mode genomic-dna-only).
+// True with --dna_only (genomic or both mode). CLI params are Strings on NF 26, so "false" is coerced.
 def isDnaOnly() {
-    return params.mode == 'genomic-dna-only'
+    return params.dna_only.toString().toBoolean()
 }
 
 

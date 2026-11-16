@@ -24,6 +24,7 @@ include { isDnaOnly } from '../utils'
             sigs_counts_dbs_results
             sigs_id_results
             sigs_counts_id_results
+            sample_attributes_results // [meta, <sample>.genomic_sample_attributes.tsv], every subject
 
         main:
 
@@ -80,8 +81,7 @@ include { isDnaOnly } from '../utils'
                 .map {filepath -> tuple(filepath.parent.name, filepath) }
 
             // merge expression with merging not possible within pure nextflow. This will publish the file to output via the module
-            // dna-only never writes expression, even when TPM files reach this subworkflow:
-            // without meta_expression.txt (skipped below) a data_expression.txt breaks the import
+            // dna-only writes no expression: data_expression.txt without its meta file breaks the import
             tpm_file_list = (isDnaOnly() ? channel.empty() : expression_results)
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
@@ -118,6 +118,19 @@ include { isDnaOnly } from '../utils'
                               ["${group}/data_mutations_dna_rna_germline.txt", filepath.text]
                            }
                 .map {filepath -> tuple(filepath.parent.name, filepath) }
+
+
+            // merge genomic sample attributes (TMB/TML, HRD); each part has 4 '#' lines + the ID header.
+            // Not a study file: GENOMIC publishes it as data_clinical_sample.txt (genomic mode) or
+            // CLINICAL joins it onto its own (both mode); cBioPortal allows one SAMPLE_ATTRIBUTES file.
+            sample_attributes_output = sample_attributes_results
+                .map {meta, filepath -> [meta.group, filepath]}
+                .collectFile(keepHeader : true,
+                           skip: 5,
+                           sort: 'deep') { group, filepath ->
+                              ["${group}.genomic_sample_attributes.txt", filepath.text]
+                           }
+                .map {filepath -> tuple(filepath.name - '.genomic_sample_attributes.txt', filepath) }
 
 
             // merge signatures -------------------------------------------------------------
@@ -242,15 +255,12 @@ include { isDnaOnly } from '../utils'
             case_sample_lists = cnv_sample_list.concat(mutation_sample_list).concat(sv_sample_list)
             all_groups_cases = all_groups.combine(case_name_all).map { g, _c -> g }
 
-            // dna-only: each label travels with its sample list, so a data type with no output
-            // (tool not run) drops its own case list instead of shifting the remaining lists
-            // onto the wrong names (the three inputs above are paired by position). toList()
-            // gives an empty modality an empty string, which is filtered out here.
+            // dna-only: pair each label with its list (inputs above pair by position) and drop empty lists
             if (isDnaOnly()) {
                 ch_case_in = all_groups
-                    .combine(cnv_sample_list.map { ['cnv', it] }
-                        .mix(mutation_sample_list.map { ['sequenced', it] })
-                        .mix(sv_sample_list.map { ['sv', it] })
+                    .combine(cnv_sample_list.map { s -> ['cnv', s] }
+                        .mix(mutation_sample_list.map { s -> ['sequenced', s] })
+                        .mix(sv_sample_list.map { s -> ['sv', s] })
                         .filter { _name, samples -> samples })
                     .multiMap { g, name, samples -> group: g; label: name; samples: samples }
                 case_groups  = ch_case_in.group
@@ -296,6 +306,7 @@ show_profile_in_analysis_tab: true
 profile_name: Structural variants from DNA
 profile_description: Structural Variant Data DNA
 data_filename: data_sv.txt
+namespaces: HMF
             """
 
             meta_text_expression = """cancer_study_identifier: add_text
@@ -394,9 +405,7 @@ data_filename: data_mutational_signatures_counts_ID.txt
 generic_entity_meta_properties: NAME
     """
 
-        // expression meta file is only emitted with RNA (not --mode genomic-dna-only) — a dna-only study
-        // never produces data_expression.txt, so a meta file pointing at it would be an
-        // orphan entry that breaks cBioPortal import
+        // No expression meta file under dna-only: it would point at a data file that is never written
         meta_entries = [
             ["cna_hg38", meta_text_seg],
             ["cna_long", meta_text_long],
@@ -415,12 +424,11 @@ generic_entity_meta_properties: NAME
             ["mutational_signatures_counts_ID", meta_text_counts_id],
         ]
 
-        file_name_all = channel.fromList(meta_entries.collect { it[0] })
-        meta_text_all  = channel.fromList(meta_entries.collect { it[1] })
+        file_name_all = channel.fromList(meta_entries.collect { e -> e[0] })
+        meta_text_all  = channel.fromList(meta_entries.collect { e -> e[1] })
         all_groups_meta = all_groups.combine(file_name_all).map { g, _f -> g }
 
-        // dna-only: a meta file is written only when its data file was produced, so a tool
-        // oncoanalyser did not run (e.g. no sigs/ for WES → no SBS) leaves no orphan meta file
+        // dna-only: a meta file only for data files produced (e.g. no sigs/ on WES → no SBS meta)
         if (isDnaOnly()) {
             ch_present = cnv_seg_output.map { g, _f -> [g, 'cna_hg38'] }
                 .mix(cnv_long_output.map        { g, _f -> [g, 'cna_long'] })
@@ -434,7 +442,7 @@ generic_entity_meta_properties: NAME
                 .mix(sigs_counts_id_output.map  { g, _f -> [g, 'mutational_signatures_counts_ID'] })
                 .map { g, name -> "${g}/${name}".toString() }
                 .collect()
-                .map { it.toSet() }
+                .map { names -> names.toSet() }
                 .ifEmpty([] as Set)
 
             ch_meta_in = all_groups
@@ -469,6 +477,7 @@ generic_entity_meta_properties: NAME
         sigs_counts_dbs = sigs_counts_dbs_output
         sigs_id         = sigs_id_output
         sigs_counts_id  = sigs_counts_id_output
+        sample_attributes = sample_attributes_output
         meta_files      = GENERATE_META_FILE.out
         case_files  = GENERATE_CASE_LIST.out
 }

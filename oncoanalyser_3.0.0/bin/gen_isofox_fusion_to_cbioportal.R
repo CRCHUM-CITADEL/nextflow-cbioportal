@@ -34,6 +34,14 @@ for (arg in c("input", "sample", "output")) {
     if (is.null(opt[[arg]])) stop(paste("Missing required argument: --", arg, sep = ""))
 }
 
+# DNA-only PURPLE columns, written as NA so these rows match gen_purple_sv_to_cbioportal.R's width.
+HMF_COLUMNS <- c("HMF.PURPLE_JCN", "HMF.PURPLE_AF_SITE1", "HMF.PURPLE_AF_SITE2", "HMF.PURPLE_CN_SITE1",
+                 "HMF.PURPLE_CN_SITE2", "HMF.PURPLE_CN_CHANGE_SITE1", "HMF.PURPLE_CN_CHANGE_SITE2")
+add_hmf_columns <- function(dt) {
+    for (col in HMF_COLUMNS) set(dt, j = col, value = rep(NA_real_, nrow(dt)))
+    dt
+}
+
 cat("Reading Isofox fusion file:", opt$input, "\n")
 fusions <- fread(opt$input, header = TRUE)
 cat("Found", nrow(fusions), "fusion records\n")
@@ -55,6 +63,7 @@ if (nrow(fusions) == 0) {
         Site2_Chromosome = character(), Site2_Position = integer(),
         Tumor_Split_Read_Count = integer(), Tumor_Paired_End_Read_Count = integer()
     )
+    empty <- add_hmf_columns(empty)
     write.table(empty, opt$output, sep = "\t", quote = FALSE, row.names = FALSE, na = "NA")
     cat("Done!\n")
     quit(status = 0)
@@ -165,6 +174,8 @@ result <- result[
     !is.na(Site1_Hugo_Symbol) & Site1_Hugo_Symbol != "" &
     !is.na(Site2_Hugo_Symbol) & Site2_Hugo_Symbol != ""
 ]
+
+result <- add_hmf_columns(result)
 
 cat("Writing fusion SV output:", opt$output, "\n")
 cat("Total records:", nrow(result), "\n")

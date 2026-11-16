@@ -156,7 +156,8 @@ rejected (converters `stop()` without the 3.0 columns).
 
 - `PACKAGE_CBIOPORTAL` is called from `main.nf` with `GENOMIC` + `CLINICAL` `package_files`, so in
   `both` mode the archive mirrors the loadable study. Its md5 isn't reproducible (`*.tar.gz` in
-  `tests/.nftignore`) — assert on contents
+  `tests/.nftignore`) — assert on contents. Published with `mode: 'move'` (a large `copy` stalled
+  shutdown on "Waiting files transfer"), so it re-runs on `-resume` and tests read it from `outdir`
 - `bin/combine_cbioportal_outputs.py` (standalone) merges two study folders/archives per file category
   (row-append, MAF 2-line header, wide matrix, timeline/clinical/SV column union, `meta_*`/case lists by
   glob). Not `machine_learning/` (cohort-normalised). Unhandled files are reported (`--strict` fails);

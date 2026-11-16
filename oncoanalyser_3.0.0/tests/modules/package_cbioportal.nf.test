@@ -41,8 +41,10 @@ nextflow_process {
             assert process.success
             assert process.out[0].size() == 1
 
-            def tarPath = process.out[0][0].toString()
-            assert tarPath.endsWith('TEST_GROUP.tar.gz')
+            // Published with mode 'move': the tarball lives in outdir, not the work dir
+            assert process.out[0][0].toString().endsWith('TEST_GROUP.tar.gz')
+            assert !new File(process.out[0][0].toString()).exists()
+            def tarPath = "${params.outdir}/TEST_GROUP.tar.gz"
             assert new File(tarPath).length() > 0
 
             // Extract and verify directory structure

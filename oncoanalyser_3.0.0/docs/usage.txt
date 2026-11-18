@@ -9,12 +9,20 @@ This pipeline converts nf-core/oncoanalyser WGS/WTS output and clinical
 CSVs into cBioPortal-compatible import packages. It runs on HPC clusters
 using SLURM and Apptainer (no Docker, no sudo).
 
-The pipeline has three modes:
+The pipeline has four modes:
 
   Genomic mode   Processes per-subject oncoanalyser output (mutations,
                  copy-number, structural variants, gene expression, RNA
                  fusions, mutational signatures) and produces merged,
                  group-level cBioPortal data files packaged as a .tar.gz.
+
+  Genomic-dna-only mode
+                 Genomic mode without RNA (e.g. WES). Skips Isofox
+                 expression/fusions and SAGE RNA-append even if RNA files
+                 are present, and writes no expression profile. A subject
+                 without purple/, its PURPLE SV VCF or sigs/ skips the steps
+                 that need it. There is no DNA-only variant of both mode:
+                 run genomic-dna-only, then clinical.
 
   Clinical mode  Transforms clinical CSVs (patient demographics, diagnoses,
                  treatments, specimens, etc.) into cBioPortal patient and
@@ -49,12 +57,12 @@ DNA SVs and RNA fusions share the same data_sv.txt file; they are
 distinguished by DNA_Support / RNA_Support flags and the Class column
 (DELETION/DUPLICATION/INVERSION/TRANSLOCATION for DNA, FUSION for RNA).
 
-Incremental processing:
+Adding subjects:
 
-  The pipeline detects already-processed subjects by checking for existing
-  output files. Subjects with all expected outputs are skipped automatically,
-  allowing you to add new subjects to the samplesheet and re-run without
-  reprocessing the entire cohort.
+  Add them to the samplesheet and re-run with -resume (see RESUMING A
+  RUN): subjects already processed come back from Nextflow's work
+  directory, so only the new ones are computed. Keep the work directory
+  between runs.
 
 
 Prerequisites
@@ -289,7 +297,7 @@ CORE PARAMETERS
 
   Parameter              Required  Default                   Description
   ---------------------  --------  ------------------------  ----------------------
-  mode                   Yes       genomic                   genomic, clinical, or both
+  mode                   Yes       both                      genomic, genomic-dna-only, clinical, or both
   study_id               Yes       --                        Study identifier for meta_study.txt and output folder
   project_description    Yes       --                        Study description
   outdir                 No        output_<project>_<date>   Output directory
@@ -438,6 +446,15 @@ GENOMIC MODE
   nextflow run main.nf \
       -profile slurm,apptainer,citadel \
       --mode genomic \
+      --study_id "MY_STUDY" \
+      --project_description "Description of my study" \
+      --genomic_samplesheet samplesheet.csv
+
+GENOMIC-DNA-ONLY MODE
+
+  nextflow run main.nf \
+      -profile slurm,apptainer,citadel \
+      --mode genomic-dna-only \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
       --genomic_samplesheet samplesheet.csv
@@ -598,16 +615,17 @@ RUNNING VIA NEXTFLOW CONTAINER
         --mode genomic \
         --genomic_samplesheet samplesheet.csv
 
-RESUMING A FAILED RUN
+RESUMING A RUN
 
-  Nextflow caches intermediate results. If a run fails, fix the issue
-  and resume:
+  Nextflow caches every task in its work directory. After a failure, a
+  config change, or with new subjects in the samplesheet, re-run with
+  -resume from the same launch directory:
 
     nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml -resume
 
-  Nextflow reuses cached results from completed steps and only re-runs
-  what failed. The pipeline's incremental processing also skips subjects
-  that already have all expected output files.
+  Only tasks whose inputs or script changed are run again; the study
+  archive is always rebuilt. Without -resume (or with a new work
+  directory) every subject is processed from scratch.
 
 RUNNING TESTS
 
@@ -673,16 +691,6 @@ SLURM ACCOUNT ERRORS
   config (see SITE CONFIGURATION) rather than editing nextflow.config:
 
     process.clusterOptions = '--account=your-allocation'
-
-"ALL SUBJECTS IN SAMPLESHEET ALREADY PROCESSED"
-
-  Symptom: Pipeline exits saying all subjects are already processed.
-
-  Cause: Incremental processing found all expected outputs for every
-  subject.
-
-  Fix: Either (a) delete the output directory, (b) remove processed
-  subjects from the samplesheet, or (c) add new unprocessed subjects.
 
 EXPRESSION MERGE REQUIRES 2+ SAMPLES
 

@@ -10,40 +10,7 @@ nextflow_pipeline {
         config "tests/nextflow_both.config"
 
         setup {
-            // Pre-stage precomputed genomic output files so the incremental processing
-            // detects them and skips actual genomic processing (avoids VEP/PCGR downloads).
-            def precomputed = "${projectDir}/assets/test_data/precomputed"
-            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
-                def dir = new File("${outputDir}/TEST/${subject}")
-                dir.mkdirs()
-                // Exactly the files a real run publishes per subject — the set the
-                // incremental gate looks for. <sample>.isofox_fusion.data_sv.txt is
-                // deliberately NOT staged: ISOFOX_FUSION_TO_CBIOPORTAL does not
-                // publish it, and its rows already live in <sample>.data_sv.txt.
-                def fixtures = [
-                    "${sample}_data_cna_hg38.seg",
-                    "${sample}_data_cna_long.txt",
-                    "${sample}.data_sv.txt",
-                    "${sample}.tpm.tsv",
-                    "${sample}.somatic_rna_germline.maf",
-                    "${sample}.data_mutational_signatures_contribution_SBS.txt",
-                    "${sample}.data_mutational_signatures_counts_SBS.txt",
-                    "${sample}.data_mutational_signatures_contribution_DBS.txt",
-                    "${sample}.data_mutational_signatures_counts_DBS.txt",
-                    "${sample}.data_mutational_signatures_contribution_ID.txt",
-                    "${sample}.data_mutational_signatures_counts_ID.txt",
-                ]
-                fixtures.each { name ->
-                    java.nio.file.Files.copy(
-                        new File("${precomputed}/${name}").toPath(),
-                        new File("${dir}/${name}").toPath(),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
-                    )
-                }
-            }
-
-            // Absolute folders: GENOMIC_SAMPLE_ATTRIBUTES reads PURPLE/CHORD even for cached subjects,
-            // and the checked-in samplesheet's relative paths don't resolve under nf-test.
+            // The checked-in samplesheet's relative folders don't resolve under nf-test.
             new File("${outputDir}/../both_samplesheet.csv").text = """\
 group,subject_id,sample_id,folder
 TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
@@ -91,9 +58,7 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
             def sample_cols = sample_lines[0].split('\t') as List
             def sample_ids  = data_rows.collect { it.split('\t', -1)[sample_cols.indexOf('SAMPLE_ID')] }
 
-            // Every modality cached per subject must reach the group-level file.
-            // The ID signatures used to be gated but never loaded, so cached subjects
-            // silently vanished from the two ID files on any incremental run.
+            // Every subject must reach each group-level signature file.
             def sig_files = [
                 'data_mutational_signatures_contribution_SBS.txt',
                 'data_mutational_signatures_counts_SBS.txt',
@@ -131,19 +96,18 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
                 { assert tar_entries.contains('meta_timeline.txt') : "Archive missing meta_timeline.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('util_linking_file.txt') : "Archive missing util_linking_file.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('cases_sequenced.txt') : "Archive missing case lists, got: ${tar_entries}" },
-                // The cached per-subject data_sv.txt is passed through untouched now
-                // that MERGE_SAMPLE_SV is bypassed, so its RNA fusion rows (merged in
-                // when the subject was first processed) must still reach the study.
+                // MERGE_SAMPLE_SV joins each sample's DNA SVs and RNA fusions: T1 has 2 PURPLE SVs and
+                // 3 Isofox fusions, T2 1 and 1.
                 { assert path("${params.outdir}/TEST/data_sv.txt").readLines().count { it.contains('\tFUSION\tNo\tYes\t') } == 4
-                         : "RNA fusion rows were lost from the cached SV files" },
-                { assert path("${params.outdir}/TEST/data_sv.txt").readLines().count { it.contains('\tYes\tNo\t') } == 2
-                         : "DNA SV rows were lost from the cached SV files" },
+                         : "RNA fusion rows missing from data_sv.txt" },
+                { assert path("${params.outdir}/TEST/data_sv.txt").readLines().count { it.contains('\tYes\tNo\t') } == 3
+                         : "DNA SV rows missing from data_sv.txt" },
                 { assert sig_files.every { path("${params.outdir}/TEST/${it}").exists() }
                          : "Missing group-level signature file(s): " + sig_files.findAll { !path("${params.outdir}/TEST/${it}").exists() } },
                 { assert sig_files.every { f ->
                         def header = path("${params.outdir}/TEST/${f}").readLines()[0]
                         header.contains('T1-1DT') && header.contains('T2-T')
-                  } : "A cached subject is missing from a group-level signature file" },
+                  } : "A subject is missing from a group-level signature file" },
                 { assert snapshot(
                     workflow.trace.succeeded().size(),
                     stable_name,
@@ -160,23 +124,18 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
         config "tests/nextflow_both.config"
 
         setup {
-            def precomputed = "${projectDir}/assets/test_data/precomputed"
-            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
-                def dir = new File("${outputDir}/TEST/${subject}")
-                dir.mkdirs()
-                new File(precomputed).listFiles()
-                    .findAll { it.name.startsWith("${sample}") }
-                    .each { f ->
-                        java.nio.file.Files.copy(f.toPath(), new File(dir, f.name).toPath(),
-                            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                    }
-            }
+            new File("${outputDir}/../both_samplesheet.csv").text = """\
+group,subject_id,sample_id,folder
+TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
+TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
+"""
         }
 
         when {
             params {
                 mode = 'both'
                 outdir = "$outputDir"
+                genomic_samplesheet = "${outputDir}/../both_samplesheet.csv"
             }
         }
 
@@ -200,17 +159,6 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
         config "tests/nextflow_both.config"
 
         setup {
-            def precomputed = "${projectDir}/assets/test_data/precomputed"
-            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
-                def dir = new File("${outputDir}/TEST/${subject}")
-                dir.mkdirs()
-                new File(precomputed).listFiles()
-                    .findAll { it.name.startsWith("${sample}") }
-                    .each { f ->
-                        java.nio.file.Files.copy(f.toPath(), new File(dir, f.name).toPath(),
-                            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                    }
-            }
             new File("${outputDir}/../both_samplesheet.csv").text = """\
 group,subject_id,sample_id,folder
 TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1

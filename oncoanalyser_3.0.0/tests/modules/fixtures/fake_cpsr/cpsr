@@ -24,4 +24,9 @@ fi
 [[ "$id" == *BROKEN* ]] && { log "simulated failure"; exit 0; }
 [[ "$id" == *EMPTY* ]] && exit 0
 cp "$vcf" "${id}.cpsr.grch38.pass.vcf.gz"
-printf 'VAR_ID\tCLASSIFICATION\n17_43045677_G_A\tPathogenic\n' | gzip > "${id}.cpsr.grch38.classification.tsv.gz"
+# FAKE_CPSR_TSV: a real-format classification table to emit (pipeline tests); else a two-column one.
+if [ -n "${FAKE_CPSR_TSV:-}" ]; then
+    cp "$FAKE_CPSR_TSV" "${id}.cpsr.grch38.classification.tsv.gz"
+else
+    printf 'VAR_ID\tCLASSIFICATION\n17_43045677_G_A\tPathogenic\n' | gzip > "${id}.cpsr.grch38.classification.tsv.gz"
+fi

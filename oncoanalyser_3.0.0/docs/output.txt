@@ -41,6 +41,7 @@ PER-GROUP AGGREGATED FILES
                                                        DISCRETE_LONG
     data_sv.txt                                        STRUCTURAL_VARIANT/SV
     data_expression.txt                                MRNA_EXPRESSION/CONTINUOUS
+                                                       (not with --mode genomic-dna-only)
     data_mutations_dna_rna_germline.txt                MUTATION_EXTENDED/MAF
     data_mutational_signatures_contribution_SBS.txt    GENERIC_ASSAY/
                                                        MUTATIONAL_SIGNATURE
@@ -57,8 +58,7 @@ PER-GROUP AGGREGATED FILES
   data_clinical_sample.txt: in genomic mode it holds only PATIENT_ID,
   SAMPLE_ID and these columns; in both mode they are joined onto the
   clinical sample file by SAMPLE_ID (NA for a clinical sample without
-  genomic data). Every samplesheet subject is covered, cached ones
-  included (re-read every run):
+  genomic data). Every samplesheet subject is covered:
 
     Column       Source                                      Type
     -----------  ------------------------------------------  ------
@@ -94,7 +94,7 @@ PER-GROUP AGGREGATED FILES
     Each data file has a corresponding meta file required by cBioPortal:
 
     meta_study.txt (skipped when --incremental is set), meta_cna_hg38.txt, meta_cna_long.txt, meta_sv.txt,
-    meta_expression.txt, meta_sequenced.txt,
+    meta_expression.txt (not with --mode genomic-dna-only), meta_sequenced.txt,
     meta_mutational_signatures_contribution_SBS.txt,
     meta_mutational_signatures_counts_SBS.txt,
     meta_mutational_signatures_contribution_DBS.txt,

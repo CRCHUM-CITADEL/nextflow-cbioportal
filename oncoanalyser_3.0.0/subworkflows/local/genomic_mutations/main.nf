@@ -21,10 +21,8 @@ workflow GENOMIC_MUTATIONS {
         ensembl_annotations // path — BioMart TSV, fills the MAF's Entrez_Gene_Id
 
     main:
-        // Reference data is only needed when there is at least one subject to
-        // process. On a fully incremental run (every subject already cached) this
-        // channel stays empty, so the download processes never run and the run
-        // touches the network zero times.
+        // Reference data is only needed when there is at least one somatic VCF: with
+        // none this channel stays empty and the download processes never run.
         ch_has_work = som_dna_vcf.count().filter { n -> n > 0 }
 
         ch_vep_data      = needs_vep      ? DOWNLOAD_VEP_TEST(ch_has_work).cache_dir.first() : vep_data.first()

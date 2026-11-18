@@ -36,8 +36,6 @@ rejected (converters `stop()` without the 3.0 columns).
   (Ensembl `Gene` id, then `Hugo_Symbol`; ambiguous keys stay `0`). CPSR rows use CPSR's `ENTREZ_ID`
 - mafsmith writes 53 columns (vcf2maf ~133). `mafsmith_retain_ann` names must match fastVEP's
   `DEFAULT_CSQ_FIELDS` (unknown → silently empty column); `RefSeq` / `VARIANT_CLASS` can't be restored
-- **Cached subjects keep their older MAF** (narrower columns, `0` Entrez, old RNA format) until reprocessed;
-  a mix makes the merged file ragged
 
 ## Germline (PURPLE → PCGR/CPSR → CONVERT_CPSR_TO_MAF)
 
@@ -48,7 +46,8 @@ rejected (converters `stop()` without the 3.0 columns).
 - A subject without a germline VCF also loses its somatic MAF (`MAFSMITH` input joins on `ger_dna_vcf`)
 - INFO is stripped because CPSR aborts on clashing tags such as PAVE's `IMPACT`, kept by PURPLE. CPSR exits 0
   on failure, so any `- ERROR -` log line fails the task — never fall through to the header-only placeholder
-- `PCGR` publishes `<sample>.cpsr_debug/` (log, GT summaries, side outputs); `ext.args = '--debug'` keeps
+- `PCGR` writes `<sample>.cpsr_debug/` (log, GT summaries, side outputs) in its work dir, **not published**: its copy
+  hung shutdown on the cluster FS; `ext.args = '--debug'` keeps
   intermediates. CPSR output is named `<subject>-N`; `PCGR` renames it to `<sample>`, and writes a
   header-only placeholder only when CPSR wrote nothing (= no germline calls downstream)
 - `CONVERT_CPSR_TO_MAF` keeps Pathogenic / Likely Pathogenic / VUS on CPSR's **final** classification
@@ -84,8 +83,7 @@ rejected (converters `stop()` without the 3.0 columns).
   without exon ref → `Intron`, no gene → `NA` (UTR/Promoter not derivable)
 - `gen_purple_cnv_to_cbioportal.R` scores against the expected baseline: autosomes 2, chrX 1 in a male,
   chrY 1 (2 if sex unresolved), chrY dropped in a female. Sex = `gender` in optional
-  `purple/<subject>-T.purple.purity.tsv`; missing → diploid everywhere. Cache matches on file existence,
-  so subjects published before this keep wrong chrX/chrY until reprocessed
+  `purple/<subject>-T.purple.purity.tsv`; missing → diploid everywhere
 - A gene whose `minCopyNumber` doesn't parse is **dropped**: `fcase()` defaulted it to `Value = 2`, and
   `NA` passes `validateData.py` but aborts the cBioPortal load. An absent (gene, sample) = not profiled
 - `ml_format_cnv.R` / `ml_format_expression.R` require inputs named `data_cna_long.txt` / `data_expression.txt`
@@ -114,7 +112,7 @@ rejected (converters `stop()` without the 3.0 columns).
   > = 2.7 rejects empty strings); test configs use `null` for "unset"; read by truthiness
 - `--help` is nf-schema config help; `main.nf` returns on `helpRequested()` before initialisation
 - `--incremental` = load into an existing study: skips `meta_study.txt`, `cancer_type.txt`,
-  `meta_cancer_type.txt`. Unrelated to per-subject caching
+  `meta_cancer_type.txt`
 - New `bin/` scripts need `chmod +x` (else exit 126). Call them by bare name; the shebang picks the interpreter
 
 ## Clinical
@@ -144,20 +142,30 @@ rejected (converters `stop()` without the 3.0 columns).
   (TSV shaped like `util_linking_file.txt`, kept in work dir). Clinical test configs must set
   `genomic_samplesheet = null` (the `test` profile sets one)
 
-## Incremental processing
+## Re-running (`-resume`)
 
-- `subjectOutputs()` (`workflows/genomic.nf`) is the single table of per-subject outputs for both the
-  skip gate and the cache loader; add new outputs there only
-- Caching is all-or-nothing (`resolveSubjectCache()`): any missing `required: true` output → reprocess
-  and read nothing from disk (stale + fresh share basenames and collide in staged merges). Signatures are
-  `required: false` (SigProfiler may emit nothing) but loaded when present
-- Cached subjects bypass `MERGE_SAMPLE_SV` (published `<sample>.data_sv.txt` is already merged)
-- Exception: `GENOMIC_SAMPLE_ATTRIBUTES` runs for **every** subject (from `ch_samples`), re-reading PURPLE
-  purity + CHORD so cached subjects keep their TMB/HRD row. Not in `subjectOutputs()`, not published per subject
-- The samplesheet defines the cohort: group files are rebuilt each run; dropped subjects vanish (warned
-  via the previous `util_linking_file.txt`). Delete a subject's output dir to force reprocessing
-- No subject to process → no reference download (`DOWNLOAD_*` gated on `count().filter { it > 0 }`)
+- Nextflow's `-resume` is the only caching: every samplesheet subject feeds the tasks on every run, and
+  unchanged tasks come back from `work/`. There is no skip logic reading `outdir`
+- Task inputs must be deterministic or `-resume` reruns them: after a `groupTuple()` pass a meta built from
+  stable fields (`[group: group]` for group merges), never `metas[0]` (arrival order), and sort file lists.
+  Only `PACKAGE_CBIOPORTAL` reruns (published with `mode: 'move'`); `tests/resume.nf.test` guards this
+- The samplesheet defines the cohort: group files are rebuilt each run; a dropped subject is warned about
+  (via the previous `util_linking_file.txt`) and left out of the study
+- No somatic VCF → no reference download (`DOWNLOAD_*` gated on `count().filter { it > 0 }`)
 - Case lists use `toList()`, not `collect()` (empty channel would shift `GENERATE_CASE_LIST`'s zip)
+
+## `--mode genomic-dna-only`
+
+- Modes are defined only in `pipelineModes()` / `runsGenomic()` / `isDnaOnly()` (`subworkflows/local/utils/main.nf`);
+  never compare `params.mode` to a genomic list directly. Matched exactly: CLI params are immutable
+- RNA channels (`sage_append`, Isofox) are `channel.empty()`; the MAF still gets empty `RNA.*` columns.
+  `GENOMIC_AGGREGATE_OUTPUT` drops TPM input and the expression meta file
+- `hasOncoOutput(meta, rel)` (`workflows/genomic.nf`) skips a step when `purple/`, the PURPLE SV VCF or
+  `sigs/` is absent
+- Under dna-only only, meta files and case lists exist only for data types with output (labels travel
+  with their lists), and groups come from CNV/SV/mutation output. Genomic/both paths are untouched
+- Every dna-only branch is behind `isDnaOnly()`: other modes must stay byte-identical
+- `data_clinical_sample.txt` = TMB/HRD attributes, as in genomic mode. No DNA-only `both`
 
 ## Outputs
 
@@ -175,7 +183,7 @@ rejected (converters `stop()` without the 3.0 columns).
   Columns by name; missing file → `NA`, missing column → fail. `bin/gen_genomic_sample_attributes.py` owns
   the col defs; `GENOMIC_AGGREGATE_OUTPUT` merges them (`collectFile(skip: 5)`) into an intermediate, not a
   study file. **cBioPortal rejects a second `SAMPLE_ATTRIBUTES` file** ("Multiple sample attribute files"),
-  so: genomic mode publishes it as `data_clinical_sample.txt` + meta (`workflows/genomic.nf`); both mode
+  so: genomic and genomic-dna-only modes publish it as `data_clinical_sample.txt` + meta (`workflows/genomic.nf`); both mode
   passes it to `CLINICAL`, whose `WRITE_CLINICAL_SAMPLE` / `GENERATE_CLINICAL_TEMPLATE` run
   `join_genomic_sample_attributes.R` (by `SAMPLE_ID`, before `SPLIT_CLINICAL`). Clinical mode passes `[]`
 - Signatures: `docs/mutational_signatures.md`. Process labels: `conf/base.config`
@@ -185,8 +193,12 @@ rejected (converters `stop()` without the 3.0 columns).
 - `nf-test test tests/<x>.nf.test --profile=+apptainer`. Channel file outputs are `String`: use `path(f.toString())`
 - Sort snapshots by basename; `collectFile` with `storeDir` won't create dirs — `mkdirs()` in setup
 - A process without `stub:` runs its real script under `-stub-run` — every genomic-path module needs one
-- `incremental_pipeline.nf.test` runs the pipeline under `-stub-run` (container engines off): a sample's
-  rows appear in a merged file iff it came from the cache. `both.nf.test` pre-stages outputs
+- Pipeline tests run every task for real except CPSR (`fake_cpsr` stand-in in the bcftools image, via
+  `containerOptions --env PREPEND_PATH`: Nextflow starts containers with a clean env) and fastVEP
+  (`mafsmith --skip-annotation`); see `tests/nextflow_both.config`. Wiring-only tests use
+  `tests/nextflow_stub.config` under `-stub-run` (container engines off)
+- `tests/resume.nf.test` runs the stub pipeline twice (setup + `-resume`, opposite task orders via
+  `tests/nextflow_resume.config`) and fails on any rerun task but `PACKAGE_CBIOPORTAL`
 - `WorkflowTask` has only `name` and `success`: `workflow.trace.succeeded().collect { it.name }`
 - `${projectDir}` in a class-level `def` string inside a test isn't interpolated — inline it in the process block
 - `bin/create_test_data.sh` must reproduce `assets/test_data/` byte for byte (no `git status` change after a

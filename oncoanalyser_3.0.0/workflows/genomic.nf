@@ -51,83 +51,6 @@ def dnaOnlyInputs(meta) {
 }
 
 
-// Every per-subject file this workflow publishes to <outdir>/<group>/<subject>/.
-//
-// SINGLE SOURCE OF TRUTH: both the "is this subject already done" gate and the
-// cache loader read this table. Keeping them as two hand-written lists is how
-// the ID signatures ended up gated-but-never-loaded — add a modality here and
-// it is picked up by both sides at once.
-//
-//   tag      — pipeline tag the mix sites below select on
-//   suffix   — filename, appended to meta.sample
-//   required — must exist for the subject to count as processed. The signature
-//              files are optional: SigProfiler legitimately emits nothing for a
-//              subject with too few mutations, and gating on them would
-//              reprocess such a subject on every single run. Under dna-only, see outputExpected().
-def subjectOutputs() {
-    return [
-        [tag: 'cnv_seg',         suffix: '_data_cna_hg38.seg',                               required: true ],
-        [tag: 'cnv_long',        suffix: '_data_cna_long.txt',                               required: true ],
-        [tag: 'sv',              suffix: '.data_sv.txt',                                     required: true ],
-        [tag: 'expression',      suffix: '.tpm.tsv',                                         required: !isDnaOnly()],
-        [tag: 'mutation',        suffix: '.somatic_rna_germline.maf',                        required: true ],
-        [tag: 'sigs',            suffix: '.data_mutational_signatures_contribution_SBS.txt', required: false],
-        [tag: 'sigs_counts',     suffix: '.data_mutational_signatures_counts_SBS.txt',       required: false],
-        [tag: 'sigs_dbs',        suffix: '.data_mutational_signatures_contribution_DBS.txt', required: false],
-        [tag: 'sigs_counts_dbs', suffix: '.data_mutational_signatures_counts_DBS.txt',       required: false],
-        [tag: 'sigs_id',         suffix: '.data_mutational_signatures_contribution_ID.txt',  required: false],
-        [tag: 'sigs_counts_id',  suffix: '.data_mutational_signatures_counts_ID.txt',        required: false],
-    ]
-}
-
-
-// Resolve a subject's previously-published outputs.
-// Returns null when the subject still has work to do, otherwise a map of
-// tag -> file. All-or-nothing on purpose: a half-written subject is reprocessed
-// from scratch, and none of its stale files are merged into the study.
-def resolveSubjectCache(meta) {
-    def subjectDir = file("${params.outdir}/${meta.group}/${meta.subject}")
-    if (!subjectDir.exists() || !subjectDir.isDirectory()) {
-        return null
-    }
-    def found = [:]
-    def complete = subjectOutputs().every { output ->
-        def f = file("${subjectDir}/${meta.sample}${output.suffix}", checkIfExists: false)
-        if (f.exists() && !f.isEmpty()) {
-            found[output.tag] = f
-            return true
-        }
-        return !outputExpected(meta, output)
-    }
-    return complete ? found : null
-}
-
-
-// Required output whose input exists: under dna-only a skipped step's output is not required.
-def outputExpected(meta, output) {
-    if (!output.required) {
-        return false
-    }
-    if (output.tag in ['cnv_seg', 'cnv_long', 'mutation']) {
-        return hasOncoOutput(meta, 'purple')
-    }
-    if (output.tag == 'sv') {
-        return hasOncoOutput(meta, "purple/${meta.subject}-T.purple.sv.vcf.gz")
-    }
-    return true
-}
-
-
-// Cached per-subject files carrying the given tag, as [meta, file].
-// The tag must exist in subjectOutputs(), so a typo at a mix site fails loudly
-// instead of quietly yielding an empty channel — which is exactly how the ID
-// signatures went missing for cached subjects in the first place.
-def cachedFiles(ch_cache, String tag) {
-    assert tag in subjectOutputs()*.tag : "Unknown cached-output tag '${tag}'"
-    return ch_cache.filter { meta, _f -> meta.pipeline == tag }
-}
-
-
 // Subjects the previous run put in the study, read from the linking file it left
 // behind. That file is an exact record of the last cohort, which beats scanning the
 // group directory for subject folders (that directory also holds case_lists/,
@@ -187,47 +110,6 @@ workflow GENOMIC {
                 ]
             }
 
-        // ── Incremental processing: detect already-processed subjects ────────
-        // A subject counts as done only when every required per-subject output is
-        // already on disk (see subjectOutputs()). Done subjects contribute their
-        // cached files and run no tasks; every other subject is reprocessed from
-        // source and contributes nothing from disk, so a partially written subject
-        // can never be merged in twice.
-
-        ch_subject_cache = ch_samples
-            .map { meta -> [meta, resolveSubjectCache(meta)] }
-
-        // Cached per-subject files, tagged so the mix sites below can select them.
-        ch_files_ran = ch_subject_cache
-            .filter { _meta, cache -> cache != null }
-            .flatMap { meta, cache ->
-                cache.collect { tag, cached_file -> [meta + [pipeline: tag], cached_file] }
-            }
-
-        // Subjects that still need processing
-        ch_samples_to_run = ch_subject_cache
-            .filter { _meta, cache -> cache == null }
-            .map { meta, _cache -> meta }
-
-        // Log skipped samples
-        ch_subject_cache
-            .filter { _meta, cache -> cache != null }
-            .subscribe { meta, cache ->
-                log.info "Skipping already-processed subject: ${meta.subject} (${cache.size()} cached file(s))"
-            }
-
-        // One-line run summary, and a warning when there is nothing left to do
-        ch_subject_cache
-            .map { _meta, cache -> cache == null ? 'run' : 'cached' }
-            .toList()
-            .subscribe { states ->
-                def to_run = states.count('run')
-                log.info "Incremental processing: ${states.count('cached')} subject(s) cached, ${to_run} to process"
-                if (to_run == 0) {
-                    log.warn "All subjects in samplesheet already processed. Only the group-level merge will run."
-                }
-            }
-
         // The samplesheet defines the cohort: the group-level study files are rebuilt
         // from it on every run, so a subject dropped from the samplesheet disappears
         // from the study even though its per-subject folder is still on disk. Read the
@@ -262,7 +144,7 @@ workflow GENOMIC {
         //   sigs/${subject}-T.sig.snv_counts.csv
 
         // PURPLE somatic VCF → mutations
-        ch_somatic_vcf = ch_samples_to_run
+        ch_somatic_vcf = ch_samples
             .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
                 def vcf = findOncoFile(meta,
@@ -273,7 +155,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // PURPLE germline VCF → germline mutations (to CPSR unfiltered, normal column only)
-        ch_germline_vcf = ch_samples_to_run
+        ch_germline_vcf = ch_samples
             .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
                 def vcf = findOncoFile(meta,
@@ -286,7 +168,7 @@ workflow GENOMIC {
         // SAGE RNA-append VCF → somatic RNA mutations (none under dna-only)
         ch_sage_rna_vcf = isDnaOnly()
             ? channel.empty()
-            : ch_samples_to_run
+            : ch_samples
                 .map { meta ->
                     def vcf = findOncoFile(meta,
                         "${meta.folder}/sage_append/${meta.subject}-T/${meta.subject}-T.sage.append.vcf.gz",
@@ -299,7 +181,7 @@ workflow GENOMIC {
         // The purity file is optional: it only supplies the sample's sex for the
         // chrX/chrY baseline, so a subject without one still gets CNV output —
         // just with a diploid baseline everywhere, same as before this file existed.
-        ch_purple_cnv = ch_samples_to_run
+        ch_purple_cnv = ch_samples
             .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
                 def somatic = findOncoFile(meta,
@@ -318,7 +200,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // PURPLE somatic SV VCF (ESVEE's records + PURPLE copy number) → structural variants
-        ch_purple_sv = ch_samples_to_run
+        ch_purple_sv = ch_samples
             .filter { meta -> hasOncoOutput(meta, "purple/${meta.subject}-T.purple.sv.vcf.gz") }
             .map { meta ->
                 def vcf = findOncoFile(meta,
@@ -331,7 +213,7 @@ workflow GENOMIC {
         // Isofox gene expression CSV → TPM (none under dna-only)
         ch_isofox_exp = isDnaOnly()
             ? channel.empty()
-            : ch_samples_to_run
+            : ch_samples
                 .map { meta ->
                     def exp = findOncoFile(meta,
                         "${meta.folder}/isofox/${meta.subject}-T.isf.gene_data.tsv",
@@ -343,7 +225,7 @@ workflow GENOMIC {
         // Isofox pass_fusions CSV (tumor RNA) → RNA fusions for data_sv.txt (none under dna-only)
         ch_isofox_fusion = isDnaOnly()
             ? channel.empty()
-            : ch_samples_to_run
+            : ch_samples
                 .map { meta ->
                     def fusions = findOncoFile(meta,
                         "${meta.folder}/isofox/${meta.subject}-T.isf.pass_fusions.tsv",
@@ -352,8 +234,8 @@ workflow GENOMIC {
                 }
                 .filter { it != null }
 
-        // SBS signature fitting: reuse snv_counts.csv with pipeline:'sigs' for cache compatibility
-        ch_sigs_for_assignment = ch_samples_to_run
+        // SBS signature fitting from snv_counts.csv
+        ch_sigs_for_assignment = ch_samples
             .filter { meta -> hasOncoOutput(meta, 'sigs') }
             .map { meta ->
                 def f = findOncoFile(meta,
@@ -364,7 +246,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // DBS signature fitting: extract from PURPLE somatic VCF
-        ch_sigs_dbs = ch_samples_to_run
+        ch_sigs_dbs = ch_samples
             .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
                 def f = findOncoFile(meta,
@@ -375,7 +257,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // ID signature fitting: extract indels from PURPLE somatic VCF
-        ch_sigs_id = ch_samples_to_run
+        ch_sigs_id = ch_samples
             .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
                 def f = findOncoFile(meta,
@@ -386,7 +268,7 @@ workflow GENOMIC {
             .filter { it != null }
 
         // SIGS SNV counts CSV → mutational signature trinucleotide counts
-        ch_sigs_counts = ch_samples_to_run
+        ch_sigs_counts = ch_samples
             .filter { meta -> hasOncoOutput(meta, 'sigs') }
             .map { meta ->
                 def snv_counts = findOncoFile(meta,
@@ -396,8 +278,7 @@ workflow GENOMIC {
             }
             .filter { it != null }
 
-        // PURPLE purity + CHORD → TMB/TML/HRD sample attributes. Built from ch_samples, not
-        // ch_samples_to_run: re-read every run so cached subjects keep their row. Absent file → NA.
+        // PURPLE purity + CHORD → TMB/TML/HRD sample attributes. Absent file → NA.
         ch_sample_attributes = ch_samples
             .map { meta ->
                 def purity = file("${meta.folder}/purple/${meta.subject}-T.purple.purity.tsv", checkIfExists: false)
@@ -415,13 +296,13 @@ workflow GENOMIC {
 
         // dna-only: one summary line per oncoanalyser input absent for some subjects
         if (isDnaOnly()) {
-            ch_samples_to_run
+            ch_samples
                 .flatMap { meta -> dnaOnlyInputs(meta).collect { input -> [input.label, input.steps, hasOncoOutput(meta, input.rel) ? 0 : 1] } }
                 .groupTuple(by: [0, 1])
                 .subscribe { label, steps, missing ->
                     def n = missing.sum()
                     if (n > 0) {
-                        log.warn "dna-only: ${label} absent for ${n}/${missing.size()} subject(s) to run; ${steps} skipped for those"
+                        log.warn "dna-only: ${label} absent for ${n}/${missing.size()} subject(s); ${steps} skipped for those"
                     }
                 }
         }
@@ -459,72 +340,35 @@ workflow GENOMIC {
             ensembl_annotations
         )
 
-        // ── Mix new results with pre-existing cached results ──────────────────
-        // cachedFiles() rejects a tag that is not in subjectOutputs(), so a cached
-        // subject can never go missing from one of these outputs unnoticed.
+        // ── Per-sample SV files (DNA + RNA fusion) merged into one per sample ─
+        // Files sorted and meta rebuilt from the shared fields, so the task hash is stable
+        // under -resume whatever order the two producers finish in.
 
-        all_cnv_seg = GENOMIC_CNV.out.segfile
-            .mix(cachedFiles(ch_files_ran, 'cnv_seg'))
-
-        all_cnv_long = GENOMIC_CNV.out.longfile
-            .mix(cachedFiles(ch_files_ran, 'cnv_long'))
-
-        // Group the freshly produced SV files (DNA + RNA fusion) by sample and merge
-        // them into one file per sample. A cached subject already has that merged
-        // file on disk, so it bypasses MERGE_SAMPLE_SV entirely — re-merging it would
-        // feed the process an input with the same name as its own output.
         ch_sv_per_sample = GENOMIC_SV.out.sv_out
             .mix(ISOFOX_FUSION_TO_CBIOPORTAL.out.sv)
             .map { meta, sv_file -> [meta.sample, meta, sv_file] }
             .groupTuple()
             .map { _sample, metas, files ->
-                [metas[0], files instanceof List ? files : [files]]
+                def meta = metas[0].subMap(['group', 'subject', 'sample', 'folder']) + [pipeline: 'sv']
+                [meta, (files instanceof List ? files : [files]).sort { f -> f.name }]
             }
 
         MERGE_SAMPLE_SV(ch_sv_per_sample)
 
-        all_sv = MERGE_SAMPLE_SV.out.sv
-            .mix(cachedFiles(ch_files_ran, 'sv'))
-
-        // dna-only: a .tpm.tsv left by an earlier DNA+RNA run is not reloaded
-        all_expression = GENOMIC_EXPRESSION.out.out
-            .mix(isDnaOnly() ? channel.empty() : cachedFiles(ch_files_ran, 'expression'))
-
-        all_mutations = GENOMIC_MUTATIONS.out.out
-            .mix(cachedFiles(ch_files_ran, 'mutation'))
-
-        all_sigs = SIGPROFILER_SBS.out.sigs
-            .mix(cachedFiles(ch_files_ran, 'sigs'))
-
-        all_sigs_counts = SIGS_COUNTS_TO_CBIOPORTAL.out.sigs_counts
-            .mix(cachedFiles(ch_files_ran, 'sigs_counts'))
-
-        all_sigs_dbs = SIGPROFILER_DBS.out.sigs_dbs
-            .mix(cachedFiles(ch_files_ran, 'sigs_dbs'))
-
-        all_sigs_counts_dbs = SIGPROFILER_DBS.out.sigs_counts_dbs
-            .mix(cachedFiles(ch_files_ran, 'sigs_counts_dbs'))
-
-        all_sigs_id = SIGPROFILER_ID.out.sigs_id
-            .mix(cachedFiles(ch_files_ran, 'sigs_id'))
-
-        all_sigs_counts_id = SIGPROFILER_ID.out.sigs_counts_id
-            .mix(cachedFiles(ch_files_ran, 'sigs_counts_id'))
-
         // ── Aggregate per-group outputs ───────────────────────────────────────
 
         GENOMIC_AGGREGATE_OUTPUT(
-            all_cnv_seg,
-            all_cnv_long,
-            all_sv,
-            all_expression,
-            all_mutations,
-            all_sigs,
-            all_sigs_counts,
-            all_sigs_dbs,
-            all_sigs_counts_dbs,
-            all_sigs_id,
-            all_sigs_counts_id,
+            GENOMIC_CNV.out.segfile,
+            GENOMIC_CNV.out.longfile,
+            MERGE_SAMPLE_SV.out.sv,
+            GENOMIC_EXPRESSION.out.out,
+            GENOMIC_MUTATIONS.out.out,
+            SIGPROFILER_SBS.out.sigs,
+            SIGS_COUNTS_TO_CBIOPORTAL.out.sigs_counts,
+            SIGPROFILER_DBS.out.sigs_dbs,
+            SIGPROFILER_DBS.out.sigs_counts_dbs,
+            SIGPROFILER_ID.out.sigs_id,
+            SIGPROFILER_ID.out.sigs_counts_id,
             GENOMIC_SAMPLE_ATTRIBUTES.out.attributes,
         )
 

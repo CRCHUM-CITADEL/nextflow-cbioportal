@@ -19,7 +19,7 @@ Handled content:
     meta files          every meta_*.txt found in either input (meta_study.txt
                         may be absent from one: an --incremental run omits it)
     case lists          every case_lists/*.txt found in either input
-    subject folders     every other sub-directory (per-subject genomic cache and
+    subject folders     every other sub-directory (per-subject genomic files and
                         per-sample clinical splits) is union-copied
 
 Not merged:

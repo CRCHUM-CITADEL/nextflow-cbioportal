@@ -86,7 +86,7 @@ include { isDnaOnly } from '../utils'
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
                 .map { group, metas, files ->
-                    def meta = metas[0]  // Take first meta since they share the same group
+                    def meta = [group: group]  // not metas[0]: arrival order would change the hash on -resume
                     def sortedFiles = files.sort { a, b ->
                         def na = a.toString().split(/[\/\\]/).last()
                         def nb = b.toString().split(/[\/\\]/).last()
@@ -138,7 +138,7 @@ include { isDnaOnly } from '../utils'
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
                 .map { group, metas, files ->
-                    def meta = metas[0]
+                    def meta = [group: group]
                     def sortedFiles = files.sort { a, b ->
                         def na = a.toString().split(/[\/\\]/).last()
                         def nb = b.toString().split(/[\/\\]/).last()
@@ -154,7 +154,7 @@ include { isDnaOnly } from '../utils'
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
                 .map { group, metas, files ->
-                    def meta = metas[0]
+                    def meta = [group: group]
                     def sortedFiles = files.sort { a, b ->
                         def na = a.toString().split(/[\/\\]/).last()
                         def nb = b.toString().split(/[\/\\]/).last()
@@ -170,7 +170,7 @@ include { isDnaOnly } from '../utils'
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
                 .map { group, metas, files ->
-                    def meta = metas[0]
+                    def meta = [group: group]
                     def sortedFiles = files.sort { a, b ->
                         def na = a.toString().split(/[\/\\]/).last()
                         def nb = b.toString().split(/[\/\\]/).last()
@@ -186,7 +186,7 @@ include { isDnaOnly } from '../utils'
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
                 .map { group, metas, files ->
-                    def meta = metas[0]
+                    def meta = [group: group]
                     def sortedFiles = files.sort { a, b ->
                         def na = a.toString().split(/[\/\\]/).last()
                         def nb = b.toString().split(/[\/\\]/).last()
@@ -202,7 +202,7 @@ include { isDnaOnly } from '../utils'
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
                 .map { group, metas, files ->
-                    def meta = metas[0]
+                    def meta = [group: group]
                     def sortedFiles = files.sort { a, b ->
                         def na = a.toString().split(/[\/\\]/).last()
                         def nb = b.toString().split(/[\/\\]/).last()
@@ -218,7 +218,7 @@ include { isDnaOnly } from '../utils'
                 .map { meta, filepath -> tuple(meta.group, meta, filepath) }
                 .groupTuple()
                 .map { group, metas, files ->
-                    def meta = metas[0]
+                    def meta = [group: group]
                     def sortedFiles = files.sort { a, b ->
                         def na = a.toString().split(/[\/\\]/).last()
                         def nb = b.toString().split(/[\/\\]/).last()

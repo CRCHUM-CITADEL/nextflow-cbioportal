@@ -208,7 +208,7 @@ Example command:
         --project_description "Description of my study" \
         --genomic_samplesheet samplesheet.csv \
         --clinical_samplesheet clinical_samplesheet.csv \
-        --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
+        --ensembl_annotations /path/to/biomart_grch38_ensembl_116_with_entrez_id.tsv \
         --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
         --mafsmith_data /path/to/mafsmith_home \
         --vep_data /path/to/vep_cache \
@@ -221,7 +221,7 @@ Both mode without clinical data (template output only):
         --mode both \
         --study_id "MY_STUDY" \
         --genomic_samplesheet samplesheet.csv \
-        --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
+        --ensembl_annotations /path/to/biomart_grch38_ensembl_116_with_entrez_id.tsv \
         --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
         --mafsmith_data /path/to/mafsmith_home
 

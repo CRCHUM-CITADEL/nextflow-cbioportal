@@ -5,12 +5,11 @@ nextflow_pipeline {
     tag "pipeline"
     tag "genomic-dna-only"
 
-    test("genomic-dna-only — cached without .tpm.tsv, no expression output, TMB/HRD sample file") {
+    test("genomic-dna-only — no expression output, SV from T1 only, TMB/HRD sample file") {
 
         config "tests/nextflow_both.config"
 
         setup {
-            def precomputed = "${projectDir}/assets/test_data/precomputed"
             def copy = { java.io.File src, java.io.File dst ->
                 dst.parentFile.mkdirs()
                 java.nio.file.Files.copy(src.toPath(), dst.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
@@ -21,15 +20,6 @@ nextflow_pipeline {
             new File("${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2/purple").listFiles()
                 .findAll { !it.name.contains('.purple.sv.vcf.gz') }
                 .each { f -> copy(f, new File(t2, "purple/${f.name}")) }
-
-            // Cached per-subject outputs, without .tpm.tsv. T1 keeps a stale .tpm.tsv from a DNA+RNA run;
-            // T2 has no data_sv.txt or SBS files, since those steps are skipped for it.
-            [["T1", "T1-1DT"], ["T2", "T2-T"]].each { subject, sample ->
-                new File(precomputed).listFiles()
-                    .findAll { it.name.startsWith(sample) }
-                    .findAll { subject == 'T1' || !(it.name.endsWith('.tpm.tsv') || it.name.endsWith('.data_sv.txt') || it.name.contains('_SBS')) }
-                    .each { f -> copy(f, new File("${outputDir}/TEST/${subject}/${f.name}")) }
-            }
 
             new File("${outputDir}/../dna_only_samplesheet.csv").text = """\
 group,subject_id,sample_id,folder
@@ -57,10 +47,9 @@ TEST,T2,T2-T,${t2.canonicalPath}
 
             assertAll(
                 { assert workflow.success },
-                // Both subjects count as cached: no per-subject processing runs
-                { assert tasks.every { !(it =~ /GENOMIC_(CNV|SV|MUTATIONS|EXPRESSION)|SIGPROFILER|ISOFOX/) }
-                         : "Cached subjects were reprocessed: ${tasks.findAll { it =~ /GENOMIC_(CNV|SV|MUTATIONS|EXPRESSION)|SIGPROFILER|ISOFOX/ }}" },
-                // No expression, even with T1's stale .tpm.tsv on disk
+                // No RNA step runs; T2 (no PURPLE SV VCF, no sigs/) skips SV and SBS
+                { assert tasks.every { !(it =~ /ISOFOX|GENOMIC_EXPRESSION/) } : "RNA tasks ran: ${tasks.findAll { it =~ /ISOFOX|GENOMIC_EXPRESSION/ }}" },
+                { assert !tasks.any { it =~ /(PURPLE_SV_TO_CBIOPORTAL|SIGPROFILER_SBS) \(T2/ } : "T2 ran a skipped step: ${tasks.findAll { it.contains('(T2') }}" },
                 { assert !path("${group}/data_expression.txt").exists() },
                 { assert !path("${group}/meta_expression.txt").exists() },
                 { assert !tar_entries.any { it.contains('expression') } : "Archive has expression files: ${tar_entries}" },
@@ -79,7 +68,7 @@ TEST,T2,T2-T,${t2.canonicalPath}
 
     test("genomic-dna-only — RNA steps never run; a WES subject skips SV and SBS steps") {
 
-        config "tests/nextflow_incremental.config"
+        config "tests/nextflow_stub.config"
         options "-stub-run"
 
         setup {

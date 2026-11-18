@@ -58,8 +58,7 @@ PER-GROUP AGGREGATED FILES
   data_clinical_sample.txt: in genomic mode it holds only PATIENT_ID,
   SAMPLE_ID and these columns; in both mode they are joined onto the
   clinical sample file by SAMPLE_ID (NA for a clinical sample without
-  genomic data). Every samplesheet subject is covered, cached ones
-  included (re-read every run):
+  genomic data). Every samplesheet subject is covered:
 
     Column       Source                                      Type
     -----------  ------------------------------------------  ------

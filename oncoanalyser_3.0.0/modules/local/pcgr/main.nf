@@ -4,7 +4,8 @@ process PCGR {
 
     container params.container_pcgr
 
-    publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy', pattern: "*.cpsr_debug"
+    // Not published: copying this dir hung shutdown on the HPC filesystem (see work dir instead)
+    // publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy', pattern: "*.cpsr_debug"
 
     input:
         tuple val(meta), path(ger_dna_vcf), path(ger_dna_vcf_tbi)

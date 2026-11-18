@@ -46,7 +46,8 @@ rejected (converters `stop()` without the 3.0 columns).
 - A subject without a germline VCF also loses its somatic MAF (`MAFSMITH` input joins on `ger_dna_vcf`)
 - INFO is stripped because CPSR aborts on clashing tags such as PAVE's `IMPACT`, kept by PURPLE. CPSR exits 0
   on failure, so any `- ERROR -` log line fails the task — never fall through to the header-only placeholder
-- `PCGR` publishes `<sample>.cpsr_debug/` (log, GT summaries, side outputs); `ext.args = '--debug'` keeps
+- `PCGR` writes `<sample>.cpsr_debug/` (log, GT summaries, side outputs) in its work dir, **not published**: its copy
+  hung shutdown on the cluster FS; `ext.args = '--debug'` keeps
   intermediates. CPSR output is named `<subject>-N`; `PCGR` renames it to `<sample>`, and writes a
   header-only placeholder only when CPSR wrote nothing (= no germline calls downstream)
 - `CONVERT_CPSR_TO_MAF` keeps Pathogenic / Likely Pathogenic / VUS on CPSR's **final** classification

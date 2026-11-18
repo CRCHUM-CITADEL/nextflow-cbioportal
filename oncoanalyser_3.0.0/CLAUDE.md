@@ -153,6 +153,19 @@ rejected (converters `stop()` without the 3.0 columns).
 - No subject to process → no reference download (`DOWNLOAD_*` gated on `count().filter { it > 0 }`)
 - Case lists use `toList()`, not `collect()` (empty channel would shift `GENERATE_CASE_LIST`'s zip)
 
+## `--mode genomic-dna-only`
+
+- Modes are defined only in `pipelineModes()` / `runsGenomic()` / `isDnaOnly()` (`subworkflows/local/utils/main.nf`);
+  never compare `params.mode` to a genomic list directly. Matched exactly: CLI params are immutable
+- RNA channels (`sage_append`, Isofox) are `channel.empty()`; the MAF still gets empty `RNA.*` columns.
+  `GENOMIC_AGGREGATE_OUTPUT` drops TPM input and the expression meta file; cached `.tpm.tsv` is not reloaded
+- `hasOncoOutput(meta, rel)` (`workflows/genomic.nf`) skips a step when `purple/`, the PURPLE SV VCF or
+  `sigs/` is absent; `outputExpected()` makes the skipped outputs (and `.tpm.tsv`) not required for caching
+- Under dna-only only, meta files and case lists exist only for data types with output (labels travel
+  with their lists), and groups come from CNV/SV/mutation output. Genomic/both paths are untouched
+- Every dna-only branch is behind `isDnaOnly()`: other modes must stay byte-identical
+- `data_clinical_sample.txt` = TMB/HRD attributes, as in genomic mode. No DNA-only `both`
+
 ## Outputs
 
 - `PACKAGE_CBIOPORTAL` is called from `main.nf` with `GENOMIC` + `CLINICAL` `package_files`, so in
@@ -169,7 +182,7 @@ rejected (converters `stop()` without the 3.0 columns).
   Columns by name; missing file → `NA`, missing column → fail. `bin/gen_genomic_sample_attributes.py` owns
   the col defs; `GENOMIC_AGGREGATE_OUTPUT` merges them (`collectFile(skip: 5)`) into an intermediate, not a
   study file. **cBioPortal rejects a second `SAMPLE_ATTRIBUTES` file** ("Multiple sample attribute files"),
-  so: genomic mode publishes it as `data_clinical_sample.txt` + meta (`workflows/genomic.nf`); both mode
+  so: genomic and genomic-dna-only modes publish it as `data_clinical_sample.txt` + meta (`workflows/genomic.nf`); both mode
   passes it to `CLINICAL`, whose `WRITE_CLINICAL_SAMPLE` / `GENERATE_CLINICAL_TEMPLATE` run
   `join_genomic_sample_attributes.R` (by `SAMPLE_ID`, before `SPLIT_CLINICAL`). Clinical mode passes `[]`
 - Signatures: `docs/mutational_signatures.md`. Process labels: `conf/base.config`

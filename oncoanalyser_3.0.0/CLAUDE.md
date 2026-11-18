@@ -42,7 +42,8 @@ rejected (converters `stop()` without the 3.0 columns).
 - PURPLE's germline VCF goes to CPSR **unfiltered**: no FILTER selection, no GT inference (the old
   `FILTER_GERMLINE_DNA` step was for PAVE, which wrote every GT as `./.`). CPSR itself keeps PASS only and
   drops `./.`, so PURPLE's `LOW_TUMOR_VCN` calls and its uncalled GTs never reach the MAF
-- `PCGR` keeps only the first sample column (PURPLE writes the normal first, then the tumour) and strips all INFO
+- `PCGR` keeps only the normal's column, found by name (`<subject>-N`; PURPLE's column order is undocumented and
+  can put the tumour first), and strips all INFO. No `<subject>-N` column fails the task
 - A subject without a germline VCF also loses its somatic MAF (`MAFSMITH` input joins on `ger_dna_vcf`)
 - INFO is stripped because CPSR aborts on clashing tags such as PAVE's `IMPACT`, kept by PURPLE. CPSR exits 0
   on failure, so any `- ERROR -` log line fails the task — never fall through to the header-only placeholder

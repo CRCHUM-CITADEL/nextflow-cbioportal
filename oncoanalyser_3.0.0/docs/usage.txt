@@ -430,7 +430,7 @@ SITE CONFIGURATION
 
     Germline calls come from PURPLE's germline VCF and go to CPSR as
     PURPLE wrote them: no FILTER selection and no genotype changes.
-    PCGR only keeps the normal's sample column (PURPLE writes it first)
+    PCGR only keeps the normal's sample column, <subject>-N, by name
     and removes INFO before CPSR runs. CPSR itself analyses PASS records
     only and drops genotypes PURPLE left as ./.
 

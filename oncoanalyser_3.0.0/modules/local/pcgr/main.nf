@@ -23,14 +23,13 @@ process PCGR {
     """
     mkdir -p ${debug}
 
-    # CPSR gets PURPLE's calls as they are (no FILTER/GT changes), but only the normal: PURPLE writes it first, then the tumour.
+    # CPSR gets PURPLE's calls as they are (no FILTER/GT changes), but only the normal, found by name: column order is undocumented.
     # All INFO is removed: CPSR annotates itself and aborts on a clashing tag (PAVE's IMPACT, which PURPLE keeps).
-    normal=\$(bcftools query -l ${ger_dna_vcf} | head -n 1)
-    if [ -z "\$normal" ]; then
-        echo "ERROR: ${ger_dna_vcf} has no sample column" >&2
+    if ! bcftools query -l ${ger_dna_vcf} | grep -qxF "${cpsr_id}"; then
+        echo "ERROR: ${ger_dna_vcf} has no sample column ${cpsr_id}; columns: \$(bcftools query -l ${ger_dna_vcf} | tr '\\n' ' ')" >&2
         exit 1
     fi
-    bcftools view -s "\$normal" -Ou ${ger_dna_vcf} | bcftools annotate -x INFO -Oz -o cpsr_input.vcf.gz
+    bcftools view -s "${cpsr_id}" -Ou ${ger_dna_vcf} | bcftools annotate -x INFO -Oz -o cpsr_input.vcf.gz
     bcftools index -t cpsr_input.vcf.gz
 
     # What CPSR is given: sample columns, genotypes (CPSR drops ./.; 2.3+ also 0/0), FILTER values, contig names.

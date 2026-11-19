@@ -89,7 +89,6 @@ nextflow run main.nf ... --filter_tsv_variants true
 | CNAs      | Raw `Copy Number` ≥ 6, so all deletions are dropped                                                              | `--cna_min_copy_number` (6)                               |
 | Fusions   | Taken from the TSV, even when a `*-star-fusion.final.vcf` exists. `Supporting Reads` summed per gene pair ≥ 1000 | `--sv_min_supporting_reads` (1000)                        |
 
-With `--fusion_metrics <file.tsv>`, fusions come from that one cohort-wide TSV instead of each sample's export TSV or STAR-Fusion VCF. Its `###` lines are skipped, the `#Sample` line is the header, and rows are matched to samples on `#Sample` (the samplesheet `sample_id`). Only `Total Reads` and `ZR-score` are used as metrics; `Total Reads` becomes `Tumor_Variant_Count`. Fusions are per-sample outputs, so samples already in `--outdir` keep their old fusions: delete `{outdir}/samples/*/*_sv.txt` to rebuild them.
 With `--fusion_metrics <file.tsv>`, fusions come from that one cohort-wide TSV instead of each sample's export TSV or STAR-Fusion VCF. Its `###` lines are skipped, the `#Sample` line is the header, and rows are matched to samples on `#Sample`: the samplesheet `sample_id`, the sample folder name, or the folder name without its leading `NNNN_` (folder `1000_23BM004967-1-A01-1` matches `23BM004967-1-A01-1`), ignoring case. Gene names come from `GeneA`/`GeneB`, or from `Fusion` (`ROS1--CD74`) when those hold Ensembl placeholders. Only `Junction Read Count` (reads across the fusion breakpoint) and `ZR-score` are used as metrics; `Junction Read Count` becomes `Tumor_Variant_Count` and `ZR-score` the `FusionMetrics.ZR_score` column of `data_sv.txt` (`NA` for fusions from other sources). `meta_sv.txt` then declares `namespaces: FusionMetrics`, so cBioPortal shows the ZR-score in its structural variant tables. `Total Reads` is ignored: it is the sample's library size, the same for every fusion of a sample. Fusions are per-sample outputs, so samples already in `--outdir` keep their old fusions: delete `{outdir}/samples/*/*_sv.txt` to rebuild them.
 
 `data_seg.txt` is not filtered. Filter mode runs per sample, so samples already in `--outdir` are not re-filtered. Use a fresh `--outdir` when you turn it on or change a threshold.
@@ -103,6 +102,28 @@ Optional filters on the merged data. They are off by default and, unlike filter 
 | CNV depth QC | A sample's CNV calls, unless ≥ 95% of its PASS Pisces variants have depth ≥ 250. The sample is left out of the CNA case lists; mutations and SVs are kept                                      | `--filter_cnv_depth` (false), `--cnv_min_depth` (250), `--cnv_min_depth_fraction` (0.95), `--cnv_depth_pass_only` (true)                                   |
 
 Values equal to a threshold are kept, and a missing gnomAD or VAF value never drops a mutation. The CNV depth QC writes `qc/cnv_depth_qc.tsv`.
+
+#### Gene panel
+
+`--gene_panel <file.tsv>` lists which genes the panel covers for each data type. Mutations and CNAs of unlisted genes are removed, and so is a fusion when neither partner is listed (EML4-ALK is kept when `ALK` is listed). Like the filters above, it runs on the merged data, so samples already in `--outdir` are filtered too. The file is tab-separated, with one row per gene and type (`fusion` means the same as `sv`; `#` lines are ignored):
+
+```
+gene	type
+TP53	mutation
+ERBB2	cna
+ALK	sv
+```
+
+Every type needs at least one gene, otherwise the run stops, so that a typo cannot empty a whole data type. From the same file the pipeline writes the cBioPortal gene panel files:
+
+- `gene_panels/gene_panel_<study_id>_{mutation,cna,sv}.txt`: one panel definition per type
+- `data_gene_panel_matrix.txt` + `meta_gene_panel_matrix.txt`: every sample in the samplesheet is profiled with these panels (samples that failed the CNV depth QC get `NA` for CNA)
+
+With the matrix, cBioPortal computes a gene's frequency over every sample profiled for that gene, i.e. the whole cohort, instead of only the samples that have data of that type. Genes not on the panel show as not profiled. **Import the panel definitions before the study**, once per new or changed panel:
+
+```bash
+importGenePanel.pl --data gene_panels/gene_panel_<study_id>_mutation.txt   # and _cna, _sv
+```
 
 Segment data (`data_seg.txt`, `meta_seg.txt`) is off by default. cBioPortal computes _Fraction Genome Altered_ from it, which is not meaningful for an amplicon panel:
 

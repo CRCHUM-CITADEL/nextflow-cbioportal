@@ -59,6 +59,7 @@ ch_samplesheet
   │
   ├─ MERGE_DEANON (subworkflow) ── merge all per-sample files + deanonymise
   │    ├─ MERGE_{SV,CNA,MUTATIONS,SEG}       (MERGE_SEG… only with include_seg)
+  │    ├─ FILTER_GENE_PANEL_{MUTATIONS,CNA,SV} (gene_panel)
   │    ├─ ANNOTATE_GNOMAD                    (filter_gnomad_af; Genome Nexus API)
   │    ├─ FILTER_MUTATIONS_AF                (filter_gnomad_af / filter_vaf)
   │    ├─ FILTER_CNV_SAMPLES_{CNA,SEG}       (filter_cnv_depth)
@@ -66,7 +67,8 @@ ch_samplesheet
   │
   ├─ STUDY_METADATA (subworkflow) ── clinical files + meta + case lists
   │    ├─ CLINICAL_PATIENTS / CLINICAL_SAMPLES
-  │    └─ WRITE_CASE_LISTS / WRITE_META
+  │    ├─ WRITE_CASE_LISTS / WRITE_META
+  │    └─ WRITE_GENE_PANELS                  (gene_panel: panel definitions + gene panel matrix)
   │
   └─ PACKAGE_CBIOPORTAL (module) ── tar.gz all outputs for transfer
 ```
@@ -83,6 +85,7 @@ FILTER_MUTATIONS runs `bin/filter_mutations.py` (it used to be an inline awk pro
 
 **Post-merge filters** (all off by default; each a param). They run in MERGE_DEANON on the merged, not yet remapped files, so unlike filter mode they also re-filter samples cached in `--outdir`:
 
+- **Gene panel** (`gene_panel`, TSV `gene` + `type` = `mutation`/`cna`/`sv`, `fusion` = `sv`; null = off): `FILTER_GENE_PANEL_{MUTATIONS,CNA,SV}` (`bin/filter_gene_panel.py`) run first, on the merged files (so Genome Nexus is asked less), keeping a mutation/CNA row when `Hugo_Symbol` is listed for its type and an SV row when `Site1_Hugo_Symbol` **or** `Site2_Hugo_Symbol` is (fusion partners are often off-panel). Case-insensitive; a type with no genes fails the task, so a typo cannot empty a data type. From the same file `WRITE_GENE_PANELS` (`bin/write_gene_panels.py`, in STUDY*METADATA) writes `gene_panels/gene_panel*<study*id>*<type>.txt`(stable_id`<study*id>*<type>`, for `importGenePanel.pl`, which must run before the study import) and `data_gene_panel_matrix.txt`+ meta: every linking-file sample ×`mutations`/`cna`/`structural_variants`(the profile stable_ids of`format_meta.py`), `cna`=`NA`for CNV depth QC failures. The matrix makes cBioPortal count every sample as profiled, so frequencies use the whole cohort (SV used to show e.g. 21/48 profiled). PACKAGE_CBIOPORTAL copies`gene_panels/` into the study folder (`[]` input without a panel).
 - **gnomAD** (`filter_gnomad_af`, `max_gnomad_af` 0.01, `gnomad_af_columns` `gnomAD.AF_max`): ANNOTATE_GNOMAD fetches the frequencies from Genome Nexus (see **gnomAD** below), then FILTER_MUTATIONS_AF (`bin/filter_mutations_af.py`) drops a mutation whose highest listed gnomAD AF is `> max_gnomad_af`, unless the ClinVar exception below applies. At or below the threshold a row is always kept. The default `gnomAD.AF_max` is the highest of the total + 8 ancestries, exomes and genomes apart, so **any one ancestry** above the threshold drops the row; `gnomAD.AF` (combined total, what cBioPortal shows) restores the old rule.
 - **ClinVar exception** (`clinvar_keep_classes` `Pathogenic,Likely_pathogenic`; empty = none): a row above `max_gnomad_af` is kept when a `/`/`|`/`;`-separated term of `ClinVar.CLNSIG` is a kept class (or a kept class + `,_qualifier`, e.g. `Pathogenic,_low_penetrance`); terms are lowercased, spaces → `_`. A `Conflicting_…` call counts when `ClinVar.CLNSIGCONF` (`Pathogenic(3)|Benign(1)`, counts stripped) lists a kept class, so any P/LP entry wins. Empty `ClinVar.CLNSIG` or no such column = no exception. Justin's rule (2026-11-04) replaced the standalone `filter_clinvar` (which dropped every variant not P/LP/VUS, even rare ones).
 - **VAF** (`filter_vaf`, `max_vaf` 0.5): drops a mutation whose `t_alt_count / t_depth > max_vaf`.
@@ -191,7 +194,7 @@ A sample is skipped if all four per-sample files exist under `{outdir}/samples/{
 
 Merge/deanon/clinical steps always re-run over all samples combined. Use the same `--outdir` across runs.
 
-**Filter mode is applied per sample**, so switching `--filter_tsv_variants` or changing a threshold does not touch samples already in `--outdir`: use a fresh `--outdir` (or delete `samples/<id>/`) to re-filter them. The post-merge filters (gnomAD + ClinVar exception, VAF, CNV depth QC), the Genome Nexus lookup and `include_seg` apply to cached samples too. `fusion_metrics` does **not**: delete `{outdir}/samples/*/*_sv.txt` to rebuild cached samples' fusions from it.
+**Filter mode is applied per sample**, so switching `--filter_tsv_variants` or changing a threshold does not touch samples already in `--outdir`: use a fresh `--outdir` (or delete `samples/<id>/`) to re-filter them. The post-merge filters (gene panel, gnomAD + ClinVar exception, VAF, CNV depth QC), the Genome Nexus lookup and `include_seg` apply to cached samples too. `fusion_metrics` does **not**: delete `{outdir}/samples/*/*_sv.txt` to rebuild cached samples' fusions from it.
 
 ---
 
@@ -207,6 +210,8 @@ python3 /path/to/bin/vcf_to_seg.py    <cnv.vcf>     <SAMPLE_ID> [--mode log2|cn]
 python3 /path/to/bin/filter_mutations.py <maf> <export.tsv> <out> <min_depth> <min_vaf>
 python3 /path/to/bin/fusion_metrics_to_sv.py <fusion_metrics.tsv> <SAMPLE_ID> [--sample-folder NAME] [--min-junction-reads N] [--min-zr-score Z]
 python3 /path/to/bin/filter_mutations_af.py <maf> --out <out> [--max-gnomad-af X [--clinvar-keep a,b,c]] [--max-vaf Y]
+python3 /path/to/bin/filter_gene_panel.py <data_file> --panel <gene_panel.tsv> --type mutation|cna|sv --out <out>
+python3 /path/to/bin/write_gene_panels.py <gene_panel.tsv> <linking_file> <study_id> [--cnv-failed ID ...]
 python3 /path/to/bin/cnv_depth_qc.py  <pisces.vcf[.gz]> <SAMPLE_ID> [--min-depth 250] [--min-fraction 0.95] [--pass-only]
 python3 /path/to/bin/format_mutations.py data_mutations.txt <linking_file>
 python3 /path/to/bin/format_sv.py       data_sv.txt         <linking_file>

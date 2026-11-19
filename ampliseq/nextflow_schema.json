@@ -165,6 +165,12 @@
             "default": 0.5,
             "description": "VAF threshold for filter_vaf (rows with VAF > this are removed)."
         },
+        "gene_panel": {
+            "type": "string",
+            "format": "file-path",
+            "exists": true,
+            "description": "Gene panel TSV with 'gene' and 'type' (mutation, cna, sv; fusion = sv) columns, one row per gene and type. Mutations and CNAs of unlisted genes are dropped, and fusions with neither partner listed. Applied to the merged files, so cached samples are filtered too. Unset = no gene filter."
+        },
         "filter_cnv_depth": {
             "type": "boolean",
             "default": false,

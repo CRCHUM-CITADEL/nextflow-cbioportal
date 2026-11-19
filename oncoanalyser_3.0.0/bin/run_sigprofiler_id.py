@@ -6,7 +6,7 @@ reference using SigProfilerAssignment, and produce cBioPortal GENERIC_ASSAY
 contribution and counts files.
 
 Inputs:
-  --vcf           : PAVE somatic VCF (.vcf.gz or .vcf)
+  --vcf           : PURPLE somatic VCF (.vcf.gz or .vcf)
   --fasta         : Reference genome FASTA (indexed with .fai)
   --signatures_db : COSMIC_Human_ID-83_GRCh38_v3.6.csv
   --metadata      : cosmic_id_metadata.tsv (id_id, category, etiology, main_effect)

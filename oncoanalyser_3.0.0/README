@@ -26,6 +26,14 @@ nextflow run main.nf -profile slurm,apptainer,citadel \
  --mode genomic \
  --genomic_samplesheet samplesheet.csv
 
+# 3a'. Run (genomic mode, DNA only -- e.g. WES, no RNA)
+
+nextflow run main.nf -profile slurm,apptainer,citadel \
+ --mode genomic-dna-only \
+ --genomic_samplesheet samplesheet.csv
+
+There is no DNA-only variant of --mode both: run genomic-dna-only, then clinical.
+
 # 3b. Run (clinical mode)
 
 nextflow run main.nf -profile slurm,apptainer,citadel \
@@ -53,7 +61,7 @@ SLURM account. List it LAST so it wins wherever profiles overlap.
 
 Outside CRCHUM, drop it and supply the reference data yourself --
 nextflow.config ships portable defaults only (public container images,
-empty reference paths). Genomic and both modes require at least:
+empty reference paths). Genomic, genomic-dna-only and both modes require at least:
 
 nextflow run main.nf -profile apptainer \
  --mode genomic \
@@ -200,7 +208,7 @@ Example command:
         --project_description "Description of my study" \
         --genomic_samplesheet samplesheet.csv \
         --clinical_samplesheet clinical_samplesheet.csv \
-        --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
+        --ensembl_annotations /path/to/biomart_grch38_ensembl_116_with_entrez_id.tsv \
         --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
         --mafsmith_data /path/to/mafsmith_home \
         --vep_data /path/to/vep_cache \
@@ -213,7 +221,7 @@ Both mode without clinical data (template output only):
         --mode both \
         --study_id "MY_STUDY" \
         --genomic_samplesheet samplesheet.csv \
-        --ensembl_annotations /path/to/biomart_grch38_ensembl_113.tsv \
+        --ensembl_annotations /path/to/biomart_grch38_ensembl_116_with_entrez_id.tsv \
         --genome_reference /path/to/Homo_sapiens_assembly38.fasta \
         --mafsmith_data /path/to/mafsmith_home
 

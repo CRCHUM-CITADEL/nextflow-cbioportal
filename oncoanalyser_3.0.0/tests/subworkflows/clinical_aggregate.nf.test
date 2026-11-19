@@ -58,6 +58,7 @@ nextflow_workflow {
                     ]
                 )
                 input[1] = Channel.value("")
+                input[2] = Channel.value([])
                 """
             }
         }
@@ -201,6 +202,7 @@ nextflow_workflow {
                     ]
                 )
                 input[1] = Channel.value('${projectDir}/assets/test_data/samplesheet/test_genomic_subjects.tsv')
+                input[2] = Channel.value([])
                 """
             }
         }

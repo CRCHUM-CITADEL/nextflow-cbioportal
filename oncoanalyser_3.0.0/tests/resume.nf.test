@@ -1,0 +1,62 @@
+/*
+ * -resume is the pipeline's only caching, so a second run must reuse every task.
+ * setup runs the pipeline once in the directory nf-test launches from; the test run then
+ * resumes that session. tests/nextflow_resume.config delays T2's tasks in the first run and
+ * T1's in the second, so tasks finish in opposite orders: an input that depends on that order
+ * (e.g. metas[0] after groupTuple) shows up as rerun. Only PACKAGE_CBIOPORTAL may rerun: it is
+ * published with mode 'move', so its output never stays in work/.
+ */
+nextflow_pipeline {
+
+    name "Test -resume"
+    script "../main.nf"
+    tag "pipeline"
+    tag "resume"
+
+    test("a second run, with tasks finishing in the opposite order, reruns only PACKAGE_CBIOPORTAL") {
+
+        config "tests/nextflow_resume.config"
+        options "-stub-run -resume"
+
+        setup {
+            def testDir = new File(outputDir).parentFile
+            new File("${testDir}/samplesheet.csv").text = """\
+group,subject_id,sample_id,folder
+TEST,T1,T1-1DT,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1
+TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
+"""
+            // Same profile and configs nf-test passes, so the task hashes match.
+            def cmd = ["nextflow", "-log", "${testDir}/first_run.log", "run", "${projectDir}/main.nf",
+                       "-profile", "test", "-stub-run",
+                       "-c", "${projectDir}/tests/nextflow_subworkflow.config",
+                       "-c", "${projectDir}/tests/nextflow_resume.config",
+                       "-w", "${testDir}/work",
+                       "--outdir", outputDir.toString(),
+                       "--genomic_samplesheet", "${testDir}/samplesheet.csv"]*.toString()
+            def pb = new ProcessBuilder(cmd).directory(testDir).redirectErrorStream(true)
+            pb.environment().put('NFT_RESUME_SLOW', 'T2')
+            def proc = pb.start()
+            def out = proc.inputStream.text
+            proc.waitFor()
+            assert proc.exitValue() == 0 : "First run failed:\n${out}"
+        }
+
+        when {
+            params {
+                outdir              = "$outputDir"
+                genomic_samplesheet = "${outputDir}/../samplesheet.csv"
+            }
+        }
+
+        then {
+            // trace.csv columns: task_id, hash, native_id, name, status, ...
+            def tasks = path("${outputDir}/../meta/trace.csv").readLines().drop(1).collect { it.split('\t') }
+            def rerun = tasks.findAll { it[4] != 'CACHED' }.collect { it[3] }
+            assertAll(
+                { assert workflow.success },
+                { assert tasks.size() > 40 : "Expected the full pipeline in the trace, got ${tasks.size()} tasks" },
+                { assert rerun.every { it.startsWith('PACKAGE_CBIOPORTAL') } : "Tasks rerun on -resume: ${rerun}" },
+            )
+        }
+    }
+}

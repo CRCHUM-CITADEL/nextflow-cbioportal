@@ -51,7 +51,10 @@ workflow PER_SAMPLE_FORMAT {
         // tasks share it; gated on there being new samples so empty incremental runs skip it.
         PREPARE_MAFSMITH(ch_vcf_input.first().combine(ch_bundle).map { it[-1] })
         ch_mafsmith_data = PREPARE_MAFSMITH.out.data_dir.first()
-        MAFSMITH(ch_vcf_input, ch_mafsmith_data)
+        // Preferred transcripts; unset, empty or "null" = mafsmith's own choice (longest cDNA)
+        def custom_enst = params.mafsmith_custom_enst?.toString()?.trim()
+        def ch_custom_enst = custom_enst && custom_enst != 'null' ? file(custom_enst, checkIfExists: true) : []
+        MAFSMITH(ch_vcf_input, ch_mafsmith_data, ch_custom_enst)
         ch_maf = MAFSMITH.out
     }
 

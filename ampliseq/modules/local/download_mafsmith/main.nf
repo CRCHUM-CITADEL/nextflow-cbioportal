@@ -10,8 +10,9 @@ process DOWNLOAD_MAFSMITH {
 
     script:
     """
-    # Lays out mafsmith/GRCh37/{genes.gff3.gz,reference.fa}. Ensembl release 113 matches the
-    # VEP cache version previously used with vcf2maf. fastVEP is built into the container.
+    # Lays out mafsmith/GRCh37/{genes.gff3.gz,reference.fa}. For GRCh37 mafsmith 0.1.0 ignores
+    # --ensembl-release: it always fetches Homo_sapiens.GRCh37.87 (frozen, no canonical tags).
+    # fastVEP is built into the container.
     # NOTE: Ensembl's primary assembly names contigs 1, 2, X (no chr prefix); MAFSMITH
     # restores the VCF's naming on output.
     mafsmith fetch \\

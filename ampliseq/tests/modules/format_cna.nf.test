@@ -11,7 +11,7 @@ nextflow_process {
     test("Rounds fractional copy number, splits multi-gene cells, one row per gene") {
 
         when {
-            params { outdir = "$outputDir" }
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
             process {
                 """
                 file("${params.outdir}/cna_inputs").mkdirs()

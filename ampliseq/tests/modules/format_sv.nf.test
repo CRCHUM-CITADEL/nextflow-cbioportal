@@ -19,7 +19,7 @@ nextflow_process {
     test("STAR-Fusion VCF: one row per breakend pair, both sites populated") {
 
         when {
-            params { outdir = "$outputDir" }
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
             process {
                 """
                 input[0] = Channel.of([
@@ -55,7 +55,7 @@ nextflow_process {
     test("Analysis export TSV: FUSION rows only, same-chromosome length") {
 
         when {
-            params { outdir = "$outputDir" }
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
             process {
                 """
                 input[0] = Channel.of([
@@ -124,7 +124,7 @@ nextflow_process {
     test("Analysis export TSV: partner chromosome from gene loci, exons as region numbers") {
 
         when {
-            params { outdir = "$outputDir" }
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
             process {
                 """
                 def dir = file("${params.outdir}/sv_inputs/S4")
@@ -158,7 +158,7 @@ nextflow_process {
     test("Fusion metrics TSV: only this sample's rows, wins over the STAR-Fusion VCF and export TSV") {
 
         when {
-            params { outdir = "$outputDir" }
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
             process {
                 """
                 input[0] = Channel.of([
@@ -218,7 +218,11 @@ nextflow_process {
             assert process.success
             def rows = path(process.out[0][0].toString()).readLines().drop(1)
                 .collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
-            // CD74--ROS1: 40 reads; KIF5B--RET: 2000 reads but ZR-score N/A
+            // CD74--ROS1: 12 junction reads; KIF5B--RET: 5 junction reads and ZR-score N/A
+            assert rows*.Site1_Hugo_Symbol == ['EML4']
+        }
+    }
+
     // Total Reads is the sample's library size: TMPRSS2--ERG has 1200 of it but only 300 junction reads
     test("Fusion metrics TSV, filter mode: Total Reads is not used as fusion support") {
 
@@ -288,7 +292,7 @@ nextflow_process {
     test("Fusion metrics TSV: a lowercase Sample still matches, without filters") {
 
         when {
-            params { outdir = "$outputDir" }
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
             process {
                 """
                 def dir = file("${params.outdir}/sv_inputs/1000_23BM004967-1-A01-1")
@@ -316,7 +320,7 @@ nextflow_process {
     test("Fusion metrics TSV: a sample absent from the file gets a header-only file") {
 
         when {
-            params { outdir = "$outputDir" }
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
             process {
                 """
                 input[0] = Channel.of([

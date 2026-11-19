@@ -6,9 +6,7 @@ nextflow_workflow {
     tag "subworkflow"
     tag "genomic_ml"
 
-    // DOWNLOAD_KNOWN_FUSIONS is always called unconditionally inside this subworkflow.
-    // Its stub block is used here to bypass the curl download while still running
-    // all FORMAT_ML_* and PROCESS_ML_* modules with real containers.
+    // DOWNLOAD_KNOWN_FUSIONS's stub skips the download; the FORMAT_ML_* / PROCESS_ML_* modules run for real
 
     test("Group-level ML tables produced from precomputed fixtures") {
 
@@ -20,8 +18,7 @@ nextflow_workflow {
             }
             workflow {
                 """
-                // data_cna_long.txt: ml_format_cnv.R checks basename == 'data_cna_long.txt'
-                // so the file must be staged with exactly that name (stageAs ensures it)
+                // ml_format_cnv.R needs the basename data_cna_long.txt (stageAs)
                 input[0] = Channel.of(
                     ['TEST', file('${projectDir}/assets/test_data/precomputed/data_cna_long.txt')]
                 )
@@ -50,10 +47,7 @@ nextflow_workflow {
         }
     }
 
-    // Regression: the SV branch used to be gated on cosmic_data alone, so a run with
-    // cosmic_data set and chimer_data empty reached FORMAT_PROCESS_ML_SV with an empty
-    // `path known_fusions` and died with "Path must not be empty". Every existing test
-    // passed cosmic_data = "" and never entered the branch.
+    // Regression: cosmic_data set with chimer_data empty must not reach FORMAT_PROCESS_ML_SV
     test("ML SV branch runs when both fusion databases are supplied") {
 
         options "-stub-run"

@@ -6,9 +6,7 @@ nextflow_pipeline {
     tag "clinical"
     tag "clinical_generated"
 
-    // Verifies that a samplesheet produced by generate_clinical_samplesheet.py
-    // is accepted by the pipeline and yields the same output as the
-    // hand-written test_clinical.csv.
+    // A samplesheet from generate_clinical_samplesheet.py gives the same output as test_clinical.csv
     test("generated samplesheet — same output as hand-written samplesheet") {
 
         config "tests/nextflow_clinical_generated.config"

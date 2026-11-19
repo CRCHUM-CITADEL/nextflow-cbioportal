@@ -4,8 +4,7 @@ process PCGR {
 
     container params.container_pcgr
 
-    // Not published: copying this dir hung shutdown on the HPC filesystem (see work dir instead)
-    // publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy', pattern: "*.cpsr_debug"
+    // Not published (copying it hung shutdown on the HPC filesystem); see the work dir
 
     input:
         tuple val(meta), path(ger_dna_vcf), path(ger_dna_vcf_tbi)
@@ -23,8 +22,7 @@ process PCGR {
     """
     mkdir -p ${debug}
 
-    # CPSR gets PURPLE's calls as they are (no FILTER/GT changes), but only the normal, found by name: column order is undocumented.
-    # All INFO is removed: CPSR annotates itself and aborts on a clashing tag (PAVE's IMPACT, which PURPLE keeps).
+    # CPSR gets PURPLE's calls unfiltered: normal column only (by name), INFO stripped (CPSR aborts on clashing tags like IMPACT)
     if ! bcftools query -l ${ger_dna_vcf} | grep -qxF "${cpsr_id}"; then
         echo "ERROR: ${ger_dna_vcf} has no sample column ${cpsr_id}; columns: \$(bcftools query -l ${ger_dna_vcf} | tr '\\n' ' ')" >&2
         exit 1
@@ -56,8 +54,7 @@ process PCGR {
     --sample_id ${cpsr_id} \\
     ${args} 2>&1 | tee ${debug}/cpsr.log
 
-    # CPSR exits 0 even when it fails (e.g. input validation): an error must stop the task, never
-    # pass for "no variants" and become the header-only placeholder.
+    # CPSR exits 0 on failure: any ERROR fails the task rather than passing as "no variants"
     if grep -q -- '- ERROR -' ${debug}/cpsr.log; then
         echo "CPSR failed for ${meta.sample}:" >&2
         grep -- '- ERROR -' ${debug}/cpsr.log >&2

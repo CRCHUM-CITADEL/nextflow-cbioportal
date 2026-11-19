@@ -1,10 +1,5 @@
 #!/usr/bin/env Rscript
-#
-# GENERATE_TIMELINE_STATUS — emits STATUS timeline events (disease status at
-# each follow-up visit) from follow_ups.csv. Sibling of gen_timeline_specimen.R
-# (both read follow_ups.csv independently — SPECIMEN needs the whole follow-up
-# frame to find the nearest visit per specimen). One of five per-EVENT_TYPE
-# scripts merged by merge_timeline.R into data_timeline.txt.
+# GENERATE_TIMELINE_STATUS: follow-ups → STATUS events (merged by merge_timeline.R)
 
 suppressPackageStartupMessages(library(optparse))
 
@@ -61,8 +56,7 @@ filter_patients <- function(df, id_col = "submitter_donor_id") {
   if (length(valid_patients) > 0) df[df[[id_col]] %in% valid_patients, ] else df
 }
 
-# ps_map is REVERSED (ICD-O code -> label): anatomic_site_progression_or_recurrence
-# is already an ICD-O code.
+# ps_map is reversed (code → label): anatomic_site_progression_or_recurrence is already an ICD-O code
 ps_map_raw <- read_mohccn_map(opt$primary_site_map)   # label -> code
 ps_map     <- reverse_mohccn_map(ps_map_raw)
 

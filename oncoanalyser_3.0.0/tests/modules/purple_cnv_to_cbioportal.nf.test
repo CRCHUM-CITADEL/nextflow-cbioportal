@@ -38,16 +38,11 @@ nextflow_process {
                 [(it[cols.indexOf('Hugo_Symbol')]): it[cols.indexOf('Value')]]
             }
 
-            // PRDM15 carries minCopyNumber "." in the fixture. as.numeric() makes that
-            // NA, and data.table's fcase() returns its `default` when every condition is
-            // NA rather than propagating NA -- so the gene used to be written as Value=2,
-            // a high-level amplification indistinguishable from a real one.
+            // PRDM15 has minCopyNumber "." (NA): fcase() would default it to Value=2
             assert !value_by_gene.containsKey('PRDM15') :
                 "Unparseable minCopyNumber must not be scored, got Value=${value_by_gene['PRDM15']}"
 
-            // It must be dropped rather than written as NA: NA passes validateData.py
-            // but aborts the Java loader (CnaUtil.createAlteration does Integer.valueOf
-            // with no NA branch), so an NA row would fail the study import.
+            // Dropped, not written as NA: NA passes validateData.py but aborts the cBioPortal import
             assert !value_by_gene.values().contains('NA') :
                 "DISCRETE_LONG Value must never be NA -- cBioPortal's importer cannot parse it"
 

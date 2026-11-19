@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-"""Build the kit's ensembl_annotations TSV (BioMart layout) from Ensembl FTP files.
-
-Kit-building tool, not run by the pipeline. Ensembl BioMart times out on the full gene export,
-so the table comes from the same release's GFF3 and Entrez xref TSV instead:
-
-  build_ensembl_annotations.py Homo_sapiens.GRCh38.116.gff3.gz \
-      Homo_sapiens.GRCh38.116.entrez.tsv.gz biomart_grch38_ensembl_116_with_entrez_id.tsv
-
-One row per (gene, Entrez id) pair, Entrez empty when the gene has none, as BioMart writes it,
-sorted by ensembl_id.
-"""
+"""Usage: build_ensembl_annotations.py <release>.gff3.gz <release>.entrez.tsv.gz <out.tsv> (kit tool: BioMart-layout ensembl_annotations)"""
 import csv
 import gzip
 import sys

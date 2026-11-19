@@ -1,13 +1,5 @@
 #!/usr/bin/env Rscript
-#
-# MERGE_TIMELINE — unions the per-EVENT_TYPE timeline slices (from
-# gen_timeline_{surgery,treatment,status,specimen,lab_test}.R) into one
-# data_timeline.txt.
-#
-# Column ordering is a hard contract with bin/combine_cbioportal_outputs.py's
-# "union-append" merge strategy for data_timeline.txt (see CLAUDE.md): the 4
-# common columns first, then the rest alphabetically. Do not change this order
-# without updating that script's expectations too.
+# MERGE_TIMELINE: union the per-EVENT_TYPE parts; column order is a contract with combine_cbioportal_outputs.py
 
 suppressPackageStartupMessages(library(optparse))
 
@@ -42,22 +34,14 @@ rbind_fill <- function(df_list) {
 
 input_files <- strsplit(opt$inputs, ",")[[1]]
 parts <- lapply(input_files, function(f) {
-  # A per-event script writes nothing at all when it has no rows, and its
-  # Nextflow output is declared optional, so only the parts that actually
-  # produced rows are staged here. Skip anything else defensively.
+    # Parts with no rows are not staged (optional output); skip any empty file anyway
   if (!file.exists(f) || file.info(f)$size == 0) return(NULL)
   read.csv(f, sep = "\t", header = TRUE, stringsAsFactors = FALSE, colClasses = "character")
 })
 
 combined <- rbind_fill(parts)
 if (!is.null(combined) && nrow(combined) > 0) {
-  # Stable-sort by EVENT_TYPE in the fixed order the original monolithic
-  # gen_timeline.R always processed sections (a)-(e) in, so the merged row
-  # order — and therefore the file's content/md5 — is deterministic
-  # regardless of which order the five part-files physically arrive in
-  # (mix()/groupTuple() in the subworkflow makes no ordering guarantee).
-  # R's default order() is a stable radix sort for this size of input, so
-  # rows within one EVENT_TYPE keep their original relative order.
+    # Stable sort by a fixed EVENT_TYPE order so the output does not depend on part arrival order
   event_order <- factor(combined$EVENT_TYPE,
                          levels = c("SURGERY", "TREATMENT", "STATUS", "SPECIMEN", "LAB_TEST"))
   combined <- combined[order(event_order), , drop = FALSE]
@@ -69,7 +53,6 @@ if (!is.null(combined) && nrow(combined) > 0) {
   write.table(combined, opt$output, sep = "\t", row.names = FALSE, quote = FALSE, na = "")
   cat(sprintf("Wrote %d row(s) to %s\n", nrow(combined), opt$output))
 } else {
-  # No file is written; the module's output is declared optional, so the group
-  # simply produces no data_timeline.txt (matching the original behaviour).
+    # No file written: the output is optional, so the group gets no data_timeline.txt
   cat("No timeline data to write.\n")
 }

@@ -29,9 +29,7 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
 
         then {
             def stable_name = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
-            // TEST.tar.gz is excluded from stable_path via tests/.nftignore: tar embeds
-            // per-file mtimes, so its md5 differs on every run. Its contents are
-            // asserted explicitly below instead.
+            // TEST.tar.gz is in tests/.nftignore (tar embeds mtimes); its contents are asserted below
             def stable_path = getAllFilesFromDir(params.outdir, ignoreFile: 'tests/.nftignore')
 
             println "Test: Stable names: ${stable_name}"
@@ -48,9 +46,7 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
                 .findAll { it && !it.endsWith('/') }
                 .collect { it.split('/').last() }
 
-            // Clinical sample file — T1's two DNA tumour registrations dedupe to one
-            // (T1-1DT); T2 has one tumour, remapped to the genomic sample ID (T2-T) by
-            // the linking file. Germline normals are not sample rows.
+            // Clinical sample file: T1 dedupes to T1-1DT, T2 takes its genomic ID (T2-T); normals are not sample rows
             def sample_lines = path("${params.outdir}/TEST/data_clinical_sample.txt").readLines()
                 .findAll { !it.startsWith('#') && it.trim() }
             // sample_lines[0] is column header, rest are data rows
@@ -86,18 +82,15 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
                 { assert data_rows.size() == 2 : "Expected 2 sample rows (T1-1DT, T2-T), got ${data_rows.size()}" },
                 { assert data_rows.count { it.startsWith('T1') } == 1 : "Expected 1 T1 row (deduped tumour)" },
                 { assert data_rows.count { it.startsWith('T2') } == 1 : "Expected 1 T2 row" },
-                // The tumour SAMPLE_IDs must still adopt the genomic IDs from
-                // util_linking_file.txt (T2-T, not the clinical T2-2FDT), otherwise the
-                // clinical table matches no sample in data_mutations / data_cna_long.
+                // Tumour SAMPLE_IDs take the genomic IDs (T2-T, not T2-2FDT), else they match no genomic data
                 { assert sample_ids.sort() == ['T1-1DT', 'T2-T'] : "Unexpected SAMPLE_IDs: ${sample_ids}" },
                 { assert tar_entries.contains('data_clinical_sample.txt') : "Archive missing data_clinical_sample.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('data_clinical_patient.txt') : "Archive missing data_clinical_patient.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('data_timeline.txt') : "Archive missing data_timeline.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('meta_timeline.txt') : "Archive missing meta_timeline.txt, got: ${tar_entries}" },
                 { assert tar_entries.contains('util_linking_file.txt') : "Archive missing util_linking_file.txt, got: ${tar_entries}" },
-                { assert tar_entries.contains('cases_sequenced.txt') : "Archive missing case lists, got: ${tar_entries}" },
-                // MERGE_SAMPLE_SV joins each sample's DNA SVs and RNA fusions: T1 has 2 PURPLE SVs and
-                // 3 Isofox fusions, T2 1 and 1.
+                { assert ['sequenced', 'cna', 'cnaseq', 'sv'].every { tar_entries.contains("cases_${it}.txt".toString()) } : "Archive missing case lists, got: ${tar_entries}" },
+                // MERGE_SAMPLE_SV joins DNA SVs and RNA fusions: T1 has 2 PURPLE SVs + 3 Isofox fusions, T2 1 + 1
                 { assert path("${params.outdir}/TEST/data_sv.txt").readLines().count { it.contains('\tFUSION\tNo\tYes\t') } == 4
                          : "RNA fusion rows missing from data_sv.txt" },
                 { assert path("${params.outdir}/TEST/data_sv.txt").readLines().count { it.contains('\tYes\tNo\t') } == 3
@@ -117,8 +110,7 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
         }
     }
 
-    // ML is opt-in: with run_ml at its default (false) no ML task may run and
-    // machine_learning/ must not be created, while the cBioPortal study is unaffected.
+    // ML is opt-in: by default no ML task runs and machine_learning/ is not created
     test("both mode — ML feature tables are skipped by default") {
 
         config "tests/nextflow_both.config"
@@ -153,7 +145,6 @@ TEST,T2,T2-T,${projectDir}/assets/test_data/oncoanalyser_output/TEST/T2
     }
 
     // No clinical samplesheet: the template sample file is built from GENOMIC's linking file
-    // (it used to be parsed as sample_registrations.csv, matched nothing, and no file was written).
     test("both mode — no clinical samplesheet, template sample file from the linking file") {
 
         config "tests/nextflow_both.config"

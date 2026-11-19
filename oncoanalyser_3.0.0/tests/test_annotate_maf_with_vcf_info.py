@@ -47,9 +47,7 @@ def annotate(tmp_path, vcf_records, maf_rows, extra=None):
     return res, out
 
 
-# ── Coordinate conventions ────────────────────────────────────────────────────
-# A MAF does not use VCF coordinates for indels. Keying the join on raw POS/REF/ALT
-# would silently annotate only SNVs, so each class gets its own case.
+# ── Coordinate conventions: MAF indels differ from VCF ones, so each class has a case ──
 
 def test_snv_is_annotated(tmp_path):
     res, out = annotate(
@@ -89,8 +87,7 @@ def test_insertion_is_annotated(tmp_path):
 
 
 def test_multiallelic_alts_are_both_resolvable(tmp_path):
-    # mafsmith picks one "effective" alt from a multi-allelic record; the index must
-    # carry every alt so the join works whichever one it chose.
+    # The index carries every alt: mafsmith picks one of a multi-allelic record
     res, out = annotate(
         tmp_path,
         [("chr1", 900000, "G", "A,T", "TIER=HOTSPOT")],
@@ -113,9 +110,7 @@ def test_chr_prefix_mismatch_still_joins(tmp_path):
     assert rows[0]["HMF.TIER"] == "PANEL"
 
 
-# ── Width invariants ──────────────────────────────────────────────────────────
-# Per-subject MAFs are merged by a group-level collectFile. A column set that varies
-# with what a given VCF happened to declare would produce a ragged merged file.
+# ── Width invariants: the column set must not depend on what a VCF declares ──
 
 def test_unmatched_row_gets_blanks_and_keeps_width(tmp_path):
     res, out = annotate(

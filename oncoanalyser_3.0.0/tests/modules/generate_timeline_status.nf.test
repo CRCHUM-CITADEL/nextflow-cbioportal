@@ -65,8 +65,7 @@ nextflow_process {
         }
 
         then {
-            // The output is declared optional, so a run with nothing to write
-            // emits no file at all rather than an empty one.
+            // Optional output: nothing to write → no file at all
             assert process.success
             assert process.out.ch_timeline_part.size() == 0
         }

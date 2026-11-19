@@ -1,8 +1,5 @@
 #!/usr/bin/env Rscript
-# Merge per-sample SIGS cBioPortal files into a single wide-format matrix.
-# Each input file has columns: ENTITY_STABLE_ID, NAME, DESCRIPTION, {sample_id}
-# Output: data_sigs.txt with all samples as columns, signatures as rows.
-# Missing signatures for a given sample are filled with 0.
+# Merge per-sample signature files into one signature × sample matrix; missing signatures are 0
 
 suppressPackageStartupMessages({
     library(optparse)

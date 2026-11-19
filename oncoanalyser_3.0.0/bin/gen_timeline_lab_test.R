@@ -1,12 +1,5 @@
 #!/usr/bin/env Rscript
-#
-# GENERATE_TIMELINE_LAB_TEST — pivots biomarker results into cBioPortal LAB_TEST
-# timeline events. One of five per-EVENT_TYPE scripts (see gen_timeline_surgery.R,
-# gen_timeline_treatment.R, gen_timeline_status.R, gen_timeline_specimen.R) whose
-# outputs are unioned by merge_timeline.R into data_timeline.txt.
-#
-# Split out of gen_timeline.R section (e); fully independent of the other four —
-# needs only --biomarkers plus the patient-eligibility inputs shared by all five.
+# GENERATE_TIMELINE_LAB_TEST: biomarker results → LAB_TEST events (merged by merge_timeline.R)
 
 suppressPackageStartupMessages(library(optparse))
 

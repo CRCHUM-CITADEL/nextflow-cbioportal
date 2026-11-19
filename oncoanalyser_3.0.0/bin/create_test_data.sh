@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# create_test_data.sh — Generate minimal test fixtures for oncoanalyser nf-test tests.
-#
-# Requirements: bgzip, tabix (from htslib)
-# Usage: bash bin/create_test_data.sh  (run from oncoanalyser/ directory)
-#
-# Creates:
-#   assets/test_data/oncoanalyser_output/TEST/T{1,2}/  — pipeline input fixtures
-#   assets/test_data/precomputed/                       — pre-computed aggregate/ML fixtures
+# Regenerate assets/test_data/ byte for byte (needs bgzip + tabix); run from oncoanalyser_3.0.0/
 
 set -euo pipefail
 
@@ -24,9 +17,7 @@ for cmd in bgzip tabix; do
     fi
 done
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Helper: write + bgzip + tabix a VCF
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Helper: write + bgzip + tabix a VCF ──
 make_vcf() {
     local path="$1"
     local content="$2"
@@ -36,14 +27,7 @@ make_vcf() {
     tabix -p vcf "$path"
 }
 
-# ──────────────────────────────────────────────────────────────────────────────
-# VCF templates
-# Using chr21 positions that fall within genes in the annotation file:
-#   PRDM15: chr21:41798225-41879482
-#   PFKL:   chr21:44300051-44327376
-#   HUNK:   chr21:31873020-32044633
-#   ERG (not in annotation but common chr21 gene): chr21:38380000
-# ──────────────────────────────────────────────────────────────────────────────
+# ── VCF templates (chr21 positions inside annotated genes: PRDM15, PFKL, HUNK) ──
 
 # Shared VCF header for somatic/germline SNV files (2 sample columns: normal T1-N, tumor T1)
 snv_header_t1='##fileformat=VCFv4.2
@@ -133,8 +117,7 @@ printf '%s\n' \
 echo ""
 echo "--- Creating T1 fixtures ---"
 
-# PURPLE somatic VCF (T1) — PAVE's records plus PURPLE's INFO. Adjacent SNV pairs (300/301,
-# 500/501, 1000/1001) are DBSs for SigProfiler DBS; 800 is LOW_QUAL.
+# PURPLE somatic VCF (T1): adjacent SNV pairs 300/301, 500/501, 1000/1001 are DBSs; 800 is LOW_QUAL
 make_vcf "${BASE}/oncoanalyser_output/TEST/T1/purple/T1-T.purple.somatic.vcf.gz" \
 "$(purple_somatic_header T1)
 chr21	10000100	.	C	T	60	PASS	DP=100;PURPLE_AF=0.40;PURPLE_CN=2;PURPLE_VCN=0.80;PURPLE_MACN=1;BIALLELIC;SUBCL=0	GT:AD:DP	0/0:50,0:50	0/1:40,30:70
@@ -149,8 +132,7 @@ chr21	10001000	.	T	A	52	PASS	DP=92;PURPLE_AF=0.48;PURPLE_CN=2;PURPLE_VCN=0.88;PU
 chr21	10001001	.	C	G	54	PASS	DP=88;PURPLE_AF=0.49;PURPLE_CN=2;PURPLE_VCN=0.89;PURPLE_MACN=1;SUBCL=0	GT:AD:DP	0/0:44,0:44	0/1:35,25:60
 "
 
-# PURPLE germline VCF (T1): normal T1-N first, then the tumour T1 (PCGR keeps only the first column).
-# Mixed ./. and called GTs and PURPLE FILTER values (PASS, LOW_QUAL, LOW_TUMOR_VCN, LOW_VAF); CPSR gets them unchanged.
+# PURPLE germline VCF (T1): normal T1-N first; mixed ./. GTs and PURPLE FILTERs, passed to CPSR unchanged
 make_vcf "${BASE}/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz" \
 "$(purple_germline_header T1)
 chr21	44300100	.	A	G	80	PASS	DP=80	GT:AD:AF:DP	./.:2,38:0.95:40	./.:2,38:0.95:40
@@ -172,9 +154,7 @@ make_vcf "${BASE}/oncoanalyser_output/TEST/T1/sage_append/T1-T/T1-T.sage.append.
 "${snv_header_t1}chr21	41800000	.	C	T	60	PASS	DP=80	GT:AD:DP	0/0:40,0:40	0/1:30,25:55
 "
 
-# PURPLE SV VCF (T1). PURPLE_AF/CN/CN_CHANGE are [this breakend, mate], so the mate's list is reversed.
-# Kept: the PRDM15-PFKL PASS pair and the TINC_RECOVERED SOD1-HUNK pair. Dropped: IFNAR1 INFERRED breakend,
-# SIK1 single breakend (no MATEID), COL6A1-COL6A2 PON pair. The normal's counts differ from the tumour's.
+# PURPLE SV VCF (T1): keeps PRDM15-PFKL (PASS) and SOD1-HUNK (TINC_RECOVERED); drops INFERRED, single and PON records
 make_vcf "${BASE}/oncoanalyser_output/TEST/T1/purple/T1-T.purple.sv.vcf.gz" \
 "$(purple_sv_header T1)
 chr21	31660000	SV_T1_3o	T	T]chr21:31900000]	800	PASS	SVTYPE=BND;MATEID=SV_T1_3h;TINC_RECOVERED;PURPLE_AF=0.12,0.15;PURPLE_CN=2.1,2.3;PURPLE_CN_CHANGE=0.3,0.35;PURPLE_JCN=0.32	GT:DF:SF:VF	./.:1:1:2	./.:2:3:5
@@ -231,9 +211,7 @@ ENSG00000142149	HUNK	300	30.1	0.48	8.12	7.90	15
 ENSG00000142156	COL6A1	2000	200.0	0.56	312.50	308.20	120
 EOF
 
-# Isofox pass fusions (T1) — PRDM15--PFKL, a TMPRSS2--ERG deletion, and three
-# rows whose Name has an empty half (unannotated breakend) that must be filtered.
-# PFKL--COL6A1's 5' breakend has no exonic transcript ref -> Site1_Region = Intron
+# Isofox pass fusions (T1): two real fusions, three empty-half Names to filter, PFKL--COL6A1 5' intronic
 cat > "${BASE}/oncoanalyser_output/TEST/T1/isofox/T1-T.isf.pass_fusions.tsv" << 'EOF'
 Name	KnownType	ChromosomeUp	ChromosomeDown	PositionUp	PositionDown	OrientationUp	OrientationDown	JunctionTypeUp	JunctionTypeDown	TranscriptUp	TranscriptDown	ExonUp	ExonDown	SvType	SplitFrags	RealignedFrags	DiscordantFrags	DepthUp	DepthDown	MaxAnchorLengthUp	MaxAnchorLengthDown	CohortFrequency
 PRDM15_PFKL	KNOWN_PAIR	chr21	chr21	41800000	44300000	1	-1	KNOWN	KNOWN	ENST00000398642	ENST00000349048	2	3	DEL	8	0	3	24	26	75	80	0
@@ -327,9 +305,7 @@ PRDM15_PFKL	KNOWN_PAIR	chr21	chr21	41800500	44300200	1	-1	KNOWN	KNOWN	ENST000003
 PRDM15_PFKL	KNOWN_PAIR	chr21	chr21	41800500	44300200	1	-1	CANONICAL	KNOWN	ENST00000398643	ENST00000349048	2	3	DEL	1	0	0	20	22	60	65	0
 EOF
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Precomputed fixture files for aggregate_output and ML subworkflow tests
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Precomputed fixtures for the aggregate and ML tests ──
 echo ""
 echo "--- Creating precomputed fixtures ---"
 mkdir -p "${BASE}/precomputed"
@@ -419,9 +395,7 @@ HUNK	100003	8.12	5.30
 COL6A1	100004	312.50	280.40
 EOF
 
-# MAF files (output of CONVERT_CPSR_TO_MAF — somatic+germline combined)
-# MAF format: line 1 = version comment, line 2 = column header, line 3+ = data
-# aggregate_output uses skip: 2, so lines 1+2 are skipped when merging
+# MAF fixtures: line 1 #version, line 2 header (aggregate merge uses skip: 2)
 MAF_HEADER="Hugo_Symbol	Entrez_Gene_Id	Center	NCBI_Build	Chromosome	Start_Position	End_Position	Strand	Variant_Classification	Variant_Type	Reference_Allele	Tumor_Seq_Allele1	Tumor_Seq_Allele2	dbSNP_RS	dbSNP_Val_Status	Tumor_Sample_Barcode	Matched_Norm_Sample_Barcode	Match_Norm_Seq_Allele1	Match_Norm_Seq_Allele2	Tumor_Validation_Allele1	Tumor_Validation_Allele2	Match_Norm_Validation_Allele1	Match_Norm_Validation_Allele2	Verification_Status	Validation_Status	Mutation_Status	Sequencing_Phase	Sequence_Source	Validation_Method	Score	BAM_File	Sequencer	Tumor_Sample_UUID	Matched_Norm_Sample_UUID	HGVSc	HGVSp	HGVSp_Short	Transcript_ID	Exon_Number	t_depth	t_ref_count	t_alt_count	n_depth	n_ref_count	n_alt_count	all_effects	Allele	Gene	Feature	Feature_type	Consequence	cDNA_position	CDS_position	Protein_position	Amino_acids	Codons	Existing_variation	ALLELE_NUM	DISTANCE	TRANSCRIPT_STRAND	SYMBOL	SYMBOL_SOURCE	HGNC_ID	BIOTYPE	CANONICAL	CCDS	ENSP	SWISSPROT	TREMBL	UNIPARC	RefSeq	SIFT	PolyPhen	EXON	INTRON	DOMAINS	AF	AFR_AF	AMR_AF	ASIAN_AF	ASN_AF	EAS_AF	EUR_AF	SAS_AF	AA_AF	EA_AF	gnomAD_AF	gnomAD_AFR_AF	gnomAD_AMR_AF	gnomAD_ASJ_AF	gnomAD_EAS_AF	gnomAD_FIN_AF	gnomAD_NFE_AF	gnomAD_OTH_AF	gnomAD_SAS_AF	MAX_AF	MAX_AF_POPS	CLIN_SIG	SOMATIC	PUBMED	MOTIF_NAME	MOTIF_POS	HIGH_INF_POS	MOTIF_SCORE_CHANGE	IMPACT	PICK	VARIANT_CLASS	TSL	HGVS_OFFSET	PHENO	MINIMISED	ExAC_AF	ExAC_AF_AFR	ExAC_AF_AMR	ExAC_AF_EAS	ExAC_AF_FIN	ExAC_AF_NFE	ExAC_AF_OTH	ExAC_AF_SAS	GENE_PHENO	FILTER	CONTEXT	src_vcf_id	tumor_bam_uuid	normal_bam_uuid	case_id	GDC_Validation_Status	GDC_Valid_Somatic	vcf_region	vcf_info	vcf_format	vcf_tumor_gt	Mutation_Status_extra"
 
 printf '#version 2.4\n' > "${BASE}/precomputed/T1.somatic_rna_germline.maf"
@@ -432,8 +406,7 @@ printf '#version 2.4\n' > "${BASE}/precomputed/T2.somatic_rna_germline.maf"
 printf '%s\n' "$MAF_HEADER" >> "${BASE}/precomputed/T2.somatic_rna_germline.maf"
 printf 'PFKL\t100002\t.\tGRCh38\tchr21\t44300200\t44300200\t+\tMissense_Mutation\tSNP\tT\tT\tC\t.\t.\tT2\tT2-N\tT\tT\t.\t.\t.\t.\t.\t.\tSOMATC\t.\t.\t.\t.\t.\t.\t.\t.\tc.456T>C\tp.Phe152Leu\tp.F152L\tENST00000399500\t5/15\t63\t35\t28\t62\t50\t0\t.\tC\tENSG00000141959\tENST00000399500\tTranscript\tMissense_Variant\t456/1500\t456/1500\t152/500\tF/L\ttTt/tCt\t.\t1\t.\t1\tPFKL\tHGNC\tHGNC:8876\tprotein_coding\tYES\t.\t.\t.\t.\t.\t.\t.\t.\t.\t5/15\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.\tMODERATE\t1\tSNV\t.\t.\t.\t.\t.\t.\t.\t.\t.\t.\tPASS\tGATCG\t.\t.\t.\t.\t.\t.\tchr21:44300200-44300200\t.\t.\t.\tSOMATC\n' >> "${BASE}/precomputed/T2.somatic_rna_germline.maf"
 
-# Group-merged mutations (used by FORMAT_ML_MUTATION — named data_mutations_dna_rna_germline.txt).
-# Built from the hand-maintained pipeline-ID MAFs (T1-1DT, T2-T); skip:2 drops #version + header of the second.
+# Group-merged mutations for FORMAT_ML_MUTATION, from the pipeline-ID MAFs (T1-1DT, T2-T)
 {
     cat "${BASE}/precomputed/T1-1DT.somatic_rna_germline.maf"
     tail -n +3 "${BASE}/precomputed/T2-T.somatic_rna_germline.maf"

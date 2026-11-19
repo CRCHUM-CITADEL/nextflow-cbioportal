@@ -14,9 +14,7 @@ nextflow_workflow {
             }
             workflow {
                 """
-                // collectFile with storeDir does NOT auto-create subdirectories.
-                // In the real pipeline, upstream publishDir creates output/TEST/ first.
-                // In this subworkflow test we pre-create it.
+                // collectFile with storeDir does not create subdirectories (publishDir does in the pipeline)
                 file("${params.outdir}/TEST").mkdirs()
 
                 // SEG files (one per subject) — collectFile merges them into group-level data_cna_hg38.seg
@@ -106,10 +104,13 @@ nextflow_workflow {
             assert path("${params.outdir}/TEST/data_mutations_dna_rna_germline.txt").exists()
             assert path("${params.outdir}/TEST/data_expression.txt").exists()
 
-            // Case lists
-            assert path("${params.outdir}/TEST/case_lists/cases_cnv.txt").exists()
-            assert path("${params.outdir}/TEST/case_lists/cases_sequenced.txt").exists()
-            assert path("${params.outdir}/TEST/case_lists/cases_sv.txt").exists()
+            // Case lists: every standard list for the profiles present; _all comes from add_global_case_list
+            def case_dir = "${params.outdir}/TEST/case_lists"
+            ['sequenced', 'cna', 'cnaseq', 'sv', 'rna_seq_v2_mrna', '3way_complete'].each { s ->
+                assert path("${case_dir}/cases_${s}.txt").exists() : "missing cases_${s}.txt"
+            }
+            assert !path("${case_dir}/cases_cnv.txt").exists()
+            assert !path("${case_dir}/cases_all.txt").exists()
 
             // Meta files
             assert path("${params.outdir}/TEST/meta_cna_hg38.txt").exists()
@@ -128,8 +129,7 @@ nextflow_workflow {
             assert seg_lines.any { it.startsWith('T1') }
             assert seg_lines.any { it.startsWith('T2') }
 
-            // Genomic sample attributes: one 4-line '#' header + ID line, then a row per sample. Emitted
-            // for GENOMIC/CLINICAL to place; not a study file (cBioPortal allows one SAMPLE_ATTRIBUTES file).
+            // Sample attributes: 4 # lines + ID line, then a row per sample (an intermediate, not a study file)
             assert workflow.out.sample_attributes.size() == 1
             assert workflow.out.sample_attributes[0][0] == 'TEST'
             def attrs = path(workflow.out.sample_attributes[0][1].toString()).readLines()
@@ -142,10 +142,21 @@ nextflow_workflow {
             assert !path("${params.outdir}/TEST/data_clinical_sample.txt").exists()
             assert !path("${params.outdir}/TEST/meta_clinical_sample.txt").exists()
 
-            // Verify case list format
-            def cnv_case_list = path("${params.outdir}/TEST/case_lists/cases_cnv.txt").readLines()
-            assert cnv_case_list.any { it.startsWith('cancer_study_identifier:') }
-            assert cnv_case_list.any { it.startsWith('case_list_ids:') }
+            // Case list format: all fields, standard stable_id suffix, valid category, tab-separated IDs
+            assert path("${case_dir}/cases_cna.txt").readLines() == [
+                'cancer_study_identifier: test',
+                'stable_id: test_cna',
+                'case_list_name: Samples with CNA data',
+                'case_list_description: Samples profiled for copy-number alterations',
+                'case_list_category: all_cases_with_cna_data',
+                'case_list_ids: T1\tT2',
+            ]
+            def categories = new File(case_dir).listFiles().collect { f ->
+                def lines = f.readLines()
+                assert !lines.any { it.contains('add_text') || it.contains('ADD TEXT') } : f.name
+                lines.find { it.startsWith('case_list_category: ') }
+            }
+            assert categories.size() == categories.toSet().size()  // the validator warns on a reused category
         }
     }
 
@@ -236,6 +247,13 @@ nextflow_workflow {
             // No expression data file and no orphan expression meta file
             assert !path("${params.outdir}/TEST/data_expression.txt").exists()
             assert !path("${params.outdir}/TEST/meta_expression.txt").exists()
+
+            // DNA case lists only: no mRNA lists without expression data
+            ['sequenced', 'cna', 'cnaseq', 'sv'].each { s ->
+                assert path("${params.outdir}/TEST/case_lists/cases_${s}.txt").exists()
+            }
+            assert !path("${params.outdir}/TEST/case_lists/cases_rna_seq_v2_mrna.txt").exists()
+            assert !path("${params.outdir}/TEST/case_lists/cases_3way_complete.txt").exists()
         }
     }
 
@@ -302,8 +320,9 @@ nextflow_workflow {
             assert path("${params.outdir}/TEST/meta_cna_hg38.txt").exists()
             assert path("${params.outdir}/TEST/meta_cna_long.txt").exists()
             assert path("${params.outdir}/TEST/meta_sequenced.txt").exists()
-            assert path("${params.outdir}/TEST/case_lists/cases_cnv.txt").exists()
+            assert path("${params.outdir}/TEST/case_lists/cases_cna.txt").exists()
             assert path("${params.outdir}/TEST/case_lists/cases_sequenced.txt").exists()
+            assert path("${params.outdir}/TEST/case_lists/cases_cnaseq.txt").exists()
 
             // Case lists keep their own samples when another data type is empty
             def seq_ids = path("${params.outdir}/TEST/case_lists/cases_sequenced.txt").readLines()
@@ -325,6 +344,147 @@ nextflow_workflow {
                 }
             }
             assert !path("${params.outdir}/TEST/meta_expression.txt").exists()
+        }
+    }
+
+    test("Case lists — combined lists hold only samples with every profile; empty lists are not written") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                file("${params.outdir}/TEST").mkdirs()
+
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1'],
+                        file('${projectDir}/assets/test_data/precomputed/T1_data_cna_hg38.seg')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2'],
+                        file('${projectDir}/assets/test_data/precomputed/T2_data_cna_hg38.seg')
+                    ]
+                )
+                input[1] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1'],
+                        file('${projectDir}/assets/test_data/precomputed/T1_data_cna_long.txt')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2'],
+                        file('${projectDir}/assets/test_data/precomputed/T2_data_cna_long.txt')
+                    ]
+                )
+                input[2] = Channel.empty()   // no SV
+                input[3] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1'],
+                        file('${projectDir}/assets/test_data/precomputed/T1.tpm.tsv')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2'],
+                        file('${projectDir}/assets/test_data/precomputed/T2.tpm.tsv')
+                    ]
+                )
+                input[4] = Channel.of(  // T2 has no MAF
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1'],
+                        file('${projectDir}/assets/test_data/precomputed/T1.somatic_rna_germline.maf')
+                    ]
+                )
+                input[5] = Channel.empty()
+                input[6] = Channel.empty()
+                input[7] = Channel.empty()
+                input[8] = Channel.empty()
+                input[9] = Channel.empty()
+                input[10] = Channel.empty()
+                input[11] = Channel.empty()
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            def ids = { s ->
+                def f = path("${params.outdir}/TEST/case_lists/cases_${s}.txt")
+                f.exists() ? f.readLines().find { it.startsWith('case_list_ids: ') }.substring(15).split('\t') as List : null
+            }
+            assert ids('sequenced') == ['T1']
+            assert ids('cna') == ['T1', 'T2']
+            assert ids('cnaseq') == ['T1']                // mutation ∩ CNA
+            assert ids('rna_seq_v2_mrna') == ['T1', 'T2']
+            assert ids('3way_complete') == ['T1']         // mutation ∩ CNA ∩ mRNA
+            assert ids('sv') == null                      // no SV output → no (empty) list
+        }
+    }
+
+    test("Case lists — no mRNA lists when the expression merge is skipped (< 2 TPM files)") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            workflow {
+                """
+                file("${params.outdir}/TEST").mkdirs()
+
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1'],
+                        file('${projectDir}/assets/test_data/precomputed/T1_data_cna_hg38.seg')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2'],
+                        file('${projectDir}/assets/test_data/precomputed/T2_data_cna_hg38.seg')
+                    ]
+                )
+                input[1] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1'],
+                        file('${projectDir}/assets/test_data/precomputed/T1_data_cna_long.txt')
+                    ],
+                    [
+                        [group: 'TEST', subject: 'T2', sample: 'T2'],
+                        file('${projectDir}/assets/test_data/precomputed/T2_data_cna_long.txt')
+                    ]
+                )
+                input[2] = Channel.empty()   // no SV
+                input[3] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1'],
+                        file('${projectDir}/assets/test_data/precomputed/T1.tpm.tsv')
+                    ]
+                )
+                input[4] = Channel.of(  // T2 has no MAF
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1'],
+                        file('${projectDir}/assets/test_data/precomputed/T1.somatic_rna_germline.maf')
+                    ]
+                )
+                input[5] = Channel.empty()
+                input[6] = Channel.empty()
+                input[7] = Channel.empty()
+                input[8] = Channel.empty()
+                input[9] = Channel.empty()
+                input[10] = Channel.empty()
+                input[11] = Channel.empty()
+                """
+            }
+        }
+
+        then {
+            assert workflow.success
+            def ids = { s ->
+                def f = path("${params.outdir}/TEST/case_lists/cases_${s}.txt")
+                f.exists() ? f.readLines().find { it.startsWith('case_list_ids: ') }.substring(15).split('\t') as List : null
+            }
+            // one TPM file is not merged, so no sample is in data_expression.txt
+            assert !path("${params.outdir}/TEST/data_expression.txt").exists()
+            assert ids('rna_seq_v2_mrna') == null
+            assert ids('3way_complete') == null
+            assert ids('cnaseq') == ['T1']
         }
     }
 }

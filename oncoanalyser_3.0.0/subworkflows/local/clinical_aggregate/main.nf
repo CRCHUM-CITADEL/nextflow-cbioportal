@@ -12,6 +12,11 @@ include { GENERATE_TIMELINE_LAB_TEST }               from '../../../modules/loca
 include { MERGE_TIMELINE }                           from '../../../modules/local/merge_timeline'
 include { resource }                                 from '../utils'
 
+// An optional clinical CSV: its file, or [] when the group has none
+def optCsv(csv_map, key) {
+    return csv_map[key] ? file(csv_map[key]) : []
+}
+
 workflow CLINICAL_AGGREGATE {
     take:
         filelist          // channel: [meta(group, pipeline, extraction_date), csv_path]
@@ -38,31 +43,27 @@ workflow CLINICAL_AGGREGATE {
 
         all_groups = csvs.map { group, csv_map -> group }.unique()
 
-        // ── Clinical sample/patient files ────────────────────────────────────
-        // BUILD_CLINICAL_TABLE runs the loaders + merge cascade once per group;
-        // the two writers below are thin column-selection passes over its output,
-        // so no work is duplicated the way the old two-mode FORMAT_CLINICAL was.
-        csvs
+        // ── Clinical sample/patient files: BUILD_CLINICAL_TABLE once per group; the writers only select columns ──
+        ch_build_input = csvs
             .map { group, csv_map ->
                 return tuple(
                     [group: group],
-                    csv_map.donors               ? file(csv_map.donors)               : [],
-                    csv_map.primary_diagnoses    ? file(csv_map.primary_diagnoses)    : [],
-                    csv_map.specimens            ? file(csv_map.specimens)            : [],
-                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
-                    csv_map.treatments           ? file(csv_map.treatments)           : [],
-                    csv_map.surgeries            ? file(csv_map.surgeries)            : [],
-                    csv_map.systemic_therapies   ? file(csv_map.systemic_therapies)   : [],
-                    csv_map.radiations           ? file(csv_map.radiations)           : [],
-                    csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
-                    csv_map.biomarkers           ? file(csv_map.biomarkers)           : [],
-                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
+                    optCsv(csv_map, 'donors'),
+                    optCsv(csv_map, 'primary_diagnoses'),
+                    optCsv(csv_map, 'specimens'),
+                    optCsv(csv_map, 'sample_registrations'),
+                    optCsv(csv_map, 'treatments'),
+                    optCsv(csv_map, 'surgeries'),
+                    optCsv(csv_map, 'systemic_therapies'),
+                    optCsv(csv_map, 'radiations'),
+                    optCsv(csv_map, 'follow_ups'),
+                    optCsv(csv_map, 'biomarkers'),
+                    optCsv(csv_map, 'genomic_subjects'),
                     file(resource('mohccn_primary_site_map')),
                     file(resource('mohccn_specimen_tissue_source_map')),
                     file(resource('mohccn_treatment_intent_map'))
                 )
             }
-            .set { ch_build_input }
 
         BUILD_CLINICAL_TABLE(ch_build_input, ch_clinical_common)
 
@@ -116,78 +117,69 @@ data_filename: data_clinical_patient.txt
             meta_text
         )
 
-        // ── Timeline files ────────────────────────────────────────────────────
-        // Five per-EVENT_TYPE processes (each optional-output, only surfacing a
-        // part when its source CSV produced rows), unioned by MERGE_TIMELINE.
-        // Column ordering there is a hard contract with combine_cbioportal_outputs.py
-        // — see merge_timeline.R.
-        csvs
+        // ── Timeline: one optional part per EVENT_TYPE, unioned by MERGE_TIMELINE (column order: merge_timeline.R) ──
+        ch_surgery_input = csvs
             .map { group, csv_map ->
                 tuple(
                     [group: group],
-                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
-                    csv_map.treatments           ? file(csv_map.treatments)           : [],
-                    csv_map.surgeries            ? file(csv_map.surgeries)            : [],
-                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
+                    optCsv(csv_map, 'sample_registrations'),
+                    optCsv(csv_map, 'treatments'),
+                    optCsv(csv_map, 'surgeries'),
+                    optCsv(csv_map, 'genomic_subjects'),
                     file(resource('mohccn_primary_site_map')),
                     file(resource('mohccn_treatment_intent_map'))
                 )
             }
-            .set { ch_surgery_input }
         GENERATE_TIMELINE_SURGERY(ch_surgery_input, ch_clinical_common)
 
-        csvs
+        ch_treatment_input = csvs
             .map { group, csv_map ->
                 tuple(
                     [group: group],
-                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
-                    csv_map.treatments           ? file(csv_map.treatments)           : [],
-                    csv_map.systemic_therapies   ? file(csv_map.systemic_therapies)   : [],
-                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
+                    optCsv(csv_map, 'sample_registrations'),
+                    optCsv(csv_map, 'treatments'),
+                    optCsv(csv_map, 'systemic_therapies'),
+                    optCsv(csv_map, 'genomic_subjects'),
                     file(resource('mohccn_treatment_intent_map'))
                 )
             }
-            .set { ch_treatment_input }
         GENERATE_TIMELINE_TREATMENT(ch_treatment_input, ch_clinical_common)
 
-        csvs
+        ch_status_input = csvs
             .map { group, csv_map ->
                 tuple(
                     [group: group],
-                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
-                    csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
-                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
+                    optCsv(csv_map, 'sample_registrations'),
+                    optCsv(csv_map, 'follow_ups'),
+                    optCsv(csv_map, 'genomic_subjects'),
                     file(resource('mohccn_primary_site_map'))
                 )
             }
-            .set { ch_status_input }
         GENERATE_TIMELINE_STATUS(ch_status_input, ch_clinical_common)
 
-        csvs
+        ch_specimen_input = csvs
             .map { group, csv_map ->
                 tuple(
                     [group: group],
-                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
-                    csv_map.specimens            ? file(csv_map.specimens)            : [],
-                    csv_map.follow_ups           ? file(csv_map.follow_ups)           : [],
-                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : [],
+                    optCsv(csv_map, 'sample_registrations'),
+                    optCsv(csv_map, 'specimens'),
+                    optCsv(csv_map, 'follow_ups'),
+                    optCsv(csv_map, 'genomic_subjects'),
                     file(resource('mohccn_primary_site_map')),
                     file(resource('mohccn_specimen_tissue_source_map'))
                 )
             }
-            .set { ch_specimen_input }
         GENERATE_TIMELINE_SPECIMEN(ch_specimen_input, ch_clinical_common)
 
-        csvs
+        ch_lab_test_input = csvs
             .map { group, csv_map ->
                 tuple(
                     [group: group],
-                    csv_map.sample_registrations ? file(csv_map.sample_registrations) : [],
-                    csv_map.biomarkers           ? file(csv_map.biomarkers)           : [],
-                    csv_map.genomic_subjects     ? file(csv_map.genomic_subjects)     : []
+                    optCsv(csv_map, 'sample_registrations'),
+                    optCsv(csv_map, 'biomarkers'),
+                    optCsv(csv_map, 'genomic_subjects')
                 )
             }
-            .set { ch_lab_test_input }
         GENERATE_TIMELINE_LAB_TEST(ch_lab_test_input, ch_clinical_common)
 
         ch_timeline_parts = GENERATE_TIMELINE_SURGERY.out.ch_timeline_part
@@ -199,10 +191,7 @@ data_filename: data_clinical_patient.txt
 
         MERGE_TIMELINE(ch_timeline_parts)
 
-        // MERGE_TIMELINE emits nothing for a group whose five event types all
-        // came back empty (its output is optional), so a group with no timeline
-        // data gets no data_timeline.txt and no meta_timeline.txt — the same
-        // behaviour as the original single GENERATE_TIMELINE process.
+        // No timeline rows in a group → no data_timeline.txt or meta_timeline.txt (MERGE_TIMELINE output is optional)
 
         // Generate meta file for the combined timeline data file
         MERGE_TIMELINE.out.ch_timeline
@@ -219,9 +208,7 @@ data_filename: data_timeline.txt
 """ }
         )
 
-        // ── Files that make up the clinical part of the study package ────────
-        // SPLIT_CLINICAL output is deliberately excluded: per-subject slices are
-        // not loadable by cBioPortal.
+        // ── Clinical package files (per-subject SPLIT_CLINICAL slices are not loadable, so excluded) ──
 
         ch_package_files = WRITE_CLINICAL_SAMPLE.out.ch_clinical_sample
             .mix(WRITE_CLINICAL_PATIENT.out.ch_clinical_patient)

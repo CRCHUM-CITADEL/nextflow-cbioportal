@@ -1,9 +1,5 @@
 #!/usr/bin/env Rscript
-#
-# GENERATE_TIMELINE_SURGERY — emits SURGERY timeline events from treatments.csv
-# rows flagged as surgical. Sibling of gen_timeline_treatment.R (both read and
-# filter treatments.csv independently — cheap, and keeps each script single-purpose).
-# One of five per-EVENT_TYPE scripts merged by merge_timeline.R into data_timeline.txt.
+# GENERATE_TIMELINE_SURGERY: surgical treatments → SURGERY events (merged by merge_timeline.R)
 
 suppressPackageStartupMessages(library(optparse))
 

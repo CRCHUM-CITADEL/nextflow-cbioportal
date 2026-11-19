@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Final fixed script with direct position+allele matching approach
-# Based on debug findings showing 371 exact matches
+# Add RNA evidence to MAF rows by exact position + allele match
 
 library(data.table)
 library(dplyr)
@@ -186,8 +185,7 @@ matched_variants <- matched_variants %>%
     )
   )
 
-# RNA evidence stays in its own columns: Mutation_Status carries the Somatic/Germline label cBioPortal filters on.
-# Remove temporary columns
+# Remove temporary columns (RNA evidence stays in its own columns, never in Mutation_Status)
 matched_variants$chr_raw <- NULL
 
 # Write the extended MAF file
@@ -195,8 +193,7 @@ message("Writing integrated MAF file...")
 # Get the header lines from the original MAF file
 maf_header_lines <- readLines(dna_maf_file, n = 2)
 
-# Create output columns list (keep original plus new columns)
-# RNA evidence is written under the RNA namespace (namespaces: HMF,RNA) so cBioPortal can show it.
+# RNA evidence goes under the RNA namespace (namespaces: HMF,RNA)
 rna_cols <- c(t_depth_rna = "RNA.depth", t_vaf_rna = "RNA.vaf", t_ref_count_rna = "RNA.ref_count",
               t_alt_count_rna = "RNA.alt_count", Flag_RNA_Expressed = "RNA.expressed")
 dna_cols <- setdiff(names(dna_maf), "chr_raw")

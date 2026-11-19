@@ -1,21 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Convert Isofox RNA fusion output to cBioPortal data_sv.txt format.
-#
-# Expects the oncoanalyser 3.0 Isofox pass-fusion table
-# (<sample>.isf.pass_fusions.tsv), whose columns are:
-#   Name KnownType ChromosomeUp ChromosomeDown PositionUp PositionDown
-#   OrientationUp OrientationDown JunctionTypeUp JunctionTypeDown
-#   TranscriptUp TranscriptDown ExonUp ExonDown SvType
-#   SplitFrags RealignedFrags DiscordantFrags DepthUp DepthDown
-#   MaxAnchorLengthUp MaxAnchorLengthDown CohortFrequency
-#
-# Both gene symbols are packed into Name as "<up>_<down>"; either half may be
-# empty when Isofox could not annotate that breakend. Such rows are dropped —
-# data_sv.txt requires a Hugo symbol at both sites.
-#
-# KnownType, JunctionType*, SvType, Depth*, MaxAnchorLength* and CohortFrequency
-# have no cBioPortal SV counterpart and are deliberately not emitted.
+# Isofox 3.0 pass_fusions.tsv → cBioPortal data_sv.txt; rows without a Hugo symbol at both sites are dropped
 
 suppressPackageStartupMessages({
     library(optparse)
@@ -78,9 +63,7 @@ if (length(missing_cols) > 0) {
                "\nAvailable:", paste(names(fusions), collapse = ", ")))
 }
 
-# Name is "<up gene>_<down gene>" — split on the first underscore.
-# A Name without any underscore is malformed: keep it as the 5' gene only so the
-# row is dropped by the Hugo-symbol filter rather than becoming a self-fusion.
+# Name is "<up>_<down>", split on the first "_"; no "_" keeps it as the 5' gene only (dropped later, never a self-fusion)
 fusion_name <- as.character(fusions$Name)
 gene_up     <- sub("_.*$", "", fusion_name)
 gene_down   <- ifelse(grepl("_", fusion_name, fixed = TRUE),
@@ -103,22 +86,7 @@ exon_or_na <- function(x) {
 exon_up   <- exon_or_na(fusions$ExonUp)
 exon_down <- exon_or_na(fusions$ExonDown)
 
-# cBioPortal's Site1/2_Region vocabulary is {5_Prime_UTR, 3_Prime_UTR, Promoter, Exon, Intron}.
-#
-# Isofox fills Transcript/Exon from the breakend's TransExonRef list
-# (FusionReadData.java) — a transcript and exon rank are recorded only when the
-# breakend falls on an exon of that transcript, and are left empty/0 otherwise.
-# The fusion caller assigns a gene by overlap with the gene body and has no
-# upstream/promoter allowance, so a named gene with no exon reference means the
-# breakend sits inside that gene but outside every exon: intronic.
-#
-#   transcript + exon rank  -> Exon
-#   gene but no exon ref    -> Intron
-#   no gene                 -> NA (the row is dropped by the Hugo-symbol filter below)
-#
-# 5_Prime_UTR / 3_Prime_UTR / Promoter are not derivable from pass_fusions.tsv:
-# it carries no coding-type or CDS boundaries (RnaFusionFile.java lists all 23
-# columns), and UTR bases are exonic, so they surface here as Exon.
+# Site region: transcript + exon rank → Exon, gene without exon ref → Intron, no gene → NA (UTR/Promoter not derivable)
 classify_region <- function(gene, transcript, exon) {
     ifelse(!is.na(exon) & !is.na(transcript), "Exon",
            ifelse(!is.na(gene) & gene != "", "Intron", NA_character_))

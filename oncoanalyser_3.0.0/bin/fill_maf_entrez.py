@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Fill a mafsmith MAF's Entrez_Gene_Id from the Ensembl annotations TSV.
-
-mafsmith writes Entrez_Gene_Id = 0 on every row: it carries no Ensembl-to-Entrez
-table. Each row is looked up by its Ensembl `Gene` id first, then by `Hugo_Symbol`.
-A row with no match, or whose key maps to more than one Entrez id, keeps its value,
-and cBioPortal then resolves the gene by Hugo_Symbol.
-"""
+"""Fill a mafsmith MAF's Entrez_Gene_Id (always 0) from ensembl_annotations, by Gene id then Hugo_Symbol; ambiguous stays 0."""
 
 import argparse
 import re

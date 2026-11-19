@@ -1,18 +1,10 @@
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+// ── Imports ──
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { CLINICAL_AGGREGATE } from '../subworkflows/local/clinical_aggregate'
 include { GENERATE_META_FILE } from '../modules/local/generate_meta_file'
 include { GENERATE_CLINICAL_TEMPLATE } from '../modules/local/generate_clinical_template'
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RUN MAIN WORKFLOW
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+// ── Main workflow ──
 
 workflow CLINICAL {
 
@@ -41,9 +33,7 @@ workflow CLINICAL {
 
             ch_package_files = CLINICAL_AGGREGATE.out.package_files
         } else {
-            // ── Template fallback: generate minimal clinical files ──
-            // Clinical mode: sample_registrations is a path to sample_registrations.csv.
-            // Both mode: it is GENOMIC's util_linking_file.txt (subject_id\tsample_id), which already is the cohort.
+            // ── Template fallback: sample_registrations is the CSV (clinical mode) or GENOMIC's linking file (both mode) ──
             if (sample_registrations instanceof CharSequence) {
                 log.info "No clinical samplesheet provided. Generating template clinical files from sample_registrations."
 
@@ -122,9 +112,7 @@ data_filename: data_clinical_sample.txt
                 .mix(GENERATE_META_FILE.out)
         }
 
-        //
-        // TASK: Aggregate software versions
-        //
+        // Aggregate software versions
         softwareVersionsToYAML(ch_versions)
             .collectFile(
                 storeDir: "${params.outdir}/pipeline_info",

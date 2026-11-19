@@ -1,19 +1,5 @@
 #!/usr/bin/env python3
-"""
-Run SigProfilerAssignment cosmic_fit on a single sample's trinucleotide counts,
-then convert Activities output to cBioPortal GENERIC_ASSAY contribution format.
-
-Inputs:
-  --snv_counts    : {subject}-T.sig.snv_counts.csv (BucketName, {subject}-T columns)
-  --signatures_db : COSMIC_Human_SBS-96_GRCh38_v3.6.csv (extracted from zip)
-  --metadata      : cosmic_sbs_metadata.tsv (sbs_id, category, etiology, main_effect)
-  --sample        : sample ID for output column header
-  --output        : output path for cBioPortal contribution file
-
-Output:
-  {sample}.data_mutational_signatures_contribution_SBS.txt
-  Columns: ENTITY_STABLE_ID, NAME, DESCRIPTION, {sample}
-"""
+"""Fit one sample's trinucleotide counts to COSMIC v3.6 SBS-96 and write the cBioPortal contribution file."""
 
 import argparse
 import csv
@@ -35,10 +21,7 @@ def parse_args():
 
 
 def bucket_to_sigprofiler(bucket):
-    """Convert HMFTOOLS BucketName to SigProfiler context notation.
-
-    C>A_ACA  ->  A[C>A]A
-    """
+    """Convert a BucketName to SigProfiler notation (C>A_ACA -> A[C>A]A)."""
     parts = bucket.split("_")
     if len(parts) != 2 or len(parts[1]) != 3:
         raise ValueError(f"Unexpected BucketName format: {bucket!r}")

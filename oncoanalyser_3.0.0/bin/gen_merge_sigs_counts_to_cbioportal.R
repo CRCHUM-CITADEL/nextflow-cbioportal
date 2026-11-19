@@ -1,8 +1,5 @@
 #!/usr/bin/env Rscript
-# Merge per-sample SIGS counts cBioPortal files into a single wide-format matrix.
-# Each input file has columns: ENTITY_STABLE_ID, NAME, DESCRIPTION, {sample_id}
-# Output: data_mutational_signatures_counts_SBS.txt with all samples as columns, contexts as rows.
-# Missing contexts for a given sample are filled with 0.
+# Merge per-sample signature count files into one context × sample matrix; missing contexts are 0
 
 suppressPackageStartupMessages({
     library(optparse)

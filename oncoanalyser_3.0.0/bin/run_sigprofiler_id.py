@@ -1,19 +1,5 @@
 #!/usr/bin/env python3
-"""
-Extract indels from a somatic VCF, classify into the COSMIC ID-83 scheme
-using reference FASTA context (via pysam), fit against COSMIC v3.6 ID-83
-reference using SigProfilerAssignment, and produce cBioPortal GENERIC_ASSAY
-contribution and counts files.
-
-Inputs:
-  --vcf           : PURPLE somatic VCF (.vcf.gz or .vcf)
-  --fasta         : Reference genome FASTA (indexed with .fai)
-  --signatures_db : COSMIC_Human_ID-83_GRCh38_v3.6.csv
-  --metadata      : cosmic_id_metadata.tsv (id_id, category, etiology, main_effect)
-  --sample        : sample ID for output column header
-  --output_contrib: output path for contribution file
-  --output_counts : output path for counts file
-"""
+"""Classify a somatic VCF's indels into COSMIC ID-83, fit to COSMIC v3.6 and write cBioPortal contribution and counts files."""
 
 import argparse
 import csv
@@ -72,11 +58,7 @@ def open_vcf(path):
 
 
 def extract_indels_from_vcf(vcf_path):
-    """Extract indels from a somatic VCF.
-
-    Returns list of tuples: (chrom, pos, ref, alt) where len(ref) != len(alt).
-    Position is 1-based as in VCF.
-    """
+    """Return indels as (chrom, pos, ref, alt), pos 1-based."""
     indels = []
 
     with open_vcf(vcf_path) as fh:
@@ -109,29 +91,17 @@ def extract_indels_from_vcf(vcf_path):
 
 
 def classify_1bp_del(deleted_base, chrom, pos, ref, fasta):
-    """Classify a 1bp deletion into the ID-83 scheme.
-
-    Args:
-        deleted_base: the single deleted nucleotide (A/C/G/T)
-        chrom: chromosome
-        pos: 1-based position of the VCF record
-        ref: full REF allele
-        fasta: pysam.FastaFile
-
-    Returns: ID-83 type string, e.g. '1:Del:C:3'
-    """
+    """Classify a 1 bp deletion into ID-83 (e.g. '1:Del:C:3'); pos is the 1-based VCF position."""
     # Normalize to C or T
     if deleted_base in ("G", "A"):
         base = reverse_complement(deleted_base)
     else:
         base = deleted_base
 
-    # The deleted base is at position pos+1 (0-based: pos) in the reference
-    # (VCF convention: REF = anchor + deleted bases)
+    # The deleted base is at 0-based pos (REF = anchor + deleted bases)
     del_pos_0based = pos  # 0-based position of deleted base
 
-    # Count homopolymer run of the same base at and after the deletion site
-    # Fetch context: up to 50bp downstream from the deletion position
+    # Homopolymer run of that base from the deletion site (up to 50 bp downstream)
     try:
         context = fasta.fetch(chrom, del_pos_0based, del_pos_0based + 50).upper()
     except (ValueError, KeyError):
@@ -152,16 +122,7 @@ def classify_1bp_del(deleted_base, chrom, pos, ref, fasta):
 
 
 def classify_1bp_ins(inserted_base, chrom, pos, fasta):
-    """Classify a 1bp insertion into the ID-83 scheme.
-
-    Args:
-        inserted_base: the single inserted nucleotide
-        chrom: chromosome
-        pos: 1-based VCF position (anchor base position)
-        fasta: pysam.FastaFile
-
-    Returns: ID-83 type string, e.g. '1:Ins:T:2'
-    """
+    """Classify a 1 bp insertion into ID-83 (e.g. '1:Ins:T:2'); pos is the anchor base."""
     # Normalize to C or T
     if inserted_base in ("G", "A"):
         base = reverse_complement(inserted_base)
@@ -189,15 +150,7 @@ def classify_1bp_ins(inserted_base, chrom, pos, fasta):
 
 
 def count_repeat_units(indel_seq, chrom, pos_after_anchor, indel_len, fasta, is_del):
-    """Count how many times the indel sequence repeats at the genomic position.
-
-    For deletions: count repeats of the deleted sequence starting right after
-    the deletion site.
-    For insertions: count repeats of the inserted sequence starting at the
-    insertion site.
-
-    Returns: number of additional repeat units (0 if no repeat context).
-    """
+    """Return how many extra times the indel sequence repeats at its site (0 if none)."""
     unit = indel_seq.upper()
     unit_len = len(unit)
 
@@ -225,19 +178,7 @@ def count_repeat_units(indel_seq, chrom, pos_after_anchor, indel_len, fasta, is_
 
 
 def find_microhomology(chrom, del_start, del_end, fasta):
-    """Find microhomology length at a deletion breakpoint.
-
-    Microhomology: bases at the 3' end of the deleted sequence that match
-    bases immediately after the deletion.
-
-    Args:
-        chrom: chromosome
-        del_start: 0-based start of deleted region
-        del_end: 0-based end of deleted region (exclusive)
-        fasta: pysam.FastaFile
-
-    Returns: microhomology length (0 if none)
-    """
+    """Return the microhomology length at a deletion (0-based, end-exclusive) breakpoint."""
     del_len = del_end - del_start
     try:
         deleted_seq = fasta.fetch(chrom, del_start, del_end).upper()
@@ -256,20 +197,12 @@ def find_microhomology(chrom, del_start, del_end, fasta):
 
 
 def classify_indel(chrom, pos, ref, alt, fasta):
-    """Classify a single indel into the COSMIC ID-83 scheme.
-
-    Args:
-        chrom, pos, ref, alt: VCF fields (pos is 1-based)
-        fasta: pysam.FastaFile
-
-    Returns: ID-83 type string
-    """
+    """Classify one indel (VCF fields, 1-based pos) into an ID-83 type."""
     ref_len = len(ref)
     alt_len = len(alt)
 
     if ref_len > alt_len:
-        # Deletion
-        # Strip common prefix (anchor base)
+        # Deletion: strip the common prefix (anchor base)
         prefix_len = 0
         for i in range(min(ref_len, alt_len)):
             if ref[i] == alt[i]:

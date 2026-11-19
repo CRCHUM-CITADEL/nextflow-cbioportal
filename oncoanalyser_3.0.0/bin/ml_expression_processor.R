@@ -2,10 +2,7 @@
 
 library(tidyverse)
 
-#' Standardize expression matrix efficiently
-#' @param expression_mat Numeric matrix of expression values
-#' @return Standardized expression matrix
-#' @keywords internal
+# Standardize an expression matrix
 standardize_expression <- function(expression_mat) {
   # Transpose, use highly optimized base scale(), then transpose back.
   scaled_mat <- scale(t(expression_mat))
@@ -16,11 +13,7 @@ standardize_expression <- function(expression_mat) {
   return(t(scaled_mat))
 }
 
-#' Process TPM expression data for Deep Learning
-#' @param input_file Path to input TPM TSV
-#' @param min_tpm Minimum TPM value threshold (default: 1)
-#' @param min_samples Minimum number of samples where gene should be expressed (default: 3)
-#' @export
+# Process TPM expression for deep learning (genes with TPM >= min_tpm in >= min_samples samples)
 process_expression_data <- function(input_file, min_tpm = 1, min_samples = 3) {
   output_file_log2 <- "expression_processed_log2.tsv"
   output_file_standardized <- "expression_processed_standardized.tsv"

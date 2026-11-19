@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""
-Extract doublet base substitutions (DBS) from a somatic VCF, fit against
-COSMIC v3.6 DBS-78 reference using SigProfilerAssignment, and produce
-cBioPortal GENERIC_ASSAY contribution and counts files.
-
-Inputs:
-  --vcf           : PURPLE somatic VCF (.vcf.gz or .vcf)
-  --signatures_db : COSMIC_Human_DBS-78_GRCh38_v3.6.csv (extracted from zip)
-  --metadata      : cosmic_dbs_metadata.tsv (dbs_id, category, etiology, main_effect)
-  --sample        : sample ID for output column header
-  --output_contrib: output path for contribution file
-  --output_counts : output path for counts file
-"""
+"""Fit a somatic VCF's doublet base substitutions to COSMIC v3.6 DBS-78 and write cBioPortal contribution and counts files."""
 
 import argparse
 import csv
@@ -23,8 +11,7 @@ import tempfile
 
 import pandas as pd
 
-# The 10 canonical DBS reference dinucleotides used by COSMIC
-# Dinucleotides not in this set must be reverse-complemented
+# The 10 canonical COSMIC DBS reference dinucleotides; others are reverse-complemented
 CANONICAL_REFS = {"AC", "AT", "CC", "CG", "CT", "GC", "TA", "TC", "TG", "TT"}
 
 COMPLEMENT = str.maketrans("ACGT", "TGCA")
@@ -35,10 +22,7 @@ def reverse_complement(seq):
 
 
 def canonical_dbs(ref_di, alt_di):
-    """Return canonical DBS type string (e.g., 'AC>CA').
-
-    If ref_di is not in the canonical set, reverse complement both.
-    """
+    """Return the canonical DBS type (e.g. 'AC>CA'), reverse-complementing a non-canonical ref."""
     if ref_di in CANONICAL_REFS:
         return f"{ref_di}>{alt_di}"
     rc_ref = reverse_complement(ref_di)
@@ -65,14 +49,7 @@ def open_vcf(path):
 
 
 def extract_dbs_from_vcf(vcf_path):
-    """Extract DBS mutations from a somatic VCF.
-
-    Strategy:
-    1. Check for MNV records: REF and ALT are both 2bp (direct DBS).
-    2. Check for adjacent SNV pairs: consecutive positions on the same chrom.
-
-    Returns a list of canonical DBS type strings (e.g., ['AC>CA', 'AT>CG']).
-    """
+    """Return canonical DBS types from 2 bp MNV records and adjacent SNV pairs."""
     snvs = []  # (chrom, pos, ref, alt) for SNVs
     dbs_list = []
 

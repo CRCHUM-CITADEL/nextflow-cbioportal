@@ -6,13 +6,7 @@ nextflow_process {
     tag "module"
     tag "mafsmith"
 
-    // PURPLE somatic VCFs list the normal column first and the tumor second. mafsmith,
-    // unlike vcf2maf.pl, does not take the VCF column from --tumor-id: without
-    // --vcf-tumor-id it treats the FIRST column as the tumor, so t_* came from the
-    // normal (t_alt_count 0) and cBioPortal, which derives allele frequency from
-    // t_alt_count / (t_alt_count + t_ref_count), showed every somatic call at ~0%.
-    // This runs the real binary; the genomic_mutations test is stub-only and could
-    // not see it.
+    // Real binary: mafsmith must take t_* from the tumour column (PURPLE lists the normal first)
     test("tumor and normal depths come from their own VCF columns") {
 
         config "tests/nextflow_mafsmith.config"

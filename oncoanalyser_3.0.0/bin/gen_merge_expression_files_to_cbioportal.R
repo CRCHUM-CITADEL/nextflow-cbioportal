@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
-# Script to merge multiple single-sample expression files into one matrix for cBioPortal
-# Takes individual sample expression files and combines them into a matrix with genes as rows
+# Merge single-sample expression files into one gene × sample matrix for cBioPortal
 
 # Load required libraries
 suppressPackageStartupMessages({
@@ -151,8 +150,7 @@ read_expr_file <- function(file_path, sample_id) {
     # Rename the second column to the sample ID from filename
     colnames(df)[3] <- sample_id
   } else {
-    # Assume standard format with Hugo_Symbol and sample ID as column names
-    # Rename the second column to the sample ID from filename
+        # Third column is named after the sample ID from the filename
     colnames(df)[3] <- sample_id
   }
 

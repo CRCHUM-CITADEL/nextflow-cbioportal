@@ -1,49 +1,5 @@
 #!/usr/bin/env python3
-"""Merge two cBioPortal output folders into one combined folder.
-
-Inputs and output can be directories or .tar.gz archives containing the
-same cBioPortal folder structure.  Archives are auto-extracted/created.
-
-Handled content:
-    row-append          data_cna_hg38.seg, data_cna_long.txt, util_linking_file.txt
-    MAF (2-line header) data_mutations_dna_rna_germline.txt
-    wide matrices       data_expression.txt,
-                        data_mutational_signatures_{contribution,counts}_{SBS,DBS,ID}.txt
-    union-append        data_timeline.txt (column set varies with the event
-                        types present in each batch), data_sv.txt (a batch
-                        from before the HMF.PURPLE_* columns is narrower)
-    clinical            data_clinical_sample.txt, data_clinical_patient.txt
-                        (4 '#' metadata rows + column header; column sets may
-                        differ between batches and are unioned)
-    headerless          cancer_type.txt (deduplicated on the first field)
-    meta files          every meta_*.txt found in either input (meta_study.txt
-                        may be absent from one: an --incremental run omits it)
-    case lists          every case_lists/*.txt found in either input
-    subject folders     every other sub-directory (per-subject genomic files and
-                        per-sample clinical splits) is union-copied
-
-Not merged:
-    machine_learning/   the processed tables are cohort-normalised (log2,
-                        standardised expression), so appending rows would give
-                        wrong values.  Regenerate them by re-running the ML
-                        subworkflow over the combined cohort.
-
-Anything else found in the inputs is reported as unhandled and left out of the
-merged folder; --strict turns that report into a non-zero exit.
-
-Usage:
-    combine_cbioportal_outputs.py --input_dir_1 DIR1 --input_dir_2 DIR2 --output_dir OUT
-    combine_cbioportal_outputs.py --input_dir_1 DIR1 --input_dir_2 DIR2 --output_dir OUT --study_id NEW_ID
-
-    # Inputs and/or output as .tar.gz:
-    combine_cbioportal_outputs.py --input_dir_1 batch1.tar.gz --input_dir_2 batch2.tar.gz --output_dir merged.tar.gz
-
-    # In-place merge (output_dir == one of the input dirs):
-    combine_cbioportal_outputs.py --input_dir_1 ACCUMULATED --input_dir_2 NEW_BATCH --output_dir ACCUMULATED
-
-    # Fail if either input contains a file this script does not know how to merge:
-    combine_cbioportal_outputs.py --input_dir_1 DIR1 --input_dir_2 DIR2 --output_dir OUT --strict
-"""
+"""Merge two cBioPortal study folders or .tar.gz archives into one (see the dispatch tables; --strict fails on unhandled files)."""
 
 import argparse
 import csv
@@ -55,9 +11,7 @@ import tarfile
 import tempfile
 
 
-# ---------------------------------------------------------------------------
-# Dispatch tables
-# ---------------------------------------------------------------------------
+# ── Dispatch tables ──
 
 ROW_APPEND_FILES = [
     ("data_cna_hg38.seg", 1),
@@ -77,10 +31,7 @@ WIDE_MATRIX_FILES = [
     ("data_mutational_signatures_counts_ID.txt", ["ENTITY_STABLE_ID", "NAME"], "0"),
 ]
 
-# Long-format files whose column set depends on which record types a batch
-# contained.  gen_timeline.R writes the four common columns first, then the
-# union of the remaining columns sorted alphabetically.
-# data_sv.txt keeps gen_purple_sv_to_cbioportal.R's column order.
+# Long-format files whose column set varies by batch: leading columns first, the rest alphabetically
 SV_COLUMNS = [
     "Sample_Id", "SV_Status",
     "Site1_Hugo_Symbol", "Site1_Ensembl_Transcript_Id", "Site1_Region_Number", "Site1_Region",
@@ -117,9 +68,7 @@ SKIPPED_DIRS = {"machine_learning"}
 STRUCTURAL_DIRS = {"case_lists"}
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+# ── Helpers ──
 
 def log(msg):
     """Print a log message to stderr."""
@@ -143,12 +92,7 @@ def is_tarball(path):
 
 
 def extract_tarball(tarball_path):
-    """Extract a .tar.gz archive and return (content_dir, tmpdir_root).
-
-    content_dir is the directory containing cBioPortal files (descends into
-    a single top-level directory if there is one).  tmpdir_root is the
-    extraction root that should be cleaned up.
-    """
+    """Extract a .tar.gz; return (content_dir, tmpdir_root), descending into a single top-level directory."""
     tmpdir = tempfile.mkdtemp(prefix="cbio_tar_")
     log(f"Extracting {tarball_path} → {tmpdir}")
     with tarfile.open(tarball_path, "r:gz") as tf:
@@ -264,16 +208,10 @@ def _read_tsv_rows(path):
     return rows, columns
 
 
-# ---------------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------------
+# ── Validation ──
 
 def read_study_id(directory):
-    """Return the folder's cancer_study_identifier, from meta_study.txt if present.
-
-    An --incremental run writes no meta_study.txt, so fall back to the first
-    other meta file that names the study.
-    """
+    """Return the folder's cancer_study_identifier: meta_study.txt, else (--incremental) the first meta file naming it."""
     meta_study = os.path.join(directory, "meta_study.txt")
     candidates = [meta_study] if os.path.isfile(meta_study) else sorted(
         glob.glob(os.path.join(directory, "meta_*.txt"))
@@ -286,13 +224,7 @@ def read_study_id(directory):
 
 
 def validate_inputs(dir1, dir2, study_id_override=None):
-    """Validate both directories and return the cancer_study_identifier to use.
-
-    At least one input must carry meta_study.txt; the other may be an
-    --incremental run without one. If study_id_override is provided, skip the
-    mismatch check and return the override value. Otherwise require both dirs
-    to share the same ID.
-    """
+    """Return the study ID to use: the override, else the one both inputs share (one may lack meta_study.txt)."""
     for d in (dir1, dir2):
         if not os.path.isdir(d):
             sys.exit(f"ERROR: directory does not exist: {d}")
@@ -321,17 +253,10 @@ def check_sample_overlap(samples1, samples2):
         sys.exit(f"ERROR: overlapping sample IDs found in both folders: {ids}")
 
 
-# ---------------------------------------------------------------------------
-# Merge strategies
-# ---------------------------------------------------------------------------
+# ── Merge strategies ──
 
 def merge_row_append(path1, path2, out_path, skip_header_lines=1):
-    """Merge two TSV files by appending rows. Keep header from file 1 only.
-
-    Not every generator terminates its last line: util_linking_file.txt is written
-    by a Groovy `join("\n")` in workflows/genomic.nf, so a plain concatenation
-    would glue file 1's last row onto file 2's first row.
-    """
+    """Append the rows of file 2 under file 1 (header from file 1); tolerates a missing final newline."""
     if path1 is None and path2 is None:
         return
     if path1 is None or path2 is None:
@@ -359,12 +284,7 @@ def merge_maf(path1, path2, out_path):
 
 
 def merge_union_append(path1, path2, out_path, leading_cols, fill_value):
-    """Append rows of two long-format TSVs, unioning their column sets.
-
-    The output header is leading_cols (those present in either file) followed by
-    the remaining columns sorted alphabetically — the same ordering gen_timeline.R
-    produces — so merging two batches gives the same layout as one run over both.
-    """
+    """Append rows of two long-format TSVs: leading_cols first, then the other columns alphabetically."""
     if path1 is None and path2 is None:
         return
     if path1 is None or path2 is None:
@@ -387,13 +307,7 @@ def merge_union_append(path1, path2, out_path, leading_cols, fill_value):
 
 
 def _read_wide_file(path, key_cols):
-    """Read a wide-matrix TSV into an indexed structure.
-
-    Returns:
-        rows: dict mapping key-column tuple -> dict of {sample_col: value}
-        sample_cols: list of sample column names
-        key_order: list of key tuples in file order
-    """
+    """Read a wide-matrix TSV; return (rows by key tuple, sample columns, keys in file order)."""
     rows = {}
     key_order = []
     sample_cols = []
@@ -449,12 +363,7 @@ def merge_wide_matrix(path1, path2, out_path, key_cols, fill_value):
 
 
 def _read_clinical(path):
-    """Read a cBioPortal clinical file.
-
-    Returns (col_meta, columns, rows, n_meta_rows) where col_meta maps a column
-    name to the tuple of its '#' metadata values (display name, description,
-    datatype, priority) and rows is a list of {column: value} dicts.
-    """
+    """Read a clinical file; return (col_meta, columns, rows, n_meta_rows)."""
     with open(path) as f:
         lines = f.read().splitlines()
 
@@ -483,13 +392,7 @@ def _read_clinical(path):
 
 
 def merge_clinical(path1, path2, out_path):
-    """Merge two clinical files, unioning their column sets.
-
-    clin_format.R drops columns whose source data is absent, so two batches can
-    legitimately carry different attributes. Columns are file-1 order followed by
-    the file-2-only columns; the '#' metadata rows are rebuilt per column and
-    missing cells are filled with NA.
-    """
+    """Merge two clinical files: file-1 columns then file-2-only ones, '#' rows rebuilt, missing cells NA."""
     if path1 is None and path2 is None:
         return
     if path1 is None or path2 is None:
@@ -573,8 +476,7 @@ def merge_case_list(path1, path2, out_path):
             for line in f:
                 if line.startswith("case_list_ids:"):
                     _, _, ids_str = line.partition(":")
-                    # Drop blanks: an empty or whitespace-only ID list would
-                    # otherwise contribute an empty sample ID to the union.
+                    # Drop blanks so an empty ID list adds no empty sample ID
                     sample_ids = {s.strip() for s in ids_str.split("\t") if s.strip()}
                 else:
                     metadata_lines.append(line)
@@ -587,8 +489,7 @@ def merge_case_list(path1, path2, out_path):
 
     with open(out_path, "w") as out:
         for line in meta_lines:
-            # Guard against an input whose final line lacks a newline, which
-            # would otherwise run straight into the case_list_ids line.
+            # Guard against a final line without a newline running into case_list_ids
             out.write(line if line.endswith("\n") else line + "\n")
         out.write("case_list_ids: " + "\t".join(merged_ids) + "\n")
 
@@ -625,9 +526,7 @@ def merge_subject_dirs(dir1, dir2, out_dir):
     return sorted(subs1 | subs2)
 
 
-# ---------------------------------------------------------------------------
-# Study ID rewriting
-# ---------------------------------------------------------------------------
+# ── Study ID rewriting ──
 
 def _replace_study_id_in_file(path, new_study_id):
     """Rewrite cancer_study_identifier and stable_id prefix in a meta/case list file."""
@@ -703,9 +602,7 @@ def rewrite_study_id(out_dir, new_study_id, meta_names, case_list_names):
             _replace_study_id_in_file(path, new_study_id)
 
 
-# ---------------------------------------------------------------------------
-# Unhandled-content report
-# ---------------------------------------------------------------------------
+# ── Unhandled-content report ──
 
 def find_unhandled(dir1, dir2, handled_files, handled_case_lists, subject_dirs):
     """Return input entries that no merge strategy claimed."""
@@ -729,17 +626,10 @@ def find_unhandled(dir1, dir2, handled_files, handled_case_lists, subject_dirs):
     return sorted(unhandled)
 
 
-# ---------------------------------------------------------------------------
-# Orchestration
-# ---------------------------------------------------------------------------
+# ── Orchestration ──
 
 def merge_folders(dir1, dir2, out_dir, study_id_override=None, strict=False):
-    """Merge two cBioPortal output folders into out_dir.
-
-    When out_dir is the same path as dir1 or dir2, an in-place merge is
-    performed: data is merged into a temporary directory, then the original
-    is replaced with the result.
-    """
+    """Merge two study folders into out_dir (in place via a temporary directory when out_dir is an input)."""
     in_place = os.path.normpath(out_dir) in (
         os.path.normpath(dir1),
         os.path.normpath(dir2),

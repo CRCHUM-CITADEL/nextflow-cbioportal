@@ -6,12 +6,7 @@ nextflow_process {
     tag "module"
     tag "convert_cpsr_to_maf"
 
-    // The input MAF here carries exactly the 53 columns mafsmith emits, not the ~133
-    // vcf2maf used to. gen_convert_cpsr_to_maf.R builds its germline rows by assigning
-    // into a list keyed on the incoming header, and `list$X <- v` APPENDS when X is not
-    // already a slot — so a name the MAF does not carry (Consequence, IMPACT, FILTER,
-    // Feature_type, CCDS, RefSeq) used to widen the row past the header and produce a
-    // ragged file rather than an error. The row-width assertion below is what guards it.
+    // Input MAF has mafsmith's 53 columns: germline rows must not add columns the header lacks (row-width check below)
     test("mafsmith-shaped MAF — every row matches the header width") {
 
         config "tests/nextflow_mutations.config"
@@ -49,8 +44,7 @@ nextflow_process {
             // The module's own filter drops Intron/IGR rows on field 9.
             assert !lines.drop(2).any { it.split('\t', -1)[8] in ['Intron', 'IGR'] }
 
-            // Germline variants from the CPSR TSV are merged in alongside the somatic
-            // rows — this is what the file's name promises.
+            // CPSR germline variants are merged in alongside the somatic rows
             def header = lines[1].split('\t', -1) as List
             def statusCol = header.indexOf('Mutation_Status')
             def symbolCol = header.indexOf('Hugo_Symbol')

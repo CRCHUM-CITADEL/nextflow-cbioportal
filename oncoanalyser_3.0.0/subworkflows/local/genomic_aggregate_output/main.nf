@@ -10,6 +10,24 @@ include { MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL } from '../../../modules/local/merg
 
 include { isDnaOnly } from '../utils'
 
+// Per-sample [meta, file] → <outdir>/<group>/<name>, one header kept (`skip` = header lines per part)
+def mergeToStudyFile(ch, name, skip) {
+    return ch
+        .map { meta, f -> [meta.group, f] }
+        .collectFile(storeDir: "${params.outdir}", keepHeader: true, skip: skip, sort: 'deep') { group, f ->
+            ["${group}/${name}", f.text]
+        }
+        .map { f -> tuple(f.parent.name, f) }
+}
+
+// Per-sample [meta, file] → [[group: g], files sorted by name]: arrival order never reaches the task hash
+def groupFilesByName(ch) {
+    return ch
+        .map { meta, f -> [meta.group, f] }
+        .groupTuple()
+        .map { group, files -> tuple([group: group], files.sort(false) { f -> f.name }) }
+}
+
     workflow GENOMIC_AGGREGATE_OUTPUT {
 
         take:
@@ -30,256 +48,91 @@ include { isDnaOnly } from '../utils'
 
             ch_versions = channel.empty()
 
-            // to get all groups, just take .seg files (we assume seg and long are the same)
-            // dna-only: purple/ may be absent, so take groups from any DNA data type
+            // Groups come from the .seg files; dna-only may lack purple/, so any DNA data type counts
             all_groups = isDnaOnly()
                 ? cnv_results_seg.mix(sv_results).mix(mutation_results).map { meta, _f -> meta.group }.unique()
                 : cnv_results_seg.map {meta, sample -> meta.group}.unique()
 
-            // merge cnv ----------------------------------------
-            cnv_seg_output = cnv_results_seg
-                 .map {meta, filepath -> [meta.group, filepath]}
-                 .groupTuple()
-                 .flatMap { group, files ->
-                    files.collect { filepath -> [group, filepath]}
-                 }
-                 .collectFile(storeDir: "${params.outdir}",
-                             keepHeader : true,
-                             skip: 1,
-                             sort: 'deep') { group, filepath ->
-                                 ["${group}/data_cna_hg38.seg", filepath.text]
-                             }
-                 .map { filepath -> tuple(filepath.parent.name, filepath) }
+            cnv_seg_output  = mergeToStudyFile(cnv_results_seg, 'data_cna_hg38.seg', 1)
+            cnv_long_output = mergeToStudyFile(cnv_results_long, 'data_cna_long.txt', 1)
+            sv_output       = mergeToStudyFile(sv_results, 'data_sv.txt', 1)
+            mutation_output = mergeToStudyFile(mutation_results, 'data_mutations_dna_rna_germline.txt', 2)
 
-             cnv_long_output = cnv_results_long
-                 .map {meta, filepath -> [meta.group, filepath]}
-                 .groupTuple()
-                 .flatMap {group, files ->
-                     files.collect { filepath -> [group, filepath]}
-                 }
-                 .collectFile(storeDir : "${params.outdir}",
-                              keepHeader : true,
-                              skip : 1,
-                              sort: 'deep') { group, filepath ->
-                                 ["${group}/data_cna_long.txt", filepath.text]
-                              }
-                .map {filepath -> tuple(filepath.parent.name, filepath) }
-
-            // merge sv -------------------------------------------------------------
-            sv_output = sv_results
-                .map {meta, filepath -> [meta.group, filepath]}
-                .groupTuple()
-                .flatMap { group, files ->
-                    files.collect { filepath -> [group, filepath]}
-                }
-                .collectFile(storeDir: "${params.outdir}",
-                            keepHeader : true,
-                            skip: 1,
-                            sort : 'deep') { group, filepath ->
-                                ["${group}/data_sv.txt", filepath.text]
-                            }
-                .map {filepath -> tuple(filepath.parent.name, filepath) }
-
-            // merge expression with merging not possible within pure nextflow. This will publish the file to output via the module
-            // dna-only writes no expression: data_expression.txt without its meta file breaks the import
-            tpm_file_list = (isDnaOnly() ? channel.empty() : expression_results)
-                .map { meta, filepath -> tuple(meta.group, meta, filepath) }
-                .groupTuple()
-                .map { group, metas, files ->
-                    def meta = [group: group]  // not metas[0]: arrival order would change the hash on -resume
-                    def sortedFiles = files.sort { a, b ->
-                        def na = a.toString().split(/[\/\\]/).last()
-                        def nb = b.toString().split(/[\/\\]/).last()
-                        na <=> nb
+            // Expression merge needs a module (not doable in pure Nextflow); dna-only writes none
+            tpm_file_list = groupFilesByName(isDnaOnly() ? channel.empty() : expression_results)
+                .filter { meta, files ->
+                    if (files.size() < 2) {
+                        log.warn "GENOMIC_EXPRESSION: Found ${files.size()} TPM file(s) for group ${meta.group}. Need at least 2 files to merge. Skipping merge step."
                     }
-                    if (sortedFiles.size() < 2) {
-                        log.warn "GENOMIC_EXPRESSION: Found ${sortedFiles.size()} TPM file(s) for group ${group}. Need at least 2 files to merge. Skipping merge step."
-                        return null
-                    }
-                    return tuple(meta, sortedFiles)
+                    files.size() >= 2
                 }
-                .filter { it != null }
+            expression_output = MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(tpm_file_list)
 
-            expression_output = MERGE_EXPRESSION_FILES_TO_CBIOPORTAL(
-                tpm_file_list
-            )
-
-            // merge mutations
-            mutation_output = mutation_results
-                .map {meta, filepath -> [meta.group, filepath]}
-                .groupTuple()
-                .flatMap { group, files ->
-                    files.collect { filepath -> [group, filepath]}
-                }
-                .collectFile(storeDir: "${params.outdir}",
-                           keepHeader : true,
-                           skip: 2,
-                           sort: 'deep') { group, filepath ->
-                              ["${group}/data_mutations_dna_rna_germline.txt", filepath.text]
-                           }
-                .map {filepath -> tuple(filepath.parent.name, filepath) }
-
-
-            // merge genomic sample attributes (TMB/TML, HRD); each part has 4 '#' lines + the ID header.
-            // Not a study file: GENOMIC publishes it as data_clinical_sample.txt (genomic mode) or
-            // CLINICAL joins it onto its own (both mode); cBioPortal allows one SAMPLE_ATTRIBUTES file.
+            // TMB/HRD parts (4 '#' lines + header) → one intermediate; GENOMIC or CLINICAL places it (one SAMPLE_ATTRIBUTES file allowed)
             sample_attributes_output = sample_attributes_results
-                .map {meta, filepath -> [meta.group, filepath]}
-                .collectFile(keepHeader : true,
-                           skip: 5,
-                           sort: 'deep') { group, filepath ->
-                              ["${group}.genomic_sample_attributes.txt", filepath.text]
-                           }
-                .map {filepath -> tuple(filepath.name - '.genomic_sample_attributes.txt', filepath) }
-
-
-            // merge signatures -------------------------------------------------------------
-            sigs_file_list = sigs_results
-                .map { meta, filepath -> tuple(meta.group, meta, filepath) }
-                .groupTuple()
-                .map { group, metas, files ->
-                    def meta = [group: group]
-                    def sortedFiles = files.sort { a, b ->
-                        def na = a.toString().split(/[\/\\]/).last()
-                        def nb = b.toString().split(/[\/\\]/).last()
-                        na <=> nb
-                    }
-                    return tuple(meta, sortedFiles)
+                .map { meta, f -> [meta.group, f] }
+                .collectFile(keepHeader: true, skip: 5, sort: 'deep') { group, f ->
+                    ["${group}.genomic_sample_attributes.txt", f.text]
                 }
+                .map { f -> tuple(f.name - '.genomic_sample_attributes.txt', f) }
 
-            sigs_output = MERGE_SIGS_TO_CBIOPORTAL(sigs_file_list)
-
-            // merge signature counts -------------------------------------------------------
-            sigs_counts_file_list = sigs_counts_results
-                .map { meta, filepath -> tuple(meta.group, meta, filepath) }
-                .groupTuple()
-                .map { group, metas, files ->
-                    def meta = [group: group]
-                    def sortedFiles = files.sort { a, b ->
-                        def na = a.toString().split(/[\/\\]/).last()
-                        def nb = b.toString().split(/[\/\\]/).last()
-                        na <=> nb
-                    }
-                    return tuple(meta, sortedFiles)
-                }
-
-            sigs_counts_output = MERGE_SIGS_COUNTS_TO_CBIOPORTAL(sigs_counts_file_list)
-
-            // merge DBS signatures --------------------------------------------------------
-            sigs_dbs_file_list = sigs_dbs_results
-                .map { meta, filepath -> tuple(meta.group, meta, filepath) }
-                .groupTuple()
-                .map { group, metas, files ->
-                    def meta = [group: group]
-                    def sortedFiles = files.sort { a, b ->
-                        def na = a.toString().split(/[\/\\]/).last()
-                        def nb = b.toString().split(/[\/\\]/).last()
-                        na <=> nb
-                    }
-                    return tuple(meta, sortedFiles)
-                }
-
-            sigs_dbs_output = MERGE_SIGS_DBS_TO_CBIOPORTAL(sigs_dbs_file_list)
-
-            // merge DBS signature counts --------------------------------------------------
-            sigs_counts_dbs_file_list = sigs_counts_dbs_results
-                .map { meta, filepath -> tuple(meta.group, meta, filepath) }
-                .groupTuple()
-                .map { group, metas, files ->
-                    def meta = [group: group]
-                    def sortedFiles = files.sort { a, b ->
-                        def na = a.toString().split(/[\/\\]/).last()
-                        def nb = b.toString().split(/[\/\\]/).last()
-                        na <=> nb
-                    }
-                    return tuple(meta, sortedFiles)
-                }
-
-            sigs_counts_dbs_output = MERGE_SIGS_COUNTS_DBS_TO_CBIOPORTAL(sigs_counts_dbs_file_list)
-
-            // merge ID signatures ---------------------------------------------------------
-            sigs_id_file_list = sigs_id_results
-                .map { meta, filepath -> tuple(meta.group, meta, filepath) }
-                .groupTuple()
-                .map { group, metas, files ->
-                    def meta = [group: group]
-                    def sortedFiles = files.sort { a, b ->
-                        def na = a.toString().split(/[\/\\]/).last()
-                        def nb = b.toString().split(/[\/\\]/).last()
-                        na <=> nb
-                    }
-                    return tuple(meta, sortedFiles)
-                }
-
-            sigs_id_output = MERGE_SIGS_ID_TO_CBIOPORTAL(sigs_id_file_list)
-
-            // merge ID signature counts ---------------------------------------------------
-            sigs_counts_id_file_list = sigs_counts_id_results
-                .map { meta, filepath -> tuple(meta.group, meta, filepath) }
-                .groupTuple()
-                .map { group, metas, files ->
-                    def meta = [group: group]
-                    def sortedFiles = files.sort { a, b ->
-                        def na = a.toString().split(/[\/\\]/).last()
-                        def nb = b.toString().split(/[\/\\]/).last()
-                        na <=> nb
-                    }
-                    return tuple(meta, sortedFiles)
-                }
-
-            sigs_counts_id_output = MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL(sigs_counts_id_file_list)
+            sigs_output            = MERGE_SIGS_TO_CBIOPORTAL(groupFilesByName(sigs_results))
+            sigs_counts_output     = MERGE_SIGS_COUNTS_TO_CBIOPORTAL(groupFilesByName(sigs_counts_results))
+            sigs_dbs_output        = MERGE_SIGS_DBS_TO_CBIOPORTAL(groupFilesByName(sigs_dbs_results))
+            sigs_counts_dbs_output = MERGE_SIGS_COUNTS_DBS_TO_CBIOPORTAL(groupFilesByName(sigs_counts_dbs_results))
+            sigs_id_output         = MERGE_SIGS_ID_TO_CBIOPORTAL(groupFilesByName(sigs_id_results))
+            sigs_counts_id_output  = MERGE_SIGS_COUNTS_ID_TO_CBIOPORTAL(groupFilesByName(sigs_counts_id_results))
 
             // create meta files and case lists ---------------------------------------------------------
 
-            // toList(), not collect(): collect() emits NOTHING for an empty channel,
-            // which would shorten case_sample_lists and silently pair the wrong sample
-            // list with the wrong case-list label below. An incremental run can leave a
-            // modality empty, so the lists must stay positionally aligned.
-            // unique(): a sample must never be listed twice in a case list.
-            cnv_sample_list = cnv_results_seg
-                .map {meta, filepath -> meta.sample}
+            // Standard cBioPortal case lists; `needs` = profiles a sample must have (`_all` comes from add_global_case_list)
+            case_list_defs = [
+                [suffix: 'sequenced', name: 'Samples with mutation data',
+                 description: 'Samples profiled for somatic and germline mutations',
+                 category: 'all_cases_with_mutation_data', needs: ['mut']],
+                [suffix: 'cna', name: 'Samples with CNA data',
+                 description: 'Samples profiled for copy-number alterations',
+                 category: 'all_cases_with_cna_data', needs: ['cna']],
+                [suffix: 'cnaseq', name: 'Samples with mutation and CNA data',
+                 description: 'Samples profiled for both mutations and copy-number alterations',
+                 category: 'all_cases_with_mutation_and_cna_data', needs: ['mut', 'cna']],
+                [suffix: 'sv', name: 'Samples with structural variant data',
+                 description: 'Samples profiled for structural variants and fusions',
+                 category: 'all_cases_with_sv_data', needs: ['sv']],
+                [suffix: 'rna_seq_v2_mrna', name: 'Samples with mRNA data (RNA-Seq)',
+                 description: 'Samples with RNA-Seq gene expression (TPM)',
+                 category: 'all_cases_with_mrna_rnaseq_data', needs: ['rna']],
+                [suffix: '3way_complete', name: 'Samples with mutation, CNA and mRNA data',
+                 description: 'Samples profiled for mutations, copy-number alterations and mRNA expression',
+                 category: 'all_cases_with_mutation_and_cna_and_mrna_data', needs: ['mut', 'cna', 'rna']],
+            ]
+
+            // RNA: only samples in data_expression.txt (no merge under dna-only or with < 2 TPM files)
+            rna_profiled = expression_output
+                .map { g, _f -> g }
+                .combine(expression_results.map { meta, _f -> meta.sample })
+                .map { _g, sample -> ['rna', sample] }
+
+            // toList(), not collect(): it still emits once when every input is empty
+            ch_case_lists = cnv_results_seg.map { meta, _f -> ['cna', meta.sample] }
+                .mix(mutation_results.map { meta, _f -> ['mut', meta.sample] })
+                .mix(sv_results.map { meta, _f -> ['sv', meta.sample] })
+                .mix(rna_profiled)
                 .toList()
-                .map { it.unique().sort(false).join('\t') }
+                .flatMap { pairs ->
+                    def profiled = pairs.groupBy { p -> p[0] }
+                        .collectEntries { k, v -> [k, v.collect { p -> p[1] } as Set] }
+                    case_list_defs.collect { d ->
+                        def ids = d.needs.collect { n -> profiled.get(n, [] as Set) }
+                            .inject { a, b -> a.intersect(b) }
+                        [d.suffix, d.name, d.description, d.category, ids.toList().sort().join('\t')]
+                    }
+                }
+                .filter { cl -> cl[4] }  // an empty case_list_ids fails cBioPortal validation
 
-            mutation_sample_list = mutation_results
-                .map {meta, filepath -> meta.sample}
-                .toList()
-                .map { it.unique().sort(false).join('\t') }
+            GENERATE_CASE_LIST(all_groups.combine(ch_case_lists))
 
-            sv_sample_list = sv_results
-                .map {meta, filepath -> meta.sample}
-                .toList()
-                .map { it.unique().sort(false).join('\t') }
-
-            case_name_all = channel.of("cnv", "sequenced", "sv")
-            case_sample_lists = cnv_sample_list.concat(mutation_sample_list).concat(sv_sample_list)
-            all_groups_cases = all_groups.combine(case_name_all).map { g, _c -> g }
-
-            // dna-only: pair each label with its list (inputs above pair by position) and drop empty lists
-            if (isDnaOnly()) {
-                ch_case_in = all_groups
-                    .combine(cnv_sample_list.map { s -> ['cnv', s] }
-                        .mix(mutation_sample_list.map { s -> ['sequenced', s] })
-                        .mix(sv_sample_list.map { s -> ['sv', s] })
-                        .filter { _name, samples -> samples })
-                    .multiMap { g, name, samples -> group: g; label: name; samples: samples }
-                case_groups  = ch_case_in.group
-                case_labels  = ch_case_in.label
-                case_samples = ch_case_in.samples
-            } else {
-                case_groups  = all_groups_cases
-                case_labels  = case_name_all
-                case_samples = case_sample_lists
-            }
-
-            GENERATE_CASE_LIST(
-                case_groups,
-                case_labels,
-                case_samples
-            )
-
-            // to get all groups, just take .seg files (we assume seg and long are the same)
-            // add_text is the key word to replac with the group.
+            // Meta file templates; GENERATE_META_FILE replaces add_text with the study id
             meta_text_seg = """cancer_study_identifier: add_text
 genetic_alteration_type: COPY_NUMBER_ALTERATION
 datatype: SEG

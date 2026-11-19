@@ -1,9 +1,5 @@
 #!/usr/bin/env Rscript
-#
-# Append genomic sample attributes (TMB/TML, HRD from GENOMIC_SAMPLE_ATTRIBUTES) to a
-# cBioPortal data_clinical_sample.txt, matched on SAMPLE_ID. cBioPortal accepts one
-# SAMPLE_ATTRIBUTES file per study, so they cannot ship as a second file.
-# Both inputs: 4 '#' metadata rows, the attribute-ID row, then data rows.
+# Join TMB/HRD attributes onto data_clinical_sample.txt by SAMPLE_ID (cBioPortal allows one SAMPLE_ATTRIBUTES file)
 
 suppressPackageStartupMessages(library(optparse))
 

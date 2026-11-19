@@ -1,17 +1,11 @@
 #!/usr/bin/env Rscript
 
-# Gene Fusion Annotation Script for Deep Learning Data Prep
-# Vectorized, ML-optimized pipeline to create a sparse binary matrix of validated, high-confidence fusions.
+# Sparse binary matrix of validated, high-confidence fusions for deep learning
 
 library(tidyverse)
 library(readxl)
 
-#' Process fusion data for deep learning input
-#' @param input_file Path to raw fusion data
-#' @param output_file Path to save the processed matrix
-#' @param known_fusions Vector of validated fusion strings (Site1-Site2)
-#' @param min_support_reads Minimum combined read count to trust the fusion
-#' @export
+# Process fusion data for deep learning input
 process_fusion_data <- function(input_file, output_file, known_fusions, min_support_reads = 1) {
 
   message("Reading raw fusion data...")
@@ -72,9 +66,7 @@ process_fusion_data <- function(input_file, output_file, known_fusions, min_supp
   message("=================================\n")
 }
 
-# ============================================================================
-# CONFIGURATION & INPUT VALIDATION
-# ============================================================================
+# ── Configuration & input validation ──
 
 args <- commandArgs(trailingOnly = TRUE)
 

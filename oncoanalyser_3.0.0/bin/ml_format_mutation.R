@@ -1,9 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Single MAF file processor:
-# → Takes a single pre-combined MAF file
-# → Splits it into somatic and germline mutations
-# → Outputs two separate files
+# Split one combined MAF into somatic and germline mutation files
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -31,9 +28,7 @@ aa_map <- c(
   "Ter"="*","Xxx"="X"
 )
 
-# Vectorized over the whole HGVSp_Short column: gsub() is already vectorized
-# per call, so this runs 22 gsub() calls total instead of 22 per row.
-# gsub() returns NA for NA input, matching the original's per-element early return.
+# Vectorized over the whole column (22 gsub() calls in total); NA stays NA
 convert_aa_code <- function(aa_change) {
   result <- aa_change
   for (three in names(aa_map)) {

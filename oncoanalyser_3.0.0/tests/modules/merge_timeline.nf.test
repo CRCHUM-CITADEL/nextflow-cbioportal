@@ -37,15 +37,12 @@ nextflow_process {
             def f = path(process.out.ch_timeline.collect { group, file -> file }[0].toString())
             def lines = f.readLines()
 
-            // 4 common columns first, then the rest alphabetically — a hard
-            // contract with combine_cbioportal_outputs.py's union-append strategy.
+            // 4 common columns first, then alphabetical (contract with combine_cbioportal_outputs.py)
             def cols = lines[0].split('\t').toList()
             assert cols[0..3] == ['PATIENT_ID', 'START_DATE', 'STOP_DATE', 'EVENT_TYPE']
             assert cols.drop(4) == cols.drop(4).sort()
 
-            // Rows are grouped by EVENT_TYPE in a fixed order (SURGERY, TREATMENT,
-            // STATUS, SPECIMEN, LAB_TEST) regardless of the order the five part
-            // files were passed in, so the merged file is deterministic.
+            // Rows grouped in a fixed EVENT_TYPE order whatever the part order, so the output is deterministic
             def event_types = lines.drop(1).collect { it.split('\t')[3] }
             assert event_types == event_types.sort {
                 a, b -> ['SURGERY', 'TREATMENT', 'STATUS', 'SPECIMEN', 'LAB_TEST'].indexOf(a) <=>
@@ -112,9 +109,7 @@ nextflow_process {
         }
 
         then {
-            // A per-event module whose event type produced no rows emits no file
-            // at all (its output is optional), so MERGE_TIMELINE routinely sees a
-            // subset of the five parts — the union must still be well-formed.
+            // Event types with no rows send no part; the union must still be well-formed
             assert process.success
             assert process.out.ch_timeline.size() == 1
 

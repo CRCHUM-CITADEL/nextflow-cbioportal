@@ -1,7 +1,7 @@
 {
     "both mode \u2014 genomic + clinical combined output": {
         "content": [
-            68,
+            71,
             [
                 "TEST",
                 "TEST.tar.gz",
@@ -37,7 +37,10 @@
                 "TEST/T2/T2-T_data_cna_long.txt",
                 "TEST/cancer_type.txt",
                 "TEST/case_lists",
-                "TEST/case_lists/cases_cnv.txt",
+                "TEST/case_lists/cases_3way_complete.txt",
+                "TEST/case_lists/cases_cna.txt",
+                "TEST/case_lists/cases_cnaseq.txt",
+                "TEST/case_lists/cases_rna_seq_v2_mrna.txt",
                 "TEST/case_lists/cases_sequenced.txt",
                 "TEST/case_lists/cases_sv.txt",
                 "TEST/data_clinical_patient.txt",
@@ -104,9 +107,12 @@
                 "T2-T_data_cna_hg38.seg:md5,939ff434c2fc8341de2c2efa99b642a3",
                 "T2-T_data_cna_long.txt:md5,6389d2b5b591bf02c82a1e6be3abd8c1",
                 "cancer_type.txt:md5,c79bb8a242cdaa94732479c19cd9ba64",
-                "cases_cnv.txt:md5,7f93f4d3bfd46dccb3292024432d3e47",
-                "cases_sequenced.txt:md5,91c9d3c2389dd5e7b24f7e60f298c62b",
-                "cases_sv.txt:md5,5097e62d290c0a233002faebbc28c483",
+                "cases_3way_complete.txt:md5,096b800a5e4f1e714c8eb20cb21c8653",
+                "cases_cna.txt:md5,8698ac9cbe1e6ab817007243e5bf7633",
+                "cases_cnaseq.txt:md5,d0578dd1f3543baf01f15bb1142faaee",
+                "cases_rna_seq_v2_mrna.txt:md5,4d507bf23f140ff9e66d43a4f2c263a3",
+                "cases_sequenced.txt:md5,b677bd889a0fc1bb7dca8ffa3da648c3",
+                "cases_sv.txt:md5,a1626f4e8919c7c8cf5c4d25b18a225c",
                 "data_clinical_patient.txt:md5,436f98ea35d7d19a3fa8f69fa7c1aa8e",
                 "data_clinical_sample.txt:md5,905bd7f856247f75565b7bb9ac0bd98b",
                 "data_cna_hg38.seg:md5,a5cc00795132128c9aa2f9e3ef26a976",
@@ -140,7 +146,7 @@
                 "util_linking_file.txt:md5,74ba4d7e0241c94fd014a4d994a83497"
             ]
         ],
-        "timestamp": "2026-11-18T14:11:22.704082608",
+        "timestamp": "2026-11-19T14:37:52.36333072",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.4"

@@ -30,9 +30,7 @@ cat("Reading file:", input_file, "\n")
 # Read the input file
 data <- read.table(input_file, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 
-# Reshape data from long to wide format
-# Sample_Id values become column names
-# Hugo_Symbol values become row names
+# Long → wide: Sample_Id becomes columns, Hugo_Symbol rows
 wide_data <- data %>%
   select(Hugo_Symbol, Sample_Id, Value) %>%
   group_by(Hugo_Symbol, Sample_Id) %>%

@@ -9,12 +9,20 @@ This pipeline converts nf-core/oncoanalyser WGS/WTS output and clinical
 CSVs into cBioPortal-compatible import packages. It runs on HPC clusters
 using SLURM and Apptainer (no Docker, no sudo).
 
-The pipeline has three modes:
+The pipeline has four modes:
 
   Genomic mode   Processes per-subject oncoanalyser output (mutations,
                  copy-number, structural variants, gene expression, RNA
                  fusions, mutational signatures) and produces merged,
                  group-level cBioPortal data files packaged as a .tar.gz.
+
+  Genomic-dna-only mode
+                 Genomic mode without RNA (e.g. WES). Skips Isofox
+                 expression/fusions and SAGE RNA-append even if RNA files
+                 are present, and writes no expression profile. A subject
+                 without purple/, its PURPLE SV VCF or sigs/ skips the steps
+                 that need it. There is no DNA-only variant of both mode:
+                 run genomic-dna-only, then clinical.
 
   Clinical mode  Transforms clinical CSVs (patient demographics, diagnoses,
                  treatments, specimens, etc.) into cBioPortal patient and
@@ -32,14 +40,16 @@ Genomic mode processing steps:
   ---------------------------  ---------------------------  ----------------------------
   Copy-number variants         PURPLE somatic + gene TSVs   data_cna_hg38.seg,
                                                             data_cna_long.txt
-  Structural variants (DNA)    ESVEE somatic VCF            data_sv.txt (DNA rows)
+  Structural variants (DNA)    PURPLE somatic SV VCF        data_sv.txt (DNA rows)
   RNA fusions                  Isofox pass_fusions TSV      data_sv.txt (RNA rows)
   Gene expression              Isofox gene_data TSV         data_expression.txt
-  Mutations                    PAVE somatic/germline/RNA    data_mutations_dna_rna_
-                               VCFs                         germline.txt (MAF)
+  Mutations                    PURPLE somatic/germline +    data_mutations_dna_rna_
+                               SAGE RNA-append VCFs         germline.txt (MAF)
   Mutational signatures (SBS)  SNV trinucleotide counts     Contribution + counts
-  Mutational signatures (DBS)  PAVE somatic VCF             Contribution + counts
-  Mutational signatures (ID)   PAVE somatic VCF             Contribution + counts
+  Mutational signatures (DBS)  PURPLE somatic VCF           Contribution + counts
+  Mutational signatures (ID)   PURPLE somatic VCF           Contribution + counts
+  TMB / TML / HRD              PURPLE purity TSV, CHORD     data_clinical_sample.txt
+                               prediction TSV               (columns; see output.txt)
   ML feature tables            Merged group-level files     ML-formatted CNV, expression,
   (only with --run_ml)                                      mutation, SV
 
@@ -47,12 +57,12 @@ DNA SVs and RNA fusions share the same data_sv.txt file; they are
 distinguished by DNA_Support / RNA_Support flags and the Class column
 (DELETION/DUPLICATION/INVERSION/TRANSLOCATION for DNA, FUSION for RNA).
 
-Incremental processing:
+Adding subjects:
 
-  The pipeline detects already-processed subjects by checking for existing
-  output files. Subjects with all expected outputs are skipped automatically,
-  allowing you to add new subjects to the samplesheet and re-run without
-  reprocessing the entire cohort.
+  Add them to the samplesheet and re-run with -resume (see RESUMING A
+  RUN): subjects already processed come back from Nextflow's work
+  directory, so only the new ones are computed. Keep the work directory
+  between runs.
 
 
 Prerequisites
@@ -76,7 +86,7 @@ Container images:
   sdp-r:4.5.1                    R scripts (CNV, SV, expression, aggregation)
   sdp-python:3.12                Python scripts
   mafsmith-fastvep:0.1.0-0.4.0   VCF-to-MAF conversion (mafsmith + fastVEP)
-  pcgr:2.2.5                     Germline variant annotation (PCGR/CPSR)
+  pcgr:2.4.0                     Germline variant annotation (PCGR/CPSR)
   sigprofiler:1.1.3              Mutational signature fitting
 
   GHCR authentication: Containers at ghcr.io/crchum-citadel require
@@ -87,9 +97,9 @@ Container images:
 Reference data:
 
   All reference files ship in one download, the resource kit
-  (nextflow-cbioportal-resources-v1.0.0.tar.gz). Extract it and pass:
+  (nextflow-cbioportal-resources-v1.1.0.tar.gz). Extract it and pass:
 
-    --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0
+    --resources_dir /path/to/nextflow-cbioportal-resources-v1.1.0
 
   Any reference param set explicitly overrides the kit for that file.
   COSMIC fusions (cosmic_data) are licence-gated and not in the kit;
@@ -130,19 +140,18 @@ GENOMIC SAMPLESHEET
     All modalities are optional -- missing or empty files are skipped.
 
     <folder>/
-    |-- pave/
-    |   |-- somatic/
-    |   |   +-- <subject_id>-T.pave.somatic.vcf.gz     Somatic DNA mutations
-    |   +-- germline/
-    |       +-- <subject_id>-T.pave.germline.vcf.gz    Germline DNA mutations
     |-- sage_append/
     |   +-- <subject_id>-T/
     |       +-- <subject_id>-T.sage.append.vcf.gz      RNA-supported somatic
-    |-- esvee/
-    |   +-- <subject_id>-T.esvee.somatic.vcf.gz        Somatic structural variants
     |-- purple/
+    |   |-- <subject_id>-T.purple.somatic.vcf.gz       Somatic DNA mutations
+    |   |-- <subject_id>-T.purple.germline.vcf.gz      Germline DNA mutations
+    |   |-- <subject_id>-T.purple.sv.vcf.gz            Somatic structural variants
     |   |-- <subject_id>-T.purple.cnv.somatic.tsv      Somatic CN segments
-    |   +-- <subject_id>-T.purple.cnv.gene.tsv         Gene-level copy numbers
+    |   |-- <subject_id>-T.purple.cnv.gene.tsv         Gene-level copy numbers
+    |   +-- <subject_id>-T.purple.purity.tsv           Sex (chrX/chrY), TMB/TML
+    |-- chord/
+    |   +-- <subject_id>-T.chord.prediction.tsv        HRD score/status/type
     |-- isofox/
     |   |-- <subject_id>-T.isf.gene_data.tsv           Gene expression (Isofox)
     |   +-- <subject_id>-T.isf.pass_fusions.tsv        RNA gene fusions (Isofox)
@@ -151,7 +160,7 @@ GENOMIC SAMPLESHEET
 
     File naming: The pipeline resolves files using subject_id (from the
     samplesheet), not sample_id. For example, if subject_id=PATIENT1,
-    the pipeline looks for PATIENT1-T.pave.somatic.vcf.gz.
+    the pipeline looks for PATIENT1-T.purple.somatic.vcf.gz.
 
 CLINICAL SAMPLESHEET
 
@@ -288,7 +297,7 @@ CORE PARAMETERS
 
   Parameter              Required  Default                   Description
   ---------------------  --------  ------------------------  ----------------------
-  mode                   Yes       genomic                   genomic, clinical, or both
+  mode                   Yes       both                      genomic, genomic-dna-only, clinical, or both
   study_id               Yes       --                        Study identifier for meta_study.txt and output folder
   project_description    Yes       --                        Study description
   outdir                 No        output_<project>_<date>   Output directory
@@ -327,7 +336,7 @@ CONTAINER PARAMETERS
   container_r            ORAS or local SIF  R 4.5.1 container
   container_python       ORAS or local SIF  Python 3.12 container
   container_mafsmith     ORAS or local SIF  mafsmith 0.1.0 + fastVEP 0.4.0
-  container_pcgr         ORAS or local SIF  PCGR 2.2.5 (needs kit bundle + VEP 113)
+  container_pcgr         ORAS or local SIF  PCGR 2.4.0 (needs kit bundle + VEP 116)
   container_sigprofiler  ORAS or local SIF  SigProfiler 1.1.3
 
 NOTIFICATION PARAMETERS
@@ -374,14 +383,15 @@ SITE CONFIGURATION
     nextflow run main.nf -profile apptainer \
       --mode genomic \
       --genomic_samplesheet samplesheet.csv \
-      --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0
+      --resources_dir /path/to/nextflow-cbioportal-resources-v1.1.0
 
   or copy nextflow_citadel.config as a template and pass it with -c.
 
   mafsmith reference data
 
-    Use the kit's mafsmith home. It ships its own fastVEP (0.3.0),
-    which mafsmith uses instead of the container's.
+    Use the kit's mafsmith home. It carries the fastVEP that
+    `mafsmith fetch` installs (fastVEP master: 0.5.0 in kit 1.1.0),
+    which mafsmith uses instead of the container's 0.4.0.
 
   MAF columns
 
@@ -416,6 +426,19 @@ SITE CONFIGURATION
     cannot be restored this way. Set mafsmith_retain_ann to "" to drop
     back to the 53 standard columns.
 
+  Germline calls
+
+    Germline calls come from PURPLE's germline VCF and go to CPSR as
+    PURPLE wrote them: no FILTER selection and no genotype changes.
+    PCGR only keeps the normal's sample column, <subject>-N, by name
+    and removes INFO before CPSR runs. CPSR itself analyses PASS records
+    only and drops genotypes PURPLE left as ./.
+
+    CPSR runs with --clinvar_cancer_only: ClinVar variants attributed
+    only to non-cancer conditions are left out (CPSR 2.4 reports them
+    by default). --no_pdf skips its PDF report. Both somatic and
+    germline rows are annotated on Ensembl 116.
+
 GENOMIC MODE
 
   module load nextflow/26.04.4 apptainer/1.3.5 htslib/1.22.1
@@ -423,6 +446,15 @@ GENOMIC MODE
   nextflow run main.nf \
       -profile slurm,apptainer,citadel \
       --mode genomic \
+      --study_id "MY_STUDY" \
+      --project_description "Description of my study" \
+      --genomic_samplesheet samplesheet.csv
+
+GENOMIC-DNA-ONLY MODE
+
+  nextflow run main.nf \
+      -profile slurm,apptainer,citadel \
+      --mode genomic-dna-only \
       --study_id "MY_STUDY" \
       --project_description "Description of my study" \
       --genomic_samplesheet samplesheet.csv
@@ -447,7 +479,7 @@ CLINICAL MODE
       --mode clinical \
       --study_id "MY_STUDY" \
       --clinical_samplesheet clinical_samplesheet.csv \
-      --resources_dir /path/to/nextflow-cbioportal-resources-v1.0.0
+      --resources_dir /path/to/nextflow-cbioportal-resources-v1.1.0
 
   Required:
 
@@ -554,7 +586,7 @@ USING A PARAMS FILE
     study_id: "MY_STUDY"
     project_description: "Description of my study"
     genomic_samplesheet: "/data/samplesheet.csv"
-    resources_dir: "/path/to/nextflow-cbioportal-resources-v1.0.0"
+    resources_dir: "/path/to/nextflow-cbioportal-resources-v1.1.0"
     cosmic_data: "/path/to/Cosmic_Fusion_v103_GRCh38.tsv"
     outdir: "output_my_study"
     email: "user@example.com"
@@ -583,16 +615,17 @@ RUNNING VIA NEXTFLOW CONTAINER
         --mode genomic \
         --genomic_samplesheet samplesheet.csv
 
-RESUMING A FAILED RUN
+RESUMING A RUN
 
-  Nextflow caches intermediate results. If a run fails, fix the issue
-  and resume:
+  Nextflow caches every task in its work directory. After a failure, a
+  config change, or with new subjects in the samplesheet, re-run with
+  -resume from the same launch directory:
 
     nextflow run main.nf -profile slurm,apptainer,citadel -params-file params.yaml -resume
 
-  Nextflow reuses cached results from completed steps and only re-runs
-  what failed. The pipeline's incremental processing also skips subjects
-  that already have all expected output files.
+  Only tasks whose inputs or script changed are run again; the study
+  archive is always rebuilt. Without -resume (or with a new work
+  directory) every subject is processed from scratch.
 
 RUNNING TESTS
 
@@ -658,16 +691,6 @@ SLURM ACCOUNT ERRORS
   config (see SITE CONFIGURATION) rather than editing nextflow.config:
 
     process.clusterOptions = '--account=your-allocation'
-
-"ALL SUBJECTS IN SAMPLESHEET ALREADY PROCESSED"
-
-  Symptom: Pipeline exits saying all subjects are already processed.
-
-  Cause: Incremental processing found all expected outputs for every
-  subject.
-
-  Fix: Either (a) delete the output directory, (b) remove processed
-  subjects from the samplesheet, or (c) add new unprocessed subjects.
 
 EXPRESSION MERGE REQUIRES 2+ SAMPLES
 

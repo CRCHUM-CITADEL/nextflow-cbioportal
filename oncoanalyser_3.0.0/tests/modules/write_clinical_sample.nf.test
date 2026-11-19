@@ -17,6 +17,7 @@ nextflow_process {
                 input[0] = Channel.of(
                     tuple('TEST', file('${projectDir}/tests/modules/fixtures/clinical_merged.tsv'))
                 )
+                input[1] = []
                 """
             }
         }
@@ -50,6 +51,42 @@ nextflow_process {
             assert t1['PRIMARY_SITE']            == 'Pancreas'
             assert t1['CANCER_TYPE_LABEL']       == 'Pancreas'
             assert t1['TUMOR_TISSUE_SITE_LABEL'] == 'Liver and intrahepatic bile ducts'
+        }
+    }
+
+    test("genomic attributes — TMB/HRD joined by SAMPLE_ID, NA for clinical-only samples") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple('TEST', file('${projectDir}/tests/modules/fixtures/clinical_merged.tsv'))
+                )
+                input[1] = file('${projectDir}/tests/modules/fixtures/genomic_sample_attributes.txt')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out.ch_clinical_sample[0][1].toString()).readLines()
+            def cols  = lines[4].split('\t') as List
+            // Appended after the clinical columns, each with its own 4 metadata rows
+            assert cols.takeRight(7) == ['TMB_PER_MB', 'TMB_STATUS', 'TML', 'TML_STATUS', 'HRD_SCORE', 'HR_STATUS', 'HRD_TYPE']
+            assert lines.take(4).every { it.split('\t').size() == cols.size() }
+            assert lines[2].split('\t').takeRight(7) == ['NUMBER', 'STRING', 'NUMBER', 'STRING', 'NUMBER', 'STRING', 'STRING']
+            assert cols.count { it == 'SAMPLE_ID' } == 1
+
+            def rows = lines.drop(5).collect { [cols, it.split('\t', -1) as List].transpose().collectEntries() }
+            def t1 = rows.find { it['SAMPLE_ID'] == 'T1-1DT' }
+            def t2 = rows.find { it['SAMPLE_ID'] == 'T2-2FDT' }
+            assert t1['TMB_PER_MB'] == '12.5' && t1['HR_STATUS'] == 'HR_deficient'
+            assert t2['TMB_PER_MB'] == 'NA' && t2['HRD_TYPE'] == 'NA'
+            // TX-T has no clinical row: clinical defines the sample set
+            assert !rows.any { it['SAMPLE_ID'] == 'TX-T' }
         }
     }
 }

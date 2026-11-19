@@ -6,12 +6,11 @@ include { DOWNLOAD_VEP_TEST      } from '../../../modules/local/download_vep_tes
 include { DOWNLOAD_PCGR          } from '../../../modules/local/download_pcgr'
 include { DOWNLOAD_MAFSMITH      } from '../../../modules/local/download_mafsmith'
 include { BCFTOOLS_INDEX         } from '../../../modules/nf-core/bcftools/index'
-include { FILTER_GERMLINE_DNA    } from '../../../modules/local/filter_germline_dna'
 
 workflow GENOMIC_MUTATIONS {
     take:
-        ger_dna_vcf   // tuple (meta, pave.germline.vcf.gz) — pave germline VCF
-        som_dna_vcf   // tuple (meta, pave.somatic.vcf.gz)  — pave somatic VCF
+        ger_dna_vcf   // tuple (meta, purple.germline.vcf.gz) — PURPLE germline VCF, GT partly ./.
+        som_dna_vcf   // tuple (meta, purple.somatic.vcf.gz)  — PURPLE somatic VCF
         som_rna_vcf   // tuple (meta, sage.append.vcf.gz)   — SAGE RNA-append VCF
         vep_data      // channel<path> — pre-staged VEP cache, for PCGR (may be empty)
         pcgr_data     // channel<path> — pre-staged PCGR reference data (may be empty)
@@ -19,23 +18,21 @@ workflow GENOMIC_MUTATIONS {
         needs_vep
         needs_pcgr
         needs_mafsmith
+        ensembl_annotations // path — BioMart TSV, fills the MAF's Entrez_Gene_Id
 
     main:
-        // Reference data is only needed when there is at least one subject to
-        // process. On a fully incremental run (every subject already cached) this
-        // channel stays empty, so the download processes never run and the run
-        // touches the network zero times.
+        // Reference data is only needed when there is at least one somatic VCF: with
+        // none this channel stays empty and the download processes never run.
         ch_has_work = som_dna_vcf.count().filter { n -> n > 0 }
 
         ch_vep_data      = needs_vep      ? DOWNLOAD_VEP_TEST(ch_has_work).cache_dir.first() : vep_data.first()
         ch_pcgr_data     = needs_pcgr     ? DOWNLOAD_PCGR(ch_has_work).data_dir.first()      : pcgr_data.first()
         ch_mafsmith_data = needs_mafsmith ? DOWNLOAD_MAFSMITH(ch_has_work).data_dir.first()  : mafsmith_data.first()
 
-        ger_dna_filtered = FILTER_GERMLINE_DNA(ger_dna_vcf)
+        // PURPLE's germline calls go to CPSR unfiltered; PCGR keeps only the normal column.
+        ger_dna_index = BCFTOOLS_INDEX(ger_dna_vcf).tbi
 
-        ger_dna_index = BCFTOOLS_INDEX(ger_dna_filtered).tbi
-
-        ger_dna_vcf_with_index = ger_dna_filtered
+        ger_dna_vcf_with_index = ger_dna_vcf
             .join(ger_dna_index)
             .map { meta, filepath, index -> tuple(meta, filepath, index) }
 
@@ -58,7 +55,8 @@ workflow GENOMIC_MUTATIONS {
 
         MAFSMITH(
             som_dna_vcf_input,
-            ch_mafsmith_data
+            ch_mafsmith_data,
+            ensembl_annotations
         )
 
         som_dna_maf = MAFSMITH.out.maf.map { meta, maf ->

@@ -5,7 +5,7 @@ COSMIC v3.6 DBS-78 reference using SigProfilerAssignment, and produce
 cBioPortal GENERIC_ASSAY contribution and counts files.
 
 Inputs:
-  --vcf           : PAVE somatic VCF (.vcf.gz or .vcf)
+  --vcf           : PURPLE somatic VCF (.vcf.gz or .vcf)
   --signatures_db : COSMIC_Human_DBS-78_GRCh38_v3.6.csv (extracted from zip)
   --metadata      : cosmic_dbs_metadata.tsv (dbs_id, category, etiology, main_effect)
   --sample        : sample ID for output column header

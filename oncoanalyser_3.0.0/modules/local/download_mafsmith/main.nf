@@ -1,5 +1,6 @@
 process DOWNLOAD_MAFSMITH {
-    storeDir "${projectDir}/assets"
+    // Release in the path: an Ensembl 113 download in assets/ must never be reused.
+    storeDir "${projectDir}/assets/mafsmith/ensembl_116"
     container "${params.container_mafsmith}"
 
     input:
@@ -11,7 +12,7 @@ process DOWNLOAD_MAFSMITH {
     script:
     """
     # `mafsmith fetch` lays out <data-dir>/GRCh38/{genes.gff3.gz,reference.fa}, which is
-    # what `mafsmith vcf2maf` reads out of \$HOME/.mafsmith. Ensembl release 113 matches
+    # what `mafsmith vcf2maf` reads out of \$HOME/.mafsmith. Ensembl release 116 matches
     # the BioMart TSV expected in params.ensembl_annotations.
     #
     # --skip-fastvep: fastvep is built into the container and on PATH, and mafsmith falls
@@ -24,7 +25,7 @@ process DOWNLOAD_MAFSMITH {
     mafsmith fetch \\
         --data-dir mafsmith \\
         --genome grch38 \\
-        --ensembl-release 113 \\
+        --ensembl-release 116 \\
         --skip-fastvep
     """
 

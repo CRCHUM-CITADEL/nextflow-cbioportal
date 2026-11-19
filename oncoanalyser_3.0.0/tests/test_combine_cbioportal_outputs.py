@@ -242,6 +242,26 @@ def test_row_append_when_first_file_lacks_trailing_newline(tmp_path):
     assert lines == ["subject_id\tsample_id", "P1\tS1", "P2\tS2"]
 
 
+def test_sv_column_union(tmp_path):
+    # A batch from before the HMF.PURPLE_* SV columns merges with a newer one without going ragged.
+    d1 = make_study(tmp_path, "b1", [("P1", "S1")])
+    d2 = make_study(tmp_path, "b2", [("P2", "S2")])
+    write_tsv(
+        d2 / "data_sv.txt",
+        ["Sample_Id", "SV_Status", "Site1_Hugo_Symbol", "HMF.PURPLE_JCN", "HMF.PURPLE_AF_SITE1"],
+        [["S2", "SOMATIC", "BRAF", "0.9", "0.31"]],
+    )
+    out, _ = merge(tmp_path, d1, d2)
+
+    columns, rows = read_tsv(out / "data_sv.txt")
+    # Standard SV columns first, in the converter's order, then the HMF ones.
+    assert columns == ["Sample_Id", "SV_Status", "Site1_Hugo_Symbol", "HMF.PURPLE_JCN", "HMF.PURPLE_AF_SITE1"]
+    s1 = next(r for r in rows if r["Sample_Id"] == "S1")
+    s2 = next(r for r in rows if r["Sample_Id"] == "S2")
+    assert s1["HMF.PURPLE_JCN"] == "NA" and s1["HMF.PURPLE_AF_SITE1"] == "NA"
+    assert s2["HMF.PURPLE_JCN"] == "0.9" and s2["HMF.PURPLE_AF_SITE1"] == "0.31"
+
+
 def test_timeline_column_union(tmp_path):
     d1 = make_study(
         tmp_path, "b1", [("P1", "S1")],

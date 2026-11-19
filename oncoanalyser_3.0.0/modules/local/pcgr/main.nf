@@ -4,7 +4,8 @@ process PCGR {
 
     container params.container_pcgr
 
-    publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy', pattern: "*.cpsr_debug"
+    // Not published: copying this dir hung shutdown on the HPC filesystem (see work dir instead)
+    // publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy', pattern: "*.cpsr_debug"
 
     input:
         tuple val(meta), path(ger_dna_vcf), path(ger_dna_vcf_tbi)
@@ -22,12 +23,16 @@ process PCGR {
     """
     mkdir -p ${debug}
 
-    # CPSR annotates every variant itself and aborts when an input INFO tag clashes with one of its
-    # own (PAVE writes IMPACT), so it gets the calls with all INFO removed; FILTER and genotypes stay.
-    bcftools annotate -x INFO -Oz -o cpsr_input.vcf.gz ${ger_dna_vcf}
+    # CPSR gets PURPLE's calls as they are (no FILTER/GT changes), but only the normal, found by name: column order is undocumented.
+    # All INFO is removed: CPSR annotates itself and aborts on a clashing tag (PAVE's IMPACT, which PURPLE keeps).
+    if ! bcftools query -l ${ger_dna_vcf} | grep -qxF "${cpsr_id}"; then
+        echo "ERROR: ${ger_dna_vcf} has no sample column ${cpsr_id}; columns: \$(bcftools query -l ${ger_dna_vcf} | tr '\\n' ' ')" >&2
+        exit 1
+    fi
+    bcftools view -s "${cpsr_id}" -Ou ${ger_dna_vcf} | bcftools annotate -x INFO -Oz -o cpsr_input.vcf.gz
     bcftools index -t cpsr_input.vcf.gz
 
-    # What CPSR is given: sample columns, genotypes (CPSR drops 0/0), FILTER values, contig names.
+    # What CPSR is given: sample columns, genotypes (CPSR drops ./.; 2.3+ also 0/0), FILTER values, contig names.
     summarise_vcf() {
         echo "records: \$(bcftools view -H "\$1" | wc -l)"
         echo "samples: \$(bcftools query -l "\$1" | tr '\\n' ' ')"
@@ -35,7 +40,7 @@ process PCGR {
         echo "-- FILTER"; bcftools query -f '%FILTER\\n' "\$1" | sort | uniq -c
         echo "-- contigs"; bcftools query -f '%CHROM\\n' "\$1" | uniq | awk 'NR <= 30'
     }
-    { echo "## CPSR input (${ger_dna_vcf}, INFO removed)"; summarise_vcf cpsr_input.vcf.gz; } > ${debug}/input_summary.txt 2>&1 || true
+    { echo "## CPSR input (${ger_dna_vcf}, normal column only, INFO removed)"; summarise_vcf cpsr_input.vcf.gz; } > ${debug}/input_summary.txt 2>&1 || true
 
     cpsr \\
     --input_vcf cpsr_input.vcf.gz \\
@@ -46,6 +51,8 @@ process PCGR {
     --panel_id 0 \\
     --vep_buffer_size 1000 \\
     --no_html \\
+    --no_pdf \\
+    --clinvar_cancer_only \\
     --sample_id ${cpsr_id} \\
     ${args} 2>&1 | tee ${debug}/cpsr.log
 

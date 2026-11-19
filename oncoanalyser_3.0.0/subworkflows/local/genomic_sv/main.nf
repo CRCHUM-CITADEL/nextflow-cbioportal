@@ -1,13 +1,13 @@
-include { ESVEE_SV_TO_CBIOPORTAL } from '../../../modules/local/esvee_sv_to_cbioportal'
+include { PURPLE_SV_TO_CBIOPORTAL } from '../../../modules/local/purple_sv_to_cbioportal'
 
 workflow GENOMIC_SV {
     take:
-        esvee_vcf           // tuple (meta, *-T.esvee.unfiltered.vcf.gz) — tumor only
-        ensembl_annotations // path — used by ESVEE for gene-coordinate annotation
+        purple_sv_vcf       // tuple (meta, <subject>-T.purple.sv.vcf.gz) — somatic
+        ensembl_annotations // path — gene overlap at each breakend
 
     main:
-        esvee_sv = ESVEE_SV_TO_CBIOPORTAL(esvee_vcf, ensembl_annotations)
+        purple_sv = PURPLE_SV_TO_CBIOPORTAL(purple_sv_vcf, ensembl_annotations)
 
     emit:
-        sv_out = esvee_sv.sv // channel [ meta, data_sv.txt ]
+        sv_out = purple_sv.sv // channel [ meta, data_sv.txt ]
 }

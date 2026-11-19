@@ -1,0 +1,127 @@
+nextflow_process {
+
+    name "Test PURPLE_SV_TO_CBIOPORTAL module"
+    script "modules/local/purple_sv_to_cbioportal/main.nf"
+    process "PURPLE_SV_TO_CBIOPORTAL"
+    tag "module"
+    tag "purple_sv"
+
+    test("PASS pairs only, tumour counts by column name, per-site PURPLE values") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T1', sample: 'T1', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.sv.vcf.gz')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out.sv.collect { meta, f -> f }[0].toString()).readLines()
+            def cols = lines[0].split('\t') as List
+            def rows = lines.drop(1).collect { l ->
+                def v = l.split('\t', -1)
+                [cols, v as List].transpose().collectEntries()
+            }
+
+            // PON pair, INFERRED breakend and single breakend are dropped; the TINC_RECOVERED pair is kept
+            assert rows.collect { "${it.Site1_Hugo_Symbol}--${it.Site2_Hugo_Symbol}" }.sort() == ['PRDM15--PFKL', 'SOD1--HUNK']
+
+            // Orientation from the ALT brackets: N[..[ then ]..]N is a deletion; N]..] on both ends an inversion
+            def r = rows.find { it.Site1_Hugo_Symbol == 'PRDM15' }
+            assert r.Class == 'DELETION'
+            assert r.Connection_Type == '5to3'
+            def inv = rows.find { it.Site1_Hugo_Symbol == 'SOD1' }
+            assert inv.Class == 'INVERSION'
+            assert inv.Connection_Type == '5to5'
+            // VF/SF/DF from T1-T (5:3:8), not the T1-N column (0:1:1)
+            assert r.Tumor_Variant_Count == '8'
+            assert r.Tumor_Split_Read_Count == '3'
+            assert r.Tumor_Paired_End_Read_Count == '5'
+            // Each site takes the first element of its own record's list
+            assert r['HMF.PURPLE_JCN'] == '0.95'
+            assert r['HMF.PURPLE_AF_SITE1'] == '0.31'
+            assert r['HMF.PURPLE_AF_SITE2'] == '0.27'
+            assert r['HMF.PURPLE_CN_SITE1'] == '3.1'
+            assert r['HMF.PURPLE_CN_SITE2'] == '2.4'
+            assert r['HMF.PURPLE_CN_CHANGE_SITE1'] == '0.9'
+            assert r['HMF.PURPLE_CN_CHANGE_SITE2'] == '0.7'
+        }
+    }
+
+    test("SVs at the same coordinates dedupe to the call with the most variant fragments") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'T3', sample: 'T3', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T3/purple/T3-T.purple.sv.vcf.gz')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.sv.size() == 1
+
+            def lines = path(process.out.sv.collect { meta, f -> f }[0].toString()).readLines()
+
+            // Two pairs at chr21:41850000 / chr21:44250000 with VF 8 and 21 collapse to one row
+            assert lines.size() == 2 : "Duplicate-coordinate BND pairs should dedupe to one row, got ${lines.size() - 1} rows"
+
+            def cols = lines[0].split('\t') as List
+            def row = lines[1].split('\t', -1)
+            assert row[cols.indexOf('Site1_Hugo_Symbol')] == 'PRDM15'
+            assert row[cols.indexOf('Site2_Hugo_Symbol')] == 'DNMT3L'
+            assert row[cols.indexOf('Site1_Position')] == '41850000'
+            assert row[cols.indexOf('Site2_Position')] == '44250000'
+            assert row[cols.indexOf('Tumor_Variant_Count')] == '21' : "Should keep the VF 21 call, not the first one seen (VF 8)"
+            assert row[cols.indexOf('Tumor_Split_Read_Count')] == '9'
+            assert row[cols.indexOf('Tumor_Paired_End_Read_Count')] == '12'
+        }
+    }
+
+    test("Fails when no sample column is named <subject>-T") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    [
+                        [group: 'TEST', subject: 'TX', sample: 'TX', pipeline: 'sv'],
+                        file('${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.sv.vcf.gz')
+                    ]
+                )
+                input[1] = file('${projectDir}/assets/test_data/annotations/biomart_grch38_ensembl_113_test.tsv')
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.stdout.any { it.contains("Tumour column 'TX-T' not found") } ||
+                   process.stderr.any { it.contains("Tumour column 'TX-T' not found") }
+        }
+    }
+}

@@ -1,2 +1,2 @@
-purity	ploidy	gender	status
-0.68	2.0	FEMALE	PASS
+purity	ploidy	gender	status	msIndelsPerMb	msStatus	tml	tmlStatus	tmbPerMb	tmbStatus
+0.68	2.0	FEMALE	PASS	0.08	MSS	45	LOW	2.1	LOW

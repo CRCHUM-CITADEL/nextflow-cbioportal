@@ -5,6 +5,7 @@ process FORMAT_CNA {
 
     input:
     tuple val(meta), path(tsv)
+    path(gene_panel)  // gene panel TSV, or [] when unset
 
     output:
     path("${meta.sample_id}_cna.txt")
@@ -17,5 +18,6 @@ process FORMAT_CNA {
     """
     format_cna.py "${tsv}" "${meta.sample_id}" ${filter_args}
     mv data_cna.txt "${meta.sample_id}_cna.txt"
+    if [ -n "${gene_panel}" ]; then filter_gene_panel.py "${meta.sample_id}_cna.txt" --panel "${gene_panel}" --type cna --out "${meta.sample_id}_cna.txt.tmp" && mv "${meta.sample_id}_cna.txt.tmp" "${meta.sample_id}_cna.txt"; fi
     """
 }

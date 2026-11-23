@@ -29,6 +29,7 @@ nextflow_process {
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = []
+                input[3] = []
                 """
             }
         }
@@ -65,6 +66,7 @@ nextflow_process {
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = []
+                input[3] = []
                 """
             }
         }
@@ -104,6 +106,7 @@ nextflow_process {
                 input[0] = Channel.of([[sample_id: 'S3'], tsv, dir])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = []
+                input[3] = []
                 """
             }
         }
@@ -138,6 +141,7 @@ nextflow_process {
                 input[0] = Channel.of([[sample_id: 'S4'], tsv, dir])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = []
+                input[3] = []
                 """
             }
         }
@@ -168,6 +172,7 @@ nextflow_process {
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                input[3] = []
                 """
             }
         }
@@ -210,6 +215,7 @@ nextflow_process {
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                input[3] = []
                 """
             }
         }
@@ -240,6 +246,7 @@ nextflow_process {
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                input[3] = []
                 """
             }
         }
@@ -270,6 +277,7 @@ nextflow_process {
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                input[3] = []
                 """
             }
         }
@@ -304,6 +312,7 @@ nextflow_process {
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                input[3] = []
                 """
             }
         }
@@ -330,6 +339,7 @@ nextflow_process {
                 ])
                 input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
                 input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                input[3] = []
                 """
             }
         }
@@ -337,6 +347,36 @@ nextflow_process {
         then {
             assert process.success
             assert path(process.out[0][0].toString()).readLines() == [SV_COLUMNS.join('\t')]
+        }
+    }
+
+    // Either partner on the panel keeps a fusion; CD74--ROS1 has neither
+    test("Gene panel: drops fusions with no on-panel partner from the per-sample file") {
+
+        when {
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
+            process {
+                """
+                file("${params.outdir}/sv_inputs").mkdirs()
+                file("${params.outdir}/sv_inputs/panel.tsv").text = 'gene\\ttype\\nALK\\tsv\\nRET\\tfusion\\nROS1\\tmutation\\n'
+                input[0] = Channel.of([
+                    [sample_id: 'S1'],
+                    file('${projectDir}/assets/samples/SAMPLE_001/analysis_001_export.tsv'),
+                    file('${projectDir}/assets/samples/SAMPLE_001')
+                ])
+                input[1] = file('${projectDir}/assets/grch37_gene_loci.tsv.gz')
+                input[2] = file('${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv')
+                input[3] = file("${params.outdir}/sv_inputs/panel.tsv")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0].split('\t') as List == SV_COLUMNS
+            def rows = lines.drop(1).collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
+            assert rows*.Site1_Hugo_Symbol == ['EML4', 'KIF5B']
         }
     }
 }

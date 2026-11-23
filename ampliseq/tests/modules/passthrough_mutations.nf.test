@@ -1,0 +1,53 @@
+nextflow_process {
+
+    name "Test PASSTHROUGH_MUTATIONS"
+    script "modules/local/passthrough_mutations/main.nf"
+    process "PASSTHROUGH_MUTATIONS"
+    tag "module"
+    tag "filter"
+
+    def MAF = 'Hugo_Symbol\\tTumor_Sample_Barcode\\nTP53\\tS\\nDDR2\\tS\\nkras\\tS\\n'
+
+    test("Without a gene panel: copies the MAF unchanged") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/pt").mkdirs()
+                file("${params.outdir}/pt/s.maf").text = '${MAF}'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/pt/s.maf")])
+                input[1] = []
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def out = path(process.out[0][0].toString())
+            assert out.fileName.toString() == 'S_mutations.txt'
+            assert out.readLines().drop(1).collect { it.split('\t')[0] } == ['TP53', 'DDR2', 'kras']
+        }
+    }
+
+    test("Gene panel: drops off-panel genes from the per-sample file") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/pt").mkdirs()
+                file("${params.outdir}/pt/s.maf").text = '${MAF}'
+                file("${params.outdir}/pt/panel.tsv").text = 'gene\\ttype\\nTP53\\tmutation\\nKRAS\\tmutation\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/pt/s.maf")])
+                input[1] = file("${params.outdir}/pt/panel.tsv")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] } == ['TP53', 'kras']
+        }
+    }
+}

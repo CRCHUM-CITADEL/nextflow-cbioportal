@@ -147,7 +147,7 @@ The `gnomAD.*` and `ClinVar.*` columns also appear in the cBioPortal mutation ta
 
 - **gnomAD:** a mutation is dropped when `gnomAD.AF_max` is above `--max_gnomad_af` (0.01), so one ancestry above the threshold is enough. A mutation at or below the threshold, or one gnomAD has never seen, is always kept. Use `--gnomad_af_columns gnomAD.AF` for the previous combined-total rule.
 - **ClinVar exception:** a mutation above the threshold is still kept when its ClinVar classification includes one of `--clinvar_keep_classes` (default `Pathogenic,Likely_pathogenic`; `Pathogenic/Likely_pathogenic` and `Pathogenic, low penetrance` count). A conflicting call counts when its breakdown lists one of them, even next to benign entries. A mutation ClinVar has never seen gets no exception. Set `--clinvar_keep_classes ''` to filter on gnomAD alone.
-- Genome Nexus sometimes answers without the gnomAD data. Variants missing gnomAD or ClinVar data are asked again (up to two more times) before being treated as absent, which can add up to 30 s to the step.
+- Genome Nexus sometimes answers without the gnomAD data. Variants missing gnomAD or ClinVar data are asked again (up to five more times, in smaller and smaller batches) before being treated as absent, which can add up to 2.5 min to the step.
 
 - The step needs **outbound HTTPS** from the node it runs on. If Genome Nexus can't be reached, the run fails rather than keeping every mutation.
 - Only the variant (chromosome, positions, alleles) is sent, never sample or patient IDs.

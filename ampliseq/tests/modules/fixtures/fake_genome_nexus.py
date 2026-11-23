@@ -7,6 +7,8 @@ Usage: fake_genome_nexus.py <port> [--lifetime 300]
                            exome nfe 0.74 and genome afr 0.8; ClinVar Benign
   12,25368462,25368462,C,T first request: AC/AN only (exome eas 18394/18394), no ClinVar block;
                            later: ClinVar Pathogenic but no gnomAD block (two half answers)
+  2,29416572,29416572,T,C  ALK rs1670283: first 3 requests no gnomAD block (more drops than the old
+                           2 re-asks covered); later: AC/AN 249995/250608 + 31096/31384, Benign
   anything else            dbSNP-free annotation without gnomAD or ClinVar
 The server exits on its own after --lifetime seconds.
 """
@@ -51,6 +53,11 @@ def annotate(key):
             info.update(gnomad(251165, 251262, 31347, 31394, with_af=False, exome_pops={'eas': (18394, 18394)}))
         else:
             answer['clinvar'] = clinvar('Pathogenic')
+    elif key == '2,29416572,29416572,T,C':
+        info['dbsnp'] = {'rsid': 'rs1670283'}
+        answer['clinvar'] = clinvar('Benign')
+        if SEEN[key] > 3:
+            info.update(gnomad(249995, 250608, 31096, 31384))
     answer['my_variant_info'] = {'annotation': info}
     return answer
 

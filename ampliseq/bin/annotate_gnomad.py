@@ -5,7 +5,7 @@ Nexus (the service cBioPortal uses for its gnomAD and ClinVar columns).
 
 Usage: annotate_gnomad.py <maf> --out <out_file> [--url https://www.genomenexus.org]
                           [--batch-size 200] [--retries 3]
-                          [--empty-retries 2] [--retry-wait 10]
+                          [--empty-retries 5] [--retry-wait 10]
 
 Writes (overwriting any existing values) these columns:
   gnomADe_AF          gnomAD v2.1.1 exomes, all populations
@@ -19,9 +19,11 @@ Writes (overwriting any existing values) these columns:
 A frequency missing from the response is computed from AC / AN, as cBioPortal does.
 A variant gnomAD (or ClinVar) has never seen gets empty cells.
 
-Genome Nexus sometimes answers without its gnomAD block, with no error. A variant without
-gnomAD or ClinVar data is therefore asked again in up to --empty-retries extra passes; only
-one that is still empty after all of them is written as unknown.
+Genome Nexus sometimes answers without its gnomAD block, with no error, sometimes for the
+same variant several times running (ALK rs1670283 at AF 0.998 passed the filter after three
+asks). A variant without gnomAD or ClinVar data is therefore asked again in up to
+--empty-retries extra passes, in batches of 50, then 20, then 10, waiting --retry-wait x pass
+seconds before each; only one that is still empty after all of them is written as unknown.
 
 Only the variant itself is sent (chromosome, start, end, reference and alternate allele, as
 written in the MAF), never sample IDs or other columns. Each distinct variant is sent once,
@@ -39,7 +41,7 @@ NEW_COLUMNS = ('gnomADe_AF', 'gnomADg_AF', 'gnomAD.AF', 'gnomAD.AF_max', 'gnomAD
                'ClinVar.CLNSIG', 'ClinVar.CLNSIGCONF')
 POPULATIONS = ('afr', 'amr', 'asj', 'eas', 'fin', 'nfe', 'oth', 'sas')
 NEEDED = ('Chromosome', 'Start_Position', 'End_Position', 'Reference_Allele', 'Tumor_Seq_Allele2')
-RETRY_BATCH_SIZE = 50
+RETRY_BATCH_SIZES = (50, 20, 10)  # smaller batches on later passes; the last size repeats
 NO_ANSWER = ({}, {})
 
 
@@ -85,6 +87,11 @@ def query(url, variants, batch_size, retries):
 
 def has_gnomad(info):
     return bool(info) and ('gnomadExome' in info or 'gnomadGenome' in info)
+
+
+def has_myvariant(info):
+    """True when MyVariant returned a record (keys beyond the echoed query)."""
+    return any(key not in ('variant', 'query') for key in info or {})
 
 
 def complete(answer):
@@ -140,7 +147,7 @@ def main():
     parser.add_argument('--url', default='https://www.genomenexus.org')
     parser.add_argument('--batch-size', type=int, default=200)
     parser.add_argument('--retries', type=int, default=3)
-    parser.add_argument('--empty-retries', type=int, default=2)
+    parser.add_argument('--empty-retries', type=int, default=5)
     parser.add_argument('--retry-wait', type=float, default=10)
     args = parser.parse_args()
 
@@ -182,17 +189,25 @@ def main():
         print(f"WARNING: {len(empty)} variant(s) came back without gnomAD or ClinVar data; "
               f"asking again (pass {attempt}/{args.empty_retries})", file=sys.stderr)
         time.sleep(args.retry_wait * attempt)
-        again = query(args.url, [as_tuple[k] for k in empty], RETRY_BATCH_SIZE, args.retries)
+        batch_size = RETRY_BATCH_SIZES[min(attempt, len(RETRY_BATCH_SIZES)) - 1]
+        again = query(args.url, [as_tuple[k] for k in empty], batch_size, args.retries)
+        got_gnomad = got_clinvar = 0
         for k in empty:
             old, new = info.get(k) or NO_ANSWER, again.get(k) or NO_ANSWER
+            got_gnomad += not has_gnomad(old[0]) and has_gnomad(new[0])
+            got_clinvar += not old[1] and bool(new[1])
             # Keep whichever half each answer has, so a later partial answer never loses data
             info[k] = (new[0] if has_gnomad(new[0]) else old[0], new[1] or old[1])
             if complete(info[k]):
                 recovered += 1
+        print(f"  pass {attempt}: asked {len(empty)} in batches of {batch_size}; "
+              f"{got_gnomad} got gnomAD, {got_clinvar} got ClinVar", file=sys.stderr)
         empty = [k for k in empty if not complete(info.get(k))]
 
     no_gnomad = [k for k in variants if not has_gnomad((info.get(k) or NO_ANSWER)[0])]
     no_clinvar = sum(1 for k in variants if not (info.get(k) or NO_ANSWER)[1])
+    # No MyVariant record at all: a novel variant, or an answer dropped on every pass
+    no_myvariant = sum(1 for k in no_gnomad if not has_myvariant((info.get(k) or NO_ANSWER)[0]))
 
     # A dbSNP variant absent from gnomAD is possible but worth a manual look
     with_rsid = [k for k in no_gnomad if isinstance((info.get(k) or NO_ANSWER)[0].get('dbsnp'), dict)
@@ -216,7 +231,8 @@ def main():
             out.write('\t'.join(row) + '\n')
 
     print(f"annotate_gnomad: {len(variants)} distinct variants sent to {args.url}; "
-          f"{requeried} asked again, {recovered} recovered, {len(no_gnomad)} not in gnomAD, "
+          f"{requeried} asked again, {recovered} recovered, {len(no_gnomad)} not in gnomAD "
+          f"({no_myvariant} with no MyVariant record at all), "
           f"{no_clinvar} not in ClinVar; {found}/{len(rows)} MAF rows have a gnomAD frequency",
           file=sys.stderr)
 

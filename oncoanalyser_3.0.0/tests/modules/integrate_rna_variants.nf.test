@@ -40,6 +40,8 @@ nextflow_process {
             assert supported[col('RNA.vaf')] == '0.44'
             assert supported[col('RNA.expressed')] == '1'
             assert rows.count { it[col('RNA.depth')] } == 1
+            assert supported[col('RNA_expressed')] == 'RNA(d=18,v=0.44)'
+            assert rows.count { it[col('RNA_expressed')] == 'RNA(data=NO)' } == 8
         }
     }
 
@@ -74,6 +76,7 @@ nextflow_process {
                 assert i >= 0 : "no ${name} column"
                 assert rows.every { it[i] == '' }
             }
+            assert rows.every { it[header.indexOf('RNA_expressed')] == 'RNA(data=NO)' }
         }
     }
 }

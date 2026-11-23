@@ -185,6 +185,15 @@ matched_variants <- matched_variants %>%
     )
   )
 
+# Readable RNA summary, e.g. RNA(d=7,v=0.29); RNA(data=NO) without RNA depth
+matched_variants$RNA_expressed <- ifelse(
+  is.na(matched_variants$t_depth_rna),
+  "RNA(data=NO)",
+  paste0("RNA(d=", sprintf("%d", as.integer(matched_variants$t_depth_rna)),
+         ",v=", ifelse(is.na(matched_variants$t_vaf_rna), "NA",
+                       as.character(round(as.numeric(matched_variants$t_vaf_rna), 2))), ")")
+)
+
 # Remove temporary columns (RNA evidence stays in its own columns, never in Mutation_Status)
 matched_variants$chr_raw <- NULL
 
@@ -195,7 +204,8 @@ maf_header_lines <- readLines(dna_maf_file, n = 2)
 
 # RNA evidence goes under the RNA namespace (namespaces: HMF,RNA)
 rna_cols <- c(t_depth_rna = "RNA.depth", t_vaf_rna = "RNA.vaf", t_ref_count_rna = "RNA.ref_count",
-              t_alt_count_rna = "RNA.alt_count", Flag_RNA_Expressed = "RNA.expressed")
+              t_alt_count_rna = "RNA.alt_count", Flag_RNA_Expressed = "RNA.expressed",
+              RNA_expressed = "RNA_expressed")
 dna_cols <- setdiff(names(dna_maf), "chr_raw")
 out <- matched_variants[, c(dna_cols, names(rna_cols)), drop = FALSE]
 names(out) <- c(dna_cols, unname(rna_cols))

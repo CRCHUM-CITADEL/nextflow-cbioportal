@@ -152,7 +152,7 @@ nextflow_process {
             assert rows.every { it.size() == header.size() }
             def germline = rows.findAll { it[col('Mutation_Status')] == 'Germline' }
             assert germline
-            ['RNA.depth', 'RNA.vaf', 'RNA.ref_count', 'RNA.alt_count', 'RNA.expressed'].each { name ->
+            ['RNA.depth', 'RNA.vaf', 'RNA.ref_count', 'RNA.alt_count', 'RNA.expressed', 'RNA_expressed'].each { name ->
                 assert germline.every { it[col(name)] == '' } : "${name} not empty on a germline row"
             }
             assert rows.find { it[col('Mutation_Status')] == 'Somatic' && it[col('RNA.depth')] == '18' }

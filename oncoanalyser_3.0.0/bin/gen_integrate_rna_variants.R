@@ -186,7 +186,7 @@ matched_variants <- matched_variants %>%
   )
 
 # Readable RNA summary, e.g. RNA(d=7,v=0.29); RNA(data=NO) without RNA depth
-matched_variants$RNA_expressed <- ifelse(
+matched_variants$RNA.Rna_expressed_full <- ifelse(
   is.na(matched_variants$t_depth_rna),
   "RNA(data=NO)",
   paste0("RNA(d=", sprintf("%d", as.integer(matched_variants$t_depth_rna)),

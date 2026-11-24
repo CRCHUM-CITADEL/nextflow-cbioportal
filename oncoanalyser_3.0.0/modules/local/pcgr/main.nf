@@ -4,7 +4,7 @@ process PCGR {
 
     container params.container_pcgr
 
-    // Not published (copying it hung shutdown on the HPC filesystem); see the work dir
+    // publishDir { "${params.outdir}/${meta.group}/${meta.subject}" }, mode: 'copy', pattern: "*.cpsr_debug"
 
     input:
         tuple val(meta), path(ger_dna_vcf), path(ger_dna_vcf_tbi)
@@ -50,7 +50,6 @@ process PCGR {
     --vep_buffer_size 1000 \\
     --no_html \\
     --no_pdf \\
-    --clinvar_cancer_only \\
     --sample_id ${cpsr_id} \\
     ${args} 2>&1 | tee ${debug}/cpsr.log
 

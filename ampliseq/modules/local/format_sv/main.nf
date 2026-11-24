@@ -7,6 +7,7 @@ process FORMAT_SV {
     tuple val(meta), path(tsv), path(sample_folder)
     path(gene_loci)      // GRCh37 gene spans, places the TSV fusion partner's chromosome
     path(fusion_metrics) // cohort-wide fusion-metrics TSV, or [] when unset
+    path(gene_panel)     // gene panel TSV, or [] when unset
 
     output:
     path("${meta.sample_id}_sv.txt")
@@ -22,12 +23,14 @@ process FORMAT_SV {
         """
         fusion_metrics_to_sv.py "${fusion_metrics}" "${meta.sample_id}" --sample-folder "${sample_folder.name}" ${filter_args}
         mv data_sv.txt "${meta.sample_id}_sv.txt"
+        if [ -n "${gene_panel}" ]; then filter_gene_panel.py "${meta.sample_id}_sv.txt" --panel "${gene_panel}" --type sv --out "${meta.sample_id}_sv.txt.tmp" && mv "${meta.sample_id}_sv.txt.tmp" "${meta.sample_id}_sv.txt"; fi
         """
     // Filter mode: always the TSV (its Supporting Reads), even with a STAR-Fusion VCF
     } else if (filter_mode) {
         """
         format_tsv_to_sv.py "${tsv}" "${meta.sample_id}" --gene-loci "${gene_loci}" --min-supporting-reads ${params.sv_min_supporting_reads}
         mv data_sv.txt "${meta.sample_id}_sv.txt"
+        if [ -n "${gene_panel}" ]; then filter_gene_panel.py "${meta.sample_id}_sv.txt" --panel "${gene_panel}" --type sv --out "${meta.sample_id}_sv.txt.tmp" && mv "${meta.sample_id}_sv.txt.tmp" "${meta.sample_id}_sv.txt"; fi
         """
     } else {
         """
@@ -38,6 +41,7 @@ process FORMAT_SV {
             format_tsv_to_sv.py "${tsv}" "${meta.sample_id}" --gene-loci "${gene_loci}"
         fi
         mv data_sv.txt "${meta.sample_id}_sv.txt"
+        if [ -n "${gene_panel}" ]; then filter_gene_panel.py "${meta.sample_id}_sv.txt" --panel "${gene_panel}" --type sv --out "${meta.sample_id}_sv.txt.tmp" && mv "${meta.sample_id}_sv.txt.tmp" "${meta.sample_id}_sv.txt"; fi
         """
     }
 }

@@ -17,8 +17,10 @@ workflow PER_SAMPLE_FORMAT {
     main:
     ch_sv_input = ch_tsv.join(ch_vcf_input)  // → tuple(meta, tsv, sample_folder)
     def fusion_metrics = params.fusion_metrics ? file(params.fusion_metrics, checkIfExists: true) : []
-    FORMAT_SV(ch_sv_input, file("${projectDir}/assets/grch37_gene_loci.tsv.gz", checkIfExists: true), fusion_metrics)
-    FORMAT_CNA(ch_tsv)
+    // Gene panel also filters the published per-sample files (MERGE_DEANON re-filters cached ones)
+    def gene_panel = params.gene_panel && params.gene_panel.toString() != 'null' ? file(params.gene_panel, checkIfExists: true) : []
+    FORMAT_SV(ch_sv_input, file("${projectDir}/assets/grch37_gene_loci.tsv.gz", checkIfExists: true), fusion_metrics, gene_panel)
+    FORMAT_CNA(ch_tsv, gene_panel)
     ch_sv = FORMAT_SV.out
     ch_cna = FORMAT_CNA.out
 
@@ -59,10 +61,10 @@ workflow PER_SAMPLE_FORMAT {
     }
 
     if (params.filter_tsv_variants.toString().toBoolean()) {
-        FILTER_MUTATIONS(ch_maf.join(ch_tsv))
+        FILTER_MUTATIONS(ch_maf.join(ch_tsv), gene_panel)
         ch_mutations = FILTER_MUTATIONS.out
     } else {
-        PASSTHROUGH_MUTATIONS(ch_maf)
+        PASSTHROUGH_MUTATIONS(ch_maf, gene_panel)
         ch_mutations = PASSTHROUGH_MUTATIONS.out
     }
 

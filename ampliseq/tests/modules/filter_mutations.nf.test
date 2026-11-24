@@ -19,6 +19,7 @@ nextflow_process {
                     'G3\\t350\\t300\\tchr3\\n'
                 file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tDepth\\tVAF\\n1\\t100\\t150\\t500\\t0.10\\n2\\t200\\t250\\t500\\t0.10\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                input[1] = []
                 """
             }
         }
@@ -52,6 +53,7 @@ nextflow_process {
                     '17\\t7571720\\t7590868\\tSNP\\t500\\t0.10\\n' +
                     '12\\t25380275\\t25403854\\tSNP\\t500\\t0.10\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                input[1] = []
                 """
             }
         }
@@ -74,6 +76,7 @@ nextflow_process {
                     'G1\\t1\\t100\\t100\\n'
                 file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tDepth\\tVAF\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                input[1] = []
                 """
             }
         }
@@ -109,6 +112,7 @@ nextflow_process {
                     '6\\t117710982\\t149784294\\tCNV\\tFUSION\\tN/A\\tMEDIUM\\tN/A\\tN/A\\n' +
                     '4\\t500000\\t600000\\tCNV\\tDUPLICATION\\tN/A\\tHIGH\\tN/A\\t8\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                input[1] = []
                 """
             }
         }
@@ -131,6 +135,7 @@ nextflow_process {
                     'G1\\t1\\t100\\t100\\n'
                 file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tVAF\\n1\\t100\\t100\\t0.5\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                input[1] = []
                 """
             }
         }
@@ -138,6 +143,35 @@ nextflow_process {
         then {
             assert process.failed
             assert workflow.stdout.any { it.contains('lacks one of Chr/Start/End/Depth/VAF') }
+        }
+    }
+
+    // The published per-sample file must not contain off-panel genes (DDR2 used to survive here)
+    test("Gene panel: drops off-panel genes from the per-sample file") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/filter_inputs").mkdirs()
+                file("${params.outdir}/filter_inputs/s.maf").text = 'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\n' +
+                    'TP53\\t17\\t7577120\\t7577120\\n' +
+                    'DDR2\\t1\\t162724506\\t162724506\\n'
+                file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tDepth\\tVAF\\n' +
+                    '17\\t7577120\\t7577120\\t500\\t0.10\\n' +
+                    '1\\t162724506\\t162724506\\t866\\t0.0866\\n'
+                file("${params.outdir}/filter_inputs/panel.tsv").text = 'gene\\ttype\\nTP53\\tmutation\\nDDR2\\tcna\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
+                input[1] = file("${params.outdir}/filter_inputs/panel.tsv")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def out = path(process.out[0][0].toString())
+            assert out.fileName.toString() == 'S_mutations.txt'
+            assert out.readLines().drop(1).collect { it.split('\t')[0] } == ['TP53'] : "DDR2 is only a cna gene"
         }
     }
 }

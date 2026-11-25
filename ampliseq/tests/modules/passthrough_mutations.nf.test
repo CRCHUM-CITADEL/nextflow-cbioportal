@@ -8,7 +8,30 @@ nextflow_process {
 
     def MAF = 'Hugo_Symbol\\tTumor_Sample_Barcode\\nTP53\\tS\\nDDR2\\tS\\nkras\\tS\\n'
 
-    test("Without a gene panel: copies the MAF unchanged") {
+    test("Without a gene panel or exclusions: copies the MAF unchanged") {
+
+        when {
+            params { outdir = "$outputDir"; exclude_genes = '' }
+            process {
+                """
+                file("${params.outdir}/pt").mkdirs()
+                file("${params.outdir}/pt/s.maf").text = '${MAF}'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/pt/s.maf")])
+                input[1] = []
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def out = path(process.out[0][0].toString())
+            assert out.fileName.toString() == 'S_mutations.txt'
+            assert out.text == 'Hugo_Symbol\tTumor_Sample_Barcode\nTP53\tS\nDDR2\tS\nkras\tS\n'
+        }
+    }
+
+    // exclude_genes (default DDR2) applies without a gene panel too
+    test("Without a gene panel: drops the excluded gene only") {
 
         when {
             params { outdir = "$outputDir" }
@@ -24,13 +47,13 @@ nextflow_process {
 
         then {
             assert process.success
-            def out = path(process.out[0][0].toString())
-            assert out.fileName.toString() == 'S_mutations.txt'
-            assert out.readLines().drop(1).collect { it.split('\t')[0] } == ['TP53', 'DDR2', 'kras']
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0] == 'Hugo_Symbol\tTumor_Sample_Barcode'
+            assert lines.drop(1).collect { it.split('\t')[0] } == ['TP53', 'kras']
         }
     }
 
-    test("Gene panel: drops off-panel genes from the per-sample file") {
+    test("Gene panel: flags off-panel genes in the per-sample file") {
 
         when {
             params { outdir = "$outputDir" }
@@ -38,7 +61,7 @@ nextflow_process {
                 """
                 file("${params.outdir}/pt").mkdirs()
                 file("${params.outdir}/pt/s.maf").text = '${MAF}'
-                file("${params.outdir}/pt/panel.tsv").text = 'gene\\ttype\\nTP53\\tmutation\\nKRAS\\tmutation\\n'
+                file("${params.outdir}/pt/panel.tsv").text = 'gene\\ttype\\nTP53\\tmutation\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/pt/s.maf")])
                 input[1] = file("${params.outdir}/pt/panel.tsv")
                 """
@@ -47,7 +70,8 @@ nextflow_process {
 
         then {
             assert process.success
-            assert path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] } == ['TP53', 'kras']
+            assert path(process.out[0][0].toString()).readLines() ==
+                ['Hugo_Symbol\tTumor_Sample_Barcode\tinfo.on_panel', 'TP53\tS\ttrue', 'kras\tS\tfalse']
         }
     }
 }

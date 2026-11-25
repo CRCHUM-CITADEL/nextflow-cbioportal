@@ -107,7 +107,7 @@ Values equal to a threshold are kept, and a missing gnomAD or VAF value never dr
 
 #### Gene panel
 
-`--gene_panel <file.tsv>` lists which genes the panel covers for each data type. Mutations and CNAs of unlisted genes are removed, and so is a fusion when neither partner is listed (EML4-ALK is kept when `ALK` is listed). Like the filters above, it runs on the merged data, so samples already in `--outdir` are filtered too. The file is tab-separated, with one row per gene and type (`fusion` means the same as `sv`; `#` lines are ignored):
+`--gene_panel <file.tsv>` lists which genes the panel covers for each data type. Nothing is removed: `data_mutations.txt`, `data_cna.txt` and `data_sv.txt` get an `info.on_panel` column, `true` when the gene is listed for that type and `false` otherwise. A fusion is `true` only when both partners are listed (EML4-ALK is `false` unless `EML4` is listed too). cBioPortal shows the column in its tables (the `info` namespace is declared in the meta files). Like the filters above, it runs on the merged data, so samples already in `--outdir` are flagged too. The file is tab-separated, with one row per gene and type (`fusion` means the same as `sv`; `#` lines are ignored):
 
 ```
 gene	type
@@ -116,7 +116,7 @@ ERBB2	cna
 ALK	sv
 ```
 
-Every type needs at least one gene, otherwise the run stops, so that a typo cannot empty a whole data type. From the same file the pipeline writes the cBioPortal gene panel files:
+Every type needs at least one gene, otherwise the run stops, so that a typo cannot mark a whole data type off-panel. From the same file the pipeline writes the cBioPortal gene panel files:
 
 - `gene_panels/gene_panel_<study_id>_{mutation,cna,sv}.txt`: one panel definition per type
 - `data_gene_panel_matrix.txt` + `meta_gene_panel_matrix.txt`: every sample in the samplesheet is profiled with these panels (samples that failed the CNV depth QC get `NA` for CNA)
@@ -126,6 +126,10 @@ With the matrix, cBioPortal computes a gene's frequency over every sample profil
 ```bash
 importGenePanel.pl --data gene_panels/gene_panel_<study_id>_mutation.txt   # and _cna, _sv
 ```
+
+`--exclude_genes` (comma-separated, default `DDR2`) removes genes whether or not they are on the panel, and with or without `--gene_panel`: their mutations and CNAs, and every fusion with an excluded partner. Excluded genes are also left out of the panel definitions. `--exclude_genes ''` turns it off.
+
+Samples processed by an older version (which removed off-panel rows) only get those rows back after deleting `<outdir>/samples/<id>/`.
 
 Segment data (`data_seg.txt`, `meta_seg.txt`) is off by default. cBioPortal computes _Fraction Genome Altered_ from it, which is not meaningful for an amplicon panel:
 

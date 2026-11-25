@@ -91,4 +91,48 @@ nextflow_process {
             assert !path(sv.toString()).text.contains('namespaces:')
         }
     }
+
+    // info.on_panel is written to all three files with a gene panel, merged with the other namespaces
+    test("Declares the info namespace on mutations, SV and CNA with gene_panel") {
+
+        when {
+            params {
+                outdir           = "$outputDir"
+                filter_gnomad_af = true
+                fusion_metrics   = "${projectDir}/tests/modules/fixtures/fusion_metrics/fusion_metrics.tsv"
+                gene_panel       = "panel.tsv"  // WRITE_META only checks that it is set
+            }
+            process {
+                """
+                input[0] = 'test_study'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def meta = { name -> path(process.out[0][0].find { it.toString().endsWith(name) }.toString()).readLines() }
+            assert meta('meta_mutations.txt').contains('namespaces: gnomAD,ClinVar,info')
+            assert meta('meta_sv.txt').contains('namespaces: FusionMetrics,info')
+            assert meta('meta_cna.txt').contains('namespaces: info')
+        }
+    }
+
+    test("No info namespace on CNA without gene_panel") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                input[0] = 'test_study'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def cna = process.out[0][0].find { it.toString().endsWith('meta_cna.txt') }
+            assert !path(cna.toString()).text.contains('namespaces:')
+        }
+    }
 }

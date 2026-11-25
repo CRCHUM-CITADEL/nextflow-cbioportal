@@ -146,8 +146,8 @@ nextflow_process {
         }
     }
 
-    // The published per-sample file must not contain off-panel genes (DDR2 used to survive here)
-    test("Gene panel: drops off-panel genes from the per-sample file") {
+    // Off-panel genes are flagged, the excluded DDR2 never reaches the published per-sample file
+    test("Gene panel: flags off-panel genes, drops the excluded gene") {
 
         when {
             params { outdir = "$outputDir" }
@@ -156,11 +156,13 @@ nextflow_process {
                 file("${params.outdir}/filter_inputs").mkdirs()
                 file("${params.outdir}/filter_inputs/s.maf").text = 'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\n' +
                     'TP53\\t17\\t7577120\\t7577120\\n' +
-                    'DDR2\\t1\\t162724506\\t162724506\\n'
+                    'DDR2\\t1\\t162724506\\t162724506\\n' +
+                    'KRAS\\t12\\t25398284\\t25398284\\n'
                 file("${params.outdir}/filter_inputs/s.tsv").text = 'Chr\\tStart\\tEnd\\tDepth\\tVAF\\n' +
                     '17\\t7577120\\t7577120\\t500\\t0.10\\n' +
-                    '1\\t162724506\\t162724506\\t866\\t0.0866\\n'
-                file("${params.outdir}/filter_inputs/panel.tsv").text = 'gene\\ttype\\nTP53\\tmutation\\nDDR2\\tcna\\n'
+                    '1\\t162724506\\t162724506\\t866\\t0.0866\\n' +
+                    '12\\t25398284\\t25398284\\t700\\t0.20\\n'
+                file("${params.outdir}/filter_inputs/panel.tsv").text = 'gene\\ttype\\nTP53\\tmutation\\nDDR2\\tmutation\\nKRAS\\tcna\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/filter_inputs/s.maf"), file("${params.outdir}/filter_inputs/s.tsv")])
                 input[1] = file("${params.outdir}/filter_inputs/panel.tsv")
                 """
@@ -171,7 +173,8 @@ nextflow_process {
             assert process.success
             def out = path(process.out[0][0].toString())
             assert out.fileName.toString() == 'S_mutations.txt'
-            assert out.readLines().drop(1).collect { it.split('\t')[0] } == ['TP53'] : "DDR2 is only a cna gene"
+            assert out.readLines().drop(1).collect { it.split('\t').with { c -> [c[0], c[-1]] } } ==
+                [['TP53', 'true'], ['KRAS', 'false']] : "KRAS is only a cna gene; DDR2 is excluded although listed"
         }
     }
 }

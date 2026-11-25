@@ -173,7 +173,12 @@
             "type": "string",
             "format": "file-path",
             "exists": true,
-            "description": "Gene panel TSV with 'gene' and 'type' (mutation, cna, sv; fusion = sv) columns, one row per gene and type. Mutations and CNAs of unlisted genes are dropped, and fusions with neither partner listed. Applied to the merged files, so cached samples are filtered too. Unset = no gene filter."
+            "description": "Gene panel TSV with 'gene' and 'type' (mutation, cna, sv; fusion = sv) columns, one row per gene and type. Nothing is dropped: mutations, CNAs and fusions get an info.on_panel column, true when the gene (fusions: both partners) is listed for that type. Also writes the cBioPortal gene panel files. Unset = no column."
+        },
+        "exclude_genes": {
+            "type": "string",
+            "default": "DDR2",
+            "description": "Comma-separated genes whose mutations, CNAs and fusions (either partner) are always dropped, on the gene panel or not, and left out of the gene panel definitions. Empty = no exclusion."
         },
         "filter_cnv_depth": {
             "type": "boolean",

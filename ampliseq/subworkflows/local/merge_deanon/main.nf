@@ -33,12 +33,14 @@ workflow MERGE_DEANON {
     // Optional filters on the merged data (before ID remapping), so they also
     // apply to samples cached from earlier incremental runs
     // -------------------------------------------------------------------------
-    // Gene panel: keep only genes listed for each data type (first, so Genome Nexus is asked less)
+    // Gene panel: flag info.on_panel; exclude_genes: drop those genes (first, so Genome Nexus is asked less)
     ch_mutations = MERGE_MUTATIONS.out
     ch_cna       = MERGE_CNA.out
     ch_sv        = MERGE_SV.out
-    if (params.gene_panel && params.gene_panel.toString() != 'null') {
-        def gene_panel = file(params.gene_panel, checkIfExists: true)
+    def has_panel   = params.gene_panel && params.gene_panel.toString() != 'null'
+    def has_exclude = params.exclude_genes && params.exclude_genes.toString() != 'null'
+    if (has_panel || has_exclude) {
+        def gene_panel = has_panel ? file(params.gene_panel, checkIfExists: true) : []
         FILTER_GENE_PANEL_MUTATIONS(ch_mutations, gene_panel, 'mutation')
         FILTER_GENE_PANEL_CNA(ch_cna, gene_panel, 'cna')
         FILTER_GENE_PANEL_SV(ch_sv, gene_panel, 'sv')

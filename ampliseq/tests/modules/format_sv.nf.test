@@ -350,15 +350,15 @@ nextflow_process {
         }
     }
 
-    // Either partner on the panel keeps a fusion; CD74--ROS1 has neither
-    test("Gene panel: drops fusions with no on-panel partner from the per-sample file") {
+    // Nothing is dropped: a fusion is on the panel only when both partners are listed as sv
+    test("Gene panel: flags fusions whose partners are not both on the panel") {
 
         when {
             params { outdir = "$outputDir"; filter_tsv_variants = false }
             process {
                 """
                 file("${params.outdir}/sv_inputs").mkdirs()
-                file("${params.outdir}/sv_inputs/panel.tsv").text = 'gene\\ttype\\nALK\\tsv\\nRET\\tfusion\\nROS1\\tmutation\\n'
+                file("${params.outdir}/sv_inputs/panel.tsv").text = 'gene\\ttype\\nALK\\tsv\\nEML4\\tsv\\nRET\\tfusion\\nROS1\\tmutation\\nCD74\\tsv\\n'
                 input[0] = Channel.of([
                     [sample_id: 'S1'],
                     file('${projectDir}/assets/samples/SAMPLE_001/analysis_001_export.tsv'),
@@ -374,9 +374,11 @@ nextflow_process {
         then {
             assert process.success
             def lines = path(process.out[0][0].toString()).readLines()
-            assert lines[0].split('\t') as List == SV_COLUMNS
-            def rows = lines.drop(1).collect { l -> [SV_COLUMNS, l.split('\t', -1) as List].transpose().collectEntries() }
-            assert rows*.Site1_Hugo_Symbol == ['EML4', 'KIF5B']
+            def header = SV_COLUMNS + ['info.on_panel']
+            assert lines[0].split('\t') as List == header
+            def rows = lines.drop(1).collect { l -> [header, l.split('\t', -1) as List].transpose().collectEntries() }
+            // ROS1 is listed for mutations only, KIF5B not at all
+            assert rows.collect { [it.Site1_Hugo_Symbol, it['info.on_panel']] } == [['EML4', 'true'], ['CD74', 'false'], ['KIF5B', 'false']]
         }
     }
 }

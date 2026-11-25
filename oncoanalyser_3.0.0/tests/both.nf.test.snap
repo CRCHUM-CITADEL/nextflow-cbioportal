@@ -87,8 +87,8 @@
                 "T1-1DT.data_mutational_signatures_counts_ID.txt:md5,314ce3ea3b7c5cd1a1ac01b0fce5a693",
                 "T1-1DT.data_mutational_signatures_counts_SBS.txt:md5,4b85182705d6bffbb3033fac4dc09c13",
                 "T1-1DT.data_sv.txt:md5,9c7623f9f5baca16b8972b1f95ed7321",
-                "T1-1DT.somatic_rna.maf:md5,2f68c5a400fd50110c4445a725fb1a8d",
-                "T1-1DT.somatic_rna_germline.maf:md5,d630d48c1fc61d2867ebc9f06714760e",
+                "T1-1DT.somatic_rna.maf:md5,09936ecdf4258c0f826ba255be9db675",
+                "T1-1DT.somatic_rna_germline.maf:md5,8b689e2518cd9965bb9347f193b0e451",
                 "T1-1DT.tpm.tsv:md5,ace968455e962f7d9659c82a0b6bf2ca",
                 "T1-1DT_data_cna_hg38.seg:md5,fe621541edc44201965b3c93c1055fdc",
                 "T1-1DT_data_cna_long.txt:md5,a01143cdb84a3a3de0185b1406565fc4",
@@ -101,8 +101,8 @@
                 "T2-T.data_mutational_signatures_counts_ID.txt:md5,394d20ca0f35ee29f74b3141a27a6f29",
                 "T2-T.data_mutational_signatures_counts_SBS.txt:md5,965d01ee181fb41c351fade634138a70",
                 "T2-T.data_sv.txt:md5,46a866f6a56b597254907aec825fc349",
-                "T2-T.somatic_rna.maf:md5,d59219af48774469259e9998057cab30",
-                "T2-T.somatic_rna_germline.maf:md5,f5a37ac2be682e00235ca195cf1d3d17",
+                "T2-T.somatic_rna.maf:md5,9f20148b8149e26561b46a58456593d9",
+                "T2-T.somatic_rna_germline.maf:md5,a6fde18205094eee2a5681777907f42f",
                 "T2-T.tpm.tsv:md5,5212369b41f9e3b0cbd320f9a214feb8",
                 "T2-T_data_cna_hg38.seg:md5,939ff434c2fc8341de2c2efa99b642a3",
                 "T2-T_data_cna_long.txt:md5,6389d2b5b591bf02c82a1e6be3abd8c1",
@@ -124,7 +124,7 @@
                 "data_mutational_signatures_counts_DBS.txt:md5,3dceffb5f3775f8fa3366bc771a2f9e2",
                 "data_mutational_signatures_counts_ID.txt:md5,a5296d963e7bd5274b6f0674d3270e3d",
                 "data_mutational_signatures_counts_SBS.txt:md5,a26a6a03ff495fe4ee24605952c377d7",
-                "data_mutations_dna_rna_germline.txt:md5,7638dddb60975f160a0d53bdaad337d7",
+                "data_mutations_dna_rna_germline.txt:md5,8d99e5d9fb591c6cd5f74a4a119a65be",
                 "data_sv.txt:md5,3f3eb84de8a6c5d163b198a22075279e",
                 "data_timeline.txt:md5,48e4a8a7ef89899bd171ac7aad99faaf",
                 "meta_cancer_type.txt:md5,b5a9f61c582810fdcd5056c42d2c96a6",
@@ -146,7 +146,7 @@
                 "util_linking_file.txt:md5,74ba4d7e0241c94fd014a4d994a83497"
             ]
         ],
-        "timestamp": "2026-11-23T07:50:06.176069199",
+        "timestamp": "2026-11-25T07:47:45.187131537",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.4"

@@ -67,7 +67,9 @@ nextflow run main.nf \
 
 VCF → MAF uses [mafsmith](https://github.com/nf-osi/mafsmith) + fastVEP (GRCh37, PASS records only), run from the `mafsmith-fastvep` container (see [Containers](#containers)).
 
-`--mafsmith_data` is optional. When it is omitted, empty or `null`, the GRCh37 reference bundle (Ensembl 113) is downloaded once into `assets/mafsmith/` and reused by later runs. A pre-staged bundle must contain `GRCh37/reference.fa` and `GRCh37/genes.gff3.gz`. `MAFSMITH` fails if either file is missing or empty.
+`--mafsmith_data` is optional. When it is omitted, empty or `null`, the GRCh37 reference bundle (Ensembl GRCh37.87, the final GRCh37 gene set) is downloaded once into `assets/mafsmith/` and reused by later runs. A pre-staged bundle must contain `GRCh37/reference.fa` and `GRCh37/genes.gff3.gz`. `MAFSMITH` fails if either file is missing or empty.
+
+`HGVSp` / `HGVSp_Short` use one transcript per gene from `--mafsmith_custom_enst` (default `assets/grch37_mskcc_canonical_transcripts.txt.gz`: the Genome Nexus MSKCC canonical transcripts cBioPortal uses, e.g. BRAF `ENST00000288602`; see [Preferred transcripts](#preferred-transcripts)). GRCh37.87 marks no transcript as canonical, so without the list mafsmith takes the longest cDNA, and BRAF V600E (rs113488022) came out as `p.V208E`. Samples already in `--outdir` keep the protein changes they were annotated with: delete `{outdir}/samples/*/*_mutations.txt` to re-annotate them.
 
 > A `-stub-run` with `--skip_mafsmith false` stores an **empty** `assets/mafsmith/`. Delete it afterwards, or later real runs will reuse it and fail on the missing reference files.
 
@@ -89,7 +91,6 @@ nextflow run main.nf ... --filter_tsv_variants true
 | CNAs      | Raw `Copy Number` ≥ 6, so all deletions are dropped                                                              | `--cna_min_copy_number` (6)                               |
 | Fusions   | Taken from the TSV, even when a `*-star-fusion.final.vcf` exists. `Supporting Reads` summed per gene pair ≥ 1000 | `--sv_min_supporting_reads` (1000)                        |
 
-With `--fusion_metrics <file.tsv>`, fusions come from that one cohort-wide TSV instead of each sample's export TSV or STAR-Fusion VCF. Its `###` lines are skipped, the `#Sample` line is the header, and rows are matched to samples on `#Sample` (the samplesheet `sample_id`). Only `Total Reads` and `ZR-score` are used as metrics; `Total Reads` becomes `Tumor_Variant_Count`. Fusions are per-sample outputs, so samples already in `--outdir` keep their old fusions: delete `{outdir}/samples/*/*_sv.txt` to rebuild them.
 With `--fusion_metrics <file.tsv>`, fusions come from that one cohort-wide TSV instead of each sample's export TSV or STAR-Fusion VCF. Its `###` lines are skipped, the `#Sample` line is the header, and rows are matched to samples on `#Sample`: the samplesheet `sample_id`, the sample folder name, or the folder name without its leading `NNNN_` (folder `1000_23BM004967-1-A01-1` matches `23BM004967-1-A01-1`), ignoring case. Gene names come from `GeneA`/`GeneB`, or from `Fusion` (`ROS1--CD74`) when those hold Ensembl placeholders. Only `Junction Read Count` (reads across the fusion breakpoint) and `ZR-score` are used as metrics; `Junction Read Count` becomes `Tumor_Variant_Count` and `ZR-score` the `FusionMetrics.ZR_score` column of `data_sv.txt` (`NA` for fusions from other sources). `meta_sv.txt` then declares `namespaces: FusionMetrics`, so cBioPortal shows the ZR-score in its structural variant tables. `Total Reads` is ignored: it is the sample's library size, the same for every fusion of a sample. Fusions are per-sample outputs, so samples already in `--outdir` keep their old fusions: delete `{outdir}/samples/*/*_sv.txt` to rebuild them.
 
 `data_seg.txt` is not filtered. Filter mode runs per sample, so samples already in `--outdir` are not re-filtered. Use a fresh `--outdir` when you turn it on or change a threshold.
@@ -103,6 +104,28 @@ Optional filters on the merged data. They are off by default and, unlike filter 
 | CNV depth QC | A sample's CNV calls, unless ≥ 95% of its PASS Pisces variants have depth ≥ 250. The sample is left out of the CNA case lists; mutations and SVs are kept                                      | `--filter_cnv_depth` (false), `--cnv_min_depth` (250), `--cnv_min_depth_fraction` (0.95), `--cnv_depth_pass_only` (true)                                   |
 
 Values equal to a threshold are kept, and a missing gnomAD or VAF value never drops a mutation. The CNV depth QC writes `qc/cnv_depth_qc.tsv`.
+
+#### Gene panel
+
+`--gene_panel <file.tsv>` lists which genes the panel covers for each data type. Mutations and CNAs of unlisted genes are removed, and so is a fusion when neither partner is listed (EML4-ALK is kept when `ALK` is listed). Like the filters above, it runs on the merged data, so samples already in `--outdir` are filtered too. The file is tab-separated, with one row per gene and type (`fusion` means the same as `sv`; `#` lines are ignored):
+
+```
+gene	type
+TP53	mutation
+ERBB2	cna
+ALK	sv
+```
+
+Every type needs at least one gene, otherwise the run stops, so that a typo cannot empty a whole data type. From the same file the pipeline writes the cBioPortal gene panel files:
+
+- `gene_panels/gene_panel_<study_id>_{mutation,cna,sv}.txt`: one panel definition per type
+- `data_gene_panel_matrix.txt` + `meta_gene_panel_matrix.txt`: every sample in the samplesheet is profiled with these panels (samples that failed the CNV depth QC get `NA` for CNA)
+
+With the matrix, cBioPortal computes a gene's frequency over every sample profiled for that gene, i.e. the whole cohort, instead of only the samples that have data of that type. Genes not on the panel show as not profiled. **Import the panel definitions before the study**, once per new or changed panel:
+
+```bash
+importGenePanel.pl --data gene_panels/gene_panel_<study_id>_mutation.txt   # and _cna, _sv
+```
 
 Segment data (`data_seg.txt`, `meta_seg.txt`) is off by default. cBioPortal computes _Fraction Genome Altered_ from it, which is not meaningful for an amplicon panel:
 
@@ -124,7 +147,7 @@ The `gnomAD.*` and `ClinVar.*` columns also appear in the cBioPortal mutation ta
 
 - **gnomAD:** a mutation is dropped when `gnomAD.AF_max` is above `--max_gnomad_af` (0.01), so one ancestry above the threshold is enough. A mutation at or below the threshold, or one gnomAD has never seen, is always kept. Use `--gnomad_af_columns gnomAD.AF` for the previous combined-total rule.
 - **ClinVar exception:** a mutation above the threshold is still kept when its ClinVar classification includes one of `--clinvar_keep_classes` (default `Pathogenic,Likely_pathogenic`; `Pathogenic/Likely_pathogenic` and `Pathogenic, low penetrance` count). A conflicting call counts when its breakdown lists one of them, even next to benign entries. A mutation ClinVar has never seen gets no exception. Set `--clinvar_keep_classes ''` to filter on gnomAD alone.
-- Genome Nexus sometimes answers without the gnomAD data. Variants missing gnomAD or ClinVar data are asked again (up to two more times) before being treated as absent, which can add up to 30 s to the step.
+- Genome Nexus sometimes answers without the gnomAD data. Variants missing gnomAD or ClinVar data are asked again (up to five more times, in smaller and smaller batches) before being treated as absent, which can add up to 2.5 min to the step.
 
 - The step needs **outbound HTTPS** from the node it runs on. If Genome Nexus can't be reached, the run fails rather than keeping every mutation.
 - Only the variant (chromosome, positions, alleles) is sent, never sample or patient IDs.
@@ -137,6 +160,30 @@ Resume a previous run:
 ```bash
 nextflow run main.nf ... -resume
 ```
+
+#### Preferred transcripts
+
+`assets/grch37_mskcc_canonical_transcripts.txt.gz` is the default `--mafsmith_custom_enst`. It was built on 2026-11-05 from the [genome-nexus-importer](https://github.com/genome-nexus/genome-nexus-importer) repository, commit `dddb2880cd4a23d5d8d25d573fcfcb5fb2ade9bf`, file [`data/grch37_ensembl92/export/ensembl_biomart_canonical_transcripts_per_hgnc.txt`](https://github.com/genome-nexus/genome-nexus-importer/blob/dddb2880cd4a23d5d8d25d573fcfcb5fb2ade9bf/data/grch37_ensembl92/export/ensembl_biomart_canonical_transcripts_per_hgnc.txt). That table gives one transcript per HGNC gene for several sources. The asset takes column 12, `mskcc_canonical_transcript`: the MSKCC isoform overrides (`data/common_input/isoform_overrides_at_mskcc_grch37.txt`, 522 genes) and, for every other gene, the Ensembl transcript Genome Nexus would pick. These are the transcripts Genome Nexus and cBioPortal use for GRCh37.
+
+The file has one `ENST<tab>gene` line per transcript (40,425 lines). mafsmith reads only the first column and skips `#` lines. Entries that are not a plain `ENST…` ID (`None`) are left out, and so is any transcript listed for a second gene. IDs are unversioned on purpose: fastVEP writes transcript IDs without a version, so `ENST00000288602.6` would never match.
+
+To rebuild it (for example from a newer commit):
+
+```bash
+SHA=dddb2880cd4a23d5d8d25d573fcfcb5fb2ade9bf
+curl -sL https://raw.githubusercontent.com/genome-nexus/genome-nexus-importer/$SHA/data/grch37_ensembl92/export/ensembl_biomart_canonical_transcripts_per_hgnc.txt > canonical.txt
+{
+  echo "# Preferred GRCh37 transcripts for mafsmith vcf2maf --custom-enst (one per gene; first column is read)."
+  echo "# Source: genome-nexus/genome-nexus-importer@$SHA"
+  echo "#   data/grch37_ensembl92/export/ensembl_biomart_canonical_transcripts_per_hgnc.txt, column mskcc_canonical_transcript"
+  echo "#   (MSKCC isoform overrides, else Ensembl longest), the transcripts Genome Nexus / cBioPortal use."
+  echo "# IDs are unversioned: fastVEP writes CSQ Feature without the version, and a versioned ID never matches."
+  printf '# enst_id\thgnc_symbol\n'
+  awk -F'\t' 'NR>1 && $12~/^ENST[0-9]+$/ && !seen[$12]++ {print $12"\t"$1}' canonical.txt
+} | gzip -n > assets/grch37_mskcc_canonical_transcripts.txt.gz
+```
+
+After changing the list, delete `{outdir}/samples/*/*_mutations.txt` so existing samples are annotated again.
 
 ### Containers
 

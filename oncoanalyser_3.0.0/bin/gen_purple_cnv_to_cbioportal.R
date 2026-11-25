@@ -1,20 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Convert PURPLE CNV output to cBioPortal SEG and discrete CNA DISCRETE_LONG formats.
-# PURPLE produces purity/ploidy-adjusted absolute copy numbers.
-#
-# Copy numbers are scored against the copy number the sample is expected to carry,
-# which is not 2 on the sex chromosomes (see expected_cn() below). Copy number is
-# first converted to its diploid equivalent, min_cn * 2 / baseline, and then binned:
-#   < 0.5  → -2  (homozygous deletion)
-#   < 1.5  → -1  (hemizygous deletion)
-#   <= 3.5 →  0  (neutral / diploid)
-#   <= 6.0 →  1  (gain)
-#   > 6.0  →  2  (high-level amplification)
-# On a haploid baseline an absolute copy number below 0.5 is always -2: there is
-# only one copy to lose, so the hemizygous bin does not apply.
-#
-# SEG output uses log2(copyNumber / baseline) as the segment mean value.
+# PURPLE CNV → cBioPortal SEG (log2(CN / baseline)) and DISCRETE_LONG (CN scaled to diploid, then binned; bins in the fcase() below)
 
 suppressPackageStartupMessages({
     library(optparse)
@@ -38,10 +24,7 @@ for (arg in c("purple_cnv_somatic", "purple_cnv_gene", "sample_id",
     if (is.null(opt[[arg]])) stop(paste("Missing required argument: --", arg, sep = ""))
 }
 
-# ── 0. Sample sex, for the chrX/chrY baseline ──────────────────────────────
-# PURPLE's own gender call: MALE, FEMALE or MALE_KLINEFELTER. Anything else
-# (including no purity file at all) falls back to NA, which expected_cn()
-# treats as diploid everywhere -- today's behaviour.
+# ── 0. Sample sex for the chrX/chrY baseline: PURPLE's gender call, else NA (diploid everywhere) ──
 
 sample_sex <- NA_character_
 if (!is.null(opt$purple_purity) && file.exists(opt$purple_purity)) {
@@ -53,9 +36,7 @@ if (!is.null(opt$purple_purity) && file.exists(opt$purple_purity)) {
 }
 cat("Resolved sample sex:", ifelse(is.na(sample_sex), "unknown (diploid baseline)", sample_sex), "\n")
 
-# Expected copy number baseline for a chromosome given the sample's sex.
-# NA means "not measured for this sex" (chrY in a female) -- the caller drops
-# those rows rather than scoring them against a baseline that doesn't exist.
+# Expected copy number for a chromosome given sex; NA (chrY in a female) means the row is dropped
 expected_cn <- function(chromosome, sex) {
     chrom <- sub("^chr", "", chromosome)
     fcase(
@@ -92,19 +73,7 @@ purple_gene <- purple_gene[!is.na(baseline)]
 
 purple_gene[, cn_equiv := min_cn * 2 / baseline]
 
-# An unparseable copy number must not be scored. fcase() returns `default` when
-# every condition is NA rather than propagating NA, so a gene whose minCopyNumber
-# failed to parse used to fall through to 2 -- a high-level amplification,
-# indistinguishable from a real one.
-#
-# Drop the row rather than write NA. cBioPortal folds DISCRETE_LONG into its wide
-# DISCRETE form on import and renders an absent (gene, sample) pair as "not
-# profiled", which is exactly what an unparseable call means. An explicit NA would
-# pass validateData.py -- NA is in CNADiscreteLongValidator.ALLOWED_CNA_VALUES --
-# and then abort the load: CnaUtil.createAlteration() ends in
-# Integer.valueOf(value).shortValue() with no NA branch, and the line loop in
-# ImportCnaDiscreteLongData has no try/catch, so the NumberFormatException
-# propagates and fails the whole study import.
+# An unparseable copy number is dropped, not scored (fcase() would default it to 2) nor written as NA (aborts the import)
 n_unscored <- sum(is.na(purple_gene$cn_equiv))
 if (n_unscored > 0) {
     warning(sprintf("Dropping %d gene(s) with an unparseable %s",

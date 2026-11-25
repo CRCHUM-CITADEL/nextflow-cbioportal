@@ -2,11 +2,7 @@
 
 library(tidyverse)
 
-#' Process copy number variation data for deep learning input
-#' @param input_file Path to input CNV data
-#' @param output_file Path to output processed data
-#' @return invisible data frame
-#' @export
+# Process CNV data for deep learning input
 process_cnv_data <- function(input_file, output_file) {
   # Read data
   message("Reading CNV data...")
@@ -19,8 +15,7 @@ process_cnv_data <- function(input_file, output_file) {
   cnv_cleaned <- cnv_data %>%
     mutate(Gene_ID = sub("\\.[0-9]+$", "", Gene_ID)) %>%
     group_by(Gene_ID) %>%
-    # If multiple transcripts collapse to the same gene, take the first one
-    # to guarantee unique row names without crashing
+        # Transcripts collapsing to one gene keep the first, so row names stay unique
     summarise(across(everything(), first), .groups = "drop")
 
   dedup_genes <- nrow(cnv_cleaned)
@@ -33,11 +28,7 @@ process_cnv_data <- function(input_file, output_file) {
   # Count missing values for the summary (NAs are retained)
   na_count <- sum(is.na(cnv_matrix))
 
-  # 2. Filter uninformative (Zero-Variance or All-NA) genes
-  # Keep only genes that have at least one CNV event (!= 0) in the cohort.
-  # na.rm = TRUE ensures that NAs are ignored during this check, so a gene
-  # with a mix of 0s and NAs will be correctly dropped, while a gene with
-  # at least one valid 1, -1, 2, or -2 will be kept.
+    # 2. Keep genes with at least one CNV event (!= 0, NAs ignored) in the cohort
   print(head(cnv_matrix))
   informative_mask <- rowSums(cnv_matrix != 0, na.rm = TRUE) > 0
 

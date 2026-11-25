@@ -23,7 +23,8 @@ rejected (converters `stop()` without the 3.0 columns).
   `mafsmith.nf.test` runs the real binary with `--skip-annotation` to guard this
 - `Mutation_Status` is only `Somatic` (set by `MAFSMITH`) or `Germline` (CPSR rows); cBioPortal and
   `ml_format_mutation.R` rely on it. RNA evidence goes in `RNA.depth/vaf/ref_count/alt_count/expressed`
-  (namespace `RNA` in `meta_sequenced.txt`), never in `Mutation_Status`
+  (namespace `RNA` in `meta_sequenced.txt`), never in `Mutation_Status`. `RNA.expressed` is a summary,
+  `RNA(d=<depth>,v=<vaf>)` / `RNA(data=NO)`, not a thresholded flag (empty on germline rows)
 - Every DNA subject reaches the MAF with or without RNA (`remainder: true` join; `[]` RNA input);
   the `RNA.*` columns are always written so the group merge stays rectangular
 - `--retain-ann` reads CSQ subfields only, so `annotate_maf_with_vcf_info.py` joins 16 INFO fields
@@ -153,7 +154,11 @@ rejected (converters `stop()` without the 3.0 columns).
 - The samplesheet defines the cohort: group files are rebuilt each run; a dropped subject is warned about
   (via the previous `util_linking_file.txt`) and left out of the study
 - No somatic VCF → no reference download (`DOWNLOAD_*` gated on `count().filter { it > 0 }`)
-- Case lists use `toList()`, not `collect()` (empty channel would shift `GENERATE_CASE_LIST`'s zip)
+- Case lists (`case_list_defs` in `GENOMIC_AGGREGATE_OUTPUT`): standard suffixes `_sequenced`, `_cna`, `_cnaseq`, `_sv`,
+  `_rna_seq_v2_mrna`, `_3way_complete`, each with its `case_list_category`; combined lists are intersections. Built from one
+  `[profile, sample]` stream via `toList()` (not `collect()`: must emit when empty). Empty lists are never written. No
+  `cases_all.txt`: `add_global_case_list` makes `_all`. On `--incremental`, cBioPortal drops loaded samples from every list
+  not in `case_lists/`, so a list must hold exactly the samples with that data. RNA = samples in `data_expression.txt`
 
 ## `--mode genomic-dna-only`
 
@@ -163,8 +168,8 @@ rejected (converters `stop()` without the 3.0 columns).
   `GENOMIC_AGGREGATE_OUTPUT` drops TPM input and the expression meta file
 - `hasOncoOutput(meta, rel)` (`workflows/genomic.nf`) skips a step when `purple/`, the PURPLE SV VCF or
   `sigs/` is absent
-- Under dna-only only, meta files and case lists exist only for data types with output (labels travel
-  with their lists), and groups come from CNV/SV/mutation output. Genomic/both paths are untouched
+- Under dna-only only, meta files exist only for data types with output (labels travel with their
+  lists; case lists do this in every mode), and groups come from CNV/SV/mutation output
 - Every dna-only branch is behind `isDnaOnly()`: other modes must stay byte-identical
 - `data_clinical_sample.txt` = TMB/HRD attributes, as in genomic mode. No DNA-only `both`
 

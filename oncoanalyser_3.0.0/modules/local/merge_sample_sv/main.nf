@@ -14,8 +14,7 @@ process MERGE_SAMPLE_SV {
         task.ext.when == null || task.ext.when
 
     script:
-    // Sort by name: the input channel's order varies between runs, which would
-    // otherwise make this file (and the group-level data_sv.txt) non-reproducible.
+    // Sorted by name: channel order varies between runs and would make data_sv.txt non-reproducible
     def files = (sv_files instanceof List ? sv_files : [sv_files]).sort { it.name }
     def data_cmds = files.collect { f -> "tail -n +2 ${f}" }.join('; ')
     """

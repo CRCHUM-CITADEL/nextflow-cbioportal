@@ -6,14 +6,7 @@ nextflow_process {
     tag "module"
     tag "ml"
 
-    // Exercises the vectorized encoders end to end against a small hand-built MAF-derived
-    // fixture, hitting: a hotspot match, a hotspot gene with an unmatched AA change
-    // ("_other"), a hotspot gene with an NA AA change ("_other"), a non-hotspot gene, two
-    // mutations in one sample+gene where the higher-weight one wins on the gene-level
-    // encodings but both land in different hybrid columns, an NA dna_vaf that must
-    // propagate to NA regardless of the other contributing row's value, and an RNA-effect
-    // row that must be dropped entirely rather than becoming a column. See
-    // tests/modules/fixtures/process_ml_mutation/ for the exact rows.
+    // Vectorized encoders on a small fixture covering hotspots, "_other" fallbacks, weight ties, NA VAF and RNA rows
     test("Hand-built somatic fixture with pre-staged hotspots — all five encodings") {
 
         config "tests/modules/nextflow_process_ml_mutation.config"
@@ -48,8 +41,7 @@ nextflow_process {
             def hybrid_lines = path(hybrid_path.toString()).readLines()
             def hybrid_header = hybrid_lines[0].split('\t')
 
-            // The matched hotspot and both "_other" fallbacks (unmatched AA change,
-            // NA AA change) must all appear as distinct columns.
+            // The hotspot and both "_other" fallbacks (unmatched / NA AA change) are distinct columns
             assert hybrid_header.contains('TP53_R248_W')
             assert hybrid_header.contains('TP53_other')
             assert hybrid_header.contains('KRAS_G12_D')
@@ -57,9 +49,7 @@ nextflow_process {
 
             def s1_row = hybrid_lines.find { it.startsWith('S1\t') }.split('\t')
             def col = { name -> s1_row[hybrid_header.toList().indexOf(name)] }
-            // S1/TP53: R248W (Missense, weight 2, vaf .4) hits the hotspot column;
-            // G245S (Nonsense, weight 4, vaf .6) is unmatched and hits "_other" —
-            // both survive as separate hybrid columns even though they share a sample+gene.
+            // S1/TP53: R248W hits the hotspot column, G245S "_other"; both survive in the hybrid encoding
             assert col('TP53_R248_W') == '0.8'
             assert col('TP53_other') == '2.4'
             // S1/KRAS: Splice_Site with an NA AA change also falls into "_other".
@@ -69,20 +59,17 @@ nextflow_process {
             def integrated_lines = path(integrated_path.toString()).readLines()
             def integrated_header = integrated_lines[0].split('\t')
             def s1_integrated = integrated_lines.find { it.startsWith('S1\t') }.split('\t')
-            // On the gene-level (non-hybrid) encodings, the two TP53 rows collapse to one
-            // column: the higher-weight row (Nonsense_Mutation, weight 4) wins outright.
+            // Gene-level encodings collapse the TP53 rows: the higher weight (Nonsense, 4) wins
             assert s1_integrated[integrated_header.toList().indexOf('TP53')] == '2.4'
 
             def vaf_path = process.out[0].flatten().find { it.toString().endsWith('mutations_processed_vaf.tsv') }
             def vaf_lines = path(vaf_path.toString()).readLines()
             def vaf_header = vaf_lines[0].split('\t')
             def s2_vaf = vaf_lines.find { it.startsWith('S2\t') }.split('\t')
-            // S2/GENEX: one row has dna_vaf NA (simulating t_depth == 0); NA must
-            // propagate to the cell regardless of the other row's valid value.
+            // S2/GENEX: an NA dna_vaf propagates to the cell whatever the other row's value
             assert s2_vaf[vaf_header.toList().indexOf('GENEX')] == 'NA'
 
-            // RNAGENE only ever appears on an effect=="RNA" row, which is dropped before
-            // any column is built — it must not surface as a column anywhere.
+            // RNAGENE only has an effect=="RNA" row, which is dropped before any column is built
             assert !hybrid_header.contains('RNAGENE')
             assert !integrated_header.contains('RNAGENE')
 

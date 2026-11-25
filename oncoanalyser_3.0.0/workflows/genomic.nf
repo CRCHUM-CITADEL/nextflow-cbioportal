@@ -1,8 +1,4 @@
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+// ── Imports ──
 include { softwareVersionsToYAML    } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { GENOMIC_CNV                  } from '../subworkflows/local/genomic_cnv'
 include { GENOMIC_SV                   } from '../subworkflows/local/genomic_sv'
@@ -41,6 +37,18 @@ def hasOncoOutput(meta, rel) {
 }
 
 
+// [meta + [pipeline: p], <folder>/<rel>] per subject that has the file; `gate` (dna-only) skips subjects lacking it. {s} = subject
+def oncoInput(ch_samples, rel, pipeline, label, gate = null) {
+    return ch_samples
+        .filter { meta -> gate == null || hasOncoOutput(meta, gate.replace('{s}', meta.subject)) }
+        .map { meta ->
+            def f = findOncoFile(meta, "${meta.folder}/${rel.replace('{s}', meta.subject)}", label)
+            f ? [meta + [pipeline: pipeline], f] : null
+        }
+        .filter { it != null }
+}
+
+
 // dna-only inputs: label, path relative to the subject folder, steps skipped without it.
 def dnaOnlyInputs(meta) {
     return [
@@ -51,12 +59,7 @@ def dnaOnlyInputs(meta) {
 }
 
 
-// Subjects the previous run put in the study, read from the linking file it left
-// behind. That file is an exact record of the last cohort, which beats scanning the
-// group directory for subject folders (that directory also holds case_lists/,
-// machine_learning/ and the flat data_*/meta_* files).
-//
-// Must be called before ch_linking_file overwrites it for this run.
+// Subjects of the previous run, from its linking file; call before ch_linking_file overwrites it
 def previousCohort(group) {
     def linking = file("${params.outdir}/${group}/util_linking_file.txt", checkIfExists: false)
     if (!linking.exists()) {
@@ -70,11 +73,7 @@ def previousCohort(group) {
 }
 
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RUN MAIN WORKFLOW
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+// ── Main workflow ──
 
 workflow GENOMIC {
 
@@ -96,9 +95,7 @@ workflow GENOMIC {
 
         ch_versions = channel.empty()
 
-        // ── Parse samplesheet ────────────────────────────────────────────────
-        // One row per subject: group, subject_id, sample_id, folder.
-        // All modality files are resolved relative to folder.
+        // ── Parse samplesheet: one row per subject; files resolve relative to its folder ──
 
         ch_samples = samplesheet_list
             .map { rec ->
@@ -110,10 +107,7 @@ workflow GENOMIC {
                 ]
             }
 
-        // The samplesheet defines the cohort: the group-level study files are rebuilt
-        // from it on every run, so a subject dropped from the samplesheet disappears
-        // from the study even though its per-subject folder is still on disk. Read the
-        // previous cohort now, before ch_linking_file rewrites it further down.
+        // A subject dropped from the samplesheet leaves the study; read the old cohort before it is overwritten
         previous_cohort = previousCohort("${params.study_id}")
 
         ch_samples
@@ -129,58 +123,19 @@ workflow GENOMIC {
                 }
             }
 
-        // ── Build per-modality input channels ─────────────────────────────────
-        // File naming conventions (relative to folder), oncoanalyser 3.0 layout:
-        //   purple/${subject}-T.purple.somatic.vcf.gz              — PURPLE somatic DNA (PAVE-annotated)
-        //   purple/${subject}-T.purple.germline.vcf.gz             — PURPLE germline DNA
-        //   sage_append/${subject}-T/${subject}-T.sage.append.vcf.gz — SAGE somatic RNA append
-        //   purple/${subject}-T.purple.sv.vcf.gz                   — PURPLE somatic SVs
-        //   purple/${subject}-T.purple.cnv.somatic.tsv
-        //   purple/${subject}-T.purple.cnv.gene.tsv
-        //   purple/${subject}-T.purple.purity.tsv                  — sex, TMB/TML
-        //   chord/${subject}-T.chord.prediction.tsv                — HRD
-        //   isofox/${subject}-T.isf.gene_data.tsv
-        //   isofox/${subject}-T.isf.pass_fusions.tsv
-        //   sigs/${subject}-T.sig.snv_counts.csv
+        // ── Per-modality inputs (oncoanalyser 3.0 layout, paths relative to folder) ──
 
         // PURPLE somatic VCF → mutations
-        ch_somatic_vcf = ch_samples
-            .filter { meta -> hasOncoOutput(meta, 'purple') }
-            .map { meta ->
-                def vcf = findOncoFile(meta,
-                    "${meta.folder}/purple/${meta.subject}-T.purple.somatic.vcf.gz",
-                    'mutation (PURPLE somatic)')
-                vcf ? [meta + [pipeline: 'mutation'], vcf] : null
-            }
-            .filter { it != null }
+        ch_somatic_vcf = oncoInput(ch_samples, 'purple/{s}-T.purple.somatic.vcf.gz', 'mutation', 'mutation (PURPLE somatic)', 'purple')
 
         // PURPLE germline VCF → germline mutations (to CPSR unfiltered, normal column only)
-        ch_germline_vcf = ch_samples
-            .filter { meta -> hasOncoOutput(meta, 'purple') }
-            .map { meta ->
-                def vcf = findOncoFile(meta,
-                    "${meta.folder}/purple/${meta.subject}-T.purple.germline.vcf.gz",
-                    'germline mutation (PURPLE)')
-                vcf ? [meta + [pipeline: 'mutation_germline'], vcf] : null
-            }
-            .filter { it != null }
+        ch_germline_vcf = oncoInput(ch_samples, 'purple/{s}-T.purple.germline.vcf.gz', 'mutation_germline', 'germline mutation (PURPLE)', 'purple')
 
         // SAGE RNA-append VCF → somatic RNA mutations (none under dna-only)
-        ch_sage_rna_vcf = isDnaOnly()
-            ? channel.empty()
-            : ch_samples
-                .map { meta ->
-                    def vcf = findOncoFile(meta,
-                        "${meta.folder}/sage_append/${meta.subject}-T/${meta.subject}-T.sage.append.vcf.gz",
-                        'mutation (SAGE RNA append)')
-                    vcf ? [meta + [pipeline: 'mutation_rna'], vcf] : null
-                }
-                .filter { it != null }
+        ch_sage_rna_vcf = isDnaOnly() ? channel.empty()
+            : oncoInput(ch_samples, 'sage_append/{s}-T/{s}-T.sage.append.vcf.gz', 'mutation_rna', 'mutation (SAGE RNA append)')
 
-        // PURPLE CNV somatic + gene TSV → copy-number
-        // The purity file is optional: it only supplies the sample's sex for the
-        // chrX/chrY baseline, so a subject without one still gets CNV output —
-        // just with a diploid baseline everywhere, same as before this file existed.
+        // PURPLE CNV somatic + gene TSV → copy-number; the optional purity file only sets sex (else diploid baseline)
         ch_purple_cnv = ch_samples
             .filter { meta -> hasOncoOutput(meta, 'purple') }
             .map { meta ->
@@ -200,83 +155,21 @@ workflow GENOMIC {
             .filter { it != null }
 
         // PURPLE somatic SV VCF (ESVEE's records + PURPLE copy number) → structural variants
-        ch_purple_sv = ch_samples
-            .filter { meta -> hasOncoOutput(meta, "purple/${meta.subject}-T.purple.sv.vcf.gz") }
-            .map { meta ->
-                def vcf = findOncoFile(meta,
-                    "${meta.folder}/purple/${meta.subject}-T.purple.sv.vcf.gz",
-                    'sv (PURPLE)')
-                vcf ? [meta + [pipeline: 'sv'], vcf] : null
-            }
-            .filter { it != null }
+        ch_purple_sv = oncoInput(ch_samples, 'purple/{s}-T.purple.sv.vcf.gz', 'sv', 'sv (PURPLE)', 'purple/{s}-T.purple.sv.vcf.gz')
 
-        // Isofox gene expression CSV → TPM (none under dna-only)
-        ch_isofox_exp = isDnaOnly()
-            ? channel.empty()
-            : ch_samples
-                .map { meta ->
-                    def exp = findOncoFile(meta,
-                        "${meta.folder}/isofox/${meta.subject}-T.isf.gene_data.tsv",
-                        'expression (Isofox)')
-                    exp ? [meta + [pipeline: 'expression'], exp] : null
-                }
-                .filter { it != null }
+        // Isofox gene expression → TPM (none under dna-only)
+        ch_isofox_exp = isDnaOnly() ? channel.empty()
+            : oncoInput(ch_samples, 'isofox/{s}-T.isf.gene_data.tsv', 'expression', 'expression (Isofox)')
 
-        // Isofox pass_fusions CSV (tumor RNA) → RNA fusions for data_sv.txt (none under dna-only)
-        ch_isofox_fusion = isDnaOnly()
-            ? channel.empty()
-            : ch_samples
-                .map { meta ->
-                    def fusions = findOncoFile(meta,
-                        "${meta.folder}/isofox/${meta.subject}-T.isf.pass_fusions.tsv",
-                        'rna fusion (Isofox)')
-                    fusions ? [meta + [pipeline: 'sv_rna_fusion'], fusions] : null
-                }
-                .filter { it != null }
+        // Isofox pass_fusions (tumor RNA) → RNA fusions for data_sv.txt (none under dna-only)
+        ch_isofox_fusion = isDnaOnly() ? channel.empty()
+            : oncoInput(ch_samples, 'isofox/{s}-T.isf.pass_fusions.tsv', 'sv_rna_fusion', 'rna fusion (Isofox)')
 
-        // SBS signature fitting from snv_counts.csv
-        ch_sigs_for_assignment = ch_samples
-            .filter { meta -> hasOncoOutput(meta, 'sigs') }
-            .map { meta ->
-                def f = findOncoFile(meta,
-                    "${meta.folder}/sigs/${meta.subject}-T.sig.snv_counts.csv",
-                    'SNV counts (SigProfiler SBS)')
-                f ? [meta + [pipeline: 'sigs'], f] : null
-            }
-            .filter { it != null }
-
-        // DBS signature fitting: extract from PURPLE somatic VCF
-        ch_sigs_dbs = ch_samples
-            .filter { meta -> hasOncoOutput(meta, 'purple') }
-            .map { meta ->
-                def f = findOncoFile(meta,
-                    "${meta.folder}/purple/${meta.subject}-T.purple.somatic.vcf.gz",
-                    'somatic VCF (SigProfiler DBS)')
-                f ? [meta + [pipeline: 'sigs_dbs'], f] : null
-            }
-            .filter { it != null }
-
-        // ID signature fitting: extract indels from PURPLE somatic VCF
-        ch_sigs_id = ch_samples
-            .filter { meta -> hasOncoOutput(meta, 'purple') }
-            .map { meta ->
-                def f = findOncoFile(meta,
-                    "${meta.folder}/purple/${meta.subject}-T.purple.somatic.vcf.gz",
-                    'somatic VCF (SigProfiler ID)')
-                f ? [meta + [pipeline: 'sigs_id'], f] : null
-            }
-            .filter { it != null }
-
-        // SIGS SNV counts CSV → mutational signature trinucleotide counts
-        ch_sigs_counts = ch_samples
-            .filter { meta -> hasOncoOutput(meta, 'sigs') }
-            .map { meta ->
-                def snv_counts = findOncoFile(meta,
-                    "${meta.folder}/sigs/${meta.subject}-T.sig.snv_counts.csv",
-                    'mutational signature SNV counts')
-                snv_counts ? [meta + [pipeline: 'sigs_counts'], snv_counts] : null
-            }
-            .filter { it != null }
+        // Signatures: SBS fit + trinucleotide counts from snv_counts.csv; DBS and ID extracted from the PURPLE somatic VCF
+        ch_sigs_for_assignment = oncoInput(ch_samples, 'sigs/{s}-T.sig.snv_counts.csv', 'sigs', 'SNV counts (SigProfiler SBS)', 'sigs')
+        ch_sigs_counts = oncoInput(ch_samples, 'sigs/{s}-T.sig.snv_counts.csv', 'sigs_counts', 'mutational signature SNV counts', 'sigs')
+        ch_sigs_dbs    = oncoInput(ch_samples, 'purple/{s}-T.purple.somatic.vcf.gz', 'sigs_dbs', 'somatic VCF (SigProfiler DBS)', 'purple')
+        ch_sigs_id     = oncoInput(ch_samples, 'purple/{s}-T.purple.somatic.vcf.gz', 'sigs_id', 'somatic VCF (SigProfiler ID)', 'purple')
 
         // PURPLE purity + CHORD → TMB/TML/HRD sample attributes. Absent file → NA.
         ch_sample_attributes = ch_samples
@@ -340,9 +233,7 @@ workflow GENOMIC {
             ensembl_annotations
         )
 
-        // ── Per-sample SV files (DNA + RNA fusion) merged into one per sample ─
-        // Files sorted and meta rebuilt from the shared fields, so the task hash is stable
-        // under -resume whatever order the two producers finish in.
+        // ── Per-sample SV files (DNA + RNA fusion) merged; sorted files + rebuilt meta keep -resume stable ──
 
         ch_sv_per_sample = GENOMIC_SV.out.sv_out
             .mix(ISOFOX_FUSION_TO_CBIOPORTAL.out.sv)
@@ -386,9 +277,7 @@ workflow GENOMIC {
             )
         }
 
-        // ── Study-level metadata + cancer type file ──────────────────────────
-        // Skipped on a follow-up load (--incremental): cBioPortal already holds
-        // the study and cancer type from the first load.
+        // ── Study meta + cancer type (skipped on --incremental: cBioPortal already has them) ──
 
         all_groups = ch_samples.map { meta -> meta.group }.unique()
 
@@ -410,9 +299,7 @@ reference_genome: hg38
                 })
         }
 
-        // ── TMB/HRD sample attributes ─────────────────────────────────────────
-        // cBioPortal allows one SAMPLE_ATTRIBUTES file. A genomic-only study has none, so the
-        // attributes become its data_clinical_sample.txt; in both mode CLINICAL joins them onto its own.
+        // ── TMB/HRD sample attributes (cBioPortal allows only one SAMPLE_ATTRIBUTES file) ──
 
         ch_sample_attributes = GENOMIC_AGGREGATE_OUTPUT.out.sample_attributes
 
@@ -447,9 +334,7 @@ data_filename: data_clinical_sample.txt
                 return tuple(group, output_file)
             }
 
-        // ── Files that make up the cBioPortal study package ───────────────────
-        // Packaging itself happens in main.nf, so that in "both" mode the archive
-        // also picks up the clinical and timeline files produced by CLINICAL.
+        // ── Study package files (packaged in main.nf so "both" mode adds the clinical files) ──
 
         all_package_files = GENOMIC_AGGREGATE_OUTPUT.out.cnv
             .mix(GENOMIC_AGGREGATE_OUTPUT.out.cnv_seg)
@@ -483,9 +368,3 @@ data_filename: data_clinical_sample.txt
         package_files = all_package_files   // channel<tuple(group, file)> — files to put in the study archive
         sample_attributes = ch_sample_attributes // channel<tuple(group, file)> — merged TMB/HRD, for CLINICAL to join (both mode)
 }
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    THE END
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/

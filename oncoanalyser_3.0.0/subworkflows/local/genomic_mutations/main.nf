@@ -21,8 +21,7 @@ workflow GENOMIC_MUTATIONS {
         ensembl_annotations // path — BioMart TSV, fills the MAF's Entrez_Gene_Id
 
     main:
-        // Reference data is only needed when there is at least one somatic VCF: with
-        // none this channel stays empty and the download processes never run.
+        // Reference data only when there is at least one somatic VCF (else the downloads never run)
         ch_has_work = som_dna_vcf.count().filter { n -> n > 0 }
 
         ch_vep_data      = needs_vep      ? DOWNLOAD_VEP_TEST(ch_has_work).cache_dir.first() : vep_data.first()
@@ -63,8 +62,7 @@ workflow GENOMIC_MUTATIONS {
             return tuple(meta, maf)
         }
 
-        // Every DNA MAF goes on, with its RNA-append VCF when the subject has one; a plain
-        // join dropped DNA-only subjects entirely. Pairs keep remainder's null padding unambiguous.
+        // Every DNA MAF goes on, with its RNA-append VCF if any (remainder join: a plain join dropped DNA-only subjects)
         som_rna_dna_tuple = som_dna_maf
             .map { meta, maf -> tuple(meta.subject, [meta, maf]) }
             .join(som_rna_vcf.map { meta, vcf -> tuple(meta.subject, [meta, vcf]) }, remainder: true)

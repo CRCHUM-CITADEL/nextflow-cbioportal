@@ -1,11 +1,4 @@
-/*
- * -resume is the pipeline's only caching, so a second run must reuse every task.
- * setup runs the pipeline once in the directory nf-test launches from; the test run then
- * resumes that session. tests/nextflow_resume.config delays T2's tasks in the first run and
- * T1's in the second, so tasks finish in opposite orders: an input that depends on that order
- * (e.g. metas[0] after groupTuple) shows up as rerun. Only PACKAGE_CBIOPORTAL may rerun: it is
- * published with mode 'move', so its output never stays in work/.
- */
+// A -resume run (opposite task order, see nextflow_resume.config) may rerun only PACKAGE_CBIOPORTAL (published with move)
 nextflow_pipeline {
 
     name "Test -resume"

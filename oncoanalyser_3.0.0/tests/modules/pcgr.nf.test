@@ -44,8 +44,7 @@ nextflow_process {
         }
     }
 
-    // Inputs below are the T1 PURPLE germline fixture (columns T1-N, T1) with samples renamed or reordered
-    // by bcftools, so each case's normal column is <subject>-N, as in oncoanalyser output.
+    // Inputs: the T1 germline fixture, samples renamed/reordered by bcftools so the normal is <subject>-N
 
     test("tumour column first — CPSR still gets the normal, found by name") {
 

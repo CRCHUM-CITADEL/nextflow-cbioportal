@@ -1,8 +1,5 @@
 #!/usr/bin/env Rscript
-# Convert HMFTOOLS SIGS SNV counts to per-sample cBioPortal GENERIC_ASSAY format.
-# Input: {subject}-T.sig.snv_counts.csv (columns: BucketName, {sample_id})
-# Output: {sample}.data_mutational_signatures_counts_SBS.txt (ENTITY_STABLE_ID, NAME, DESCRIPTION, {sample})
-# Context names are transformed from C>A_ACA to A[C>A]A format.
+# SIGS SNV counts → per-sample GENERIC_ASSAY file; contexts renamed C>A_ACA → A[C>A]A
 
 suppressPackageStartupMessages({
     library(optparse)

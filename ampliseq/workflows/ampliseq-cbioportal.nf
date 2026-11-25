@@ -162,13 +162,15 @@ workflow AMPLISEQ_CBIOPORTAL {
         .mix(MERGE_DEANON.out.seg)
         .mix(STUDY_METADATA.out.clinical_patient)
         .mix(STUDY_METADATA.out.clinical_sample)
+        .mix(STUDY_METADATA.out.gene_panel_data)
         .collect()
 
     PACKAGE_CBIOPORTAL(
         params.study_id,
         all_data_files,
         STUDY_METADATA.out.meta_files,
-        STUDY_METADATA.out.case_lists
+        STUDY_METADATA.out.case_lists,
+        STUDY_METADATA.out.gene_panels
     )
 }
 

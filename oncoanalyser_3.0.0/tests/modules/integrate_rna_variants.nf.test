@@ -38,8 +38,10 @@ nextflow_process {
             def supported = rows.find { it[col('Start_Position')] == '10000100' }
             assert supported[col('RNA.depth')] == '18'
             assert supported[col('RNA.vaf')] == '0.44'
-            assert supported[col('RNA.expressed')] == '1'
             assert rows.count { it[col('RNA.depth')] } == 1
+            assert supported[col('RNA.expressed')] == 'RNA(d=18,v=0.44)'
+            assert rows.count { it[col('RNA.expressed')] == 'RNA(data=NO)' } == 8
+            assert !header.contains('RNA_expressed')
         }
     }
 
@@ -69,11 +71,12 @@ nextflow_process {
             assert rows.size() == 9
             assert rows.every { it[header.indexOf('Mutation_Status')] == 'Somatic' }
             // Same columns as a subject with RNA, so the group-level merge stays rectangular.
-            ['RNA.depth', 'RNA.vaf', 'RNA.ref_count', 'RNA.alt_count', 'RNA.expressed'].each { name ->
+            ['RNA.depth', 'RNA.vaf', 'RNA.ref_count', 'RNA.alt_count'].each { name ->
                 def i = header.indexOf(name)
                 assert i >= 0 : "no ${name} column"
                 assert rows.every { it[i] == '' }
             }
+            assert rows.every { it[header.indexOf('RNA.expressed')] == 'RNA(data=NO)' }
         }
     }
 }

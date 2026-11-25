@@ -59,12 +59,13 @@ def read_tsv(path):
 
 
 def write_case_list(path, study_id, label, sample_ids):
-    """Write a cases_*.txt case list."""
+    """Write a cases_*.txt case list, shaped like GENERATE_CASE_LIST's."""
     path.write_text(
         f"cancer_study_identifier: {study_id}\n"
         f"stable_id: {study_id}_{label}\n"
-        "case_list_name: add_text\n"
-        "case_list_description: ADD TEXT\n"
+        f"case_list_name: Samples with {label} data\n"
+        f"case_list_description: Samples profiled for {label}\n"
+        f"case_list_category: all_cases_with_{label}_data\n"
         "case_list_ids: " + "\t".join(sample_ids) + "\n"
     )
 
@@ -84,10 +85,7 @@ def make_study(
     extra_case_lists=None,
     extra_files=None,
 ):
-    """Build a minimal but realistic cBioPortal study folder.
-
-    pairs is a list of (subject, sample) tuples.
-    """
+    """Build a minimal cBioPortal study folder from (subject, sample) pairs."""
     d = root / name
     (d / "case_lists").mkdir(parents=True)
     subjects = [s for s, _ in pairs]
@@ -175,7 +173,7 @@ def make_study(
 
     # Case lists
     write_case_list(d / "case_lists" / "cases_sequenced.txt", study_id, "sequenced", samples)
-    write_case_list(d / "case_lists" / "cases_cnv.txt", study_id, "cnv", samples)
+    write_case_list(d / "case_lists" / "cases_cna.txt", study_id, "cna", samples)
     for label in extra_case_lists or []:
         write_case_list(d / "case_lists" / f"cases_{label}.txt", study_id, label, samples)
 
@@ -230,8 +228,7 @@ def test_row_append_and_maf(tmp_path):
 
 
 def test_row_append_when_first_file_lacks_trailing_newline(tmp_path):
-    # util_linking_file.txt is written with a Groovy join("\n") and has no final
-    # newline, so a naive concatenation glues two rows together.
+    # util_linking_file.txt has no final newline (Groovy join), so naive concatenation glues rows
     d1 = make_study(tmp_path, "b1", [("P1", "S1")])
     d2 = make_study(tmp_path, "b2", [("P2", "S2")])
     for d, sub, sam in [(d1, "P1", "S1"), (d2, "P2", "S2")]:
@@ -274,8 +271,7 @@ def test_timeline_column_union(tmp_path):
     out, _ = merge(tmp_path, d1, d2)
 
     columns, rows = read_tsv(out / "data_timeline.txt")
-    # Four common columns first, then the union sorted alphabetically — the
-    # ordering gen_timeline.R produces for a single run over both batches.
+    # Four common columns first, then the rest alphabetically
     assert columns == [
         "PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE",
         "SPECIMEN_TYPE", "STATUS", "SUBTYPE", "TEST",
@@ -406,12 +402,29 @@ def test_case_list_empty_side_contributes_no_blank_id(tmp_path):
     """A batch with no samples for a category must not inject an empty ID."""
     d1 = make_study(tmp_path, "b1", [("P1", "S1")])
     d2 = make_study(tmp_path, "b2", [("P2", "S2")])
-    write_case_list(d1 / "case_lists" / "cases_cnv.txt", "b1", "cnv", [])
+    write_case_list(d1 / "case_lists" / "cases_cna.txt", "b1", "cna", [])
     out, _ = merge(tmp_path, d1, d2)
 
-    ids = case_list_ids(out / "case_lists" / "cases_cnv.txt")
+    ids = case_list_ids(out / "case_lists" / "cases_cna.txt")
     assert ids == ["S2"]
     assert "" not in ids
+
+
+def test_case_list_header_fields_survive_merge(tmp_path):
+    """Name, description and category come through unchanged; only the IDs are unioned."""
+    d1 = make_study(tmp_path, "b1", [("P1", "S1")], extra_case_lists=["3way_complete"])
+    d2 = make_study(tmp_path, "b2", [("P2", "S2")])
+    out, _ = merge(tmp_path, d1, d2)
+
+    merged = (out / "case_lists" / "cases_cna.txt").read_text().splitlines()
+    assert merged[2:5] == [
+        "case_list_name: Samples with cna data",
+        "case_list_description: Samples profiled for cna",
+        "case_list_category: all_cases_with_cna_data",
+    ]
+    assert case_list_ids(out / "case_lists" / "cases_cna.txt") == ["S1", "S2"]
+    # a list only one batch has (e.g. no RNA in the other) is copied as is
+    assert case_list_ids(out / "case_lists" / "cases_3way_complete.txt") == ["S1"]
 
 
 def test_case_list_ids_are_deduplicated(tmp_path):

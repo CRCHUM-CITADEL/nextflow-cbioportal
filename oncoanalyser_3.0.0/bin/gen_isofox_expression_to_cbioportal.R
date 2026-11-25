@@ -1,13 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Convert Isofox gene expression output to cBioPortal expression format.
-#
-# Isofox exp.tsv already contains gene names (GeneName) and Ensembl IDs (GeneId).
-# This script:
-#   1. Reads Isofox exp.tsv.
-#   2. Maps Ensembl GeneId → Entrez ID using the annotation file.
-#   3. Deduplicates gene symbols (keeps highest TPM).
-#   4. Outputs cBioPortal format: Hugo_Symbol, Entrez_Gene_Id, <sample_id>.
+# Isofox gene expression → cBioPortal expression (Hugo_Symbol, Entrez_Gene_Id, <sample>); duplicate symbols keep the highest TPM
 
 suppressPackageStartupMessages({
     library(optparse)
@@ -74,8 +67,7 @@ expr_dt <- data.table(
 
 cat("Reading gene annotation file...\n")
 gene_map <- fread(opt$gene_map, header = TRUE)
-# Expected columns (Ensembl BioMart format):
-#   ensembl_id, entrez_ncbi_id, gene_symbol, chr, start, end, strand, description
+# Annotation columns (BioMart): ensembl_id, entrez_ncbi_id, gene_symbol, chr, start, end, strand, description
 entrez_map <- unique(gene_map[, .(ensembl_id, entrez_ncbi_id)])
 setkey(entrez_map, ensembl_id)
 

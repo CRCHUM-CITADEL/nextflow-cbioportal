@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""Write one sample's cBioPortal row of genomic sample attributes.
-
-TMB/TML come from PURPLE's purity.tsv, HRD from CHORD's prediction.tsv. Columns are
-found by name. A missing file gives NA for its columns; a present file without the
-expected columns is an error, so a format change cannot silently blank the study.
-
-Output: the 4 cBioPortal '#' header lines, the attribute-ID line and one data row,
-so per-sample files merge with collectFile(keepHeader: true, skip: 5).
-"""
+"""Write one sample's TMB/TML (PURPLE) and HRD (CHORD) attributes as a cBioPortal row; missing file → NA, missing column → error."""
 
 import argparse
 import csv

@@ -8,10 +8,11 @@ process ANNOTATE_GNOMAD {
     path("gnomad/data_mutations.txt")
 
     script:
+    def args = task.ext.args ?: ''
     """
     # Adds gnomADe_AF / gnomADg_AF from Genome Nexus; needs outbound HTTPS from this node.
     # Only chromosome, positions and alleles are sent, never sample IDs.
     mkdir -p gnomad
-    annotate_gnomad.py ${mutations_file} --out gnomad/data_mutations.txt --url '${params.genome_nexus_url}'
+    annotate_gnomad.py ${mutations_file} --out gnomad/data_mutations.txt --url '${params.genome_nexus_url}' ${args}
     """
 }

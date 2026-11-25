@@ -17,9 +17,7 @@ process CONVERT_CPSR_TO_MAF {
     zcat $ger_dna_tsv_gz > tmp.tsv
     head -1 tmp.tsv > tmp.germline.cpsr.tsv
 
-    # Keep P/LP/VUS on CPSR's final call, not CLINVAR_CLASSIFICATION (empty for variants absent from ClinVar).
-    # cpsr >= 2.3 names it CLASSIFICATION, earlier FINAL_CLASSIFICATION.
-    # A header-only file is PCGR's no-variants placeholder: nothing to filter.
+    # Keep P/LP/VUS on CPSR's final call (CLASSIFICATION; FINAL_CLASSIFICATION in <= 2.2); a header-only file has nothing to filter
     if [ \$(wc -l < tmp.tsv) -gt 1 ]; then
         CLASS_COL=""
         for name in CLASSIFICATION FINAL_CLASSIFICATION; do

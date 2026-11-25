@@ -1,12 +1,6 @@
-//
-// Subworkflow with functionality specific to the CRCHUM-CITADEL/nextflow-cbioportal pipeline
-//
+// Pipeline-specific initialisation, completion and helper functions
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT FUNCTIONS / MODULES / SUBWORKFLOWS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+// ── Imports ──
 
 include { validateParameters; samplesheetToList } from 'plugin/nf-schema'
 
@@ -16,11 +10,7 @@ include { imNotification            } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NFCORE_PIPELINE     } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NEXTFLOW_PIPELINE   } from '../../nf-core/utils_nextflow_pipeline'
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    SUBWORKFLOW TO INITIALISE PIPELINE
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+// ── Initialisation ──
 
 workflow PIPELINE_INITIALISATION {
 
@@ -39,9 +29,7 @@ workflow PIPELINE_INITIALISATION {
 
     ch_versions = Channel.empty()
 
-    //
-    // Print version and exit if required and dump pipeline parameters to JSON file
-    //
+    // Print version and exit if required; dump parameters to JSON
     UTILS_NEXTFLOW_PIPELINE (
         version,
         true,
@@ -49,16 +37,12 @@ workflow PIPELINE_INITIALISATION {
         workflow.profile.tokenize(',').intersect(['conda', 'mamba']).size() >= 1
     )
 
-    //
     // Check config provided to the pipeline
-    //
     UTILS_NFCORE_PIPELINE (
         nextflow_cli_args
     )
 
-    //
     // Custom validation for pipeline parameters
-    //
 
 	// custom function validation
     validateInputParameters()
@@ -66,9 +50,7 @@ workflow PIPELINE_INITIALISATION {
 	// nf-schema validation
     validateParameters()
 
-    //
-    // Create channel from input file provided through params.input
-    //
+    // Channels from the input samplesheets
     ch_genomic_samplesheet  = Channel.empty()
     ch_clinical_samplesheet = Channel.empty()
 
@@ -110,11 +92,7 @@ workflow PIPELINE_INITIALISATION {
     versions    = ch_versions
 }
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    SUBWORKFLOW FOR PIPELINE COMPLETION
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+// ── Completion ──
 
 workflow PIPELINE_COMPLETION {
 
@@ -129,21 +107,10 @@ workflow PIPELINE_COMPLETION {
     main:
     summary_params = [:]
 
-    //
     // Completion email and summary
-    //
     workflow.onComplete {
         if (email || email_on_fail) {
-            // TODO: wait for HPC access
-            // completionEmail(
-            //     summary_params,
-            //     email,
-            //     email_on_fail,
-            //     plaintext_email,
-            //     outdir,
-            //     monochrome_logs,
-            //     []
-            // )
+            // TODO: completionEmail(...) once HPC email access exists
         }
 
         completionSummary(monochrome_logs)
@@ -157,18 +124,12 @@ workflow PIPELINE_COMPLETION {
     }
 }
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    FUNCTIONS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-//
+// ── Functions ──
+
 // Check and validate pipeline parameters
-//
 def validateInputParameters() {
 
-    // check modes and input
-    // Exact match: CLI params are immutable, so the value cannot be normalised here.
+    // Modes match exactly: CLI params are immutable, so they cannot be normalised here
     def choices = pipelineModes().collect { m -> "'${m}'" }.join(', ')
     if (!params.mode){
         error("ERROR: Pipeline mode not chosen. Choices: ${choices}")
@@ -215,10 +176,7 @@ def validateInputParameters() {
 
         requireResources(['sbs_signatures', 'dbs_signatures', 'id_signatures', 'sbs_metadata', 'dbs_metadata', 'id_metadata'], 'genomic mode')
 
-        // FORMAT_PROCESS_ML_SV unions the COSMIC and ChimerKB fusion lists, so the two
-        // are all-or-nothing. Setting only one used to reach the process with an empty
-        // path input and abort the run with an unattributable "Path must not be empty".
-        // Only checked when ML runs; otherwise the fusion files are never read.
+        // COSMIC + ChimerKB are all-or-nothing (FORMAT_PROCESS_ML_SV unions them); checked only when ML runs
         if (params.run_ml && params.cosmic_data) {
             def cosmic_data = file(params.cosmic_data)
             if (!cosmic_data.exists()) {

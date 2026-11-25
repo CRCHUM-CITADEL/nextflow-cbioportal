@@ -34,6 +34,7 @@ nextflow_process {
                 input[1] = [dataFile]
                 input[2] = [metaFile]
                 input[3] = caseListsDir
+                input[4] = []
                 """
             }
         }

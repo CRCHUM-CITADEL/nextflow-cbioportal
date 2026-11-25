@@ -1,6 +1,4 @@
 process MERGE_CNA {
-    publishDir "${params.outdir}", mode: 'copy'
-
     input:
     path(cna_files)
 

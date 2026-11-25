@@ -1,0 +1,73 @@
+nextflow_process {
+
+    name "Test WRITE_GENE_PANELS"
+    script "modules/local/write_gene_panels/main.nf"
+    process "WRITE_GENE_PANELS"
+    tag "module"
+
+    // Every sample is profiled with the panel, so cBioPortal's denominator is the whole cohort
+    test("Writes one panel per type and a matrix with every sample, cna NA for CNV QC failures") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/panel.tsv").text =
+                    'gene\\ttype\\n' +
+                    'TP53\\tmutation\\n' +
+                    'KRAS\\tmutation\\n' +
+                    'ERBB2\\tcna\\n' +
+                    'ALK\\tfusion\\n'
+                file("${params.outdir}/gp/linking.txt").text =
+                    'sample_id\\tdeanon_sample_id\\tdeanon_patient_id\\n' +
+                    'A1\\tREAL_1\\tP1\\n' +
+                    'A2\\tREAL_2\\tP2\\n'
+                input[0] = file("${params.outdir}/gp/panel.tsv")
+                input[1] = file("${params.outdir}/gp/linking.txt")
+                input[2] = ['A2']
+                input[3] = 'test_study'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out.matrix[0].toString()).readLines() == [
+                'SAMPLE_ID\tmutations\tcna\tstructural_variants',
+                'REAL_1\ttest_study_mutation\ttest_study_cna\ttest_study_sv',
+                'REAL_2\ttest_study_mutation\tNA\ttest_study_sv',
+            ]
+            def meta = path(process.out.meta[0].toString()).readLines()
+            assert meta.contains('genetic_alteration_type: GENE_PANEL_MATRIX')
+            assert meta.contains('data_filename: data_gene_panel_matrix.txt')
+            def panels = process.out.panels[0].toString()
+            def mut = path("${panels}/gene_panel_test_study_mutation.txt").readLines()
+            assert mut[0] == 'stable_id: test_study_mutation'
+            assert mut[2] == 'gene_list:\tKRAS\tTP53'
+            assert path("${panels}/gene_panel_test_study_sv.txt").readLines()[2] == 'gene_list:\tALK'
+        }
+    }
+
+    test("Fails when a type has no genes") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/panel.tsv").text = 'gene\\ttype\\nTP53\\tmutation\\nALK\\tsv\\n'
+                file("${params.outdir}/gp/linking.txt").text = 'sample_id\\tdeanon_sample_id\\tdeanon_patient_id\\nA1\\tREAL_1\\tP1\\n'
+                input[0] = file("${params.outdir}/gp/panel.tsv")
+                input[1] = file("${params.outdir}/gp/linking.txt")
+                input[2] = []
+                input[3] = 'test_study'
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+        }
+    }
+}

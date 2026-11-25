@@ -1,16 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Convert PURPLE's somatic SV VCF (<tumor>.purple.sv.vcf.gz) to cBioPortal data_sv.txt.
-#
-# PURPLE passes ESVEE's records through (filtered and unfiltered), adds inferred single breakends
-# (FILTER=INFERRED) and tumour-in-normal recovered SVs (INFO TINC_RECOVERED), and annotates each
-# breakend with PURPLE_AF / PURPLE_CN / PURPLE_CN_CHANGE (lists: [this breakend, mate]) and PURPLE_JCN.
-# This script:
-#   1. Keeps PASS BND records that have a mate (drops INFERRED, PON-filtered and single breakends).
-#   2. Reads the tumour's VF / SF / DF from the sample column named --tumor_id.
-#   3. Pairs BNDs by MATEID, annotates each site with the overlapping gene (both sites must hit one).
-#   4. Classifies DELETION/DUPLICATION/INVERSION/TRANSLOCATION from the BND orientations.
-#   5. Writes cBioPortal SV format plus HMF.PURPLE_* namespace columns (SV_Status = SOMATIC).
+# PURPLE somatic SV VCF → cBioPortal data_sv.txt: PASS BNDs with a mate, both sites in a gene, plus HMF.PURPLE_* columns
 
 suppressPackageStartupMessages({
     library(optparse)
@@ -31,8 +21,7 @@ for (arg in c("input", "sample", "tumor_id", "ensembl_annotations", "output")) {
     if (is.null(opt[[arg]])) stop(paste("Missing required argument: --", arg, sep = ""))
 }
 
-# Column order of data_sv.txt. HMF.* columns are always written so every SV file has the same width
-# (gen_isofox_fusion_to_cbioportal.R writes the same set as NA).
+# data_sv.txt columns; HMF.* always written (Isofox writes them as NA) so every SV file has the same width
 SV_COLUMNS <- c(
     "Sample_Id", "SV_Status",
     "Site1_Hugo_Symbol", "Site1_Ensembl_Transcript_Id", "Site1_Region_Number", "Site1_Region",
@@ -49,8 +38,7 @@ SV_COLUMNS <- c(
 
 # ── BND helpers ───────────────────────────────────────────────────────────────
 
-# REF before the bracket ("N[chr:pos[", "N]chr:pos]") → + strand; after it → - strand.
-# perl = TRUE: in R's default POSIX regex "\\[" inside a bracket is a literal backslash, so it never matched.
+# REF before the bracket → + strand, after → -; perl = TRUE because POSIX "\\[" in [] is a literal backslash
 get_bnd_strand <- function(alt) {
     if (grepl("^[A-Za-z.]+[\\[\\]]", alt, perl = TRUE)) "+" else "-"
 }

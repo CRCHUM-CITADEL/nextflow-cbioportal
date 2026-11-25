@@ -1,6 +1,4 @@
 process MERGE_SV {
-    publishDir "${params.outdir}", mode: 'copy'
-
     input:
     path(sv_files)
 

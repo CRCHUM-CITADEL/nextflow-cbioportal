@@ -1,13 +1,6 @@
 #!/usr/bin/env Rscript
 
-#' Convert CPSR TSV to MAF format and append to existing MAF file
-#' Updated version that handles different CPSR column formats
-#'
-#' @param cpsr_file Path to the CPSR TSV file
-#' @param maf_file Path to the existing MAF file
-#' @param output_file Path to save the combined output MAF file
-#'
-#' @return None (writes to file)
+# Convert CPSR TSV rows to MAF and append them to an existing MAF
 convert_cpsr_to_maf <- function(cpsr_file, maf_file, output_file) {
 
   # Function to check if a string starts with a pattern
@@ -290,14 +283,7 @@ convert_cpsr_to_maf <- function(cpsr_file, maf_file, output_file) {
       maf_entry$RefSeq <- cpsr_entry[[refseq_col]]
     }
 
-    # Pin the row back to the incoming MAF's schema before appending it.
-    # `maf_entry$X <- v` APPENDS when X is not already a slot, so any assignment above
-    # naming a column the MAF does not carry silently widens the row. rbind() onto a
-    # zero-row frame then adopts the wider shape, and the germline rows get written with
-    # more fields than the header declares -- ragged output rather than an error.
-    # vcf2maf's ~133 columns happened to cover every name used above; mafsmith emits 53,
-    # so this has to be enforced rather than assumed. Indexing by maf_columns keeps
-    # exactly the header's columns, in the header's order.
+        # Pin the row to the MAF header's columns: `maf_entry$X <- v` adds a slot for an absent X and widens rbind()
     maf_entry <- maf_entry[maf_columns]
     names(maf_entry) <- maf_columns
 
@@ -305,8 +291,7 @@ convert_cpsr_to_maf <- function(cpsr_file, maf_file, output_file) {
     maf_entries <- rbind(maf_entries, as.data.frame(as.list(maf_entry), stringsAsFactors=FALSE))
   }
 
-  # Prepare to write the output
-  # First, determine if there's a version line to preserve
+    # Preserve a leading version line, if any
   has_version <- FALSE
   version_line <- ""
   if (starts_with(maf_lines[1], "#version")) {

@@ -1,10 +1,5 @@
 #!/usr/bin/env Rscript
-#
-# WRITE_CLINICAL_TABLE — applies the cBioPortal column definitions to the
-# intermediate table from build_clinical_table.R and writes either
-# data_clinical_sample.txt or data_clinical_patient.txt, selected by --mode.
-# This is the col_defs + write_cbio_table() half of the former clin_format.R;
-# it does no merging of its own, so running it twice (once per mode) is cheap.
+# WRITE_CLINICAL_TABLE: apply the cBioPortal col_defs to clinical_merged.tsv (--mode sample|patient)
 
 suppressPackageStartupMessages(library(optparse))
 
@@ -28,16 +23,13 @@ if (is.null(opt$input)) stop("Error: --input argument is required")
 if (!file.exists(opt$input)) stop(paste("Error: File does not exist:", opt$input))
 
 cat(sprintf("Reading merged clinical table from %s...\n", opt$input))
-# na.strings="NA" + colClasses="character": round-trips build_clinical_table.R's
-# output exactly, with no numeric reformatting and no column dropped or coerced.
+# Read everything as character so values round-trip unchanged
 m <- read.table(opt$input, sep="\t", header=TRUE, na.strings="NA",
                  colClasses="character", check.names=FALSE, quote="")
 
 cat(paste("Writing", opt$mode, "mode output...\n"))
 
-# ── Column definition helper ───────────────────────────────────────────────────
-# Each entry: list(cbio_id, r_col, display_name, description, datatype, priority)
-# Columns whose r_col is absent from m are silently dropped.
+# ── col_defs entry: list(cbio_id, r_col, display_name, description, datatype, priority); absent r_col is dropped ──
 write_cbio_table <- function(m, col_defs, output_file) {
   col_defs <- Filter(function(cd) cd[[2]] %in% names(m), col_defs)
   cbio_ids   <- sapply(col_defs, `[[`, 1)
@@ -62,8 +54,7 @@ write_cbio_table <- function(m, col_defs, output_file) {
 
 # ── Write output ───────────────────────────────────────────────────────────────
 if (opt$mode == "patient") {
-  # Patient-level: only columns sourced from donors.csv plus derived survival fields.
-  # All other attributes (diagnosis, specimen, treatment, biomarker) are sample-level.
+    # Patient-level: donors.csv columns and derived survival fields only
   col_defs <- list(
     list("PATIENT_ID",                 "patient",                        "Patient Identifier",          "Identifier to uniquely specify a patient.",                           "STRING", "1"),
     list("SEX",                        "sex",                            "Sex",                         "Sex of the patient.",                                                  "STRING", "1"),
@@ -83,8 +74,7 @@ if (opt$mode == "patient") {
   write_cbio_table(m_patient, col_defs, opt$output)
 
 } else if (opt$mode == "sample") {
-  # Sample-level: all columns NOT sourced from donors.csv.
-  # Includes diagnosis, staging, specimen, treatment, surgery, radiation, and biomarker fields.
+    # Sample-level: everything not from donors.csv
   col_defs <- list(
     list("PATIENT_ID",               "patient",                            "Patient Identifier",          "Identifier to uniquely specify a patient.",                            "STRING", "1"),
     list("SAMPLE_ID",                "sample",                             "Sample Identifier",           "A unique sample identifier.",                                          "STRING", "1"),

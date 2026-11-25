@@ -11,7 +11,7 @@ nextflow_process {
     test("Rounds fractional copy number, splits multi-gene cells, one row per gene") {
 
         when {
-            params { outdir = "$outputDir" }
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
             process {
                 """
                 file("${params.outdir}/cna_inputs").mkdirs()
@@ -24,6 +24,7 @@ nextflow_process {
                     '7\\t1\\t2\\tCNV\\tDUPLICATION\\tEGFR\\t\\t0\\t2.2\\n' +
                     '1\\t1\\t2\\tCNV\\tFUSION\\tALK\\tEML4\\t5\\t2\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/cna_inputs/export.tsv")])
+                input[1] = []
                 """
             }
         }
@@ -57,6 +58,7 @@ nextflow_process {
                     '9\\t1\\t2\\tCNV\\tDELETION\\tCDKN2A\\tN/A\\tHIGH\\tN/A\\t0\\tN/A\\tN/A\\n' +
                     '1\\t1\\t2\\tSNP\\tSNP\\tALK\\t0.5\\tHIGH\\t1000\\tN/A\\tN/A\\tN/A\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/cna_inputs/export.tsv")])
+                input[1] = []
                 """
             }
         }
@@ -84,6 +86,31 @@ nextflow_process {
                     'Chr\\tStart\\tEnd\\tVariant Type\\tVariant Subtype\\tGenes\\tBreakend Genes\\tSupporting Reads\\tCopy Number\\n' +
                     '8\\t1\\t2\\tCNV\\tDUPLICATION\\tMYC\\t\\t0\\t8\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/cna_inputs/export.tsv")])
+                input[1] = []
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tSample_Id\tValue', 'MYC\tS\t2']
+        }
+    }
+
+    test("Gene panel: drops off-panel genes from the per-sample file") {
+
+        when {
+            params { outdir = "$outputDir"; filter_tsv_variants = false }
+            process {
+                """
+                file("${params.outdir}/cna_inputs").mkdirs()
+                file("${params.outdir}/cna_inputs/export.tsv").text =
+                    'Chr\\tStart\\tEnd\\tVariant Type\\tVariant Subtype\\tGenes\\tBreakend Genes\\tSupporting Reads\\tCopy Number\\n' +
+                    '8\\t1\\t2\\tCNV\\tDUPLICATION\\tMYC\\t\\t0\\t8\\n' +
+                    '1\\t1\\t2\\tCNV\\tDUPLICATION\\tDDR2\\t\\t0\\t8\\n'
+                file("${params.outdir}/cna_inputs/panel.tsv").text = 'gene\\ttype\\nMYC\\tcna\\nDDR2\\tmutation\\n'
+                input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/cna_inputs/export.tsv")])
+                input[1] = file("${params.outdir}/cna_inputs/panel.tsv")
                 """
             }
         }

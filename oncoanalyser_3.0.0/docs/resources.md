@@ -5,7 +5,7 @@ All reference files the pipeline needs, in one versioned download. COSMIC fusion
 
 | Kit version | Pipeline release | Download | Size    | md5 (tar.gz)                       |
 | ----------- | ---------------- | -------- | ------- | ---------------------------------- |
-| 1.1.0       | 4.1.0            | _TBD_    | _TBD_   | _TBD_                              |
+| 1.1.0       | 4.2.0            | _TBD_    | _TBD_   | _TBD_                              |
 | 1.0.0       | 4.0.0            | _TBD_    | 35.8 GB | `9c8b4d02dc3f89c3c0d095dea3e9c68e` |
 
 ## Install and run

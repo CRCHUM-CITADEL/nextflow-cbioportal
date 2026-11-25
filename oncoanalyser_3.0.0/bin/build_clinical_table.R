@@ -1,16 +1,5 @@
 #!/usr/bin/env Rscript
-#
-# BUILD_CLINICAL_TABLE — reads and merges the ARGO clinical CSVs into one wide
-# intermediate table (clinical_merged.tsv), consumed by write_clinical_sample.R
-# and write_clinical_patient.R. This is the loaders + merge-cascade half of the
-# former clin_format.R; running it once (instead of once per mode) removes the
-# duplicated ~95% of the work that used to happen twice per group.
-#
-# The intermediate table is written with na="NA" and every column forced to
-# character on read-back (colClasses="character" in the writers), so no value
-# is reformatted (e.g. a numeric "5.0" must not come back as "5") and columns
-# absent from a run stay absent — write_cbio_table()'s col_defs filter depends
-# on that to reproduce clin_format.R's output exactly.
+# BUILD_CLINICAL_TABLE: merge the ARGO clinical CSVs into clinical_merged.tsv (na="NA", read back as character)
 
 suppressPackageStartupMessages(library(optparse))
 
@@ -91,8 +80,7 @@ cat("Reading sample registrations...\n")
 reg  <- read.csv(opt$sample_registrations, header=TRUE)
 link <- reg[is_cbio_sample(reg), ]
 
-# Deduplicate: when multiple samples share the same patient + specimen
-# (e.g. -1DT and -2DT for the same biopsy), keep the first by sample ID.
+# Several samples per patient + specimen (e.g. -1DT, -2DT): keep the first by sample ID
 link <- link[order(link$submitter_sample_id), ]
 link <- link[!duplicated(link[, c("submitter_donor_id", "submitter_specimen_id")]), ]
 link$patient <- link$submitter_donor_id
@@ -127,8 +115,7 @@ diag <- diag[, intersect(c("patient", "cancer_type_code", "clinical_stage_group"
                               "pathological_n_category", "pathological_m_category",
                               "primary_site", "laterality", "basis_of_diagnosis",
                               "submitter_primary_diagnosis_id"), names(diag))]
-# Keep every diagnosis: a donor may have more than one, and the right one for a
-# sample is the one its sequenced specimen points at (resolved at merge time below).
+# Keep every diagnosis: each sample takes the one its sequenced specimen points at (below)
 diag <- diag[order(diag$patient, diag$submitter_primary_diagnosis_id), ]
 diag <- diag[!duplicated(diag[, c("patient", "submitter_primary_diagnosis_id")]), ]
 
@@ -147,10 +134,7 @@ spec <- spec[, intersect(c("submitter_specimen_id", "tumour_histological_type", 
 m <- merge(link,  spec,   by="submitter_specimen_id", all.x=TRUE)
 m <- merge(m,     donors, by="patient", all.x=TRUE)
 
-# Each sample takes the primary diagnosis of its own sequenced specimen, so a donor
-# with several diagnoses gets the one that was actually sequenced rather than the
-# first one on file. Specimens with no usable diagnosis link fall back to the
-# patient's first diagnosis.
+# Each sample takes its own specimen's diagnosis, else the patient's first
 if (!("submitter_primary_diagnosis_id" %in% names(m))) m$submitter_primary_diagnosis_id <- NA_character_
 diag_keys  <- paste(diag$patient, diag$submitter_primary_diagnosis_id)
 first_idx  <- !duplicated(diag$patient)
@@ -161,18 +145,13 @@ m$submitter_primary_diagnosis_id[fallback] <- first_diag[m$patient[fallback]]
 
 m <- merge(m, diag, by=c("patient", "submitter_primary_diagnosis_id"), all.x=TRUE)
 
-# ── Filter to genomic subjects (optional) ────────────────────────────────────
-# When the genomic pipeline provides a linking file (subject_id TAB sample_id),
-# restrict output to those subjects and adopt the genomic sample_id convention.
-# Clinical submitter_sample_id values (e.g. MoHQ-CM-1-100-76994-1DT) differ from
-# the genomic sample_id (e.g. MoHQ-CM-1-100-T); the linking file is authoritative.
+# ── Filter to genomic subjects (optional): the linking file is authoritative for subjects and sample IDs ──
 if (!is.null(opt$genomic_subjects)) {
   cat("Reading genomic subjects for filtering...\n")
   genomic <- read_genomic_subjects(opt$genomic_subjects)
   m <- m[m$patient %in% genomic$subject_id, ]
   if (nrow(m) == 0) stop("Error: No clinical subjects match the genomic subjects file.")
-  # Only remap sample IDs for patients with a single clinical sample.
-  # Multi-sample patients keep their clinical sample IDs to avoid duplicate SAMPLE_IDs.
+    # Remap sample IDs only for single-sample patients (multi-sample would create duplicate SAMPLE_IDs)
   sample_map    <- setNames(genomic$sample_id, genomic$subject_id)
   sample_counts <- table(m$patient)
   single        <- names(sample_counts[sample_counts == 1])
@@ -312,8 +291,7 @@ if (!is.null(opt$biomarkers)) {
   m <- merge(m, biom, by="patient", all.x=TRUE)
 }
 
-# ── Computed clinical fields ───────────────────────────────────────────────────
-# Age at diagnosis: dob_days is negative (days before day-0 diagnosis)
+# ── Computed clinical fields (age: dob_days is negative, days before diagnosis) ──
 m$age <- round(-m$dob_days / 365.25, 3)
 
 # OS months: deceased from date_of_death; living from last follow-up (or NA)
@@ -422,13 +400,7 @@ m$primary_site_code           <- apply_mohccn_map(m$primary_site,           ps_m
 m$specimen_tissue_source_code <- apply_mohccn_map(m$specimen_tissue_source, sts_map)
 m$relapse_site_label          <- apply_ps_label(m$relapse_site_val, ps_map_rev)
 
-# cancer_type_code (primary_diagnoses.csv) and specimen_anatomic_location
-# (specimens.csv) are already ICD-O topography codes in the data, same as the
-# relapse site above — give each a human-readable label alongside the code.
-# Note apply_ps_label() resolves to the C+2-digit parent, because the MOHCCN
-# primary_site table only carries parent codes: C22.0 and C22.1 both label as
-# "Liver and intrahepatic bile ducts". Sub-site precision would need a fuller
-# ICD-O-3 topography table as a new asset.
+# Labels for ICD-O codes already in the data, at the C+2-digit parent (the MOHCCN table has only parents)
 m$cancer_type_label                <- apply_ps_label(m$cancer_type_code,           ps_map_rev)
 m$specimen_anatomic_location_label <- apply_ps_label(m$specimen_anatomic_location, ps_map_rev)
 if ("treatment_intent" %in% names(m)) {

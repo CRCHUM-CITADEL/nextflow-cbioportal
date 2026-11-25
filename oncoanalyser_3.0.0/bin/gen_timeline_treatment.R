@@ -1,9 +1,5 @@
 #!/usr/bin/env Rscript
-#
-# GENERATE_TIMELINE_TREATMENT — emits TREATMENT timeline events (systemic
-# therapy) from treatments.csv rows flagged as systemic therapy. Sibling of
-# gen_timeline_surgery.R (both read and filter treatments.csv independently).
-# One of five per-EVENT_TYPE scripts merged by merge_timeline.R into data_timeline.txt.
+# GENERATE_TIMELINE_TREATMENT: systemic therapies → TREATMENT events (merged by merge_timeline.R)
 
 suppressPackageStartupMessages(library(optparse))
 

@@ -3,7 +3,21 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 4.1.0 - Unreleased
+## 4.2.1 - Unreleased
+
+### Changed
+
+- **`RNA.expressed` is now a readable RNA summary.** `INTEGRATE_RNA_VARIANTS` writes `RNA(d=<RNA depth>,v=<RNA VAF, 2 decimals>)` per somatic row, or `RNA(data=NO)` when the variant has no RNA depth (including every row of a subject without RNA). It replaces the old `1`/empty flag (depth >= 3 and VAF >= 0.05), which is no longer written: the thresholds now only feed the task log's "expressed" count. It restores the summary that used to be written into `Mutation_Status`, minus the `filt=` part. Germline rows leave it empty. Covered by `integrate_rna_variants.nf.test` and `convert_cpsr_to_maf.nf.test`.
+- **Case lists follow cBioPortal's standard suffixes.** The study now gets `cases_sequenced`, `cases_cna`, `cases_cnaseq`, `cases_sv`, `cases_rna_seq_v2_mrna` and `cases_3way_complete`, each with a real `case_list_name`, `case_list_description` and `case_list_category` (was `cases_cnv`, `cases_sequenced`, `cases_sv` with `add_text` placeholders). Combined lists are intersections of the per-profile ones, and an empty list is not written. **`cases_cnv` is gone:** a study loaded earlier keeps that list until it is removed in cBioPortal.
+- CRCHUM site config (`nextflow_citadel.config`): `cosmic_data` points at COSMIC fusions v105 (was v103).
+
+### Removed
+
+- Unused scripts and modules: `cbioportal-converter.R`, `gen_cbioportal_converter{,2}.R`, `gen_format_dragen_fusion.R`, `gen_gene_cnv_fold_changes{,2}.R`, `gene_cnv_fold_changes.R`, `gen_get_tpm.R`, and the `DRAGEN_FUSION_SV_TO_CBIOPORTAL`, `EXTRACT_GENE_CNV_FOLD_CHANGES`, `GENE_CNV_FOLD_CHANGES_TO_CBIOPORTAL`, `GENERATE_INTERVALS`, `GET_TPM`, `INDEX_FASTA` and `SPLIT_VCF_BY_INTERVAL` modules. None was called by the pipeline.
+
+## 4.2.0 - 2026-11-19
+
+Covers releases 4.1.0 to 4.2.0, which shipped without changelog headings of their own.
 
 ### Added
 

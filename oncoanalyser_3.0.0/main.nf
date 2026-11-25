@@ -1,17 +1,7 @@
 #!/usr/bin/env nextflow
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    CRCHUM-CITADEL/nextflow-cbioportal
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/CRCHUM-CITADEL/nextflow-cbioportal
-----------------------------------------------------------------------------------------
-*/
+// CRCHUM-CITADEL/nextflow-cbioportal — https://github.com/CRCHUM-CITADEL/nextflow-cbioportal
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT FUNCTIONS / MODULES / SUBWORKFLOWS / WORKFLOWS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+// ── Imports ──
 
 include { GENOMIC   } from './workflows/genomic.nf'
 include { CLINICAL  } from './workflows/clinical.nf'
@@ -22,11 +12,7 @@ include { helpRequested           } from './subworkflows/local/utils'
 include { runsGenomic             } from './subworkflows/local/utils'
 include { PACKAGE_CBIOPORTAL      } from './modules/local/package_cbioportal'
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RUN MAIN WORKFLOW
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+// ── Main workflow ──
 
 workflow {
 
@@ -37,9 +23,7 @@ workflow {
         return
     }
 
-    //
-    // SUBWORKFLOW: Run initialisation tasks and checks
-    //
+    // Initialisation tasks and checks
     PIPELINE_INITIALISATION (
         params.version,
         params.monochrome_logs,
@@ -52,9 +36,7 @@ workflow {
         params.project_description,
     )
 
-    //
-    // WORKFLOW: Run main workflow
-    //
+    // Main workflow
     if (runsGenomic()){
 
         // Reference files: explicit param, else the resource kit, else '' (download).
@@ -67,10 +49,7 @@ workflow {
         ch_pcgr_data     = pcgr_data     ? Channel.fromPath(pcgr_data)     : Channel.empty()
         ch_mafsmith_data = mafsmith_data ? Channel.fromPath(mafsmith_data) : Channel.empty()
 
-        // cosmic_data / chimer_data are passed on as plain param strings, not channels —
-        // GENOMIC_ML tests them with a truth check to decide whether to run the ML SV
-        // step, which a channel cannot answer. (Two ch_* channels built here were never
-        // wired to anything and have been removed.)
+        // cosmic_data / chimer_data stay plain params: GENOMIC_ML truth-checks them to decide on ML SV
 
         ch_hotspots_data = hotspots_data ? Channel.fromPath(hotspots_data).first() : Channel.value([])
 
@@ -137,13 +116,7 @@ workflow {
         )
     }
 
-    //
-    // MODULE: Package the study files into <study>.tar.gz
-    //
-    // Packaging lives here rather than inside GENOMIC so that in "both" mode the
-    // archive matches the study directory: genomic + clinical + timeline + linking file.
-    // Clinical-only mode has no meta_study.txt or case lists, so it is not packaged.
-    //
+    // Packaged here, not in GENOMIC, so the "both" archive has the clinical files; clinical-only is not packaged
     if (runsGenomic()) {
         ch_package_files = GENOMIC.out.package_files
 
@@ -154,9 +127,7 @@ workflow {
         PACKAGE_CBIOPORTAL(ch_package_files.groupTuple())
     }
 
-    //
-    // SUBWORKFLOW: Run completion tasks
-    //
+    // Completion tasks
     PIPELINE_COMPLETION (
         params.email,
         params.email_on_fail,
@@ -166,9 +137,3 @@ workflow {
         params.hook_url,
     )
 }
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    THE END
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/

@@ -1,6 +1,4 @@
 process MERGE_SEG {
-    publishDir "${params.outdir}", mode: 'copy'
-
     input:
     path(seg_files)
 

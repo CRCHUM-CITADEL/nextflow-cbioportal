@@ -4,7 +4,7 @@
             12,
             {
                 "Workflow": {
-                    "CRCHUM-CITADEL/nextflow-cbioportal": "v4.1.0"
+                    "CRCHUM-CITADEL/nextflow-cbioportal": "v4.2.1"
                 }
             },
             [
@@ -27,7 +27,7 @@
                 "meta_timeline.txt:md5,8d576ca2d7f5f90bdff453cd371778ef"
             ]
         ],
-        "timestamp": "2026-10-30T15:25:49.811451039",
+        "timestamp": "2026-11-25T08:09:45.960120806",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.4"

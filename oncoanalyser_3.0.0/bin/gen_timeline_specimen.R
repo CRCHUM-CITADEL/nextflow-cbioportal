@@ -1,11 +1,5 @@
 #!/usr/bin/env Rscript
-#
-# GENERATE_TIMELINE_SPECIMEN — emits SPECIMEN timeline events (collection date,
-# site, tissue source, and SAMPLE_TYPE derived from the nearest follow-up visit)
-# from specimens.csv. Sibling of gen_timeline_status.R (both read follow_ups.csv;
-# here it is only used to find the nearest visit per specimen, not to emit its
-# own events). One of five per-EVENT_TYPE scripts merged by merge_timeline.R
-# into data_timeline.txt.
+# GENERATE_TIMELINE_SPECIMEN: specimens → SPECIMEN events; SAMPLE_TYPE from the nearest follow-up (merged by merge_timeline.R)
 
 suppressPackageStartupMessages(library(optparse))
 
@@ -59,10 +53,7 @@ if (!is.null(opt$sample_registrations)) {
   reg <- read.csv(opt$sample_registrations, header = TRUE, stringsAsFactors = FALSE)
   sample_reg <- reg[is_cbio_sample(reg), ]
   valid_patients <- unique(sample_reg$submitter_donor_id)
-  # Deduplicate by specimen_id — multiple sequencing types (DNA, RNA) per specimen produce
-  # duplicate rows; take the first entry so the named-vector lookup stays unambiguous.
-  # Tumour rows sort first so a normal sharing a specimen ID cannot supply the
-  # SPECIMEN event's specimen_type / specimen_tissue_source.
+    # One row per specimen_id (DNA and RNA duplicate it); tumour rows first so a normal never supplies the event
   reg_ord   <- reg[order(reg$tumour_normal_designation != "Tumour"), ]
   reg_dedup <- reg_ord[!duplicated(reg_ord$submitter_specimen_id), ]
   if ("specimen_type" %in% names(reg_dedup)) {
@@ -83,8 +74,7 @@ filter_patients <- function(df, id_col = "submitter_donor_id") {
   if (length(valid_patients) > 0) df[df[[id_col]] %in% valid_patients, ] else df
 }
 
-# ps_map is REVERSED (ICD-O code -> label): specimen_anatomic_location is
-# already an ICD-O code.
+# ps_map is reversed (code → label): specimen_anatomic_location is already an ICD-O code
 ps_map_raw <- read_mohccn_map(opt$primary_site_map)   # label -> code
 ps_map     <- reverse_mohccn_map(ps_map_raw)
 sts_map    <- read_mohccn_map(opt$specimen_tissue_source_map)

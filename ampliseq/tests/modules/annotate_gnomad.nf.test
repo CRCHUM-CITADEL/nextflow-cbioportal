@@ -6,6 +6,7 @@ nextflow_process {
     tag "module"
     tag "filter"
     tag "network"   // queries the public Genome Nexus API
+    config "tests/nextflow_annotate_gnomad.config"   // short waits between re-ask passes
 
     // Public variants only: TP53 P72R (rs1042522) is common in gnomAD v2.1.1 (exome AF 0.668165,
     // genome AF 0.620657); the EGFR insertion is not in gnomAD.
@@ -46,7 +47,8 @@ nextflow_process {
 
     // Offline: tests/modules/fixtures/fake_genome_nexus.py drops TP53's gnomAD block on the first request
     // and gives KRAS AC/AN without a frequency, then its ClinVar block alone on the retry; an existing
-    // (stale) value is overwritten
+    // (stale) value is overwritten. ALK rs1670283 loses its gnomAD block three times running, which
+    // the old two re-asks left blank (it then passed the filter at AF 0.998)
     test("Asks again for variants returned without gnomAD or ClinVar and falls back to AC/AN") {
 
         when {
@@ -62,7 +64,8 @@ nextflow_process {
                     'Hugo_Symbol\\tChromosome\\tStart_Position\\tEnd_Position\\tReference_Allele\\tTumor_Seq_Allele2\\tgnomADe_AF\\n' +
                     'TP53\\tchr17\\t7579472\\t7579472\\tG\\tC\\t0.01\\n' +
                     'KRAS\\tchr12\\t25368462\\t25368462\\tC\\tT\\t\\n' +
-                    'EGFR\\t7\\t55248998\\t55248999\\t-\\tGGCT\\t\\n'
+                    'EGFR\\t7\\t55248998\\t55248999\\t-\\tGGCT\\t\\n' +
+                    'ALK\\tchr2\\t29416572\\t29416572\\tT\\tC\\t\\n'
                 input[0] = file("${params.outdir}/gn_inputs/data_mutations.txt")
                 """
             }
@@ -74,6 +77,10 @@ nextflow_process {
             def header = lines[0].split('\t', -1) as List
             def rows = lines.drop(1).collect { it.split('\t', -1) }
             def af = { int r, String n -> rows[r][header.indexOf(n)] }
+
+            // ALK: gnomAD only from the fourth request (third re-ask pass)
+            assert [af(3, 'gnomADe_AF'), af(3, 'gnomADg_AF'), af(3, 'gnomAD.AF')] == ['0.997554', '0.990823', '0.996805']
+            assert [af(3, 'gnomAD.AF_max'), af(3, 'gnomAD.AF_max_pop'), af(3, 'ClinVar.CLNSIG')] == ['0.997554', 'exome_total', 'Benign']
 
             assert [af(0, 'gnomADe_AF'), af(0, 'gnomADg_AF'), af(0, 'gnomAD.AF')] == ['0.668165', '0.620657', '0.662887']
             assert [af(1, 'gnomADe_AF'), af(1, 'gnomADg_AF'), af(1, 'gnomAD.AF')] == ['0.999614', '0.998503', '0.999491']

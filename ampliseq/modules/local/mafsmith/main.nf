@@ -5,6 +5,7 @@ process MAFSMITH {
     input:
     tuple val(meta), path(sample_folder)
     path(mafsmith_data) // mafsmith home: <data>/GRCh37/{reference.fa,genes.gff3.gz}
+    path(custom_enst)   // preferred transcripts, one unversioned ENST per line ([] = none)
 
     output:
     tuple val(meta), path("${meta.sample_id}.maf")
@@ -15,6 +16,9 @@ process MAFSMITH {
     script:
     def retain_ann = params.mafsmith_retain_ann ? "--retain-ann ${params.mafsmith_retain_ann}" : ''
     def args       = task.ext.args ?: ''
+    // Without it mafsmith picks the longest cDNA (GRCh37.87 has no canonical tags): BRAF V600E came out V208E
+    def enst_arg   = custom_enst ? '--custom-enst preferred_transcripts.txt' : ''
+    def enst_unzip = custom_enst ? "zcat -f ${custom_enst} > preferred_transcripts.txt" : ''
     """
     VCF=\$(find -L "${sample_folder}" -maxdepth 1 \\( -name '*-basespace-pisces.final.vcf.gz' -o -name '*-basespace-pisces.final.vcf' \\) | head -1)
     [ -n "\$VCF" ] || { echo "ERROR: No VCF found in ${sample_folder}" >&2; exit 1; }
@@ -59,11 +63,14 @@ process MAFSMITH {
     export HOME=./
     ln -s ${mafsmith_data} .mafsmith
 
+    ${enst_unzip}
+
     # Ampliseq VCFs are tumor-only: the single sample column is the tumor
     mafsmith vcf2maf \\
         --genome grch37 \\
         --tumor-id "${meta.sample_id}" \\
         ${retain_ann} \\
+        ${enst_arg} \\
         ${args} \\
         --input-vcf "${meta.sample_id}.pass.vcf" \\
         --output-maf "tmp.${meta.sample_id}.maf"

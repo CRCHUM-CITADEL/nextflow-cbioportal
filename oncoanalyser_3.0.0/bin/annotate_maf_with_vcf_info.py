@@ -1,28 +1,11 @@
 #!/usr/bin/env python3
-"""Carry SAGE/PAVE/PURPLE INFO annotations from the source VCF into a mafsmith MAF.
-
-mafsmith's `--retain-ann` only reads CSQ subfields, so every plain INFO field the
-caller wrote -- including PAVE's gnomAD frequency (GND_FREQ), SAGE's TIER and PURPLE's
-purity-adjusted copy number fields -- is
-dropped on the floor. This joins them back on the MAF's own coordinate convention.
-
-The join key is (Chromosome, Start_Position, Reference_Allele, Tumor_Seq_Allele2)
-with the VCF side normalized exactly the way mafsmith does it
-(src/vcf/normalization.rs): strip the common REF/ALT prefix advancing POS, render an
-emptied allele as "-", then Start = pos-1 for an insertion and pos otherwise. Keying
-on raw VCF POS/REF/ALT instead would silently miss every indel.
-
-Columns are always emitted, even when the VCF declares none of the fields, so every
-per-subject MAF has identical width -- the group-level `collectFile` merge would
-otherwise produce a ragged file.
-"""
+"""Join the VCF's plain INFO fields (gnomAD, TIER, PURPLE_*) onto a mafsmith MAF, keyed like mafsmith normalises alleles."""
 
 import argparse
 import gzip
 import sys
 
-# INFO id -> output MAF column. gnomAD_AF is spelled the conventional way; the rest
-# are namespaced so cBioPortal can surface them via `namespaces:` in the meta file.
+# INFO id -> MAF column; all but gnomAD_AF are namespaced (HMF.*) for cBioPortal's `namespaces:`
 INFO_FIELDS = [
     ("GND_FREQ", "gnomAD_AF"),
     ("TIER", "TIER"),
@@ -86,8 +69,7 @@ def read_vcf(path):
             chrom, pos, ref, alts, info = f[0], int(f[1]), f[3], f[4], f[7]
             values = parse_info(info)
             wanted = {i: values.get(i, "") for i, _ in INFO_FIELDS}
-            # Index every ALT: mafsmith picks one "effective" alt from a multi-allelic
-            # record and we cannot know which, so make them all resolvable.
+            # Index every ALT: mafsmith picks one alt of a multi-allelic record and we cannot know which
             for alt in alts.split(","):
                 index[key(chrom, *normalize(pos, ref, alt))] = wanted
     return index

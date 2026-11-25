@@ -173,20 +173,12 @@ matched_variants <- merge(
   all.x = TRUE
 )
 
-# Set the expression flag
-message("Setting expression flags...")
-matched_variants <- matched_variants %>%
-  mutate(
-    Flag_RNA_Expressed = case_when(
-      !is.na(t_depth_rna) & !is.na(t_vaf_rna) &
-        as.numeric(t_depth_rna) >= MIN_RNA_DEPTH &
-        as.numeric(t_vaf_rna) >= MIN_RNA_VAF ~ 1,
-      TRUE ~ NA_real_
-    )
-  )
+# Expressed = RNA depth and VAF both pass the thresholds (summary only, not a column)
+is_expressed <- with(matched_variants,
+  !is.na(t_depth_rna) & !is.na(t_vaf_rna) & t_depth_rna >= MIN_RNA_DEPTH & t_vaf_rna >= MIN_RNA_VAF)
 
 # Readable RNA summary, e.g. RNA(d=7,v=0.29); RNA(data=NO) without RNA depth
-matched_variants$RNA.Rna_expressed_full <- ifelse(
+matched_variants$rna_summary <- ifelse(
   is.na(matched_variants$t_depth_rna),
   "RNA(data=NO)",
   paste0("RNA(d=", sprintf("%d", as.integer(matched_variants$t_depth_rna)),
@@ -204,8 +196,7 @@ maf_header_lines <- readLines(dna_maf_file, n = 2)
 
 # RNA evidence goes under the RNA namespace (namespaces: HMF,RNA)
 rna_cols <- c(t_depth_rna = "RNA.depth", t_vaf_rna = "RNA.vaf", t_ref_count_rna = "RNA.ref_count",
-              t_alt_count_rna = "RNA.alt_count", Flag_RNA_Expressed = "RNA.expressed",
-              RNA_expressed = "RNA_expressed")
+              t_alt_count_rna = "RNA.alt_count", rna_summary = "RNA.expressed")
 dna_cols <- setdiff(names(dna_maf), "chr_raw")
 out <- matched_variants[, c(dna_cols, names(rna_cols)), drop = FALSE]
 names(out) <- c(dna_cols, unname(rna_cols))
@@ -230,8 +221,8 @@ message("Total DNA variants: ", nrow(dna_maf))
 message("Total RNA variants with depth: ", sum(!is.na(rna_variants$t_depth_rna)))
 message("Total RNA variants with VAF: ", sum(!is.na(rna_variants$t_vaf_rna)))
 
-expressed_variants <- sum(matched_variants$Flag_RNA_Expressed == 1, na.rm = TRUE)
-no_rna_data_variants <- sum(is.na(matched_variants$Flag_RNA_Expressed))
+expressed_variants <- sum(is_expressed)
+no_rna_data_variants <- sum(is.na(matched_variants$t_depth_rna))
 
 message("DNA variants expressed in RNA: ", expressed_variants, " (",
         round(expressed_variants/nrow(dna_maf)*100, 1), "%)")

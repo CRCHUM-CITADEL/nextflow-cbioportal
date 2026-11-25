@@ -23,8 +23,8 @@ rejected (converters `stop()` without the 3.0 columns).
   `mafsmith.nf.test` runs the real binary with `--skip-annotation` to guard this
 - `Mutation_Status` is only `Somatic` (set by `MAFSMITH`) or `Germline` (CPSR rows); cBioPortal and
   `ml_format_mutation.R` rely on it. RNA evidence goes in `RNA.depth/vaf/ref_count/alt_count/expressed`
-  (namespace `RNA` in `meta_sequenced.txt`), never in `Mutation_Status`. Plus a summary column
-  `RNA_expressed` = `RNA(d=<depth>,v=<vaf>)` / `RNA(data=NO)` (empty on germline rows)
+  (namespace `RNA` in `meta_sequenced.txt`), never in `Mutation_Status`. `RNA.expressed` is a summary,
+  `RNA(d=<depth>,v=<vaf>)` / `RNA(data=NO)`, not a thresholded flag (empty on germline rows)
 - Every DNA subject reaches the MAF with or without RNA (`remainder: true` join; `[]` RNA input);
   the `RNA.*` columns are always written so the group merge stays rectangular
 - `--retain-ann` reads CSQ subfields only, so `annotate_maf_with_vcf_info.py` joins 16 INFO fields

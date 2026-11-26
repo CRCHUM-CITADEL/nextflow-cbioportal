@@ -5,11 +5,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 4.2.1 - Unreleased
 
+### Added
+
+- **OncoTree cancer type per sample (`ONCOTREE_CODE`, `CANCER_TYPE`, `CANCER_TYPE_DETAILED`) in `data_clinical_sample.txt`.** cBioPortal sends each sample's `CANCER_TYPE_DETAILED` to OncoKB as its tumour type. Before this, the pipeline wrote none, so OncoKB got the study's cancer type, named after `project_description`, which it does not recognise: it returned gene-level oncogenicity but no levels or treatments for the tumour type. The type is mapped from the diagnosis's `cancer_type_code` (ICD-10) and the specimen's `tumour_histological_type` (ICD-O-3 morphology). The new `bin/build_oncotree_map.py` builds the kit file `clinical/oncotree/icd_to_oncotree_2026_11_20.tsv` (param `oncotree_map`, OncoTree `oncotree_2026_11_20`). Each (topography, morphology) pair takes our corrections in `assets/oncotree_icdo_overrides.tsv` first, then OncoTree's own ICD-O mapping (`ontology_mappings.txt`), then the draft [skfit-uni-luebeck/mapping-to-oncoTree](https://github.com/skfit-uni-luebeck/mapping-to-oncoTree) ICD-O map, whose unknown-primary targets at known sites are lifted to a known-site type or dropped. Its ICD-10 map gives the site-level rows. Lookup order: the (code, morphology) pair, then the same pair at the 3-character site, then the code, then the site. A 3-character code (`C56`) is read as the site's NOS subsite (`C56.9`). Unmapped samples get `NA`. A tissue-level result writes the main type ("Pancreatic Cancer") as `CANCER_TYPE_DETAILED`, not the tissue name ("Pancreas"). **The kit file is required for clinical output**, like the MOHCCN maps: add it to an existing v1.1.0 kit (see `docs/resources.md`). Covered by `tests/test_build_oncotree_map.py`, `build_clinical_table.nf.test`, `write_clinical_sample.nf.test` and `resources.nf.test`.
+
 ### Changed
 
 - **`RNA.expressed` is now a readable RNA summary.** `INTEGRATE_RNA_VARIANTS` writes `RNA(d=<RNA depth>,v=<RNA VAF, 2 decimals>)` per somatic row, or `RNA(data=NO)` when the variant has no RNA depth (including every row of a subject without RNA). It replaces the old `1`/empty flag (depth >= 3 and VAF >= 0.05), which is no longer written: the thresholds now only feed the task log's "expressed" count. It restores the summary that used to be written into `Mutation_Status`, minus the `filt=` part. Germline rows leave it empty. Covered by `integrate_rna_variants.nf.test` and `convert_cpsr_to_maf.nf.test`.
 - **Case lists follow cBioPortal's standard suffixes.** The study now gets `cases_sequenced`, `cases_cna`, `cases_cnaseq`, `cases_sv`, `cases_rna_seq_v2_mrna` and `cases_3way_complete`, each with a real `case_list_name`, `case_list_description` and `case_list_category` (was `cases_cnv`, `cases_sequenced`, `cases_sv` with `add_text` placeholders). Combined lists are intersections of the per-profile ones, and an empty list is not written. **`cases_cnv` is gone:** a study loaded earlier keeps that list until it is removed in cBioPortal.
 - CRCHUM site config (`nextflow_citadel.config`): `cosmic_data` points at COSMIC fusions v105 (was v103).
+- `data_clinical_sample.txt` gains three columns (`ONCOTREE_CODE`, `CANCER_TYPE`, `CANCER_TYPE_DETAILED`), so its checksum changes.
 
 ### Removed
 

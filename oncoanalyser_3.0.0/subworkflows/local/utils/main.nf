@@ -209,9 +209,9 @@ def validateInputParameters() {
         log.warn "No clinical samplesheet provided. Template clinical files will be generated from ${source}."
     }
 
-    // MOHCCN maps are only read when a clinical samplesheet is given.
+    // MOHCCN and OncoTree maps are only read when a clinical samplesheet is given.
     if (params.mode in ["clinical", "both"] && params.clinical_samplesheet) {
-        requireResources(['mohccn_primary_site_map', 'mohccn_specimen_tissue_source_map', 'mohccn_treatment_intent_map'], 'clinical output')
+        requireResources(['mohccn_primary_site_map', 'mohccn_specimen_tissue_source_map', 'mohccn_treatment_intent_map', 'oncotree_map'], 'clinical output')
     }
 
     if (params.mode == "clinical" && !params.clinical_samplesheet && params.sample_registrations) {
@@ -246,6 +246,7 @@ def resourceLayout() {
         mohccn_primary_site_map           : "${moh}/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv",
         mohccn_specimen_tissue_source_map : "${moh}/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv",
         mohccn_treatment_intent_map       : "${moh}/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv",
+        oncotree_map                      : 'clinical/oncotree/icd_to_oncotree_2026_11_20.tsv',
     ]
 }
 

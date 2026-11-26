@@ -44,13 +44,17 @@ nextflow_process {
             assert priority.findAll { k, v -> k != 'PRIMARY_SITE' }.values().every { it == '1' }
 
             // write_cbio_table() silently drops a col_def whose source column is gone, so pin the labels.
-            ['PRIMARY_SITE', 'CANCER_TYPE_LABEL', 'TUMOR_TISSUE_SITE_LABEL'].each { c ->
+            ['PRIMARY_SITE', 'CANCER_TYPE_LABEL', 'TUMOR_TISSUE_SITE_LABEL', 'ONCOTREE_CODE', 'CANCER_TYPE', 'CANCER_TYPE_DETAILED'].each { c ->
                 assert cols.contains(c)
             }
             def t1 = rows.find { it['PATIENT_ID'] == 'T1' }
             assert t1['PRIMARY_SITE']            == 'Pancreas'
             assert t1['CANCER_TYPE_LABEL']       == 'Pancreas'
             assert t1['TUMOR_TISSUE_SITE_LABEL'] == 'Liver and intrahepatic bile ducts'
+            // OncoKB takes the sample's tumour type from CANCER_TYPE_DETAILED
+            assert t1['ONCOTREE_CODE']           == 'PAAD'
+            assert t1['CANCER_TYPE']             == 'Pancreatic Cancer'
+            assert t1['CANCER_TYPE_DETAILED']    == 'Pancreatic Adenocarcinoma'
         }
     }
 

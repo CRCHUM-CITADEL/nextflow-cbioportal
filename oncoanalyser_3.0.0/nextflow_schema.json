@@ -193,6 +193,11 @@
                     "type": "string",
                     "description": "Path to MOHCCN treatment intent mapping CSV.",
                     "hidden": true
+                },
+                "oncotree_map": {
+                    "type": "string",
+                    "description": "ICD-10 / ICD-O to OncoTree TSV (bin/build_oncotree_map.py); sets ONCOTREE_CODE, CANCER_TYPE and CANCER_TYPE_DETAILED.",
+                    "hidden": true
                 }
             }
         },

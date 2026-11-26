@@ -84,6 +84,10 @@ if (opt$mode == "patient") {
     list("SPECIMEN_TISSUE_SOURCE_CODE","specimen_tissue_source_code",        "Specimen Tissue Source Code", "Ontology code for the specimen tissue source.",                        "STRING", "1"),
     list("CANCER_TYPE_CODE",           "cancer_type_code",                   "Cancer Code",                 "ICD-O-3 topography cancer code.",                                      "STRING", "1"),
     list("CANCER_TYPE_LABEL",          "cancer_type_label",                  "Cancer Code Label",           "Human-readable label for the ICD-O-3 topography cancer code.",         "STRING", "1"),
+    # OncoTree type from the cancer code + histology; OncoKB reads CANCER_TYPE_DETAILED.
+    list("ONCOTREE_CODE",              "oncotree_code",                      "Oncotree Code",               "OncoTree code mapped from the cancer code and tumor histology.",       "STRING", "1"),
+    list("CANCER_TYPE",                "cancer_type",                        "Cancer Type",                 "OncoTree main cancer type.",                                           "STRING", "1"),
+    list("CANCER_TYPE_DETAILED",       "cancer_type_detailed",               "Cancer Type Detailed",        "OncoTree cancer type, as specific as the cancer code and histology allow.", "STRING", "1"),
     # >1000 makes Primary Site the first study-view chart, above cBioPortal's Data Types chart.
     list("PRIMARY_SITE",               "primary_site",                       "Primary Site",                "Primary site of the tumor.",                                           "STRING", "1500"),
     list("PRIMARY_SITE_CODE",          "primary_site_code",                  "Primary Site Code",           "ICD-O topography code for the primary site.",                          "STRING", "1"),

@@ -136,6 +136,12 @@ rejected (converters `stop()` without the 3.0 columns).
   `read_mohccn_map()` / `reverse_mohccn_map()`. `apply_ps_label()` adds `*_LABEL` to `RELAPSE_SITE`,
   `CANCER_TYPE_CODE`, `TUMOR_TISSUE_SITE`, at C+2-digit parent level, joining multi-site lists with `"; "`.
   `_LABEL` avoids cBioPortal's reserved OncoTree `CANCER_TYPE*` columns
+- `ONCOTREE_CODE` / `CANCER_TYPE` / `CANCER_TYPE_DETAILED`: `apply_oncotree_map()` over the kit's `oncotree_map`
+  (`bin/build_oncotree_map.py`) from `cancer_type_code` (ICD-10) + `tumour_histological_type` (ICD-O morphology).
+  cBioPortal sends `CANCER_TYPE_DETAILED` to OncoKB (else the study type, which OncoKB doesn't know). Tissue-level
+  matches write the main type as DETAILED. A 3-character code reads as `.9` (NOS). Pair precedence:
+  `assets/oncotree_icdo_overrides.tsv` > OncoTree's `ontology_mappings.txt` > the draft Luebeck ICD-O map. Editing the
+  overrides or a new OncoTree version = rebuild the kit file (docs/resources.md); a new version also renames it
 - Dashboard priority (last `col_defs` field): `PRIMARY_SITE` 1500 (must stay > 1000, the Data Types
   chart), others 1; `0` hides. `write_cbio_table()` silently drops a col_def whose source is missing —
   `write_clinical_sample.nf.test` pins priorities and labels
@@ -198,6 +204,9 @@ rejected (converters `stop()` without the 3.0 columns).
 
 - `nf-test test tests/<x>.nf.test --profile=+apptainer`. Channel file outputs are `String`: use `path(f.toString())`
 - Sort snapshots by basename; `collectFile` with `storeDir` won't create dirs — `mkdirs()` in setup
+- `conf/base.config` labels ask 20–200 GB (`test` caps at 30 GB): a test running real tasks caps every label at
+  `1.GB` in its config (e.g. `tests/nextflow_genomic_ml.config`), else "exceeds available memory" on CI (16 GB)
+- CI (`nf-test` 0.9.5; 0.9.3 emits code Nextflow 26 rejects) fails on any failed test; only changed pipelines run
 - A process without `stub:` runs its real script under `-stub-run` — every genomic-path module needs one
 - Pipeline tests run every task for real except CPSR (`fake_cpsr` stand-in in the bcftools image, via
   `containerOptions --env PREPEND_PATH`: Nextflow starts containers with a clean env) and fastVEP

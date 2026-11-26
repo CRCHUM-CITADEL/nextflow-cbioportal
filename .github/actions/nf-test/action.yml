@@ -81,9 +81,12 @@ runs:
           --ci \
           --tap=test.tap \
           --shard ${{ inputs.shard }}/${{ inputs.total_shards }}
+        rc=$?
 
-          # Save the absolute path of the test.tap file to the output
-          echo "tap_file_path=$(realpath test.tap)" >> $GITHUB_OUTPUT
+        # Save the absolute path of the test.tap file to the output
+        echo "tap_file_path=$(realpath test.tap)" >> $GITHUB_OUTPUT
+        # Fail the step when any test failed (set +e above only lets the tap path be saved)
+        exit $rc
 
     - name: Generate test summary
       if: always()

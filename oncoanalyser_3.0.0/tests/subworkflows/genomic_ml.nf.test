@@ -3,6 +3,7 @@ nextflow_workflow {
     name "Test GENOMIC_ML subworkflow"
     script "subworkflows/local/genomic_ml/main.nf"
     workflow "GENOMIC_ML"
+    config "tests/nextflow_genomic_ml.config"
     tag "subworkflow"
     tag "genomic_ml"
 

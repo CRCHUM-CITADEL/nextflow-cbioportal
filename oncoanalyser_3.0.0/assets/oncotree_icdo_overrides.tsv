@@ -1,0 +1,12 @@
+# ICD-O pairs where the skfit-uni-luebeck ICD-O map is wrong and OncoTree's ontology_mappings.txt has no row.
+# Read by bin/build_oncotree_map.py; wins over both sources. A 3-character ICD_CODE covers every subsite.
+# Changing this file changes the kit table: rebuild it (docs/resources.md).
+ICD_CODE	ICDO_MORPHOLOGY	ONCOTREE_CODE	REASON
+C50	8500/3	IDC	Infiltrating duct carcinoma (/3 = invasive). Luebeck: DCIS at C50.4, BRCA at C50.8, IDC elsewhere
+C22.0	8140/3	LIVER	Adenocarcinoma is epithelial. Luebeck: LIMNET (Malignant Nonepithelial Tumor of the Liver)
+C22.1	8140/3	IHCH	Adenocarcinoma of the intrahepatic bile duct (C22.1). Luebeck: LIMNET
+C22.1	8070/3	LIVER	Squamous cell carcinoma is epithelial. Luebeck: LIMNET
+C22.1	8160/3	IHCH	Cholangiocarcinoma of the intrahepatic bile duct (C22.1). Luebeck: PHCH (perihilar)
+C53.1	8072/3	CESC	Squamous cell carcinoma of the exocervix. Luebeck: VMM (Mucosal Melanoma of the Vulva/Vagina)
+C54.1	8441/3	USC	Serous carcinoma of the endometrium. Luebeck: USCC (Urethral Squamous Cell Carcinoma)
+C25	8151/3	PANET	Malignant insulinoma, a pancreatic neuroendocrine tumour. Luebeck: PAAD at C25.9, PANCREAS at C25.4

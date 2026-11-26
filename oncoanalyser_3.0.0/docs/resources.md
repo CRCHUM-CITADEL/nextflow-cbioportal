@@ -29,6 +29,7 @@ nextflow run main.nf -profile apptainer --resources_dir $PWD/nextflow-cbioportal
 | `genomic/reference/Homo_sapiens_assembly38.fasta`    | `genome_reference`                                 | GATK hg38 FASTA (SigProfiler)             |
 | `genomic/cosmic_mutational_signatures/`              | `{sbs,dbs,id}_signatures`, `{sbs,dbs,id}_metadata` | COSMIC v3.6 signatures + metadata         |
 | `clinical/MoH/dictionary/`                           | `mohccn_*_map`                                     | MOHCCN v3.1 mapping tables                |
+| `clinical/oncotree/icd_to_oncotree_2026_11_20.tsv`   | `oncotree_map`                                     | ICD-10 / ICD-O → OncoTree 2026-11-20      |
 
 Notes:
 
@@ -101,3 +102,30 @@ rm -rf t.vcf t.maf Homo_sapiens.GRCh38.116.*
 ```
 
 Then steps 2–3 above (`VERSION` = `1.1.0`).
+
+### ICD → OncoTree table (added to v1.1.0 before release)
+
+`CANCER_TYPE_DETAILED` (the tumour type OncoKB gets) is looked up in this table. For each
+(ICD-O topography, morphology) pair it takes, in order: `assets/oncotree_icdo_overrides.tsv`, OncoTree's
+own ICD-O mapping (`ontology_mappings.txt`), then the draft
+[skfit-uni-luebeck/mapping-to-oncoTree](https://github.com/skfit-uni-luebeck/mapping-to-oncoTree) ICD-O
+ConceptMap (no licence file). Where both cover a pair, about a quarter of the Luebeck targets conflict with
+OncoTree's, and it often gives an unknown-primary type for a known site: those are lifted to a known-site
+ancestor or dropped. Its ICD-10 ConceptMap gives the any-morphology rows.
+
+```bash
+LUB=https://raw.githubusercontent.com/skfit-uni-luebeck/mapping-to-oncoTree/fe5adad2ca06d35ee5e1c9f317c07085493a5574
+OT=https://raw.githubusercontent.com/cBioPortal/oncotree/ba9c17f011b015a5250e9f6dd971b07a60e87e77
+wget $LUB/concept-map-icd-o-oncotree.json $LUB/concept-map-icd-10-oncotree.json
+wget $OT/scripts/ontology_to_ontology_mapping_tool/ontology_mappings.txt
+wget -O tumorTypes.json "https://oncotree.mskcc.org/api/tumorTypes?version=oncotree_2026_11_20"
+mkdir -p clinical/oncotree
+build_oncotree_map.py --icdo concept-map-icd-o-oncotree.json --icd10 concept-map-icd-10-oncotree.json \
+    --mappings ontology_mappings.txt --tumor-types tumorTypes.json \
+    --overrides <pipeline>/assets/oncotree_icdo_overrides.tsv -o clinical/oncotree/icd_to_oncotree_2026_11_20.tsv
+rm concept-map-icd-*-oncotree.json ontology_mappings.txt tumorTypes.json
+```
+
+It drops the targets that OncoTree 2026-11-20 no longer has (`AASTR`, `AODG`, `GBM`). An overrides change
+or a new OncoTree version means rebuilding; a new OncoTree version also needs a new file name in
+`resourceLayout()`. The test mini-kit holds the same file (`assets/test_data/resources/clinical/oncotree/`).

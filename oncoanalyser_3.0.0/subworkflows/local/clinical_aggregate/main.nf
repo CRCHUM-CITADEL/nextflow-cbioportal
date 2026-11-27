@@ -61,7 +61,8 @@ workflow CLINICAL_AGGREGATE {
                     optCsv(csv_map, 'genomic_subjects'),
                     file(resource('mohccn_primary_site_map')),
                     file(resource('mohccn_specimen_tissue_source_map')),
-                    file(resource('mohccn_treatment_intent_map'))
+                    file(resource('mohccn_treatment_intent_map')),
+                    file(resource('oncotree_map'))
                 )
             }
 

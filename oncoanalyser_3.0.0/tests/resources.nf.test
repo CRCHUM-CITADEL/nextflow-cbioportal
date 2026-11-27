@@ -28,7 +28,7 @@ nextflow_pipeline {
         }
     }
 
-    test("no kit and no explicit maps — the missing MOHCCN maps are named") {
+    test("no kit and no explicit maps — the missing MOHCCN and OncoTree maps are named") {
 
         config "tests/nextflow_clinical.config"
         when {
@@ -45,7 +45,8 @@ nextflow_pipeline {
                 { assert workflow.failed },
                 { assert log.contains('mohccn_primary_site_map') },
                 { assert log.contains('mohccn_specimen_tissue_source_map') },
-                { assert log.contains('mohccn_treatment_intent_map') }
+                { assert log.contains('mohccn_treatment_intent_map') },
+                { assert log.contains('oncotree_map') }
             )
         }
     }
@@ -61,6 +62,7 @@ nextflow_pipeline {
                 mohccn_primary_site_map           = "${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv"
                 mohccn_specimen_tissue_source_map = "${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv"
                 mohccn_treatment_intent_map       = "${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv"
+                oncotree_map                      = "${projectDir}/assets/test_data/resources/clinical/oncotree/icd_to_oncotree_2026_11_20.tsv"
             }
         }
 

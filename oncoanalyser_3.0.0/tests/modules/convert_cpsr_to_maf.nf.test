@@ -9,7 +9,7 @@ nextflow_process {
     // Input MAF has mafsmith's 53 columns: germline rows must not add columns the header lacks (row-width check below)
     test("mafsmith-shaped MAF — every row matches the header width") {
 
-        config "tests/nextflow_mutations.config"
+        config "tests/nextflow_low_memory.config"
 
         when {
             process {
@@ -64,7 +64,7 @@ nextflow_process {
 
     test("cpsr <= 2.2 output (PCGR 2.2.5) — falls back to FINAL_CLASSIFICATION") {
 
-        config "tests/nextflow_mutations.config"
+        config "tests/nextflow_low_memory.config"
 
         when {
             process {
@@ -95,7 +95,7 @@ nextflow_process {
 
     test("header-only placeholder (CPSR found nothing) — no germline rows, no error") {
 
-        config "tests/nextflow_mutations.config"
+        config "tests/nextflow_low_memory.config"
 
         when {
             process {
@@ -125,7 +125,7 @@ nextflow_process {
 
     test("real integrated MAF — germline rows leave the RNA namespace empty") {
 
-        config "tests/nextflow_mutations.config"
+        config "tests/nextflow_low_memory.config"
 
         when {
             process {

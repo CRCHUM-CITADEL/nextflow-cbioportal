@@ -20,7 +20,8 @@ process BUILD_CLINICAL_TABLE {
               path(genomic_subjects),
               path(primary_site_map),
               path(specimen_tissue_source_map),
-              path(treatment_intent_map)
+              path(treatment_intent_map),
+              path(oncotree_map)
         path(clinical_common_r)
 
     output:
@@ -49,7 +50,8 @@ process BUILD_CLINICAL_TABLE {
         ${genomic_subjects_arg} \
         --primary_site_map ${primary_site_map} \
         --specimen_tissue_source_map ${specimen_tissue_source_map} \
-        --treatment_intent_map ${treatment_intent_map}
+        --treatment_intent_map ${treatment_intent_map} \
+        --oncotree_map ${oncotree_map}
     """
 
     stub:

@@ -11,11 +11,20 @@ nextflow_process {
         '# comment line\\n' +
         'TP53\\tmutation\\n' +
         'kras\\tMutation\\n' +
+        'DDR2\\tmutation\\n' +
         'ERBB2\\tcna\\n' +
         'ALK\\tfusion\\n' +
-        'RET\\tsv\\n'
+        'RET\\tsv\\n' +
+        'CCDC6\\tsv\\n'
 
-    test("Mutations: keeps only panel genes") {
+    def MUTATIONS = 'Hugo_Symbol\\tTumor_Sample_Barcode\\tHGVSp_Short\\n' +
+        'TP53\\tS1\\tp.R273H\\n' +
+        'DDR2\\tS1\\tp.T93I\\n' +
+        'KRAS\\tS2\\tp.G12D\\n' +
+        'ERBB2\\tS2\\tp.S310F\\n'
+
+    // Off-panel rows are kept and flagged; DDR2 is dropped by the default exclude_genes even though it is listed
+    test("Mutations: flags info.on_panel, drops the excluded gene") {
 
         when {
             params { outdir = "$outputDir" }
@@ -23,12 +32,7 @@ nextflow_process {
                 """
                 file("${params.outdir}/gp").mkdirs()
                 file("${params.outdir}/gp/panel.tsv").text = '${panel}'
-                file("${params.outdir}/gp/data_mutations.txt").text =
-                    'Hugo_Symbol\\tTumor_Sample_Barcode\\tHGVSp_Short\\n' +
-                    'TP53\\tS1\\tp.R273H\\n' +
-                    'DDR2\\tS1\\tp.T93I\\n' +
-                    'KRAS\\tS2\\tp.G12D\\n' +
-                    'ERBB2\\tS2\\tp.S310F\\n'
+                file("${params.outdir}/gp/data_mutations.txt").text = '${MUTATIONS}'
                 input[0] = file("${params.outdir}/gp/data_mutations.txt")
                 input[1] = file("${params.outdir}/gp/panel.tsv")
                 input[2] = 'mutation'
@@ -39,12 +43,13 @@ nextflow_process {
         then {
             assert process.success
             def lines = path(process.out[0][0].toString()).readLines()
-            assert lines[0] == 'Hugo_Symbol\tTumor_Sample_Barcode\tHGVSp_Short'
-            assert lines.drop(1).collect { it.split('\t')[0] } == ['TP53', 'KRAS']
+            assert lines[0] == 'Hugo_Symbol\tTumor_Sample_Barcode\tHGVSp_Short\tinfo.on_panel'
+            assert lines.drop(1).collect { it.split('\t').with { c -> [c[0], c[3]] } } ==
+                [['TP53', 'true'], ['KRAS', 'true'], ['ERBB2', 'false']]
         }
     }
 
-    test("CNA: keeps only cna genes, not mutation-only ones") {
+    test("CNA: only cna genes are on the panel, not mutation-only ones") {
 
         when {
             params { outdir = "$outputDir" }
@@ -66,11 +71,17 @@ nextflow_process {
 
         then {
             assert process.success
-            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tSample_Id\tValue', 'ERBB2\tS1\t2']
+            assert path(process.out[0][0].toString()).readLines() == [
+                'Hugo_Symbol\tSample_Id\tValue\tinfo.on_panel',
+                'ERBB2\tS1\t2\ttrue',
+                'TP53\tS1\t-2\tfalse',
+                'MYC\tS2\t2\tfalse',
+            ]
         }
     }
 
-    test("SV: keeps a fusion when either partner is on the panel") {
+    // A fusion is on the panel only when both partners are; one with an excluded partner is dropped
+    test("SV: on panel only with both partners listed, dropped with either partner excluded") {
 
         when {
             params { outdir = "$outputDir" }
@@ -83,7 +94,8 @@ nextflow_process {
                     'S1\\tEML4\\tALK\\tFUSION\\n' +
                     'S1\\tRET\\tCCDC6\\tFUSION\\n' +
                     'S2\\tTMPRSS2\\tERG\\tFUSION\\n' +
-                    'S2\\t\\tALK\\tFUSION\\n'
+                    'S2\\t\\tALK\\tFUSION\\n' +
+                    'S2\\tALK\\tddr2\\tFUSION\\n'
                 input[0] = file("${params.outdir}/gp/data_sv.txt")
                 input[1] = file("${params.outdir}/gp/panel.tsv")
                 input[2] = 'sv'
@@ -93,12 +105,90 @@ nextflow_process {
 
         then {
             assert process.success
-            def kept = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t', -1)[1..2].join('-') }
-            assert kept == ['EML4-ALK', 'RET-CCDC6', '-ALK']
+            def rows = path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t', -1) }
+            assert rows.collect { [it[1..2].join('-'), it[4]] } ==
+                [['EML4-ALK', 'false'], ['RET-CCDC6', 'true'], ['TMPRSS2-ERG', 'false'], ['-ALK', 'false']]
         }
     }
 
-    test("Header-only file stays header-only") {
+    // The post-merge pass re-flags cached per-sample files against the current panel
+    test("An existing info.on_panel column is overwritten, not duplicated") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/panel.tsv").text = '${panel}'
+                file("${params.outdir}/gp/data_cna.txt").text =
+                    'Hugo_Symbol\\tinfo.on_panel\\tSample_Id\\tValue\\n' +
+                    'ERBB2\\tfalse\\tS1\\t2\\n' +
+                    'MYC\\ttrue\\tS2\\t2\\n'
+                input[0] = file("${params.outdir}/gp/data_cna.txt")
+                input[1] = file("${params.outdir}/gp/panel.tsv")
+                input[2] = 'cna'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines() == [
+                'Hugo_Symbol\tinfo.on_panel\tSample_Id\tValue',
+                'ERBB2\ttrue\tS1\t2',
+                'MYC\tfalse\tS2\t2',
+            ]
+        }
+    }
+
+    test("Without a panel: no info.on_panel column, excluded gene still dropped") {
+
+        when {
+            params { outdir = "$outputDir" }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/data_mutations.txt").text = '${MUTATIONS}'
+                input[0] = file("${params.outdir}/gp/data_mutations.txt")
+                input[1] = []
+                input[2] = 'mutation'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0] == 'Hugo_Symbol\tTumor_Sample_Barcode\tHGVSp_Short'
+            assert lines.drop(1).collect { it.split('\t')[0] } == ['TP53', 'KRAS', 'ERBB2']
+        }
+    }
+
+    test("A custom exclude_genes list replaces DDR2, case-insensitively") {
+
+        when {
+            params {
+                outdir        = "$outputDir"
+                exclude_genes = 'erbb2,KRAS'
+            }
+            process {
+                """
+                file("${params.outdir}/gp").mkdirs()
+                file("${params.outdir}/gp/data_mutations.txt").text = '${MUTATIONS}'
+                input[0] = file("${params.outdir}/gp/data_mutations.txt")
+                input[1] = []
+                input[2] = 'mutation'
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert path(process.out[0][0].toString()).readLines().drop(1).collect { it.split('\t')[0] } == ['TP53', 'DDR2']
+        }
+    }
+
+    test("Header-only file gets the column in its header") {
 
         when {
             params { outdir = "$outputDir" }
@@ -116,7 +206,7 @@ nextflow_process {
 
         then {
             assert process.success
-            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tSample_Id\tValue']
+            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tSample_Id\tValue\tinfo.on_panel']
         }
     }
 

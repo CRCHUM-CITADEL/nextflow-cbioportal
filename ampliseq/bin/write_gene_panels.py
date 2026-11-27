@@ -2,7 +2,7 @@
 """
 Write cBioPortal gene panel files from the pipeline's gene panel TSV (see filter_gene_panel.py).
 
-Usage: write_gene_panels.py <gene_panel.tsv> <linking_file> <study_id> [--cnv-failed ID ...]
+Usage: write_gene_panels.py <gene_panel.tsv> <linking_file> <study_id> [--cnv-failed ID ...] [--exclude G1,G2]
 
 Writes to the current directory:
   gene_panels/gene_panel_<study_id>_<type>.txt  panel definitions (stable_id, description,
@@ -14,12 +14,13 @@ Writes to the current directory:
 The matrix marks every sample as profiled with the panel, so cBioPortal's frequency denominator
 is the whole cohort instead of only the samples with data. Samples that failed CNV depth QC
 (--cnv-failed, anonymised sample_id) get NA for cna: not profiled, as in the CNA case lists.
+Genes in --exclude (exclude_genes, dropped from the data) are left out of every panel.
 """
 
 import argparse
 import os
 
-from filter_gene_panel import read_panel
+from filter_gene_panel import parse_genes, read_panel
 
 # panel type -> (cBioPortal profile stable_id from format_meta.py, description label)
 PROFILES = {
@@ -35,9 +36,12 @@ def main():
     parser.add_argument("linking_file")
     parser.add_argument("study_id")
     parser.add_argument("--cnv-failed", nargs="*", default=[])
+    parser.add_argument("--exclude", default="")
     args = parser.parse_args()
 
     panel = read_panel(args.gene_panel)
+    exclude = parse_genes(args.exclude)
+    panel = {t: panel[t] - exclude for t in PROFILES}
     missing = [t for t in PROFILES if not panel[t]]
     if missing:
         raise SystemExit(f"ERROR: {args.gene_panel} lists no genes for: {', '.join(missing)}")

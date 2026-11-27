@@ -15,8 +15,9 @@ process WRITE_GENE_PANELS {
 
     script:
     def failed = cnv_failed_ids ? "--cnv-failed ${cnv_failed_ids.join(' ')}" : ''
+    def exclude = params.exclude_genes && params.exclude_genes.toString() != 'null' ? params.exclude_genes.toString() : ''  // exclude_genes, '' = none
     """
-    write_gene_panels.py ${gene_panel} ${linking_file} "${study_id}" ${failed}
+    write_gene_panels.py ${gene_panel} ${linking_file} "${study_id}" ${failed} --exclude "${exclude}"
     """
 
     stub:

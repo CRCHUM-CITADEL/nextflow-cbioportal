@@ -97,7 +97,7 @@ nextflow_process {
         }
     }
 
-    test("Gene panel: drops off-panel genes from the per-sample file") {
+    test("Gene panel: flags off-panel genes, drops the excluded gene") {
 
         when {
             params { outdir = "$outputDir"; filter_tsv_variants = false }
@@ -107,8 +107,9 @@ nextflow_process {
                 file("${params.outdir}/cna_inputs/export.tsv").text =
                     'Chr\\tStart\\tEnd\\tVariant Type\\tVariant Subtype\\tGenes\\tBreakend Genes\\tSupporting Reads\\tCopy Number\\n' +
                     '8\\t1\\t2\\tCNV\\tDUPLICATION\\tMYC\\t\\t0\\t8\\n' +
-                    '1\\t1\\t2\\tCNV\\tDUPLICATION\\tDDR2\\t\\t0\\t8\\n'
-                file("${params.outdir}/cna_inputs/panel.tsv").text = 'gene\\ttype\\nMYC\\tcna\\nDDR2\\tmutation\\n'
+                    '1\\t1\\t2\\tCNV\\tDUPLICATION\\tDDR2\\t\\t0\\t8\\n' +
+                    '17\\t1\\t2\\tCNV\\tDUPLICATION\\tERBB2\\t\\t0\\t8\\n'
+                file("${params.outdir}/cna_inputs/panel.tsv").text = 'gene\\ttype\\nMYC\\tcna\\nDDR2\\tcna\\nERBB2\\tmutation\\n'
                 input[0] = Channel.of([[sample_id: 'S'], file("${params.outdir}/cna_inputs/export.tsv")])
                 input[1] = file("${params.outdir}/cna_inputs/panel.tsv")
                 """
@@ -117,7 +118,9 @@ nextflow_process {
 
         then {
             assert process.success
-            assert path(process.out[0][0].toString()).readLines() == ['Hugo_Symbol\tSample_Id\tValue', 'MYC\tS\t2']
+            def lines = path(process.out[0][0].toString()).readLines()
+            assert lines[0] == 'Hugo_Symbol\tSample_Id\tValue\tinfo.on_panel'
+            assert lines.drop(1).sort() == ['ERBB2\tS\t2\tfalse', 'MYC\tS\t2\ttrue']
         }
     }
 }

@@ -32,6 +32,8 @@ option_list <- list(
               help="MOHCCN specimen tissue source mapping CSV [OPTIONAL]", metavar="FILE"),
   make_option("--treatment_intent_map", type="character", default=NULL,
               help="MOHCCN treatment intent mapping CSV [OPTIONAL]", metavar="FILE"),
+  make_option("--oncotree_map", type="character", default=NULL,
+              help="ICD to OncoTree TSV from build_oncotree_map.py [OPTIONAL]", metavar="FILE"),
   make_option(c("-o", "--output"), type="character", default="clinical_merged.tsv",
               help="Output file path [default= %default]", metavar="FILE"),
   make_option("--common_lib", type="character", default="clinical_common.R",
@@ -403,6 +405,12 @@ m$relapse_site_label          <- apply_ps_label(m$relapse_site_val, ps_map_rev)
 # Labels for ICD-O codes already in the data, at the C+2-digit parent (the MOHCCN table has only parents)
 m$cancer_type_label                <- apply_ps_label(m$cancer_type_code,           ps_map_rev)
 m$specimen_anatomic_location_label <- apply_ps_label(m$specimen_anatomic_location, ps_map_rev)
+
+# OncoTree type (what OncoKB reads) from the diagnosis ICD-10 code + the specimen's ICD-O morphology
+oncotree <- apply_oncotree_map(m$cancer_type_code, m$tumour_histological_type, read_oncotree_map(opt$oncotree_map))
+m$oncotree_code        <- oncotree$oncotree_code
+m$cancer_type          <- oncotree$cancer_type
+m$cancer_type_detailed <- oncotree$cancer_type_detailed
 if ("treatment_intent" %in% names(m)) {
   m$treatment_intent_code <- apply_mohccn_map(m$treatment_intent, ti_map)
 } else {

@@ -30,7 +30,8 @@ nextflow_process {
                         [],
                         file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
                         file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv'),
-                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv')
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv'),
+                        file('${projectDir}/assets/test_data/resources/clinical/oncotree/icd_to_oncotree_2026_11_20.tsv')
                     )
                 )
                 input[1] = file('${projectDir}/bin/clinical_common.R')
@@ -65,6 +66,14 @@ nextflow_process {
             // T1's sequenced specimen is a liver site from a pancreatic primary
             assert t1['specimen_anatomic_location']       == 'C22.0'
             assert t1['specimen_anatomic_location_label'] == 'Liver and intrahepatic bile ducts'
+
+            // OncoTree type: exact (C25.0, 8140/3) pair for T1; T2's C56 has no subsite, so it reads as C56.9
+            assert [t1['oncotree_code'], t1['cancer_type'], t1['cancer_type_detailed']] ==
+                ['PAAD', 'Pancreatic Cancer', 'Pancreatic Adenocarcinoma']
+            def t2 = rows.find { it['patient'] == 'T2' }
+            assert [t2['cancer_type_code'], t2['tumour_histological_type']] == ['C56', '8140/3']
+            assert [t2['oncotree_code'], t2['cancer_type'], t2['cancer_type_detailed']] ==
+                ['OOVC', 'Ovarian Cancer', 'Ovarian Cancer, Other']
         }
     }
 
@@ -92,7 +101,8 @@ nextflow_process {
                         [],
                         file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
                         file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv'),
-                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv')
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv'),
+                        file('${projectDir}/assets/test_data/resources/clinical/oncotree/icd_to_oncotree_2026_11_20.tsv')
                     )
                 )
                 input[1] = file('${projectDir}/bin/clinical_common.R')
@@ -112,6 +122,54 @@ nextflow_process {
             // T2's first relapse is ["C569","C220"]; "; " because some MOHCCN labels contain commas.
             assert t2['relapse_site_val']   == 'C569,C220'
             assert t2['relapse_site_label'] == 'Ovary; Liver and intrahepatic bile ducts'
+        }
+    }
+
+    test("3-character cancer code — read as the site's NOS subsite (.9)") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+            process {
+                """
+                input[0] = Channel.of(
+                    tuple(
+                        [group: 'TEST'],
+                        file('${projectDir}/assets/test_data/clinical/donors.csv'),
+                        file('${projectDir}/tests/modules/fixtures/primary_diagnoses_site_only_code.csv'),
+                        file('${projectDir}/tests/modules/fixtures/specimens_site_only_code.csv'),
+                        file('${projectDir}/assets/test_data/clinical/sample_registrations.csv'),
+                        file('${projectDir}/assets/test_data/clinical/treatments.csv'),
+                        file('${projectDir}/assets/test_data/clinical/surgeries.csv'),
+                        file('${projectDir}/assets/test_data/clinical/systemic_therapies.csv'),
+                        file('${projectDir}/assets/test_data/clinical/radiations.csv'),
+                        file('${projectDir}/assets/test_data/clinical/follow_ups.csv'),
+                        file('${projectDir}/assets/test_data/clinical/biomarkers.csv'),
+                        [],
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_primary_site.csv'),
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_specimen_tissue_source.csv'),
+                        file('${projectDir}/assets/test_data/resources/clinical/MoH/dictionary/mohccn_clinical_data_modelv3-1_sep2024_treatment_intent.csv'),
+                        file('${projectDir}/assets/test_data/resources/clinical/oncotree/icd_to_oncotree_2026_11_20.tsv')
+                    )
+                )
+                input[1] = file('${projectDir}/bin/clinical_common.R')
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            def merged = path(process.out.ch_merged.collect { group, f -> f }[0].toString())
+            def lines  = merged.readLines()
+            def cols   = lines[0].split('\t') as List
+            def rows   = lines.drop(1).collect { [cols, it.split('\t', -1) as List].transpose().collectEntries() }
+            def t1     = rows.find { it['patient'] == 'T1' }
+
+            // C34 + 8230/3: the C34.9 pair is Lung Adenocarcinoma; pooling every lung subsite gives only Lung
+            assert [t1['cancer_type_code'], t1['tumour_histological_type']] == ['C34', '8230/3']
+            assert [t1['oncotree_code'], t1['cancer_type_detailed']] == ['LUAD', 'Lung Adenocarcinoma']
         }
     }
 }

@@ -193,6 +193,19 @@ written as in both mode.
   because some labels contain commas: "Ovary; Liver and intrahepatic bile
   ducts".
 
+  OncoTree columns in data_clinical_sample.txt (OncoKB reads
+  CANCER_TYPE_DETAILED as the sample's tumour type):
+
+  ONCOTREE_CODE         OncoTree code, e.g. PAAD
+  CANCER_TYPE           OncoTree main type, e.g. Pancreatic Cancer
+  CANCER_TYPE_DETAILED  OncoTree name, e.g. Pancreatic Adenocarcinoma
+
+  Mapped from CANCER_TYPE_CODE (ICD-10) and TUMOR_HISTOLOGICAL_TYPE
+  (ICD-O-3 morphology) through the kit's ICD-to-OncoTree table. A
+  tissue-level match gives the main type in both columns. A 3-character
+  code (C56) is read as the site's NOS subsite (C56.9). NA when the
+  codes have no mapping.
+
   Study view (dashboard) order: PRIMARY_SITE has priority 1500 in the
   4th header row, so Primary Site is the first chart, ahead of
   cBioPortal's Data Types chart (1000), the survival plots and Mutation

@@ -52,6 +52,37 @@ apply_ps_label <- function(codes, reversed_map) {
   }, character(1), USE.NAMES = FALSE)
 }
 
+# ── OncoTree type from ICD code + ICD-O morphology (kit table from bin/build_oncotree_map.py) ──
+read_oncotree_map <- function(filepath) {
+  if (is.null(filepath) || !file.exists(filepath)) return(NULL)
+  read.delim(filepath, colClasses = "character", na.strings = "", quote = "")
+}
+
+# First row of (code, morphology), (site, morphology), (code, "*"), (site, "*"); NA columns when unmapped or no table
+apply_oncotree_map <- function(icd_codes, morphology, map) {
+  n   <- length(icd_codes)
+  out <- data.frame(oncotree_code = rep(NA_character_, n), cancer_type = NA_character_, cancer_type_detailed = NA_character_)
+  if (is.null(map) || n == 0) return(out)
+  flat  <- gsub(".", "", toupper(trimws(icd_codes)), fixed = TRUE)
+  valid <- !is.na(flat) & grepl("^[CD]\\d{2,}$", flat)
+  site  <- substr(flat, 1, 3)
+  # A 3-character code (C56) names the whole site: ICD-O's NOS subsite C56.9
+  code  <- paste0(site, ".", ifelse(nchar(flat) > 3, substring(flat, 4), "9"))
+  morph <- trimws(rep_len(if (is.null(morphology)) NA_character_ else morphology, n))
+  keys  <- paste(map$ICD_CODE, map$ICDO_MORPHOLOGY, sep = "\t")
+  idx   <- rep(NA_integer_, n)
+  for (key in list(paste(code, morph, sep = "\t"), paste(site, morph, sep = "\t"),
+                   paste(code, "*", sep = "\t"),   paste(site, "*", sep = "\t"))) {
+    hit <- match(key, keys)
+    idx[is.na(idx)] <- hit[is.na(idx)]
+  }
+  idx[!valid] <- NA
+  out$oncotree_code        <- map$ONCOTREE_CODE[idx]
+  out$cancer_type          <- map$CANCER_TYPE[idx]
+  out$cancer_type_detailed <- map$CANCER_TYPE_DETAILED[idx]
+  out
+}
+
 # ── Sample linking: only Total DNA solid-tissue tumours with an -<n>[A-Z]*[DR]T suffix become sample rows ──
 is_cbio_sample <- function(reg) {
   reg$sample_type               == "Total DNA" &

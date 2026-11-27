@@ -44,25 +44,18 @@ nextflow_process {
         }
     }
 
-    // Inputs: the T1 germline fixture, samples renamed/reordered by bcftools so the normal is <subject>-N
+    // Inputs: the T1 germline VCF with samples reordered/renamed (bcftools view -s / reheader -s), committed as fixtures
 
     test("tumour column first — CPSR still gets the normal, found by name") {
 
-        setup {
-            def dir = new File("${outputDir}/../inputs"); dir.mkdirs()
-            def src = "${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz"
-            def cmd = "bcftools view -s T1,T1-N -Oz -o ${dir}/tumour_first.vcf.gz ${src} && bcftools index -ft ${dir}/tumour_first.vcf.gz"
-            def p = ["bash", "-c", cmd].execute(); p.waitFor()
-            assert p.exitValue() == 0 : p.err.text
-        }
 
         when {
             process {
                 """
                 input[0] = Channel.of([
                     [group: 'TEST', subject: 'T1', sample: 'T1-T'],
-                    file('${outputDir}/../inputs/tumour_first.vcf.gz'),
-                    file('${outputDir}/../inputs/tumour_first.vcf.gz.tbi')
+                    file('${projectDir}/tests/modules/fixtures/purple_germline_tumour_first.vcf.gz'),
+                    file('${projectDir}/tests/modules/fixtures/purple_germline_tumour_first.vcf.gz.tbi')
                 ])
                 input[1] = file('${projectDir}/assets/test_data/annotations')
                 input[2] = file('${projectDir}/assets/test_data/reference')
@@ -101,21 +94,14 @@ nextflow_process {
 
     test("CPSR finds nothing — a header-only placeholder, and the task still succeeds") {
 
-        setup {
-            def dir = new File("${outputDir}/../inputs"); dir.mkdirs()
-            def src = "${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz"
-            def cmd = "printf 'EMPTY-N\\nEMPTY-T\\n' > ${dir}/empty_names.txt && bcftools reheader -s ${dir}/empty_names.txt -o ${dir}/empty.vcf.gz ${src} && bcftools index -ft ${dir}/empty.vcf.gz"
-            def p = ["bash", "-c", cmd].execute(); p.waitFor()
-            assert p.exitValue() == 0 : p.err.text
-        }
 
         when {
             process {
                 """
                 input[0] = Channel.of([
                     [group: 'TEST', subject: 'EMPTY', sample: 'EMPTY-T'],
-                    file('${outputDir}/../inputs/empty.vcf.gz'),
-                    file('${outputDir}/../inputs/empty.vcf.gz.tbi')
+                    file('${projectDir}/tests/modules/fixtures/purple_germline_empty.vcf.gz'),
+                    file('${projectDir}/tests/modules/fixtures/purple_germline_empty.vcf.gz.tbi')
                 ])
                 input[1] = file('${projectDir}/assets/test_data/annotations')
                 input[2] = file('${projectDir}/assets/test_data/reference')
@@ -134,21 +120,14 @@ nextflow_process {
 
     test("CPSR logs an ERROR but exits 0 — the task fails instead of using the placeholder") {
 
-        setup {
-            def dir = new File("${outputDir}/../inputs"); dir.mkdirs()
-            def src = "${projectDir}/assets/test_data/oncoanalyser_output/TEST/T1/purple/T1-T.purple.germline.vcf.gz"
-            def cmd = "printf 'BROKEN-N\\nBROKEN-T\\n' > ${dir}/broken_names.txt && bcftools reheader -s ${dir}/broken_names.txt -o ${dir}/broken.vcf.gz ${src} && bcftools index -ft ${dir}/broken.vcf.gz"
-            def p = ["bash", "-c", cmd].execute(); p.waitFor()
-            assert p.exitValue() == 0 : p.err.text
-        }
 
         when {
             process {
                 """
                 input[0] = Channel.of([
                     [group: 'TEST', subject: 'BROKEN', sample: 'BROKEN-T'],
-                    file('${outputDir}/../inputs/broken.vcf.gz'),
-                    file('${outputDir}/../inputs/broken.vcf.gz.tbi')
+                    file('${projectDir}/tests/modules/fixtures/purple_germline_broken.vcf.gz'),
+                    file('${projectDir}/tests/modules/fixtures/purple_germline_broken.vcf.gz.tbi')
                 ])
                 input[1] = file('${projectDir}/assets/test_data/annotations')
                 input[2] = file('${projectDir}/assets/test_data/reference')

@@ -205,8 +205,10 @@ rejected (converters `stop()` without the 3.0 columns).
 - `nf-test test tests/<x>.nf.test --profile=+apptainer`. Channel file outputs are `String`: use `path(f.toString())`
 - Sort snapshots by basename; `collectFile` with `storeDir` won't create dirs — `mkdirs()` in setup
 - `conf/base.config` labels ask 20–200 GB (`test` caps at 30 GB): a test running real tasks caps every label at
-  `1.GB` in its config (e.g. `tests/nextflow_genomic_ml.config`), else "exceeds available memory" on CI (16 GB)
+  `1.GB` in its config (e.g. `tests/nextflow_low_memory.config`), else "exceeds available memory" on CI (16 GB)
 - CI (`nf-test` 0.9.5; 0.9.3 emits code Nextflow 26 rejects) fails on any failed test; only changed pipelines run
+- CI runners have no host `Rscript`/`bcftools`: a real task needs its container (no `apptainer.enabled = false`), and
+  test `setup` blocks must not shell out to them. Derived inputs are committed fixtures (`tests/modules/fixtures/`)
 - A process without `stub:` runs its real script under `-stub-run` — every genomic-path module needs one
 - Pipeline tests run every task for real except CPSR (`fake_cpsr` stand-in in the bcftools image, via
   `containerOptions --env PREPEND_PATH`: Nextflow starts containers with a clean env) and fastVEP
